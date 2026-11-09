@@ -73,3 +73,7 @@
 .skf span{font-weight:600;font-size:.78rem}
 .skf.read{background:#FDBA74}
 .skf.skipped{background:#E2E8F0;color:#475569;opacity:.75}
+
+/* number at the end of a bar, so a short bar never clips it */
+.lane-v{min-width:5.2rem;text-align:right;font:700 .95rem 'IBM Plex Mono',monospace}
+.gbar.bad{background:#F87171}

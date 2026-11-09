@@ -89,6 +89,60 @@
     W.deltalogInfo = { liveAt: liveAt, rowsAt: rowsAt, diff: diff, versions: VERSIONS };
   })();
 
+  /* ====================== Concurrent writers lab ====================== */
+  (function () {
+    var SC = [
+      { k: 'append_append', name: 'append and append', a: 'append one order, slowed on purpose', b: 'append one order',
+        why: 'Neither writer reads the table, so neither can invalidate the other. Delta puts one commit after the other.' },
+      { k: 'update_append', name: 'update and append', a: "UPDATE orders SET status = 'SHIPPED' WHERE order_id = 'O-1', slowed on purpose; it scans the whole table", b: 'append one order',
+        why: 'The update read every file to find its rows. The append added a file that the update should have seen. Delta cannot prove the update is still right, so it stops it.' },
+      { k: 'update_append_partitioned', name: 'update in one partition, append in another', a: "UPDATE orders SET status = 'SHIPPED' WHERE region = 'a' AND order_id = 'O-1', slowed on purpose; the table is partitioned by region", b: "append one order to region 'b'",
+        why: 'The partition filter limits what the update reads to region a. The append wrote region b, outside that set, so nothing the update read has changed.' },
+      { k: 'update_update', name: 'two updates that touch one file', a: "UPDATE orders SET status = 'SHIPPED' WHERE order_id = 'O-1', slowed on purpose", b: "UPDATE orders SET status = 'CANCELLED' WHERE order_id = 'O-2'",
+        why: 'Both orders sit in the same data file. B rewrote that file and committed first, and A had read the old copy. Delta reports it as a concurrent write of data that A should have read.' }
+    ];
+    function out(k) { return G.counts('delta.conflicts')[k]; }
+    function failed(k) { return out(k).a !== 'committed'; }
+    W.conflicts = {
+      steps: function () { return 2; },
+      hint: 'Pick a pair of writers. Read what happens at the commit.',
+      say: function (s, i) {
+        return [
+          'Two writers work on the same table. Writer A starts first and is slow on purpose. Writer B commits while A is still working. These are real outcomes from Delta Lake. Pick a pair and read what happened when A tried to commit.',
+          'Here are all four pairs. The pattern: a writer fails only when something it read was changed by a commit that landed first.'
+        ][i];
+      },
+      mood: function (s, i) { return i === 0 ? 'think' : 'happy'; },
+      render: function (box, s, i, A) {
+        var st = A.local.cf || (A.local.cf = { k: SC[1].k });
+        var cur = SC.filter(function (x) { return x.k === st.k; })[0], o = out(cur.k), bad = failed(cur.k), h = '<div class="lab">';
+        if (i === 0) {
+          h += '<div class="sel-chips">' + chips(SC.map(function (x) { return x.k; }), cur.k, 'cf-pick', function (k) { return SC.filter(function (x) { return x.k === k; })[0].name; }) + '</div>' +
+            '<div class="pair"><div class="callout tip"><b>Writer A</b> ' + esc(cur.a) + '</div><div class="callout tip"><b>Writer B</b> ' + esc(cur.b) + '</div></div>' +
+            table(['Step', 'What happens'], [
+              ['1', 'A starts. It reads version 0 and keeps working.'],
+              ['2', 'About 3 seconds later, B commits. Outcome for B: **' + o.b + '**.'],
+              ['3', 'A tries to commit. Delta compares B\'s commit with what A read. Outcome for A: **' + (bad ? o.a : 'committed') + '**.']
+            ], function (r, n) { return n === 2 ? (bad ? 'dup' : 'new') : ''; }) +
+            '<div class="lab-out"><div class="big ' + (bad ? 'bad' : 'good') + '"><b>' + (bad ? 'A failed' : 'A committed') + '</b><span>' + esc(bad ? o.a : 'on top of version 1') + '</span></div><div class="big"><b>' + o.rows + ' rows</b><span>in the table at the end</span></div><div class="big"><b>' + o.history.length + ' versions</b><span>' + esc(o.history.join(', ')) + '</span></div></div>' +
+            '<div class="callout ' + (bad ? 'warn' : 'good') + '">' + md(cur.why) + '</div>';
+          if (bad) h += H.code({ file: 'the error A received', lang: 'text', code: G.text('delta.conflict_' + cur.k) }) +
+            (o.retry ? '<div class="callout tip"><b>Retry.</b> I ran the same update again with no competitor. It committed, and ' + o.rows_after_retry + ' rows then had status SHIPPED.</div>' : '');
+        } else {
+          h += table(['Pair', 'A', 'B', 'Rows at the end', 'Why'], SC.map(function (x) {
+            var y = out(x.k);
+            return ['**' + x.name + '**', failed(x.k) ? y.a : 'committed', y.b, String(y.rows), x.why];
+          }), function (r, n) { return SC[n].k === cur.k ? 'trk' : ''; }) +
+            '<div class="callout tip"><b>How to avoid conflicts.</b> Add the partition column to the condition of every update and merge. Keep long backfills away from the nightly merge. Retry once with a short wait, and look at <code>DESCRIBE HISTORY</code> to see which commit won.</div>';
+        }
+        box.innerHTML = h + '</div>';
+        box.querySelectorAll('.code').forEach(function (c) { H.bindCode(c, c.textContent); });
+        A.bindWidget = function (act, el) { if (act === 'cf-pick') { st.k = el.getAttribute('data-v'); A.render(true); } };
+      }
+    };
+    W.conflictInfo = { scenarios: SC, failed: failed };
+  })();
+
   /* ====================== Join strategy lab ====================== */
   (function () {
     var PLANS = [
@@ -135,7 +189,7 @@
   /* ====================== Skew lab ====================== */
   (function () {
     function stats(a) { var mx = Math.max.apply(null, a), sum = a.reduce(function (x, y) { return x + y; }, 0), mean = sum / a.length; return { max: mx, mean: mean, ratio: mx / mean, sum: sum }; }
-    function bar(label, n, max, cls) { return '<div class="lane"><span class="lane-n">' + esc(label) + '</span><div class="lane-track"><div class="gbar ' + (cls || '') + '" style="left:0;width:' + Math.max(1, Math.round(n / max * 100)) + '%">' + fmtN(n) + '</div></div></div>'; }
+    function bar(label, n, max, cls) { return '<div class="lane"><span class="lane-n">' + esc(label) + '</span><div class="lane-track"><div class="gbar ' + (cls || '') + '" style="left:0;width:' + Math.max(1, Math.round(n / max * 100)) + '%"></div></div><span class="lane-v">' + fmtN(n) + '</span></div>'; }
     W.skew = {
       steps: function () { return 2; },
       hint: 'Compare the longest bar with the others.',

@@ -1,6 +1,48 @@
 window.LAB = window.LAB || {};
 LAB.real = {
  "counts": {
+  "delta.conflicts": {
+   "append_append": {
+    "a": "committed",
+    "b": "committed",
+    "history": [
+     "v0 WRITE",
+     "v1 WRITE",
+     "v2 WRITE"
+    ],
+    "rows": 5
+   },
+   "update_append": {
+    "a": "ConcurrentAppendException",
+    "b": "committed",
+    "history": [
+     "v0 WRITE",
+     "v1 WRITE"
+    ],
+    "retry": "committed",
+    "rows": 4,
+    "rows_after_retry": 2
+   },
+   "update_append_partitioned": {
+    "a": "committed",
+    "b": "committed",
+    "history": [
+     "v0 WRITE",
+     "v1 WRITE",
+     "v2 UPDATE"
+    ],
+    "rows": 4
+   },
+   "update_update": {
+    "a": "ConcurrentAppendException",
+    "b": "committed",
+    "history": [
+     "v0 WRITE",
+     "v1 UPDATE"
+    ],
+    "rows": 3
+   }
+  },
   "delta.constraint_properties": {
    "delta.constraints.positive_total": "total_usd > 0"
   },
@@ -67,7 +109,7 @@ LAB.real = {
    "numFiles": 2,
    "partitionColumns": [],
    "properties": {},
-   "sizeInBytes": 2685895,
+   "sizeInBytes": 2712491,
    "tableFeatures": [
     "appendOnly",
     "clustering",
@@ -103,7 +145,7 @@ LAB.real = {
    "numFiles": 2,
    "partitionColumns": [],
    "properties": {},
-   "sizeInBytes": 2685895,
+   "sizeInBytes": 2712491,
    "tableFeatures": [
     "appendOnly",
     "clustering",
@@ -194,7 +236,7 @@ LAB.real = {
    "numFiles": 1,
    "partitionColumns": [],
    "properties": {},
-   "sizeInBytes": 11027,
+   "sizeInBytes": 10878,
    "tableFeatures": [
     "appendOnly",
     "invariants"
@@ -220,10 +262,10 @@ LAB.real = {
   },
   "layout.small_optimize": {
    "filesAdded": {
-    "max": 11027,
-    "min": 11027,
+    "max": 10878,
+    "min": 10878,
     "totalFiles": 1,
-    "totalSize": 11027
+    "totalSize": 10878
    },
    "filesRemoved": {
     "max": 1655,
@@ -284,25 +326,25 @@ LAB.real = {
   "layout.zorder": {
    "files_after": [
     {
-     "bytes": 917617,
+     "bytes": 929598,
      "file": "part-0017.snappy.parquet",
-     "max": "C-0604",
+     "max": "C-0609",
      "min": "C-0000",
-     "rows": 120448
+     "rows": 122043
     },
     {
-     "bytes": 1075472,
+     "bytes": 1016810,
      "file": "part-0018.snappy.parquet",
-     "max": "C-1309",
-     "min": "C-0602",
-     "rows": 141194
+     "max": "C-1278",
+     "min": "C-0607",
+     "rows": 133475
     },
     {
-     "bytes": 1053206,
+     "bytes": 1099755,
      "file": "part-0019.snappy.parquet",
      "max": "C-1999",
-     "min": "C-1308",
-     "rows": 138358
+     "min": "C-1277",
+     "rows": 144482
     }
    ],
    "files_before": [
@@ -432,6 +474,17 @@ LAB.real = {
   "spark.aqe": {
    "shuffle_partitions_configured": 8
   },
+  "spark.defaults": {
+   "spark.sql.adaptive.advisoryPartitionSizeInBytes": "67108864b",
+   "spark.sql.adaptive.coalescePartitions.enabled": "true",
+   "spark.sql.adaptive.enabled": "true",
+   "spark.sql.adaptive.skewJoin.enabled": "true",
+   "spark.sql.adaptive.skewJoin.skewedPartitionFactor": "5.0",
+   "spark.sql.adaptive.skewJoin.skewedPartitionThresholdInBytes": "268435456b",
+   "spark.sql.autoBroadcastJoinThreshold": "10485760b",
+   "spark.sql.files.maxPartitionBytes": "134217728b",
+   "spark.sql.shuffle.partitions": "200"
+  },
   "spark.lazy": {
    "jobs_after_action": 1,
    "jobs_after_transformations": 0,
@@ -557,7 +610,7 @@ LAB.real = {
    "progress": [
     {
      "batchId": 0,
-     "endOffset": "{\"sourceVersion\": 1, \"reservoirId\": \"fca43414-a29a-4a86-b569-b5f0ee57b5fa\", \"reservoirVersion\": 2, \"index\": -1, \"isStartingVersion\": false}",
+     "endOffset": "{\"sourceVersion\": 1, \"reservoirId\": \"06a81835-4c29-46ef-97bd-4752428be28d\", \"reservoirVersion\": 2, \"index\": -1, \"isStartingVersion\": false}",
      "numInputRows": 7,
      "startOffset": "null"
     }
@@ -568,9 +621,9 @@ LAB.real = {
    "progress": [
     {
      "batchId": 1,
-     "endOffset": "{\"sourceVersion\": 1, \"reservoirId\": \"fca43414-a29a-4a86-b569-b5f0ee57b5fa\", \"reservoirVersion\": 3, \"index\": -1, \"isStartingVersion\": false}",
+     "endOffset": "{\"sourceVersion\": 1, \"reservoirId\": \"06a81835-4c29-46ef-97bd-4752428be28d\", \"reservoirVersion\": 3, \"index\": -1, \"isStartingVersion\": false}",
      "numInputRows": 7,
-     "startOffset": "{\"sourceVersion\": 1, \"reservoirId\": \"fca43414-a29a-4a86-b569-b5f0ee57b5fa\", \"reservoirVersion\": 2, \"index\": -1, \"isStartingVersion\": false}"
+     "startOffset": "{\"sourceVersion\": 1, \"reservoirId\": \"06a81835-4c29-46ef-97bd-4752428be28d\", \"reservoirVersion\": 2, \"index\": -1, \"isStartingVersion\": false}"
     }
    ],
    "silver_rows": 10
@@ -998,16 +1051,16 @@ LAB.real = {
     "isBlindAppend": false,
     "operation": "OPTIMIZE",
     "operationMetrics": {
-     "maxFileSize": "11027",
-     "minFileSize": "11027",
-     "numAddedBytes": "11027",
+     "maxFileSize": "10878",
+     "minFileSize": "10878",
+     "numAddedBytes": "10878",
      "numAddedFiles": "1",
      "numDeletionVectorsRemoved": "0",
      "numRemovedBytes": "65499",
      "numRemovedFiles": "40",
-     "p25FileSize": "11027",
-     "p50FileSize": "11027",
-     "p75FileSize": "11027"
+     "p25FileSize": "10878",
+     "p50FileSize": "10878",
+     "p75FileSize": "10878"
     },
     "operationParameters": {
      "auto": "false",
@@ -1051,16 +1104,16 @@ LAB.real = {
     "isBlindAppend": false,
     "operation": "OPTIMIZE",
     "operationMetrics": {
-     "maxFileSize": "1075472",
-     "minFileSize": "917617",
-     "numAddedBytes": "3046295",
+     "maxFileSize": "1099755",
+     "minFileSize": "929598",
+     "numAddedBytes": "3046163",
      "numAddedFiles": "3",
      "numDeletionVectorsRemoved": "0",
      "numRemovedBytes": "3247724",
      "numRemovedFiles": "16",
-     "p25FileSize": "917617",
-     "p50FileSize": "1053206",
-     "p75FileSize": "1075472"
+     "p25FileSize": "929598",
+     "p50FileSize": "1016810",
+     "p75FileSize": "1099755"
     },
     "operationParameters": {
      "auto": "false",
@@ -1131,7 +1184,7 @@ LAB.real = {
     "operationParameters": {
      "epochId": "0",
      "outputMode": "Append",
-     "queryId": "834f18b8-9f61-48df-8749-3461034700c5"
+     "queryId": "b047779d-02d2-4689-add1-3d810bdbc4bf"
     },
     "version": 0
    },
@@ -1140,14 +1193,14 @@ LAB.real = {
     "operation": "STREAMING UPDATE",
     "operationMetrics": {
      "numAddedFiles": "1",
-     "numOutputBytes": "2493",
+     "numOutputBytes": "2492",
      "numOutputRows": "2",
      "numRemovedFiles": "0"
     },
     "operationParameters": {
      "epochId": "1",
      "outputMode": "Append",
-     "queryId": "834f18b8-9f61-48df-8749-3461034700c5"
+     "queryId": "b047779d-02d2-4689-add1-3d810bdbc4bf"
     },
     "version": 1
    },
@@ -1163,7 +1216,7 @@ LAB.real = {
     "operationParameters": {
      "epochId": "2",
      "outputMode": "Append",
-     "queryId": "834f18b8-9f61-48df-8749-3461034700c5"
+     "queryId": "b047779d-02d2-4689-add1-3d810bdbc4bf"
     },
     "version": 2
    }
@@ -1189,7 +1242,7 @@ LAB.real = {
     "operationMetrics": {
      "numOutputRows": "5",
      "numSourceRows": "5",
-     "numTargetBytesAdded": "12828",
+     "numTargetBytesAdded": "12826",
      "numTargetBytesRemoved": "0",
      "numTargetChangeFilesAdded": "0",
      "numTargetDeletionVectorsAdded": "0",
@@ -1220,8 +1273,8 @@ LAB.real = {
     "operationMetrics": {
      "numOutputRows": "7",
      "numSourceRows": "7",
-     "numTargetBytesAdded": "10117",
-     "numTargetBytesRemoved": "5142",
+     "numTargetBytesAdded": "10116",
+     "numTargetBytesRemoved": "5140",
      "numTargetChangeFilesAdded": "0",
      "numTargetDeletionVectorsAdded": "0",
      "numTargetDeletionVectorsRemoved": "0",
@@ -1321,7 +1374,7 @@ LAB.real = {
         "sourceTableSize": "3664"
        },
        "operationParameters": {
-        "source": "delta.`file:/tmp/db-capture-jz_3iu5n/delta/orders`",
+        "source": "delta.`file:/tmp/db-capture-f23vdx9f/delta/orders`",
         "sourceVersion": 6
        },
        "readVersion": -1,
@@ -1349,8 +1402,8 @@ LAB.real = {
        "modificationTime": 1773478800000,
        "partitionValues": {},
        "path": "part-0001.snappy.parquet",
-       "size": 1878,
-       "stats": "{\"numRecords\":3,\"minValues\":{\"order_id\":\"O-5001\",\"customer_id\":\"C-42\",\"order_ts\":\"2026-03-14T09:12:00.000Z\",\"status\":\"PLACED\",\"total_usd\":12.50,\"_loaded_at\":\"2026-03-14T09:31:07.000Z\"},\"maxValues\":{\"order_id\":\"O-5003\",\"customer_id\":\"C-77\",\"order_ts\":\"2026-03-14T10:02:00.000Z\",\"status\":\"SHIPPED\",\"total_usd\":67.00,\"_loaded_at\":\"2026-03-14T11:31:20.000Z\"},\"nullCount\":{\"order_id\":0,\"customer_id\":0,\"order_ts\":0,\"status\":0,\"total_usd\":0,\"_loaded_at\":0}}"
+       "size": 1786,
+       "stats": "{\"numRecords\":2,\"minValues\":{\"order_id\":\"O-5004\",\"customer_id\":\"C-12\",\"order_ts\":\"2026-03-15T11:20:00.000Z\",\"status\":\"CANCELLED\",\"total_usd\":29.00,\"_loaded_at\":\"2026-03-15T12:00:05.000Z\"},\"maxValues\":{\"order_id\":\"O-5005\",\"customer_id\":\"C-91\",\"order_ts\":\"2026-03-15T14:05:00.000Z\",\"status\":\"SHIPPED\",\"total_usd\":55.00,\"_loaded_at\":\"2026-03-15T15:00:11.000Z\"},\"nullCount\":{\"order_id\":0,\"customer_id\":0,\"order_ts\":0,\"status\":0,\"total_usd\":0,\"_loaded_at\":0}}"
       },
       "kind": "add"
      },
@@ -1360,8 +1413,8 @@ LAB.real = {
        "modificationTime": 1773478800000,
        "partitionValues": {},
        "path": "part-0002.snappy.parquet",
-       "size": 1786,
-       "stats": "{\"numRecords\":2,\"minValues\":{\"order_id\":\"O-5004\",\"customer_id\":\"C-12\",\"order_ts\":\"2026-03-15T11:20:00.000Z\",\"status\":\"CANCELLED\",\"total_usd\":29.00,\"_loaded_at\":\"2026-03-15T12:00:05.000Z\"},\"maxValues\":{\"order_id\":\"O-5005\",\"customer_id\":\"C-91\",\"order_ts\":\"2026-03-15T14:05:00.000Z\",\"status\":\"SHIPPED\",\"total_usd\":55.00,\"_loaded_at\":\"2026-03-15T15:00:11.000Z\"},\"nullCount\":{\"order_id\":0,\"customer_id\":0,\"order_ts\":0,\"status\":0,\"total_usd\":0,\"_loaded_at\":0}}"
+       "size": 1878,
+       "stats": "{\"numRecords\":3,\"minValues\":{\"order_id\":\"O-5001\",\"customer_id\":\"C-42\",\"order_ts\":\"2026-03-14T09:12:00.000Z\",\"status\":\"PLACED\",\"total_usd\":12.50,\"_loaded_at\":\"2026-03-14T09:31:07.000Z\"},\"maxValues\":{\"order_id\":\"O-5003\",\"customer_id\":\"C-77\",\"order_ts\":\"2026-03-14T10:02:00.000Z\",\"status\":\"SHIPPED\",\"total_usd\":67.00,\"_loaded_at\":\"2026-03-14T11:31:20.000Z\"},\"nullCount\":{\"order_id\":0,\"customer_id\":0,\"order_ts\":0,\"status\":0,\"total_usd\":0,\"_loaded_at\":0}}"
       },
       "kind": "add"
      },
@@ -1938,16 +1991,16 @@ LAB.real = {
        "isolationLevel": "SnapshotIsolation",
        "operation": "OPTIMIZE",
        "operationMetrics": {
-        "maxFileSize": "1354806",
-        "minFileSize": "1331089",
-        "numAddedBytes": "2685895",
+        "maxFileSize": "1458036",
+        "minFileSize": "1254455",
+        "numAddedBytes": "2712491",
         "numAddedFiles": "2",
         "numDeletionVectorsRemoved": "0",
         "numRemovedBytes": "2883763",
         "numRemovedFiles": "16",
-        "p25FileSize": "1331089",
-        "p50FileSize": "1354806",
-        "p75FileSize": "1354806"
+        "p25FileSize": "1254455",
+        "p50FileSize": "1458036",
+        "p75FileSize": "1458036"
        },
        "operationParameters": {
         "auto": false,
@@ -2732,6 +2785,8 @@ LAB.real = {
   }
  },
  "text": {
+  "delta.conflict_update_append": "[DELTA_CONCURRENT_APPEND.WITHOUT_HINT] Transaction conflict detected. a concurrent WRITE added data to table delta.`file:/... committed at version 1. The concurrent operation modified data that should have been read by this operation. Please retry the operation.",
+  "delta.conflict_update_update": "[DELTA_CONCURRENT_APPEND.WITHOUT_HINT] Transaction conflict detected. a concurrent UPDATE added data to table delta.`file:/... committed at version 1. The concurrent operation modified data that should have been read by this operation. Please retry the operation.",
   "delta.err_constraint": "[DELTA_VIOLATE_CONSTRAINT_WITH_VALUES] CHECK constraint positive_total (total_usd > 0) violated by row with values:\n - total_usd : -5.00",
   "delta.err_constraint_existing_rows": "[DELTA_NEW_CHECK_CONSTRAINT_VIOLATION] 3 rows in delta.`file:/... violate the new CHECK constraint (total_usd > 100)",
   "delta.err_extra_column": "[DELTA_METADATA_MISMATCH] A metadata mismatch was detected when writing to the Delta table.\n- A schema mismatch detected when writing to the Delta table (Table ID: <table id>).\nTo enable schema migration using DataFrameWriter or DataStreamWriter, please set: '.option(\"mergeSchema\", \"true\")'.\nFor other operations, set the session configuration spark.databricks.delta.schema.autoMerge.enabled to \"true\". See the documentation specific to the operation for details.\n\nTable schema:\nroot\n |-- order_id: string (nullable = true)\n |-- customer_id: string (nullable = true)\n |-- order_ts: timestamp (nullable = true)\n |-- status: string (nullable = true)\n |-- total_usd: decimal(12,2) (nullable = true)\n |-- _loaded_at: timestamp (nullable = true)\n\n\nData schema:\nroot\n |-- order_id: string (nullable = true)\n |-- customer_id: string (nullable = true)\n |-- order_ts: timestamp (nullable = true)\n |-- status: string (nullable = true)\n |-- total_usd: decimal(12,2) (nullable = true)\n |-- _loaded_at: timestamp (nullable = true)\n |-- channel: string (nullable = true)",

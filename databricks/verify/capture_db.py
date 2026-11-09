@@ -8,7 +8,7 @@ plans, Delta transaction log entries, DESCRIBE HISTORY rows, error messages and 
 It records the open-source engines. It does not record Databricks itself: Unity Catalog, Auto Loader, declarative
 pipelines, Workflows, Photon, serverless compute and the Azure integration are not here. The lessons say which is which.
 
-Usage:   python3 databricks/verify/capture_db.py [--out databricks/js/real.js] [--only spark,delta,layout,stream,pipeline,test] [--json FILE]
+Usage:   python3 databricks/verify/capture_db.py [--out databricks/js/real.js] [--only spark,delta,conflict,layout,stream,pipeline,test] [--json FILE]
 Needs:   pip install pyspark==4.2.0 delta-spark==4.4.1 pandas pyarrow pytest   and Java 17 or 21.
          The first run downloads the Delta jar from Maven Central.
 """
@@ -20,7 +20,7 @@ RAW = ROOT / 'dbt' / 'verify' / 'raw'          # the Brewline raw files used by 
 
 ap = argparse.ArgumentParser()
 ap.add_argument('--out', default=str(HERE.parent / 'js' / 'real.js'))
-ap.add_argument('--only', default='spark,delta,layout,stream,pipeline,test')
+ap.add_argument('--only', default='spark,delta,conflict,layout,stream,pipeline,test')
 ap.add_argument('--json')
 args = ap.parse_args()
 ONLY = set(args.only.split(','))
@@ -363,6 +363,18 @@ if 'spark' in ONLY:
         orders_big.groupBy('customer_id').agg(F.sum('qty').alias('units')).write.mode('overwrite').parquet(pth)
         OUT['counts']['spark.' + label] = {'files': len(files_of(pth))}
     reset_conf()
+    # the defaults of the settings the lessons quote, read in a fresh process: this session changes several of them
+    probe = (
+        "from pyspark.sql import SparkSession\n"
+        "import json\n"
+        "s = SparkSession.builder.master('local[1]').config('spark.ui.enabled','false').getOrCreate()\n"
+        "s.sparkContext.setLogLevel('OFF')\n"
+        "keys = ['spark.sql.shuffle.partitions','spark.sql.adaptive.enabled','spark.sql.autoBroadcastJoinThreshold','spark.sql.adaptive.skewJoin.enabled',"
+        "'spark.sql.adaptive.skewJoin.skewedPartitionFactor','spark.sql.adaptive.skewJoin.skewedPartitionThresholdInBytes',"
+        "'spark.sql.adaptive.advisoryPartitionSizeInBytes','spark.sql.files.maxPartitionBytes','spark.sql.adaptive.coalescePartitions.enabled']\n"
+        "print('JSON' + json.dumps({k: s.conf.get(k) for k in keys}))\n")
+    res = subprocess.run([sys.executable, '-c', probe], capture_output=True, text=True)
+    OUT['counts']['spark.defaults'] = json.loads(re.search(r'JSON(\{.*\})', res.stdout).group(1))
     print('spark group done')
 
 
@@ -461,6 +473,58 @@ if 'delta' in ONLY:
     OUT['counts']['delta.shallow_clone']['parquet_files_in_clone_folder'] = len(files_of(pcl))
     read_log(pcl, 'delta.clone')
     print('delta group done')
+
+
+# ============================================================================= 2b. CONCURRENT WRITERS
+if 'conflict' in ONLY:
+    import threading, time
+    reset_conf()
+    D = WORK / 'conflict'
+    spark.udf.register('slow_id', lambda s: (time.sleep(6), s)[1], 'string')          # makes writer A slow on purpose
+    SCH = 'order_id string, status string, region string'
+    BASE = [('O-1', 'PLACED', 'a'), ('O-2', 'PLACED', 'a'), ('O-3', 'SHIPPED', 'b')]
+
+    def make(p, partitioned=False):
+        w = spark.createDataFrame(BASE, SCH).coalesce(1).write.format('delta')
+        (w.partitionBy('region') if partitioned else w).save(p)
+
+    def append(p, rows, slow=False):
+        df = spark.createDataFrame(rows, SCH)
+        if slow:
+            df = df.withColumn('order_id', F.expr('slow_id(order_id)'))
+        df.write.format('delta').mode('append').save(p)
+
+    def race(label, partitioned, a, b, delay=3.0):
+        """Writer A starts first and is slow. Writer B commits while A is still reading the table."""
+        p = str(D / label)
+        make(p, partitioned)
+        res = {}
+        t = threading.Thread(target=lambda: res.__setitem__('a', exc(lambda: a(p))))
+        t.start()
+        time.sleep(delay)
+        res['b'] = exc(lambda: b(p))
+        t.join()
+        ops = [(int(r['version']), r['operation']) for r in sql('describe history delta.`%s`' % p).orderBy('version').collect()]
+        out = {'a': res['a'][0] or 'committed', 'b': res['b'][0] or 'committed', 'history': ['v%d %s' % o for o in ops],
+               'rows': spark.read.format('delta').load(p).count()}
+        if res['a'][1]:
+            msg = res['a'][1]
+            msg = re.sub(r'\s*Refer to https?://\S+ for more information\.?', '', msg)
+            msg = re.sub(r'\s*for more information\.?$', '', msg)
+            text('delta.conflict_' + label, msg)
+        return out, p
+
+    upd = lambda cond, new: (lambda p: sql("update delta.`%s` set status = '%s' where %s" % (p, new, cond)))
+    C = {}
+    C['append_append'], _ = race('append_append', False, lambda p: append(p, [('O-9', 'PLACED', 'a')], slow=True), lambda p: append(p, [('O-10', 'PLACED', 'a')]))
+    C['update_append'], pu = race('update_append', False, upd("slow_id(order_id) = 'O-1'", 'SHIPPED'), lambda p: append(p, [('O-4', 'PLACED', 'a')]))
+    sql("update delta.`%s` set status = 'SHIPPED' where order_id = 'O-1'" % pu)                    # the retry of writer A, now without a competitor
+    C['update_append']['retry'] = 'committed'
+    C['update_append']['rows_after_retry'] = spark.read.format('delta').load(pu).where("status = 'SHIPPED'").count()
+    C['update_append_partitioned'], _ = race('update_append_partitioned', True, upd("region = 'a' and slow_id(order_id) = 'O-1'", 'SHIPPED'), lambda p: append(p, [('O-5', 'PLACED', 'b')]))
+    C['update_update'], _ = race('update_update', False, upd("slow_id(order_id) = 'O-1'", 'SHIPPED'), upd("order_id = 'O-2'", 'CANCELLED'))
+    OUT['counts']['delta.conflicts'] = C
+    print('conflict group done')
 
 
 # ============================================================================= 3. DELTA LAYOUT AND MAINTENANCE
