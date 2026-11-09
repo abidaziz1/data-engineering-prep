@@ -34,5 +34,5 @@ LAB.config = {
     row2: [['sf', 'Account + IAM'], ['air', 'Compute'], ['mon', 'Cost + ops'], ['qual', 'Security'], ['snap', 'Events'], ['ci', 'IaC + CI']]
   },
   sql: { role: 'brewline-analyst', wh: 'Athena workgroup: brewline', db: 'brewline_lake' },
-  langLabels: { sql: 'Athena SQL', python: 'Python (boto3)', yaml: 'YAML', json: 'JSON', bash: 'AWS CLI', text: 'Output' }
+  langLabels: { sql: 'Athena SQL', python: 'Python (boto3)', yaml: 'YAML', json: 'JSON', bash: 'AWS CLI', text: 'Text' }
 };
