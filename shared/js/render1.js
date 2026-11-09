@@ -271,7 +271,7 @@
     steps: function (s) { var w = LAB.W[s.kind]; return w.steps ? w.steps(s) : 1; },
     say: function (s, i) { return LAB.W[s.kind].say(s, i); },
     mood: function (s, i) { var w = LAB.W[s.kind]; return w.mood ? w.mood(s, i) : 'happy'; },
-    hint: function (s) { return LAB.W[s.kind].hint || 'Try the buttons, then press Next.'; },
+    hint: function (s, i) { var h = LAB.W[s.kind].hint; return typeof h === 'function' ? h(s, i) : (h || 'Try the buttons, then press Next.'); },
     render: function (box, s, i, A, o) { LAB.W[s.kind].render(box, s, i, A, o); }
   };
 })();

@@ -23,3 +23,19 @@
 .slots i.run{background:#FB923C}
 .tbl td.wbad{background:#FEE2E2;font-weight:800}
 .tbl td.wgood{background:#DCFCE7;font-weight:800}
+
+.tt-wrap{position:relative;padding-bottom:1.8rem}
+.tt-bar{position:relative;display:flex;height:2.4rem;border:3px solid var(--ink);border-radius:10px;overflow:visible}
+.tt-bar i{display:block;height:100%}
+.tt-bar i.ok{background:#86EFAC;border-radius:7px 0 0 7px}
+.tt-bar i.gone{background:#FCA5A5;border-radius:0 7px 7px 0;border-left:3px solid var(--ink)}
+.tt-bar .mk{position:absolute;top:-.5rem;bottom:-.5rem;width:0;border-left:4px dashed #1D4ED8;transform:translateX(-2px)}
+.tt-bar .mk::before{content:"";position:absolute;top:-.55rem;left:-.55rem;border:.55rem solid transparent;border-top-color:#1D4ED8;border-bottom:0}
+.tt-ticks{position:absolute;left:0;right:0;top:2.9rem;font-weight:800;font-size:.9rem}
+.tt-ticks span{position:absolute;white-space:nowrap}
+.tt-ticks span:nth-child(2){transform:translateX(-50%)}
+.clrow{display:flex;flex-wrap:wrap;align-items:center;gap:.4rem .9rem}
+.tiles{display:flex;flex-wrap:wrap;gap:.4rem}
+.tile{display:inline-block;min-width:3.2rem;text-align:center;border:3px solid var(--ink);border-radius:10px;padding:.2rem .6rem;font:800 .95rem Manrope,sans-serif}
+.tile.shared{background:#BFDBFE}.tile.prodonly{background:#BBF7D0}.tile.cloneonly{background:#FED7AA}
+.lab button:disabled{opacity:.45}

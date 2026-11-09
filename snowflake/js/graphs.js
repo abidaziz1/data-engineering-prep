@@ -142,4 +142,100 @@
       { id: 'ls2', a: 's2', b: 'raw', d: 'M830 464 H930', n: 2, bx: 880, by: 436, pk: 1 }
     ]
   };
+
+  /* ------------------------------------------------------------------ */
+  /* 5. Layers of data protection                                        */
+  /* ------------------------------------------------------------------ */
+  S.protect = {
+    w: 1100, h: 430, label: 'Layers of data protection: current data, Time Travel, Fail-safe, plus zero-copy clones and replication',
+    nodes: [
+      { id: 'cur', x: 0, y: 60, w: 220, h: 120, t: 'Current data', s: 'what queries see', c: 'mart' },
+      { id: 'tt', x: 300, y: 60, w: 250, h: 120, t: 'Time Travel', s: '1 to 90 days', c: 'stg' },
+      { id: 'fs', x: 630, y: 60, w: 220, h: 120, t: 'Fail-safe', s: '7 days, last resort', c: 'qual' },
+      { id: 'gone', x: 930, y: 60, w: 170, h: 120, t: 'Purged', s: 'gone for good', c: 'src' },
+      { id: 'clone', x: 0, y: 290, w: 520, h: 130, t: 'Zero-copy clone', s: 'a new table that shares the partitions', c: 'int' },
+      { id: 'repl', x: 580, y: 290, w: 520, h: 130, t: 'Replication and failover', s: 'a copy in another region or account', c: 'ci' }
+    ],
+    edges: [
+      { id: 'p1', a: 'cur', b: 'tt', d: 'M220 120 H300', n: 1, bx: 260, by: 92, pk: 1 },
+      { id: 'p2', a: 'tt', b: 'fs', d: 'M550 120 H630', n: 2, bx: 590, by: 92, pk: 1 },
+      { id: 'p3', a: 'fs', b: 'gone', d: 'M850 120 H930', n: 3, bx: 890, by: 92, pk: 1 },
+      { id: 'p4', a: 'cur', b: 'clone', d: 'M70 180 V290', n: 4, pk: 2 },
+      { id: 'p5', a: 'cur', b: 'repl', d: 'M180 180 V235 Q180 247 192 247 H828 Q840 247 840 259 V290', n: 5, bx: 510, by: 247 }
+    ],
+    tags: [
+      { id: 'tg_tt', x: 300, y: 8, t: 'you query and restore', c: 'mart' },
+      { id: 'tg_fs', x: 630, y: 8, t: 'Snowflake Support only', c: 'qual' }
+    ]
+  };
+
+  /* ------------------------------------------------------------------ */
+  /* 6. The pipeline inside Snowflake                                    */
+  /* ------------------------------------------------------------------ */
+  S.pipe = {
+    w: 1100, h: 410, label: 'A pipeline inside Snowflake: Snowpipe, RAW table, stream, task, CORE table, dynamic table, dashboards',
+    nodes: [
+      { id: 'pipe', x: 0, y: 50, w: 210, h: 100, t: 'Snowpipe', s: 'loads new files', c: 'ing' },
+      { id: 'raw', x: 270, y: 50, w: 210, h: 100, t: 'RAW.ORDERS', s: 'append-only', c: 'raw' },
+      { id: 'strm', x: 540, y: 50, w: 210, h: 100, t: 'Stream', s: 'tracks changes', c: 'int' },
+      { id: 'task', x: 810, y: 50, w: 250, h: 100, t: 'Task', s: 'MERGE every 5 min', c: 'air' },
+      { id: 'core', x: 0, y: 290, w: 230, h: 100, t: 'CORE.ORDERS', s: 'latest per order', c: 'stg' },
+      { id: 'dt', x: 300, y: 290, w: 330, h: 100, t: 'Dynamic table', s: 'MARTS.DAILY_REVENUE', c: 'mart' },
+      { id: 'bi', x: 700, y: 290, w: 240, h: 100, t: 'Dashboards', s: 'BI tools', c: 'con' }
+    ],
+    edges: [
+      { id: 'e1', a: 'pipe', b: 'raw', d: 'M210 100 H270', n: 1, bx: 240, by: 72, pk: 1 },
+      { id: 'e2', a: 'raw', b: 'strm', d: 'M480 100 H540', n: 2, bx: 510, by: 72, pk: 1 },
+      { id: 'e3', a: 'strm', b: 'task', d: 'M750 100 H810', n: 3, bx: 780, by: 72, pk: 1 },
+      { id: 'e4', a: 'task', b: 'core', d: 'M935 150 V215 Q935 227 923 227 H127 Q115 227 115 239 V290', n: 4, bx: 520, by: 227 },
+      { id: 'e5', a: 'core', b: 'dt', d: 'M230 340 H300', n: 5, bx: 265, by: 312, pk: 1 },
+      { id: 'e6', a: 'dt', b: 'bi', d: 'M630 340 H700', n: 6, bx: 665, by: 312, pk: 1 }
+    ]
+  };
+
+  /* ------------------------------------------------------------------ */
+  /* 7. A task graph                                                     */
+  /* ------------------------------------------------------------------ */
+  S.tgraph = {
+    w: 1100, h: 210, label: 'A task graph: load check, merge, row count check, mart refresh, and a finalizer that always runs',
+    nodes: [
+      { id: 'tsk_load', k: 'dag', x: 0, y: 112, w: 160, h: 66, t: 'tsk_load', s: 'root, every 5 min', c: 'ing' },
+      { id: 'tsk_merge', k: 'dag', x: 235, y: 112, w: 160, h: 66, t: 'tsk_merge', s: 'MERGE into CORE', c: 'stg' },
+      { id: 'tsk_check', k: 'dag', x: 470, y: 112, w: 160, h: 66, t: 'tsk_check', s: 'row count test', c: 'qual' },
+      { id: 'tsk_mart', k: 'dag', x: 705, y: 112, w: 160, h: 66, t: 'tsk_mart', s: 'refresh mart', c: 'mart' },
+      { id: 'tsk_final', k: 'dag', x: 940, y: 112, w: 160, h: 66, t: 'tsk_final', s: 'finalizer', c: 'air' }
+    ],
+    edges: [
+      { id: 'tsk_load>tsk_merge', a: 'tsk_load', b: 'tsk_merge', d: 'M160 145 H235' },
+      { id: 'tsk_merge>tsk_check', a: 'tsk_merge', b: 'tsk_check', d: 'M395 145 H470' },
+      { id: 'tsk_check>tsk_mart', a: 'tsk_check', b: 'tsk_mart', d: 'M630 145 H705' },
+      { id: 'tsk_mart>tsk_final', a: 'tsk_mart', b: 'tsk_final', d: 'M865 145 H940', k: 'ctl' },
+      { id: 'tsk_load>tsk_final', a: 'tsk_load', b: 'tsk_final', d: 'M80 112 V50 H1020 V112', k: 'ctl', label: 'the finalizer is attached to the root and always runs', lx: 550, ly: 50 }
+    ]
+  };
+
+  /* ------------------------------------------------------------------ */
+  /* 8. A query profile                                                  */
+  /* ------------------------------------------------------------------ */
+  S.profile = {
+    w: 1100, h: 270, label: 'Query profile: the operators of one slow query',
+    nodes: [
+      { id: 'p1', x: 0, y: 30, w: 190, h: 130, t: 'TableScan', ss: ['core.orders', '11 of 12 partitions'], c: 'raw' },
+      { id: 'p2', x: 227, y: 30, w: 190, h: 130, t: 'Filter', ss: ['month = March', '41M rows pass'], c: 'stg' },
+      { id: 'p3', x: 454, y: 30, w: 190, h: 130, t: 'Join', ss: ['with customers', '3.2B rows out'], c: 'int' },
+      { id: 'p4', x: 681, y: 30, w: 190, h: 130, t: 'Aggregate', ss: ['SUM(total_usd)', '38 GB spilled'], c: 'mart' },
+      { id: 'p5', x: 908, y: 30, w: 190, h: 130, t: 'Result', ss: ['4 rows'], c: 'con' }
+    ],
+    edges: [
+      { id: 'pe1', a: 'p1', b: 'p2', d: 'M190 95 H227', pk: 1 },
+      { id: 'pe2', a: 'p2', b: 'p3', d: 'M417 95 H454', pk: 1 },
+      { id: 'pe3', a: 'p3', b: 'p4', d: 'M644 95 H681', pk: 1 },
+      { id: 'pe4', a: 'p4', b: 'p5', d: 'M871 95 H908', pk: 1 }
+    ],
+    tags: [
+      { id: 'tg1', x: 0, y: 185, t: 'Almost no pruning', c: 'qual' },
+      { id: 'tg2', x: 400, y: 185, t: 'Row explosion: 41M in, 3.2B out', c: 'qual' },
+      { id: 'tg3', x: 681, y: 185, t: 'Spilling to remote storage', c: 'qual' }
+    ]
+  };
 })();
