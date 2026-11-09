@@ -24,7 +24,7 @@ p{margin:0 0 .8rem}
 b,strong{font-weight:800}
 button{font:inherit;color:inherit;cursor:pointer}
 button:disabled{cursor:default}
-code{font-family:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;font-weight:500;font-size:.88em;background:#E2E8F0;border:1.5px solid #94A3B8;border-radius:6px;padding:.05em .35em;color:var(--ink)}
+code{overflow-wrap:anywhere;font-family:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;font-weight:500;font-size:.88em;background:#E2E8F0;border:1.5px solid #94A3B8;border-radius:6px;padding:.05em .35em;color:var(--ink)}
 mark{background:#FDE047;color:var(--ink);padding:0 .2em;border-radius:4px}
 :focus-visible{outline:4px solid #F59E0B;outline-offset:3px}
 
@@ -93,7 +93,7 @@ mark{background:#FDE047;color:var(--ink);padding:0 .2em;border-radius:4px}
 
 /* ---------- generic cards & text ---------- */
 .lead{font-size:1.1rem;margin-bottom:1rem}
-.cards{display:grid;gap:.9rem;grid-template-columns:1fr}
+.cards{display:grid;gap:.9rem;grid-template-columns:minmax(0,1fr)}
 .cards.cols2{grid-template-columns:repeat(2,minmax(0,1fr))}
 .cards.cols3{grid-template-columns:repeat(3,minmax(0,1fr))}
 .card{background:var(--card);border:3px solid var(--ink);border-radius:16px;padding:.9rem 1.1rem;box-shadow:0 4px 0 var(--ink)}
@@ -498,3 +498,7 @@ mark{background:#FDE047;color:var(--ink);padding:0 .2em;border-radius:4px}
 /* brand link in the header */
 a.logo{text-decoration:none}
 a.logo:hover{background:#1E293B}
+
+/* long identifiers (SYSTEM$CLUSTERING_INFORMATION and similar) must wrap instead of widening the page */
+.answer,.say,.notes,.callout,.ct,.bodytext,.lead,.honest,.fu-a,.cap,.bubble{overflow-wrap:anywhere}
+.chk,.chk span,.pts-h,.timer-out,.opt .ot,.dopt span{overflow-wrap:anywhere;min-width:0}

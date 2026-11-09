@@ -1,0 +1,14 @@
+{
+  "name": "data-engineering-prep",
+  "private": true,
+  "description": "Interactive data engineering tutorials. The site itself needs no build step. These scripts only check it.",
+  "scripts": {
+    "lint": "node dev/lint-content.js snowflake",
+    "smoke": "node dev/smoke.js snowflake --path all",
+    "e2e": "node dev/e2e.js snowflake",
+    "stats": "node dev/stats.js snowflake"
+  },
+  "devDependencies": {
+    "playwright": "^1.63.0"
+  }
+}

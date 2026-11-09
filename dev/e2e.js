@@ -1,164 +1,204 @@
-// End-to-end behaviour test: every interactive element, with assertions.
+// End-to-end behaviour test for one tutorial: it reads every scene definition and exercises the interactive
+// elements of each scene type with assertions (quiz, bug hunt, order, decision, incident, Q&A, coding problem,
+// SQL run, terminal, widgets, boss round), then the app itself (keys, text size, map, paths, saving, reset).
 // Needs Playwright:  npm install playwright && npx playwright install chromium
-// Run: node dev/e2e.js
+// Run: node dev/e2e.js snowflake
 const { chromium } = require('playwright');
+const http = require('http'), fs = require('fs'), path = require('path');
+const name = process.argv[2] || 'snowflake';
+const root = path.join(__dirname, '..');
+const storageKey = (fs.readFileSync(path.join(root, name, 'js', 'config.js'), 'utf8').match(/storageKey:\s*'([^']+)'/) || [])[1];
+const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.ttf': 'font/ttf' };
+
 let pass = 0, fail = 0;
-const ok = (c, m) => { if (c) { pass++; console.log('  ok  ', m); } else { fail++; console.log('  FAIL', m); } };
+const ok = (c, m) => { if (c) pass++; else { fail++; console.log('FAIL:', m); } };
+
 (async () => {
+  const srv = http.createServer((req, res) => {
+    let p = decodeURIComponent(req.url.split('?')[0]); if (p.endsWith('/')) p += 'index.html';
+    const f = path.join(root, p);
+    if (!f.startsWith(root) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { res.statusCode = 404; return res.end(); }
+    res.setHeader('Content-Type', types[path.extname(f)] || 'application/octet-stream'); fs.createReadStream(f).pipe(res);
+  });
+  await new Promise(r => srv.listen(0, '127.0.0.1', r));
+  const url = 'http://127.0.0.1:' + srv.address().port + '/' + name + '/index.html';
   const browser = await chromium.launch();
-  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
-  const errors = [];
-  page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
-  page.on('pageerror', e => errors.push('PAGEERROR ' + e.message));
+  const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const page = await ctx.newPage();
+  const errs = [];
+  page.on('pageerror', e => errs.push('pageerror: ' + e.message));
+  page.on('console', m => { if (m.type() === 'error') errs.push('console: ' + m.text()); });
   page.on('dialog', d => d.accept());
-  await page.addInitScript(() => { try { if (!localStorage.getItem('iq.v2')) localStorage.setItem('iq.v2', JSON.stringify({ track: 'all' })); } catch (e) {} });
-  const url = require('url').pathToFileURL(require('path').join(__dirname, '..', 'index.html')).href;
+  await page.addInitScript(([k]) => { if (!sessionStorage.getItem('e2e-init')) { try { localStorage.setItem(k, JSON.stringify({ track: 'all', chosen: true })); } catch (e) {} sessionStorage.setItem('e2e-init', '1'); } }, [storageKey]);
   await page.goto(url); await page.waitForTimeout(400);
-  const go = async (key) => { await page.evaluate(k => { location.hash = k; }, key); await page.waitForTimeout(350); };
-  const xp = () => page.evaluate(() => LAB.app.state.xp);
-  const $count = (sel) => page.$$eval(sel, e => e.length);
-  const text = (sel) => page.$eval(sel, e => e.textContent);
 
-  console.log('welcome + tracks');
-  ok(await $count('.track') === 3, 'three track cards shown');
-  await page.click('.track[data-t="fast"]'); await page.waitForTimeout(200);
-  ok(await page.evaluate(() => LAB.app.state.track) === 'fast', 'fast track selected');
-  const nFast = await page.evaluate(() => { let n = 0; LAB.chapters.forEach(c => c.scenes.forEach(s => { if (s.t <= 1) n++; })); return n; });
-  await page.click('.track[data-t="all"]'); await page.waitForTimeout(200);
-  ok(await page.evaluate(() => LAB.app.state.track) === 'all', 'everything track selected');
+  const S = await page.evaluate(() => LAB.chapters.flatMap(c => c.scenes.map(s => ({
+    id: s.id, type: s.type, ch: c.id, n: LAB.R[s.type].steps(s), ok: s.ok, nopts: (s.opts || []).length, bad: s.bad == null ? null : [].concat(s.bad), pick: s.pick, best: s.best,
+    items: s.items && s.items.length, steps: s.steps && s.steps.map(x => ({ on: (x.on || []).length, upto: x.upto, lines: !!x.lines, run: !!x.run, tabs: (x.tabs || []).length })),
+    rows: s.rows && s.rows.length, pts: s.pts && s.pts.length, long: !!s.long, fu: s.fu && s.fu.length, hints: s.hints && s.hints.length, result: !!s.result, resultRows: s.result && s.result.rows.length,
+    after: !!s.after, nlines: typeof s.lines === 'function' ? s.lines().length : (s.lines && s.lines.length), checks: s.checks && s.checks.length, prevent: s.prevent && s.prevent.length,
+    sections: s.sections && s.sections.length, qid: s.qid, goals: s.goals && s.goals.length, itemsN: s.items && s.items.length, kind: s.kind, t: s.t
+  }))));
+  const go = async key => { await page.evaluate(k => { location.hash = k; }, key); await page.waitForTimeout(25); };
+  const q = (sel) => page.$$(sel);
+  const cnt = async sel => (await q(sel)).length;
+  const state = () => page.evaluate(() => JSON.parse(JSON.stringify(LAB.app.state)));
+  const text = () => page.evaluate(() => document.querySelector('#stage-body').innerText);
 
-  console.log('quiz'); await go('m1-q1:0');
-  const xp0 = await xp();
-  await page.click('.opt[data-k="0"]'); await page.waitForTimeout(150);
-  ok(await $count('.opt.wrong') === 1 && await $count('.callout.bad') === 1, 'wrong answer marked with feedback');
-  await page.click('.opt[data-k="1"]'); await page.waitForTimeout(150);
-  ok(await $count('.opt.right') === 1 && await $count('.callout.good') === 1, 'right answer marked');
-  ok(await xp() > xp0, 'XP awarded for quiz');
+  // ---------- welcome ----------
+  await go('welcome:0');
+  ok(await cnt('.track') === 3, 'welcome shows three path cards');
 
-  console.log('bug hunt'); await go('m2-bug:0');
-  await page.click('.ln.clk[data-n="3"]'); await page.waitForTimeout(150);
-  ok(await $count('.callout.bad') === 1, 'wrong line gives feedback');
-  await page.click('.ln.clk[data-n="9"]'); await page.waitForTimeout(150);
-  ok(await $count('.callout.good') === 1 && await $count('.ln.bugline') >= 1, 'correct line found, bug shown');
-  ok(await $count('.fixh') >= 1, 'fix shown');
+  for (const s of S) {
+    const key = s.id + ':0';
+    await go(key);
+    const where = s.id + ' (' + s.type + ')';
+    const stage = await text();
+    ok(!/undefined|NaN|\[object Object\]/.test(stage), where + ' has no undefined/NaN text');
 
-  console.log('order game'); await go('m1-order:0');
-  const items = await page.evaluate(() => LAB.app.sceneById('m1-order').items);
-  for (const it of items) { await page.click('.chip-btn:not(.used):has-text("' + it.replace(/"/g, '\\"') + '")'); await page.waitForTimeout(60); }
-  ok(await $count('.order-list li.filled') === items.length && await $count('.callout.good') === 1, 'all steps placed in order');
-  await go('m1-order:0');
-
-  console.log('decision'); await go('m8-dec:0');
-  await page.click('.dopt[data-k="0"]'); await page.waitForTimeout(150);
-  ok(await $count('.verdict .pick') === 1, 'coach pick revealed after choosing');
-  ok((await text('.verdict')).includes('Tasks cannot run Python'), 'shows why the chosen option loses');
-
-  console.log('coding challenge'); await go('m6-c1:0');
-  await page.click('[data-c="hint"]'); await page.click('[data-c="hint"]'); await page.waitForTimeout(150);
-  ok(await $count('.hints .callout') === 2, 'two hints revealed one at a time');
-  await page.click('[data-c="sol"]'); await page.waitForTimeout(150);
-  ok(await $count('.solution .code') === 1 && await $count('.solution .result .tbl') === 1, 'solution and result table shown');
-  await page.click('[data-c="got"]'); await page.waitForTimeout(100);
-  ok(await page.evaluate(() => LAB.app.state.grades['c:m6-c1']) === 2, 'self-grade stored');
-
-  console.log('interview Q&A'); await go('qa-wf-project:0');
-  await page.click('[data-q="timer"]'); await page.waitForTimeout(1300);
-  ok((await text('.timer-out')).includes('s left'), 'timer counts down');
-  await page.click('#next'); await page.waitForTimeout(200);
-  ok(await $count('.answer') === 1, 'model answer shown on step 2');
-  await page.click('[data-q="mode"][data-v="long"]'); await page.waitForTimeout(150);
-  ok((await text('.answer')).length > 900, '2-minute answer is longer');
-  await page.check('[data-pt="0"]'); await page.waitForTimeout(100);
-  ok((await text('.cnt')).startsWith('1 of'), 'key point tick updates counter');
-  await page.click('#next'); await page.waitForTimeout(200);
-  await page.click('details.fu summary'); await page.waitForTimeout(100);
-  ok(await page.$eval('details.fu', d => d.open), 'follow-up opens');
-  ok(await $count('.callout.warn') >= 1, 'common mistake box shown');
-
-  console.log('incident'); await go('m11-i1:0');
-  await page.click('.opt[data-k="0"]'); await page.waitForTimeout(100);
-  ok(await $count('.callout.bad') === 1, 'wrong first move explained');
-  await page.click('.opt[data-k="1"]'); await page.waitForTimeout(100);
-  ok(await $count('.callout.good') === 1, 'right first move accepted');
-  await page.click('#next'); await page.waitForTimeout(200);
-  ok(await $count('.triage li') >= 5, 'triage checklist shown');
-  await page.click('#next'); await page.waitForTimeout(200);
-  ok(await $count('.say') === 1, 'interview script shown');
-
-  console.log('mock round + scorecard'); await go('mock-qa-wf-project:0');
-  await page.click('#next'); await page.waitForTimeout(200);
-  await page.click('[data-g="3"]'); await page.waitForTimeout(100);
-  ok(await page.evaluate(() => LAB.app.state.grades['m:qa-wf-project']) === 3, 'grade saved');
+    if (s.type === 'intro') ok(await cnt('.goals li') === s.goals, where + ' lists all goals');
+    if (s.type === 'quiz') {
+      const wrong = [...Array(s.nopts).keys()].find(k => k !== s.ok);
+      await page.click('.opt[data-k="' + wrong + '"]'); await page.waitForTimeout(15);
+      ok(await cnt('.callout.bad') === 1, where + ' wrong answer shows feedback');
+      await page.click('.opt[data-k="' + s.ok + '"]'); await page.waitForTimeout(15);
+      ok(await cnt('.opt.right') === 1 && await cnt('.callout.good') === 1, where + ' right answer is confirmed');
+    }
+    if (s.type === 'bug') {
+      const lines = await cnt('.code .ln.clk');
+      const notBad = [...Array(lines).keys()].map(k => k + 1).find(n => !s.bad.includes(n));
+      await page.click('.code:not(.fixc) .ln.clk[data-n="' + notBad + '"]'); await page.waitForTimeout(15);
+      ok(await cnt('.callout.bad') === 1, where + ' wrong line shows feedback');
+      await page.click('.code:not(.fixc) .ln.clk[data-n="' + s.bad[0] + '"]'); await page.waitForTimeout(15);
+      ok(await cnt('.callout.good') === 1 && await cnt('.fixh') >= 1, where + ' right line shows the fix');
+    }
+    if (s.type === 'order') {
+      await page.click('.chip-btn[data-o="1"]'); await page.waitForTimeout(15);
+      ok((await state()).ans[s.id].tries >= 1, where + ' wrong tap is counted');
+      for (let k = 0; k < s.itemsN; k++) { await page.click('.chip-btn[data-o="' + k + '"]'); await page.waitForTimeout(10); }
+      ok(await cnt('.callout.good') === 1, where + ' correct order completes');
+    }
+    if (s.type === 'decide') {
+      const wrong = [...Array(s.nopts).keys()].find(k => k !== s.pick);
+      await page.click('.dopt[data-k="' + wrong + '"]'); await page.waitForTimeout(15);
+      ok(await cnt('.verdict .callout.warn') === 1 && await cnt('.verdict .pick') === 1, where + ' other choice shows the Coach pick');
+      await page.click('.dopt[data-k="' + s.pick + '"]'); await page.waitForTimeout(15);
+      ok(await cnt('.verdict .callout.good') === 1, where + ' picking the Coach pick is confirmed');
+    }
+    if (s.type === 'incident') {
+      const wrong = [...Array(s.nopts).keys()].find(k => k !== s.best);
+      await page.click('.opt[data-k="' + wrong + '"]'); await page.waitForTimeout(15);
+      ok(await cnt('.callout.bad') >= 1, where + ' wrong first move shows feedback');
+      await page.click('.opt[data-k="' + s.best + '"]'); await page.waitForTimeout(15);
+      ok(await cnt('.callout.good') === 1, where + ' best first move is confirmed');
+      await go(s.id + ':1'); ok(await cnt('.triage li') === s.checks, where + ' lists every triage check');
+      await go(s.id + ':2'); ok(await cnt('.notes li') === s.prevent && await cnt('.say') >= 1, where + ' shows the story and prevention');
+    }
+    if (s.type === 'qa') {
+      await page.click('[data-q="timer"]'); await page.waitForTimeout(1200);
+      ok(/left|Time/.test(await page.innerText('.timer-out')), where + ' timer runs');
+      await go(s.id + ':1');
+      if (s.long) { await page.click('[data-q="mode"][data-v="long"]'); await page.waitForTimeout(15); ok(await cnt('.tabs2 .tg.on') === 1, where + ' long answer tab works'); }
+      const boxes = await q('[data-pt]'); ok(boxes.length === s.pts, where + ' has a checkbox for every point');
+      for (const b of boxes) await b.check();
+      ok((await page.innerText('.cnt')).trim() === s.pts + ' of ' + s.pts, where + ' counts every ticked point');
+      await go(s.id + ':2');
+      const ds = await q('details.fu summary'); for (const d of ds) await d.click();
+      ok(ds.length === (s.fu || 0), where + ' lists every follow-up');
+    }
+    if (s.type === 'challenge') {
+      for (let k = 0; k < s.hints; k++) { await page.click('[data-c="hint"]'); await page.waitForTimeout(10); }
+      ok(await cnt('.hints .callout') === s.hints, where + ' reveals every hint');
+      await page.click('[data-c="sol"]'); await page.waitForTimeout(15);
+      ok(await cnt('.solution') === 1, where + ' shows the solution');
+      await page.click('[data-c="got"]'); await page.waitForTimeout(15);
+      ok((await state()).grades['c:' + s.id] === 2, where + ' saves the self-grade');
+    }
+    if (s.type === 'sql' || s.type === 'code') {
+      for (let i = 0; i < s.n; i++) {
+        await go(s.id + ':' + i);
+        if (s.steps[i].lines) ok(await cnt('.ln.on') >= 1, where + ' step ' + i + ' highlights lines');
+        if (s.type === 'sql' && s.result && s.steps[i].run) {
+          await page.click('.btn-run[data-act="run"]'); await page.waitForTimeout(40);
+          ok(await cnt('.result tbody tr') === s.resultRows, where + ' Run shows the result table');
+        }
+      }
+    }
+    if (s.type === 'term') {
+      await page.click('[data-act="skip"]'); await page.waitForTimeout(80);
+      ok(await cnt('.term-body .tl') === s.nlines, where + ' prints every terminal line');
+      if (s.after) ok(await cnt('.after .callout') === 1, where + ' shows the takeaway');
+    }
+    if (s.type === 'flow') {
+      for (let i = 0; i < s.n; i++) { await go(s.id + ':' + i); ok(await cnt('.graph .edge.on') === s.steps[i].on, where + ' step ' + i + ' lights ' + s.steps[i].on + ' edge(s)'); }
+    }
+    if (s.type === 'cmp') {
+      for (let i = 0; i < s.n; i++) { await go(s.id + ':' + i); ok(await cnt('.tbl.cmp tbody tr') === (s.steps ? s.steps[i].upto : s.rows), where + ' step ' + i + ' reveals the right rows'); }
+    }
+    if (s.type === 'rows') {
+      for (let i = 0; i < s.n; i++) { await go(s.id + ':' + i); ok(await cnt('.layer-tbl') === s.steps[i].tabs, where + ' step ' + i + ' shows its tables'); }
+    }
+    if (s.type === 'talk') {
+      for (let i = 0; i < s.n; i++) { await go(s.id + ':' + i); ok(await cnt('.cards .card') === i + 1, where + ' step ' + i + ' reveals ' + (i + 1) + ' card(s)'); }
+    }
+    if (s.type === 'cheat') ok(await cnt('.cheat-card') === s.sections, where + ' shows every section');
+    if (s.type === 'widget') {
+      for (let i = 0; i < s.n; i++) {
+        await go(s.id + ':' + i);
+        const n = await cnt('#stage-body [data-act]:not([data-act="copy"]):not([data-act="auto"])');
+        for (let k = 0; k < n; k++) {
+          const els = await q('#stage-body [data-act]:not([data-act="copy"]):not([data-act="auto"])');
+          if (!els[k]) break;
+          if (await els[k].isEnabled()) { await els[k].click(); await page.waitForTimeout(12); }
+        }
+        ok(!/undefined|NaN/.test(await text()), where + ' step ' + i + ' survives every button');
+      }
+    }
+    if (s.type === 'mock') {
+      await page.click('[data-q="timer"]'); await go(s.id + ':1');
+      await page.click('[data-g="3"]'); await page.waitForTimeout(15);
+      ok((await state()).grades['m:' + s.qid] === 3, where + ' saves the grade');
+    }
+    if (s.type === 'recap') {
+      ok(await cnt('.badge') === 1, where + ' shows the badge');
+      ok(!!(await state()).awarded['recap:' + s.id], where + ' awards XP once');
+    }
+  }
+  // score screen counts every mock question on the path
   await go('mock-score:0');
-  ok(await $count('.scorebig') === 1 && await $count('.srow') >= 3, 'scorecard lists the questions');
-  ok((await text('.scorebig')).includes('%'), 'scorecard shows a percentage');
+  ok(await cnt('.ring') === 1 && await cnt('.srow') === S.filter(x => x.type === 'mock').length, 'scorecard lists every boss question');
 
-  console.log('widgets'); await go('m5-prune:0');
-  await page.click('[data-act="pr-run"]'); await page.waitForTimeout(150);
-  ok((await text('.prune-res')).includes('11 of 12'), 'unclustered table scans 11 of 12 partitions');
-  await page.click('[data-act="pr-mode"][data-v="clu"]'); await page.click('[data-act="pr-run"]'); await page.waitForTimeout(150);
-  ok((await text('.prune-res')).includes('1 of 12'), 'clustered table scans 1 of 12 partitions');
-  await go('m9-mask:0');
-  ok((await text('.result')).includes('XXX-XX-5678'), 'analyst sees masked SSN');
-  await page.click('[data-act="mk-role"][data-v="PII_READER"]'); await page.waitForTimeout(150);
-  ok((await text('.result')).includes('912-34-5678'), 'PII_READER sees clear SSN');
-
-  console.log('sql worksheet'); await go('m5-tt:0');
-  ok(await $count('.result') === 0, 'result hidden before Run');
-  await page.click('[data-act="run"]'); await page.waitForTimeout(150);
-  ok(await $count('.result .tbl') === 1, 'result appears after Run');
-
-  console.log('terminal + lineage'); await go('m3-fail:0'); await page.waitForTimeout(500);
-  await page.click('[data-act="skip"]'); await page.waitForTimeout(200);
-  ok(await $count('.tl-err') >= 2, 'failure lines printed in red');
-  ok(await $count('.graph .node.st-fail') >= 1 && await $count('.graph .node.st-skip') >= 1, 'lineage shows failed and skipped nodes');
-  await page.click('[data-act="replay"]'); await page.waitForTimeout(400);
-  ok(await $count('.tl') >= 1, 'replay restarts the terminal');
-  await go('m8-runfail:0'); await page.waitForTimeout(300); await page.click('[data-act="skip"]'); await page.waitForTimeout(200);
-  ok(await $count('.graph .node.st-retry') + await $count('.graph .node.st-ok') >= 5, 'Airflow DAG nodes colored');
-
-  console.log('animated flow'); await go('m1-hops:2'); await page.waitForTimeout(400);
-  ok(await $count('.graph .edge.on') >= 1 && await $count('.graph .pk') >= 1, 'active edge has moving packets');
-  ok(await $count('.graph .pk.pill') === 1, 'tracked pill is moving');
-  const animated = await page.evaluate(() => { const g = document.querySelector('.graph .pk'); return !!g && !!g.querySelector('animateMotion'); });
-  ok(animated, 'packets use SMIL motion along the edge path');
-  await go('m1-map:0'); await page.click('.btn-play'); await page.waitForTimeout(5200);
-  ok((await page.evaluate(() => location.hash)).includes('m1-map:1'), 'Play all advances to the next step');
-  await page.click('.btn-play'); 
-
-  console.log('navigation + chrome'); await go('m1-map:0');
-  await page.keyboard.press('ArrowRight'); await page.waitForTimeout(250);
-  ok((await page.evaluate(() => location.hash)).includes('m1-map:1'), 'right arrow = next');
-  await page.keyboard.press('ArrowLeft'); await page.waitForTimeout(250);
-  ok((await page.evaluate(() => location.hash)).includes('m1-map:0'), 'left arrow = back');
-  const s0 = await page.evaluate(() => getComputedStyle(document.documentElement).fontSize);
-  await page.click('#fs-up'); await page.waitForTimeout(100);
-  const s1 = await page.evaluate(() => getComputedStyle(document.documentElement).fontSize);
-  ok(parseFloat(s1) > parseFloat(s0), 'A+ makes text bigger (' + s0 + ' to ' + s1 + ')');
-  await page.click('#fs-down'); await page.click('#fs-down');
-  await page.click('#menu-btn'); await page.waitForTimeout(200);
-  ok(await $count('.menu-card .mrow') === 15, 'map lists all 15 missions');
-  await page.click('.menu-card [data-m="fast"]'); await page.waitForTimeout(300);
-  const fastFrames = await page.evaluate(() => document.querySelectorAll('#segs .seg').length);
-  ok(await page.evaluate(() => LAB.app.state.track) === 'fast', 'map switches track to fast');
-  await page.click('#menu-btn'); await page.waitForTimeout(150);
-  await page.click('.menu-card .mrow:nth-child(6)'); await page.waitForTimeout(300);
-  ok((await text('#crumb')).includes('Mission 5'), 'map jumps to a mission');
-  await page.click('#menu-btn'); await page.click('.menu-card [data-m="all"]'); await page.waitForTimeout(300);
-
-  console.log('persistence + reset');
-  await page.evaluate(() => { location.hash = 'm4-q1:0'; }); await page.waitForTimeout(300);
+  // ---------- the app itself ----------
+  await go('m1-arch:0');
+  const k0 = (await state()).frame;
+  await page.keyboard.press('ArrowRight'); await page.waitForTimeout(40);
+  ok((await state()).frame !== k0, 'right arrow moves forward');
+  await page.keyboard.press('ArrowLeft'); await page.waitForTimeout(40);
+  ok((await state()).frame === k0, 'left arrow moves back');
+  const sc0 = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--scale'));
+  await page.click('#fs-up'); const sc1 = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--scale'));
+  ok(+sc1 > +sc0, 'A+ makes text bigger'); await page.click('#fs-down'); await page.click('#fs-down');
+  ok(+(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--scale'))) < +sc1, 'A- makes text smaller');
+  await page.click('#menu-btn'); await page.waitForTimeout(50);
+  const numbered = await page.evaluate(() => LAB.chapters.filter(c => c.n).length);
+  ok(await cnt('.mrow') === numbered + 1, 'Map lists every mission plus the start');
+  const trackBtns = await cnt('.menu-tools .tg'); ok(trackBtns === 3, 'Map offers three paths');
+  const framesAll = await page.evaluate(() => document.querySelectorAll('.seg').length);
+  await page.click('.menu-tools .tg:first-of-type'); await page.waitForTimeout(80);
+  ok((await state()).track === 'junior', 'choosing the Junior path is saved');
+  const fJ = await page.evaluate(() => { const m = document.querySelector('#pos').textContent; return m; });
+  await page.click('#menu-btn'); await page.click('.menu-tools .tg:last-of-type'); await page.waitForTimeout(80);
+  ok((await state()).track === 'all', 'switching back to Everything works');
+  // persistence
+  await go('m3-paths:2'); const keyBefore = (await state()).frame; const xpBefore = (await state()).xp;
   await page.reload(); await page.waitForTimeout(400);
-  ok((await page.evaluate(() => location.hash)).includes('m4-q1:0'), 'reload returns to the same step');
-  ok(await xp() > 0, 'XP persisted');
+  ok((await state()).frame === keyBefore && (await state()).xp === xpBefore, 'progress survives a reload');
+  // reset
   await page.click('#menu-btn'); await page.click('[data-m="reset"]'); await page.waitForTimeout(600);
-  ok(await xp() <= 2, 'reset clears progress (only the welcome screen XP remains)');
+  ok((await state()).xp <= 2, 'Reset clears progress');
 
-  console.log('last frame'); await page.evaluate(() => { location.hash = 'm14-recap:0'; }); await page.waitForTimeout(300);
-  ok((await text('#next-label')) === 'Finish', 'last step says Finish');
-
-  ok(errors.length === 0, 'no console errors' + (errors.length ? ': ' + errors.slice(0, 3).join(' | ') : ''));
-  console.log(`\n${pass} passed, ${fail} failed`);
-  await browser.close();
+  ok(errs.length === 0, 'no console or page errors' + (errs.length ? ': ' + [...new Set(errs)].slice(0, 5).join(' | ') : ''));
+  console.log(pass + ' checks passed, ' + fail + ' failed');
+  await browser.close(); srv.close();
   process.exit(fail ? 1 : 0);
 })();

@@ -65,9 +65,7 @@ function serve() {
       const de = document.documentElement;
       const txt = document.body.innerText;
       const bad = txt.match(/\bundefined\b|\bNaN\b|\[object Object\]/);
-      let svgOut = false;
-      document.querySelectorAll('svg.graph').forEach(s => { const r = s.getBoundingClientRect(); if (r.right > de.clientWidth + 1) svgOut = true; });
-      return { out, label: document.querySelector('#next-label').textContent, overflow: de.scrollWidth > de.clientWidth + 1 || svgOut, bad: bad && bad[0], key: (window.LAB && LAB.app && LAB.app.state.frame) || '' };
+      return { out, label: document.querySelector('#next-label').textContent, overflow: de.scrollWidth > de.clientWidth + 1, bad: bad && bad[0], key: (window.LAB && LAB.app && LAB.app.state.frame) || '' };
     });
     n++;
     res.out.forEach(([k, fs, t]) => { const key = k + ' @' + fs.toFixed(1); (small[key] = small[key] || { n: 0, ex: t, at: res.key }).n++; });

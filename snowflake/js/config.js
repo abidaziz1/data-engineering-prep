@@ -13,7 +13,7 @@ LAB.config = {
     sub: 'Architecture · Loading · SQL · Time Travel · Pipelines · Performance · Security · Cost · CI/CD',
     say: 'Hi, I am Coach Sam. I will teach you Snowflake by following one small company, Brewline, from its first table to a governed, tuned, delivered platform. You only need the Next button. First, tell me which path fits you.',
     question: 'Which path fits you?',
-    note: 'Switch any time from the Map button. Progress saves in this browser. Independent study material, not affiliated with or endorsed by Snowflake Inc.'
+    note: 'Switch any time from the Map button. Progress saves in this browser. Query results shown for Snowflake-only commands are examples, not output from a live account. Independent study material, not affiliated with or endorsed by Snowflake Inc.'
   },
   rhythm: [
     { k: 'see', b: 'SEE', t: 'Watch data move through Snowflake, step by step' },

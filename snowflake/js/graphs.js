@@ -289,4 +289,54 @@
       { id: 'sh4', a: 'cdb', b: 'cwh', d: 'M920 192 V262', n: 4, pk: 1 }
     ]
   };
+
+  /* ------------------------------------------------------------------ */
+  /* 11. Where the bill comes from                                       */
+  /* ------------------------------------------------------------------ */
+  S.bill = {
+    w: 1100, h: 420, label: 'Where Snowflake cost comes from: warehouses, serverless features, cloud services, storage, data transfer and AI features',
+    nodes: [
+      { id: 'wh', x: 0, y: 20, w: 300, h: 100, t: 'Warehouses', s: 'credits per second running', c: 'air' },
+      { id: 'sl', x: 0, y: 160, w: 300, h: 100, t: 'Serverless features', s: 'Snowpipe, clustering, tasks', c: 'ing' },
+      { id: 'cs', x: 0, y: 300, w: 300, h: 100, t: 'Cloud services', s: 'free up to 10% of compute', c: 'int' },
+      { id: 'bill', x: 400, y: 140, w: 300, h: 140, t: 'The bill', s: 'credits plus storage', c: 'mon' },
+      { id: 'st', x: 800, y: 20, w: 300, h: 100, t: 'Storage', s: 'per TB per month', c: 'raw' },
+      { id: 'tr', x: 800, y: 160, w: 300, h: 100, t: 'Data transfer', s: 'out of a region or cloud', c: 'src' },
+      { id: 'ai', x: 800, y: 300, w: 300, h: 100, t: 'AI features', s: 'model calls, in credits', c: 'snap' }
+    ],
+    edges: [
+      { id: 'b1', a: 'wh', b: 'bill', d: H(300, 70, 400, 190), n: 1, pk: 2 },
+      { id: 'b2', a: 'sl', b: 'bill', d: H(300, 210, 400, 210), n: 2, pk: 2 },
+      { id: 'b3', a: 'cs', b: 'bill', d: H(300, 350, 400, 230), n: 3, pk: 2 },
+      { id: 'b4', a: 'st', b: 'bill', d: H(800, 70, 700, 190), n: 4, pk: 2 },
+      { id: 'b5', a: 'tr', b: 'bill', d: H(800, 210, 700, 210), n: 5, pk: 2 },
+      { id: 'b6', a: 'ai', b: 'bill', d: H(800, 350, 700, 230), n: 6, pk: 2 }
+    ]
+  };
+
+  /* ------------------------------------------------------------------ */
+  /* 12. Delivery: branch to production                                  */
+  /* ------------------------------------------------------------------ */
+  S.cicd = {
+    w: 1100, h: 470, label: 'Delivery for Snowflake: branch, pull request, CI on a clone, review, merge, deploy to production, monitor',
+    nodes: [
+      { id: 'dev', x: 0, y: 20, w: 240, h: 110, t: 'Feature branch', ss: ['change SQL or code', 'try it on a clone'], c: 'src' },
+      { id: 'pr', x: 290, y: 20, w: 240, h: 110, t: 'Pull request', ss: ['diff and review', 'Jira ticket linked'], c: 'ci' },
+      { id: 'ci', x: 580, y: 10, w: 270, h: 130, t: 'CI run', ss: ['lint the SQL', 'clone prod, deploy', 'run the tests'], c: 'ci' },
+      { id: 'rev', x: 900, y: 20, w: 200, h: 110, t: 'Review', ss: ['approve or ask', 'for changes'], c: 'ci' },
+      { id: 'mrg', x: 0, y: 300, w: 240, h: 110, t: 'Merge to main', ss: ['squash and tag', 'clone dropped'], c: 'ci' },
+      { id: 'cd', x: 290, y: 300, w: 270, h: 110, t: 'Deploy job', ss: ['schemachange or', 'Terraform apply'], c: 'ci' },
+      { id: 'prod', x: 610, y: 300, w: 240, h: 110, t: 'Production', ss: ['RAW, CORE, MARTS', 'roles and policies'], c: 'mart' },
+      { id: 'mon', x: 900, y: 300, w: 200, h: 110, t: 'Monitoring', ss: ['alerts, history', 'cost checks'], c: 'mon' }
+    ],
+    edges: [
+      { id: 'c1', a: 'dev', b: 'pr', d: 'M240 75 H290', n: 1, bx: 265, by: 47, pk: 1 },
+      { id: 'c2', a: 'pr', b: 'ci', d: 'M530 75 H580', n: 2, bx: 555, by: 47, pk: 1 },
+      { id: 'c3', a: 'ci', b: 'rev', d: 'M850 75 H900', n: 3, bx: 875, by: 47, pk: 1 },
+      { id: 'c4', a: 'rev', b: 'mrg', d: 'M1000 130 V200 Q1000 212 988 212 H132 Q120 212 120 224 V298', n: 4, bx: 560, by: 212 },
+      { id: 'c5', a: 'mrg', b: 'cd', d: 'M240 355 H290', n: 5, bx: 265, by: 327, pk: 1 },
+      { id: 'c6', a: 'cd', b: 'prod', d: 'M560 355 H610', n: 6, bx: 585, by: 327, pk: 1 },
+      { id: 'c7', a: 'prod', b: 'mon', d: 'M850 355 H900', n: 7, bx: 875, by: 327, pk: 1 }
+    ]
+  };
 })();
