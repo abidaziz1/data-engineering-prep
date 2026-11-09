@@ -471,6 +471,236 @@ LAB.real = {
    "total_files_before": 16,
    "zOrderBy": "customer_id"
   },
+  "sdp.dry_run": {
+   "cause": null,
+   "error": null,
+   "log": [
+    "Loading pipeline spec from ./spark-pipeline.yml...",
+    "Creating Spark session...",
+    "Creating dataflow graph...",
+    "Registering graph elements...",
+    "Loading definitions. Root directory: '.'.",
+    "Found 3 files matching glob 'transformations/**/*'",
+    "Importing ./transformations/bronze.py...",
+    "Registering SQL file ./transformations/gold.sql...",
+    "Importing ./transformations/silver.py...",
+    "Starting run...",
+    "Run is COMPLETED."
+   ],
+   "rc": 0
+  },
+  "sdp.dry_run_typo": {
+   "cause": "[TABLE_OR_VIEW_NOT_FOUND] The table or view `spark_catalog`.`default`.`silver_ordres` cannot be found. Verify the spelling and correctness of the schema and catalog.",
+   "error": "Failed to resolve flows in the pipeline. A flow can fail to resolve because the flow itself contains errors or because it reads from an upstream flow which failed to resolve. Flows with errors: spark_catalog.default.gold_daily_revenue Flows that failed due to upstream errors: To view the exceptions that were raised while resolving these flows, look for flow failures that precede this log.",
+   "log": [
+    "Loading pipeline spec from <work>/bad/spark-pipeline.yml...",
+    "Creating Spark session...",
+    "Creating dataflow graph...",
+    "Registering graph elements...",
+    "Loading definitions. Root directory: '<work>/bad'.",
+    "Found 3 files matching glob 'transformations/**/*'",
+    "Importing <work>/bad/transformations/bronze.py...",
+    "Registering SQL file <work>/bad/transformations/gold.sql...",
+    "Importing <work>/bad/transformations/silver.py...",
+    "Starting run...",
+    "Failed to resolve flow: 'spark_catalog.default.gold_daily_revenue'."
+   ],
+   "rc": 1
+  },
+  "sdp.full_refresh": {
+   "cause": null,
+   "error": null,
+   "label": "full refresh of bronze_orders",
+   "log": [
+    "Loading pipeline spec from ./spark-pipeline.yml...",
+    "Creating Spark session...",
+    "Creating dataflow graph...",
+    "Registering graph elements...",
+    "Loading definitions. Root directory: '.'.",
+    "Found 3 files matching glob 'transformations/**/*'",
+    "Importing ./transformations/bronze.py...",
+    "Registering SQL file ./transformations/gold.sql...",
+    "Importing ./transformations/silver.py...",
+    "Starting run...",
+    "Flow spark_catalog.default.bronze_orders is QUEUED.",
+    "Flow 'spark_catalog.default.silver_orders' is EXCLUDED.",
+    "Flow 'spark_catalog.default.gold_daily_revenue' is EXCLUDED.",
+    "Flow spark_catalog.default.bronze_orders is STARTING.",
+    "Flow spark_catalog.default.bronze_orders is RUNNING.",
+    "Flow spark_catalog.default.bronze_orders has COMPLETED.",
+    "Run is COMPLETED."
+   ],
+   "rc": 0,
+   "rows": {
+    "bronze_orders": 14,
+    "gold_daily_revenue": 4,
+    "silver_orders": 10
+   }
+  },
+  "sdp.runs": [
+   {
+    "cause": null,
+    "error": null,
+    "label": "first run: two files",
+    "landed": [
+     {
+      "file": "orders_20260314.json",
+      "rows": 5
+     },
+     {
+      "file": "orders_20260315.json",
+      "rows": 2
+     }
+    ],
+    "log": [
+     "Loading pipeline spec from ./spark-pipeline.yml...",
+     "Creating Spark session...",
+     "Creating dataflow graph...",
+     "Registering graph elements...",
+     "Loading definitions. Root directory: '.'.",
+     "Found 3 files matching glob 'transformations/**/*'",
+     "Importing ./transformations/bronze.py...",
+     "Registering SQL file ./transformations/gold.sql...",
+     "Importing ./transformations/silver.py...",
+     "Starting run...",
+     "Flow spark_catalog.default.bronze_orders is QUEUED.",
+     "Flow spark_catalog.default.silver_orders is QUEUED.",
+     "Flow spark_catalog.default.gold_daily_revenue is QUEUED.",
+     "Flow spark_catalog.default.bronze_orders is STARTING.",
+     "Flow spark_catalog.default.bronze_orders is RUNNING.",
+     "Flow spark_catalog.default.bronze_orders has COMPLETED.",
+     "Flow spark_catalog.default.silver_orders is PLANNING.",
+     "Flow spark_catalog.default.silver_orders is STARTING.",
+     "Flow spark_catalog.default.silver_orders is RUNNING.",
+     "Flow spark_catalog.default.silver_orders has COMPLETED.",
+     "Flow spark_catalog.default.gold_daily_revenue is PLANNING.",
+     "Flow spark_catalog.default.gold_daily_revenue is STARTING.",
+     "Flow spark_catalog.default.gold_daily_revenue is RUNNING.",
+     "Flow spark_catalog.default.gold_daily_revenue has COMPLETED.",
+     "Run is COMPLETED."
+    ],
+    "rc": 0,
+    "rows": {
+     "bronze_orders": 7,
+     "gold_daily_revenue": 2,
+     "silver_orders": 5
+    }
+   },
+   {
+    "cause": null,
+    "error": null,
+    "label": "second run: a new day and a resend",
+    "landed": [
+     {
+      "file": "orders_20260316_17.json",
+      "rows": 5
+     },
+     {
+      "file": "orders_20260315_resend.json",
+      "rows": 2
+     }
+    ],
+    "log": [
+     "Loading pipeline spec from ./spark-pipeline.yml...",
+     "Creating Spark session...",
+     "Creating dataflow graph...",
+     "Registering graph elements...",
+     "Loading definitions. Root directory: '.'.",
+     "Found 3 files matching glob 'transformations/**/*'",
+     "Importing ./transformations/bronze.py...",
+     "Registering SQL file ./transformations/gold.sql...",
+     "Importing ./transformations/silver.py...",
+     "Starting run...",
+     "Flow spark_catalog.default.bronze_orders is QUEUED.",
+     "Flow spark_catalog.default.silver_orders is QUEUED.",
+     "Flow spark_catalog.default.gold_daily_revenue is QUEUED.",
+     "Flow spark_catalog.default.bronze_orders is STARTING.",
+     "Flow spark_catalog.default.bronze_orders is RUNNING.",
+     "Flow spark_catalog.default.bronze_orders has COMPLETED.",
+     "Flow spark_catalog.default.silver_orders is PLANNING.",
+     "Flow spark_catalog.default.silver_orders is STARTING.",
+     "Flow spark_catalog.default.silver_orders is RUNNING.",
+     "Flow spark_catalog.default.silver_orders has COMPLETED.",
+     "Flow spark_catalog.default.gold_daily_revenue is PLANNING.",
+     "Flow spark_catalog.default.gold_daily_revenue is STARTING.",
+     "Flow spark_catalog.default.gold_daily_revenue is RUNNING.",
+     "Flow spark_catalog.default.gold_daily_revenue has COMPLETED.",
+     "Run is COMPLETED."
+    ],
+    "rc": 0,
+    "rows": {
+     "bronze_orders": 14,
+     "gold_daily_revenue": 4,
+     "silver_orders": 10
+    }
+   },
+   {
+    "cause": null,
+    "error": null,
+    "label": "third run: no new files",
+    "landed": [],
+    "log": [
+     "Loading pipeline spec from ./spark-pipeline.yml...",
+     "Creating Spark session...",
+     "Creating dataflow graph...",
+     "Registering graph elements...",
+     "Loading definitions. Root directory: '.'.",
+     "Found 3 files matching glob 'transformations/**/*'",
+     "Importing ./transformations/bronze.py...",
+     "Registering SQL file ./transformations/gold.sql...",
+     "Importing ./transformations/silver.py...",
+     "Starting run...",
+     "Flow spark_catalog.default.bronze_orders is QUEUED.",
+     "Flow spark_catalog.default.silver_orders is QUEUED.",
+     "Flow spark_catalog.default.gold_daily_revenue is QUEUED.",
+     "Flow spark_catalog.default.bronze_orders is STARTING.",
+     "Flow spark_catalog.default.bronze_orders is RUNNING.",
+     "Flow spark_catalog.default.bronze_orders has COMPLETED.",
+     "Flow spark_catalog.default.silver_orders is PLANNING.",
+     "Flow spark_catalog.default.silver_orders is STARTING.",
+     "Flow spark_catalog.default.silver_orders is RUNNING.",
+     "Flow spark_catalog.default.silver_orders has COMPLETED.",
+     "Flow spark_catalog.default.gold_daily_revenue is PLANNING.",
+     "Flow spark_catalog.default.gold_daily_revenue is STARTING.",
+     "Flow spark_catalog.default.gold_daily_revenue is RUNNING.",
+     "Flow spark_catalog.default.gold_daily_revenue has COMPLETED.",
+     "Run is COMPLETED."
+    ],
+    "rc": 0,
+    "rows": {
+     "bronze_orders": 14,
+     "gold_daily_revenue": 4,
+     "silver_orders": 10
+    }
+   }
+  ],
+  "sdp.versions_after_run3": {
+   "bronze_orders": [
+    "v0 CREATE TABLE",
+    "v1 STREAMING UPDATE",
+    "v2 SET TBLPROPERTIES",
+    "v3 STREAMING UPDATE",
+    "v4 SET TBLPROPERTIES"
+   ],
+   "gold_daily_revenue": [
+    "v0 CREATE TABLE",
+    "v1 WRITE",
+    "v2 TRUNCATE",
+    "v3 WRITE",
+    "v4 TRUNCATE",
+    "v5 WRITE"
+   ],
+   "silver_orders": [
+    "v0 CREATE TABLE",
+    "v1 WRITE",
+    "v2 TRUNCATE",
+    "v3 SET TBLPROPERTIES",
+    "v4 WRITE",
+    "v5 TRUNCATE",
+    "v6 SET TBLPROPERTIES",
+    "v7 WRITE"
+   ]
+  },
   "spark.aqe": {
    "shuffle_partitions_configured": 8
   },
@@ -688,6 +918,11 @@ LAB.real = {
  "files": {
   "delta/merge.sql": "MERGE INTO orders AS t\nUSING updates AS s\nON t.order_id = s.order_id\nWHEN MATCHED AND s._loaded_at > t._loaded_at THEN UPDATE SET *\nWHEN NOT MATCHED THEN INSERT *\n",
   "pipeline/scd2.py": "changes = spark.createDataFrame(\n    [(\"C-42\", \"Ava Martin\", \"gold\", datetime.datetime(2026, 3, 16, 8, 0)),\n     (\"C-55\", \"Mia Rossi\", \"standard\", datetime.datetime(2026, 3, 16, 8, 0))],\n    \"customer_id string, full_name string, tier string, effective_at timestamp\")\n\ndim = DeltaTable.forPath(spark, dim_path)\ncurrent = dim.toDF().filter(\"is_current\")\n\nnew_versions = (changes.alias(\"s\").join(current.alias(\"t\"), \"customer_id\")\n    .where(\"s.tier <> t.tier\")\n    .selectExpr(\"CAST(NULL AS STRING) AS merge_key\", \"s.customer_id\", \"s.full_name\", \"s.tier\", \"s.effective_at\"))\n\nstaged = new_versions.unionByName(\n    changes.selectExpr(\"customer_id AS merge_key\", \"customer_id\", \"full_name\", \"tier\", \"effective_at\"))\n\n(dim.alias(\"t\")\n    .merge(staged.alias(\"s\"), \"t.customer_id = s.merge_key AND t.is_current\")\n    .whenMatchedUpdate(condition=\"t.tier <> s.tier\", set={\"is_current\": \"false\", \"valid_to\": \"s.effective_at\"})\n    .whenNotMatchedInsert(values={\"customer_id\": \"s.customer_id\", \"full_name\": \"s.full_name\", \"tier\": \"s.tier\",\n                                  \"valid_from\": \"s.effective_at\", \"valid_to\": \"NULL\", \"is_current\": \"true\"})\n    .execute())\n",
+  "sdp/gold_typo.sql": "CREATE MATERIALIZED VIEW gold_daily_revenue\nAS SELECT to_date(order_ts) AS order_date,\n          count(*) AS orders,\n          sum(total_usd) AS revenue_usd\nFROM silver_ordres\nWHERE status <> 'CANCELLED'\nGROUP BY to_date(order_ts)\n",
+  "sdp/spark-pipeline.yml": "name: brewline\nstorage: file:///data/brewline/pipeline-storage\nlibraries:\n  - glob:\n      include: transformations/**\nconfiguration:\n  brewline.landing: /data/brewline/landing/orders\n",
+  "sdp/transformations/bronze.py": "from pyspark import pipelines as dp\nfrom pyspark.sql import functions as F\n\nORDERS = (\"order_id string, customer_id string, order_ts timestamp, \"\n          \"status string, total_usd decimal(12,2), _loaded_at timestamp\")\n\n\n@dp.table(name=\"bronze_orders\", comment=\"Orders as they arrived\")\ndef bronze_orders():\n    return (spark.readStream.format(\"json\")\n            .schema(ORDERS)\n            .load(spark.conf.get(\"brewline.landing\"))\n            .select(\"*\", F.col(\"_metadata.file_name\").alias(\"_source_file\")))\n",
+  "sdp/transformations/gold.sql": "CREATE MATERIALIZED VIEW gold_daily_revenue\nAS SELECT to_date(order_ts) AS order_date,\n          count(*) AS orders,\n          sum(total_usd) AS revenue_usd\nFROM silver_orders\nWHERE status <> 'CANCELLED'\nGROUP BY to_date(order_ts)\n",
+  "sdp/transformations/silver.py": "from pyspark import pipelines as dp\nfrom pyspark.sql import Window, functions as F\n\nCOLUMNS = [\"order_id\", \"customer_id\", \"order_ts\", \"status\", \"total_usd\", \"_loaded_at\"]\n\n\n@dp.materialized_view(name=\"silver_orders\", comment=\"One row for each order, the newest version\")\ndef silver_orders():\n    newest = Window.partitionBy(\"order_id\").orderBy(F.col(\"_loaded_at\").desc())\n    ranked = spark.read.table(\"bronze_orders\").select(*COLUMNS, F.row_number().over(newest).alias(\"rn\"))\n    return ranked.where(F.col(\"rn\") == 1).select(*COLUMNS)\n",
   "stream/bronze.py": "bronze_stream = (spark.readStream\n    .format(\"json\")\n    .schema(orders_schema)\n    .load(landing)\n    .select(\"*\", F.col(\"_metadata.file_name\").alias(\"_source_file\"), F.current_timestamp().alias(\"_ingested_at\")))\n\nquery = (bronze_stream.writeStream\n    .format(\"delta\")\n    .option(\"checkpointLocation\", ckpt_bronze)\n    .trigger(availableNow=True)\n    .start(bronze))\nquery.awaitTermination()\n",
   "stream/gold.py": "gold_df = (spark.read.format(\"delta\").load(silver)\n    .filter(\"status <> 'CANCELLED'\")\n    .groupBy(F.to_date(\"order_ts\").alias(\"order_date\"))\n    .agg(F.count(\"*\").alias(\"orders\"), F.sum(\"total_usd\").alias(\"revenue_usd\")))\ngold_df.write.format(\"delta\").mode(\"overwrite\").save(gold)\n",
   "stream/silver.py": "def upsert_orders(batch_df, batch_id):\n    newest = (batch_df\n        .withColumn(\"rn\", F.row_number().over(Window.partitionBy(\"order_id\").orderBy(F.col(\"_loaded_at\").desc())))\n        .filter(\"rn = 1\").drop(\"rn\"))\n    (DeltaTable.forPath(spark, silver).alias(\"t\")\n        .merge(newest.alias(\"s\"), \"t.order_id = s.order_id\")\n        .whenMatchedUpdateAll(condition=\"s._loaded_at > t._loaded_at\")\n        .whenNotMatchedInsertAll()\n        .execute())\n\nquery = (spark.readStream.format(\"delta\").load(bronze)\n    .writeStream.foreachBatch(upsert_orders)\n    .option(\"checkpointLocation\", ckpt_silver)\n    .trigger(availableNow=True)\n    .start())\nquery.awaitTermination()\n",
@@ -2478,6 +2713,127 @@ LAB.real = {
     ]
    ]
   },
+  "sdp.gold_rows": {
+   "cols": [
+    "order_date",
+    "orders",
+    "revenue_usd"
+   ],
+   "rows": [
+    [
+     "2026-03-14",
+     "3",
+     "107.50"
+    ],
+    [
+     "2026-03-15",
+     "1",
+     "55.00"
+    ],
+    [
+     "2026-03-16",
+     "2",
+     "60.50"
+    ],
+    [
+     "2026-03-17",
+     "3",
+     "89.00"
+    ]
+   ]
+  },
+  "sdp.silver_rows": {
+   "cols": [
+    "order_id",
+    "customer_id",
+    "order_ts",
+    "status",
+    "total_usd",
+    "_loaded_at"
+   ],
+   "rows": [
+    [
+     "O-5001",
+     "C-42",
+     "2026-03-14 09:12:00",
+     "SHIPPED",
+     "67.00",
+     "2026-03-14 10:31:44"
+    ],
+    [
+     "O-5002",
+     "C-77",
+     "2026-03-14 09:15:00",
+     "PLACED",
+     "12.50",
+     "2026-03-14 09:31:07"
+    ],
+    [
+     "O-5003",
+     "C-42",
+     "2026-03-14 10:02:00",
+     "SHIPPED",
+     "28.00",
+     "2026-03-14 11:31:20"
+    ],
+    [
+     "O-5004",
+     "C-91",
+     "2026-03-15 11:20:00",
+     "SHIPPED",
+     "55.00",
+     "2026-03-15 12:00:05"
+    ],
+    [
+     "O-5005",
+     "C-12",
+     "2026-03-15 14:05:00",
+     "CANCELLED",
+     "29.00",
+     "2026-03-15 15:00:11"
+    ],
+    [
+     "O-5006",
+     "C-77",
+     "2026-03-16 08:40:00",
+     "SHIPPED",
+     "44.50",
+     "2026-03-16 09:30:02"
+    ],
+    [
+     "O-5007",
+     "C-42",
+     "2026-03-16 17:55:00",
+     "PLACED",
+     "16.00",
+     "2026-03-16 18:30:09"
+    ],
+    [
+     "O-5008",
+     "C-91",
+     "2026-03-17 12:30:00",
+     "SHIPPED",
+     "39.00",
+     "2026-03-17 13:00:41"
+    ],
+    [
+     "O-5009",
+     "C-12",
+     "2026-03-17 15:00:00",
+     "SHIPPED",
+     "30.00",
+     "2026-03-17 16:00:17"
+    ],
+    [
+     "O-5010",
+     "C-77",
+     "2026-03-17 16:20:00",
+     "PLACED",
+     "20.00",
+     "2026-03-17 17:00:03"
+    ]
+   ]
+  },
   "spark.orders_head": {
    "cols": [
     "order_id",
@@ -2814,6 +3170,8 @@ LAB.real = {
   "plan.skew_off": "== Physical Plan ==\nAdaptiveSparkPlan isFinalPlan=true\n+- == Final Plan ==\n   ResultQueryStage 2\n   +- *(5) Project [k#N, v#N, dim_id#N]\n      +- *(5) SortMergeJoin [k#N], [k#N], Inner\n         :- *(3) Sort [k#N ASC NULLS FIRST], false, 0\n         :  +- AQEShuffleRead coalesced\n         :     +- ShuffleQueryStage 0\n         :        +- Exchange hashpartitioning(k#N, 8), ENSURE_REQUIREMENTS, \n         :           +- *(1) Project [CASE WHEN ((id#N % 10) < 8) THEN K-0 ELSE concat(K-, cast(((id#N % 49) + 1) as string)) END AS k#N, id#N AS v#N]\n         :              +- *(1) Filter CASE WHEN ((id#N % 10) < 8) THEN true ELSE isnotnull(concat(K-, cast(((id#N % 49) + 1) as string))) END\n         :                 +- *(1) Range (0, 300000, step=1, splits=4)\n         +- *(4) Sort [k#N ASC NULLS FIRST], false, 0\n            +- AQEShuffleRead coalesced\n               +- ShuffleQueryStage 1\n                  +- Exchange hashpartitioning(k#N, 8), ENSURE_REQUIREMENTS, \n                     +- *(2) Project [concat(K-, cast(id#N as string)) AS k#N, id#N AS dim_id#N]\n                        +- *(2) Range (0, 50, step=1, splits=4)\n+- == Initial Plan ==\n   Project [k#N, v#N, dim_id#N]\n   +- SortMergeJoin [k#N], [k#N], Inner\n      :- Sort [k#N ASC NULLS FIRST], false, 0\n      :  +- Exchange hashpartitioning(k#N, 8), ENSURE_REQUIREMENTS, \n      :     +- Project [CASE WHEN ((id#N % 10) < 8) THEN K-0 ELSE concat(K-, cast(((id#N % 49) + 1) as string)) END AS k#N, id#N AS v#N]\n      :        +- Filter CASE WHEN ((id#N % 10) < 8) THEN true ELSE isnotnull(concat(K-, cast(((id#N % 49) + 1) as string))) END\n      :           +- Range (0, 300000, step=1, splits=4)\n      +- Sort [k#N ASC NULLS FIRST], false, 0\n         +- Exchange hashpartitioning(k#N, 8), ENSURE_REQUIREMENTS, \n            +- Project [concat(K-, cast(id#N as string)) AS k#N, id#N AS dim_id#N]\n               +- Range (0, 50, step=1, splits=4)",
   "plan.skew_on": "== Physical Plan ==\nAdaptiveSparkPlan isFinalPlan=true\n+- == Final Plan ==\n   ResultQueryStage 2\n   +- *(5) Project [k#N, v#N, dim_id#N]\n      +- *(5) SortMergeJoin(skew=true) [k#N], [k#N], Inner\n         :- *(3) Sort [k#N ASC NULLS FIRST], false, 0\n         :  +- AQEShuffleRead skewed\n         :     +- ShuffleQueryStage 0\n         :        +- Exchange hashpartitioning(k#N, 8), ENSURE_REQUIREMENTS, \n         :           +- *(1) Project [CASE WHEN ((id#N % 10) < 8) THEN K-0 ELSE concat(K-, cast(((id#N % 49) + 1) as string)) END AS k#N, id#N AS v#N]\n         :              +- *(1) Filter CASE WHEN ((id#N % 10) < 8) THEN true ELSE isnotnull(concat(K-, cast(((id#N % 49) + 1) as string))) END\n         :                 +- *(1) Range (0, 300000, step=1, splits=4)\n         +- *(4) Sort [k#N ASC NULLS FIRST], false, 0\n            +- AQEShuffleRead\n               +- ShuffleQueryStage 1\n                  +- Exchange hashpartitioning(k#N, 8), ENSURE_REQUIREMENTS, \n                     +- *(2) Project [concat(K-, cast(id#N as string)) AS k#N, id#N AS dim_id#N]\n                        +- *(2) Range (0, 50, step=1, splits=4)\n+- == Initial Plan ==\n   Project [k#N, v#N, dim_id#N]\n   +- SortMergeJoin [k#N], [k#N], Inner\n      :- Sort [k#N ASC NULLS FIRST], false, 0\n      :  +- Exchange hashpartitioning(k#N, 8), ENSURE_REQUIREMENTS, \n      :     +- Project [CASE WHEN ((id#N % 10) < 8) THEN K-0 ELSE concat(K-, cast(((id#N % 49) + 1) as string)) END AS k#N, id#N AS v#N]\n      :        +- Filter CASE WHEN ((id#N % 10) < 8) THEN true ELSE isnotnull(concat(K-, cast(((id#N % 49) + 1) as string))) END\n      :           +- Range (0, 300000, step=1, splits=4)\n      +- Sort [k#N ASC NULLS FIRST], false, 0\n         +- Exchange hashpartitioning(k#N, 8), ENSURE_REQUIREMENTS, \n            +- Project [concat(K-, cast(id#N as string)) AS k#N, id#N AS dim_id#N]\n               +- Range (0, 50, step=1, splits=4)",
   "plan.udf": "== Physical Plan ==\n*(1) Project [pythonUDF0#N AS s#N]\n+- ArrowEvalPython [<lambda>(status#N)#N], [pythonUDF0#N], 101\n   +- FileScan csv [status#N] Batched: false, DataFilters: [], Format: CSV, Location: InMemoryFileIndex(1 paths)[file:/...], PartitionFilters: [], PushedFilters: [], ReadSchema: struct<status:string>",
+  "sdp.err_typo": "Failed to resolve flows in the pipeline. A flow can fail to resolve because the flow itself contains errors or because it reads from an upstream flow which failed to resolve. Flows with errors: spark_catalog.default.gold_daily_revenue Flows that failed due to upstream errors: To view the exceptions that were raised while resolving these flows, look for flow failures that precede this log.",
+  "sdp.err_typo_cause": "[TABLE_OR_VIEW_NOT_FOUND] The table or view `spark_catalog`.`default`.`silver_ordres` cannot be found. Verify the spelling and correctness of the schema and catalog.",
   "spark.schema_orders": "root\n |-- order_id: string (nullable = true)\n |-- customer_id: string (nullable = true)\n |-- order_ts: timestamp (nullable = true)\n |-- status: string (nullable = true)\n |-- total_usd: decimal(12,2) (nullable = true)\n |-- _loaded_at: timestamp (nullable = true)",
   "stream.err_append_no_watermark": "[STREAMING_OUTPUT_MODE.UNSUPPORTED_OPERATION] Invalid streaming output mode: append. This output mode is not supported for streaming aggregations without watermark on streaming DataFrames/DataSets. SQLSTATE: 42KDE",
   "test.pytest_fail": ".F.                                                                      [100%]\n=================================== FAILURES ===================================\n_________________ test_daily_revenue_ignores_cancelled_orders __________________\ntests/test_transforms.py:28: in test_daily_revenue_ignores_cancelled_orders\n    assert [(r.orders, r.revenue_usd) for r in result] == [(1, Decimal(\"10.00\"))]\nE   AssertionError: assert [(2, Decimal('109.00'))] == [(1, Decimal('10.00'))]\nE     \nE     At index 0 diff: (2, Decimal('109.00')) != (1, Decimal('10.00'))\nE     Use -v to get more diff\n=========================== short test summary info ============================\nFAILED tests/test_transforms.py::test_daily_revenue_ignores_cancelled_orders\n1 failed, 2 passed in N s",

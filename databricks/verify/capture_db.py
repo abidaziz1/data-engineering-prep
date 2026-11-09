@@ -8,7 +8,7 @@ plans, Delta transaction log entries, DESCRIBE HISTORY rows, error messages and 
 It records the open-source engines. It does not record Databricks itself: Unity Catalog, Auto Loader, declarative
 pipelines, Workflows, Photon, serverless compute and the Azure integration are not here. The lessons say which is which.
 
-Usage:   python3 databricks/verify/capture_db.py [--out databricks/js/real.js] [--only spark,delta,conflict,layout,stream,pipeline,test] [--json FILE]
+Usage:   python3 databricks/verify/capture_db.py [--out databricks/js/real.js] [--only spark,delta,conflict,layout,stream,pipeline,sdp,test] [--json FILE]
 Needs:   pip install pyspark==4.2.0 delta-spark==4.4.1 pandas pyarrow pytest   and Java 17 or 21.
          The first run downloads the Delta jar from Maven Central.
 """
@@ -20,7 +20,7 @@ RAW = ROOT / 'dbt' / 'verify' / 'raw'          # the Brewline raw files used by 
 
 ap = argparse.ArgumentParser()
 ap.add_argument('--out', default=str(HERE.parent / 'js' / 'real.js'))
-ap.add_argument('--only', default='spark,delta,conflict,layout,stream,pipeline,test')
+ap.add_argument('--only', default='spark,delta,conflict,layout,stream,pipeline,sdp,test')
 ap.add_argument('--json')
 args = ap.parse_args()
 ONLY = set(args.only.split(','))
@@ -839,6 +839,135 @@ if 'stream' in ONLY or 'pipeline' in ONLY:
     cls, msg = exc(lambda: nowm.writeStream.outputMode('append').format('noop').option('checkpointLocation', str(S / '_chk' / 'nowm')).start())
     text('stream.err_append_no_watermark', msg)
     print('stream group done')
+
+
+# ============================================================================= 4b. SPARK DECLARATIVE PIPELINES (open source)
+if 'sdp' in ONLY:
+    # Apache Spark 4.2 ships declarative pipelines: datasets are declared, and the framework orders, runs and tracks them. Databricks calls its
+    # version Lakeflow Spark Declarative Pipelines. The open-source one has no expectations, no AUTO CDC on a Delta target and no event log.
+    import pyspark as _pyspark
+    P = WORK / 'sdp'
+    proj, landing, conf_dir = P / 'proj', P / 'landing' / 'orders', P / 'conf'
+    shutil.copytree(HERE / 'sdpproj', proj, ignore=shutil.ignore_patterns('__pycache__', 'spark-warehouse', 'pipeline-storage', 'metastore_db'))
+    landing.mkdir(parents=True); conf_dir.mkdir()
+    # the local runs need three settings that a platform provides: Delta tables by default, a catalog that survives between runs, and a warehouse folder
+    (conf_dir / 'spark-defaults.conf').write_text('\n'.join([
+        'spark.jars.packages ' + spark.sparkContext.getConf().get('spark.jars.packages'),
+        'spark.sql.extensions io.delta.sql.DeltaSparkSessionExtension',
+        'spark.sql.catalog.spark_catalog org.apache.spark.sql.delta.catalog.DeltaCatalog',
+        'spark.sql.sources.default delta',
+        'spark.sql.catalogImplementation hive',
+        'spark.hadoop.javax.jdo.option.ConnectionURL jdbc:derby:;databaseName=%s;create=true' % (P / 'metastore_db'),
+        'spark.sql.warehouse.dir %s' % (proj / 'spark-warehouse'), '']))
+    for rel in ('spark-pipeline.yml', 'transformations/bronze.py', 'transformations/silver.py', 'transformations/gold.sql'):
+        OUT['files']['sdp/' + rel] = (proj / rel).read_text()
+    spec_path = proj / 'spark-pipeline.yml'
+    spec_path.write_text(spec_path.read_text().replace('/data/brewline/pipeline-storage', str(proj / 'pipeline-storage')).replace('/data/brewline/landing', str(P / 'landing')))
+    cli = os.path.join(os.path.dirname(_pyspark.__file__), 'bin', 'spark-pipelines')
+    env = dict(os.environ, PYSPARK_PYTHON=sys.executable, SPARK_CONF_DIR=str(conf_dir))
+
+    def clean_sdp(l):
+        l = l.replace(str(proj), '.').replace(str(P), '<work>')
+        return re.sub(r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', '<id>', l)
+
+    def sdp_run(*args, project=None):
+        r = subprocess.run([cli] + list(args), cwd=project or proj, env=env, capture_output=True, text=True, timeout=900)
+        raw = r.stdout + r.stderr
+        log = [clean_sdp(m.group(1)) for m in (re.match(r'^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d: (.*)$', l) for l in raw.splitlines()) if m]
+        err = None
+        lines = raw.splitlines()
+        idx = [i for i, l in enumerate(lines) if re.match(r'^pyspark\.errors\.exceptions\.[\w.]+: ', l)]
+        if idx:
+            block = [re.sub(r'^pyspark\.errors\.exceptions\.[\w.]+: ', '', lines[idx[0]])]
+            for l in lines[idx[0] + 1:]:
+                if re.match(r'^(Ivy|Picked up|WARNING|\t|:: |\d{4}-\d\d-\d\d)', l):
+                    break
+                block.append(l)
+            err = clean_msg(re.sub(r'\s*\n\s*', ' ', clean_sdp('\n'.join(block)))).split(' SQLSTATE')[0].strip()
+        cause = None
+        m = re.search(r'^Error: (\[[A-Z_.]+\] .*?)(?: SQLSTATE|$)', raw, re.M)
+        if m:
+            cause = clean_msg(clean_sdp(m.group(1)))
+        return {'rc': r.returncode, 'log': log, 'error': err, 'cause': cause}
+
+    def land_json(name, rows):
+        lines = [json.dumps({'order_id': r[0], 'customer_id': r[1], 'order_ts': r[2].replace(' ', 'T') + '.000Z', 'status': r[3], 'total_usd': r[4], '_loaded_at': r[5].replace(' ', 'T') + '.000Z'}) for r in rows]
+        (landing / name).write_text('\n'.join(lines) + '\n')
+        return {'file': name, 'rows': len(rows)}
+
+    import csv
+    allrows = [(r['order_id'], r['customer_id'], r['order_ts'], r['status'], r['total_usd'], r['_loaded_at']) for r in csv.DictReader(open(RAW / 'orders.csv'))]
+    by_day = lambda *days: [r for r in allrows if r[5][:10] in days]
+
+    def table_path(t):
+        return str(proj / 'spark-warehouse' / t)
+
+    def sizes():
+        return {t: spark.read.format('delta').load(table_path(t)).count() for t in ('bronze_orders', 'silver_orders', 'gold_daily_revenue')}
+
+    def ops(t):
+        return ['v%d %s' % (r['version'], r['operation']) for r in history(table_path(t), 'sdp._tmp_' + t)]
+
+    runs = []
+    dry = sdp_run('dry-run')
+    if dry['rc'] != 0:
+        raise SystemExit('the dry run failed: %s | %s' % (dry['error'], ' / '.join(dry['log'][-6:])))
+    OUT['counts']['sdp.dry_run'] = dry
+    arrivals = [('first run: two files', lambda: [land_json('orders_20260314.json', by_day('2026-03-14')), land_json('orders_20260315.json', by_day('2026-03-15'))]),
+                ('second run: a new day and a resend', lambda: [land_json('orders_20260316_17.json', by_day('2026-03-16', '2026-03-17')), land_json('orders_20260315_resend.json', [r for r in by_day('2026-03-15') if r[0] in ('O-5004', 'O-5005')])]),
+                ('third run: no new files', lambda: [])]
+    for label, make in arrivals:
+        landed = make()
+        res = sdp_run('run')
+        if res['rc'] != 0:
+            raise SystemExit('the pipeline run failed: %s | %s' % (res['error'], ' / '.join(res['log'][-6:])))
+        res.update({'label': label, 'landed': landed, 'rows': sizes()})
+        runs.append(res)
+        if len(runs) == 2:
+            table('sdp.gold_rows', spark.read.format('delta').load(table_path('gold_daily_revenue')), order=['order_date'])
+            table('sdp.silver_rows', spark.read.format('delta').load(table_path('silver_orders')), order=['order_id'])
+    OUT['counts']['sdp.runs'] = runs
+    OUT['counts']['sdp.versions_after_run3'] = {t: ops(t) for t in ('bronze_orders', 'silver_orders', 'gold_daily_revenue')}
+    for t in ('bronze_orders', 'silver_orders', 'gold_daily_revenue'):
+        OUT['history'].pop('sdp._tmp_' + t, None)
+    # reset one streaming table and read all its files again
+    full = sdp_run('run', '--full-refresh', 'bronze_orders')
+    full.update({'label': 'full refresh of bronze_orders', 'rows': sizes()})
+    OUT['counts']['sdp.full_refresh'] = full
+    # a typo in a table name: the dry run finds it before any data is touched
+    bad = P / 'bad'
+    shutil.copytree(proj, bad, ignore=shutil.ignore_patterns('spark-warehouse', 'pipeline-storage', 'metastore_db', '__pycache__'))
+    gold_sql = (bad / 'transformations' / 'gold.sql')
+    gold_sql.write_text(gold_sql.read_text().replace('FROM silver_orders', 'FROM silver_ordres'))
+    spec_bad = (bad / 'spark-pipeline.yml')
+    spec_bad.write_text(spec_bad.read_text().replace(str(proj), str(bad)))
+    bad_res = sdp_run('dry-run', project=bad)
+    OUT['counts']['sdp.dry_run_typo'] = bad_res
+    OUT['files']['sdp/gold_typo.sql'] = gold_sql.read_text()
+    if bad_res['error']:
+        text('sdp.err_typo', bad_res['error'])
+    if bad_res['cause']:
+        text('sdp.err_typo_cause', bad_res['cause'])
+    # AUTO CDC on a Delta target: the open-source framework in Spark 4.2.0 refuses it. The lesson says AUTO CDC comes from documentation.
+    cdc = P / 'cdc'
+    shutil.copytree(proj, cdc, ignore=shutil.ignore_patterns('spark-warehouse', 'pipeline-storage', 'metastore_db', '__pycache__'))
+    AUTOCDC = (
+        'from pyspark import pipelines as dp\n\n'
+        'dp.create_streaming_table("silver_orders_cdc")\n\n'
+        'dp.create_auto_cdc_flow(\n    target="silver_orders_cdc",\n    source="bronze_orders_cdc",\n    keys=["order_id"],\n'
+        '    sequence_by="_loaded_at",\n    stored_as_scd_type=1,\n)\n')
+    (cdc / 'transformations' / 'silver.py').write_text(AUTOCDC)
+    (cdc / 'transformations' / 'gold.sql').unlink()
+    bronze_cdc = cdc / 'transformations' / 'bronze.py'
+    bronze_cdc.write_text(bronze_cdc.read_text().replace('name="bronze_orders"', 'name="bronze_orders_cdc"'))
+    spec_cdc = cdc / 'spark-pipeline.yml'
+    spec_cdc.write_text(spec_cdc.read_text().replace(str(proj), str(cdc)))
+    OUT['files']['sdp/silver_autocdc.py'] = AUTOCDC
+    cdc_res = sdp_run('run', project=cdc)
+    OUT['counts']['sdp.autocdc_attempt'] = {'rc': cdc_res['rc'], 'error': cdc_res['error']}
+    if cdc_res['error']:
+        text('sdp.err_autocdc', cdc_res['error'])
+    print('sdp group done')
 
 
 # ============================================================================= 5. TESTING PYSPARK CODE

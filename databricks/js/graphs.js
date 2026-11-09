@@ -128,6 +128,24 @@
   };
 
   /* ------------------------------------------------------------------ */
+  /* 4b. The declarative pipeline: three datasets, ordered by references */
+  /* ------------------------------------------------------------------ */
+  S.sdp = {
+    w: 1100, h: 230, label: 'A declarative pipeline: landing files feed the streaming table bronze_orders, which feeds the materialized view silver_orders, which feeds the materialized view gold_daily_revenue. The framework finds this order from the references in the queries',
+    nodes: [
+      { id: 'land', k: 'dag', x: 0, y: 80, w: 190, h: 70, t: 'landing', s: 'JSON files', c: 'src' },
+      { id: 'brz', k: 'dag', x: 270, y: 80, w: 240, h: 70, t: 'bronze_orders', s: 'streaming table', c: 'stg' },
+      { id: 'slv', k: 'dag', x: 590, y: 80, w: 240, h: 70, t: 'silver_orders', s: 'materialized view', c: 'int' },
+      { id: 'gld', k: 'dag', x: 880, y: 80, w: 220, h: 70, t: 'gold_daily_revenue', s: 'materialized view', c: 'mart' }
+    ],
+    edges: [
+      { id: 'd1', a: 'land', b: 'brz', d: 'M190 115 H270' },
+      { id: 'd2', a: 'brz', b: 'slv', d: 'M510 115 H590' },
+      { id: 'd3', a: 'slv', b: 'gld', d: 'M830 115 H880' }
+    ]
+  };
+
+  /* ------------------------------------------------------------------ */
   /* 5. Unity Catalog                                                    */
   /* ------------------------------------------------------------------ */
   S.uc = {

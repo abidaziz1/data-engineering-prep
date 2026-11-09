@@ -1,0 +1,7 @@
+name: brewline
+storage: file:///data/brewline/pipeline-storage
+libraries:
+  - glob:
+      include: transformations/**
+configuration:
+  brewline.landing: /data/brewline/landing/orders
