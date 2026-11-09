@@ -143,6 +143,87 @@
     W.conflictInfo = { scenarios: SC, failed: failed };
   })();
 
+  /* ====================== Watermark lab ====================== */
+  (function () {
+    var DELAY = 10;
+    function parse(t) { var p = t.split(':'); return +p[0] * 60 + +p[1]; }
+    function fmt(m) { return ('0' + Math.floor(m / 60)).slice(-2) + ':' + ('0' + (m % 60)).slice(-2); }
+    function win(m) { return Math.floor(m / 10) * 10; }
+    function win2(w) { return fmt(w) + ' to ' + fmt(w + 10); }
+    /* replay the recorded arrivals with the watermark rule: late if the window already ended before the watermark */
+    function replay(upto) {
+      var runs = G.counts('stream.watermark_runs'), wm = null, maxEt = null, state = {}, done = {}, out = [];
+      for (var i = 0; i <= upto; i++) {
+        var ev = runs[i].event_times.map(parse), rows = [], dropped = 0;
+        ev.forEach(function (m) {
+          var late = wm !== null && win(m) + 10 <= wm;
+          if (late) dropped++; else state[win(m)] = (state[win(m)] || 0) + 1;
+          rows.push({ t: m, w: win(m), late: late });
+          maxEt = maxEt === null ? m : Math.max(maxEt, m);
+        });
+        var wmBefore = wm;
+        wm = maxEt - DELAY;
+        var emitted = [];
+        Object.keys(state).map(Number).sort(function (a, b) { return a - b; }).forEach(function (w) { if (!done[w] && w + 10 <= wm) { done[w] = true; emitted.push({ start: w, orders: state[w] }); } });
+        out.push({ label: runs[i].label, rows: rows, dropped: dropped, wmBefore: wmBefore, wm: wm, maxEt: maxEt, emitted: emitted, state: JSON.parse(JSON.stringify(state)), done: JSON.parse(JSON.stringify(done)) });
+      }
+      return out;
+    }
+    /* the replay must agree with what Spark recorded */
+    (function check() {
+      var runs = G.counts('stream.watermark_runs'), all = replay(runs.length - 1);
+      all.forEach(function (st, i) {
+        var r = runs[i];
+        G.expect(fmt(st.wm) === r.watermark.slice(11, 16), 'the watermark after arrival ' + (i + 1) + ' is ' + r.watermark);
+        G.expect(st.dropped === r.dropped_by_watermark, 'rows dropped by the watermark in arrival ' + (i + 1));
+        G.expect(JSON.stringify(st.emitted.map(function (e) { return [fmt(e.start), e.orders]; })) === JSON.stringify(r.emitted.map(function (e) { return [e.window_start.slice(11, 16), e.orders]; })), 'windows emitted in arrival ' + (i + 1));
+      });
+    })();
+    W.watermark = {
+      steps: function () { return 2; },
+      hint: 'Pick an arrival. Read the watermark and the verdict on each event.',
+      say: function (s, i) {
+        return [
+          'These are the three files that fed the real stream. Each file is one run. Pick one and read three things: the largest event time so far, the watermark that follows from it (that time minus 10 minutes), and what Spark did with each event.',
+          'Now compare the stream with a plain batch count over the same three files. They disagree in one window. That window lost an event, because the event arrived after Spark had closed the window.'
+        ][i];
+      },
+      mood: function (s, i) { return i === 0 ? 'think' : 'oops'; },
+      render: function (box, s, i, A) {
+        var st = A.local.wm || (A.local.wm = { k: 0 }), runs = G.counts('stream.watermark_runs'), h = '<div class="lab">';
+        if (i === 0) {
+          var cur = replay(st.k)[st.k], r = runs[st.k];
+          var winRows = Object.keys(cur.state).map(Number).sort(function (a, b) { return a - b; }).map(function (w) {
+            var closed = cur.done[w], status = closed ? 'emitted with ' + cur.state[w] + ' orders' : 'open';
+            return [win2(w), String(cur.state[w]), status];
+          });
+          h += '<div class="sel-chips">' + chips([0, 1, 2], st.k, 'wm-k', function (k) { return 'arrival ' + (k + 1) + ': ' + runs[k].event_times.join(', '); }) + '</div>' +
+            '<div class="lab-out"><div class="big"><b>' + fmt(cur.maxEt) + '</b><span>largest event time so far</span></div><div class="big"><b>' + fmt(cur.wm) + '</b><span>watermark: largest minus ' + DELAY + ' minutes</span></div><div class="big ' + (cur.dropped ? 'bad' : 'good') + '"><b>' + cur.dropped + '</b><span>events dropped as late (Spark counted ' + r.dropped_by_watermark + ')</span></div></div>' +
+            table(['Event time', 'Its window', 'Verdict'], cur.rows.map(function (e) {
+              return [fmt(e.t), win2(e.w), e.late ? 'dropped: the window ended before the watermark ' + fmt(cur.wmBefore) : 'counted'];
+            }), function (row, n) { return cur.rows[n].late ? 'dup' : ''; }) +
+            table(['Window', 'Orders in state', 'Status after this arrival'], winRows, function (row, n) { return /emitted/.test(row[2]) ? 'new' : ''; });
+          h += '<div class="callout ' + (cur.dropped ? 'warn' : 'tip') + '">' + md(
+            st.k === 0 ? 'No window can close yet. The watermark ' + fmt(cur.wm) + ' is before the end of every window, so Spark emits nothing and keeps the three events in its state.' :
+            st.k === 1 ? 'The watermark moved to ' + fmt(cur.wm) + '. The window ' + win2(cur.emitted[0].start) + ' ended at ' + fmt(cur.emitted[0].start + 10) + ', before the watermark. Spark emits it with **' + cur.emitted[0].orders + '** orders and drops its state.' :
+            'The 09:04 event belongs to the window 09:00 to 09:10. Spark closed that window in the last run, so the event arrives too late and Spark **drops it**. Meanwhile the event at 09:31 moves the watermark to ' + fmt(cur.wm) + ', which closes the window ' + win2(cur.emitted[0].start) + '.') + '</div>';
+        } else {
+          var batch = G.table('stream.watermark_batch_counts'), last = replay(2)[2];
+          var rows = batch.rows.map(function (b) {
+            var w = parse(b[0].slice(11, 16)), done = last.done[w], got = done ? String(last.state[w]) : 'not emitted yet';
+            return [win2(w), got, b[2], done ? String(parseInt(b[2], 10) - last.state[w]) : 'still open'];
+          });
+          h += table(['Window', 'Stream result', 'Batch recount', 'Events lost'], rows, function (row) { return row[3] !== '0' && row[3] !== 'still open' ? 'dup' : ''; }) +
+            '<div class="callout warn">The stream said <b>3</b> for the first window. The batch recount says <b>4</b>. Spark reported <b>' + runs[2].dropped_by_watermark + '</b> row dropped by the watermark. The batch job has no watermark, so it counts every event.</div>' +
+            '<div class="callout tip"><b>The trade.</b> A longer watermark would have kept the window open until 09:14 or later and counted the late event. It would also have delayed every result and kept more state. Pick the delay from how late your events really arrive.</div>';
+        }
+        box.innerHTML = h + '</div>';
+        A.bindWidget = function (act, el) { if (act === 'wm-k') { st.k = +el.getAttribute('data-v'); A.render(true); } };
+      }
+    };
+    W.watermarkInfo = { replay: replay };
+  })();
+
   /* ====================== Join strategy lab ====================== */
   (function () {
     var PLANS = [

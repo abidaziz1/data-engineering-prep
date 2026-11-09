@@ -834,6 +834,10 @@ if 'stream' in ONLY or 'pipeline' in ONLY:
     batch = (spark.read.schema('event_time timestamp, order_id string').json(ns['events_dir']).groupBy(F.window('event_time', '10 minutes').alias('w'))
              .agg(F.count('*').alias('orders')).select(F.col('w.start').alias('window_start'), F.col('w.end').alias('window_end'), 'orders'))
     table('stream.watermark_batch_counts', batch, order=['window_start'])
+    # append mode on a windowed aggregation needs a watermark: the error without one
+    nowm = (spark.readStream.format('rate').option('rowsPerSecond', 1).load().groupBy(F.window('timestamp', '10 minutes')).count())
+    cls, msg = exc(lambda: nowm.writeStream.outputMode('append').format('noop').option('checkpointLocation', str(S / '_chk' / 'nowm')).start())
+    text('stream.err_append_no_watermark', msg)
     print('stream group done')
 
 
