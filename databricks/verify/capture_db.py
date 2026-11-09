@@ -466,6 +466,17 @@ if 'delta' in ONLY:
         h = history(pd, 'delta.' + label)
         OUT['counts']['delta.' + label + '_files'] = {'files_in_folder': len(files_of(pd)), 'rows_after': spark.read.format('delta').load(pd).count()}
 
+    # a merge whose source holds two rows for one key
+    pm = str(D / 'merge_dupes')
+    latest(day('2026-03-14')).select(cols).coalesce(1).write.format('delta').save(pm)
+    dupes = spark.createDataFrame(
+        [('O-5002', 'C-77', datetime.datetime(2026, 3, 14, 9, 12), 'SHIPPED', decimal.Decimal('12.50'), datetime.datetime(2026, 3, 15, 9, 0)),
+         ('O-5002', 'C-77', datetime.datetime(2026, 3, 14, 9, 12), 'CANCELLED', decimal.Decimal('12.50'), datetime.datetime(2026, 3, 15, 10, 0))],
+        'order_id string, customer_id string, order_ts timestamp, status string, total_usd decimal(12,2), _loaded_at timestamp')
+    dupes.createOrReplaceTempView('dupes')
+    cls, msg = exc(lambda: sql('merge into delta.`%s` as t using dupes as s on t.order_id = s.order_id when matched then update set * when not matched then insert *' % pm))
+    text('delta.err_merge_duplicates', msg)
+
     # shallow clone
     pcl = str(D / 'clone')
     r = sql('create table delta.`%s` shallow clone delta.`%s`' % (pcl, p)).collect()[0].asDict()
@@ -815,8 +826,9 @@ if 'stream' in ONLY or 'pipeline' in ONLY:
         ns['emitted'].clear()
         run_snippet('stream/watermark.py', WM, ns)
         lp = ns['query'].lastProgress or {}
+        dropped = sum(so.get('numRowsDroppedByWatermark', 0) for pr in ns['query'].recentProgress for so in (pr.get('stateOperators') or []))
         wm_runs.append({'label': label, 'event_times': ['09:%02d' % m for m in minutes], 'emitted': list(ns['emitted']), 'watermark': (lp.get('eventTime') or {}).get('watermark'),
-                        'rows_in': sum(pr['numInputRows'] for pr in ns['query'].recentProgress)})
+                        'rows_in': sum(pr['numInputRows'] for pr in ns['query'].recentProgress), 'dropped_by_watermark': dropped})
     OUT['counts']['stream.watermark_runs'] = wm_runs
     # the same three files read as a batch: the late event exists, and the streaming query dropped it
     batch = (spark.read.schema('event_time timestamp, order_id string').json(ns['events_dir']).groupBy(F.window('event_time', '10 minutes').alias('w'))

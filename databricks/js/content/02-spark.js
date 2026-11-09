@@ -13,6 +13,10 @@
   G.expect(/BroadcastHashJoin/.test(G.text('plan.join_default')) && /SortMergeJoin/.test(G.text('plan.join_no_broadcast')) && /BroadcastHashJoin/.test(G.text('plan.join_hint_broadcast')), 'the join strategies');
   var SKEW_MAX = Math.max.apply(null, SZ.by_key), SKEW_AVG = SZ.by_key.reduce(function (a, b) { return a + b; }, 0) / SZ.by_key.length;
   var MB = function (b) { return Math.round(parseInt(b, 10) / 1048576); };
+  G.expect(SH200 === 200 && SH8 === 8 && SHAQE === 1, 'a shuffle writes 200, 8 and 1 files');
+  G.expect((SKEW_MAX / SKEW_AVG).toFixed(1) === '6.6', 'the biggest partition is 6.6 times the average');
+  G.expect(MB(DEF['spark.sql.autoBroadcastJoinThreshold']) === 10 && DEF['spark.sql.adaptive.skewJoin.skewedPartitionFactor'] === '5.0' && MB(DEF['spark.sql.adaptive.skewJoin.skewedPartitionThresholdInBytes']) === 256, 'the default broadcast and skew thresholds');
+  G.expect(/SortMergeJoin\(skew=true\)/.test(G.text('plan.skew_on')) && /AQEShuffleRead coalesced/.test(AQE_AFTER), 'the adaptive plans show the skew split and the coalesce');
 
   var LAZYCODE = [
     'q = (orders',

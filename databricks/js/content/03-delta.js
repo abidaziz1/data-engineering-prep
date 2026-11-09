@@ -12,7 +12,12 @@
   var MERGE = G.file('delta/merge.sql');
   var MERGE_M = G.metrics(KEY, 4);
   var COMMIT0 = G.commitText(KEY, 0), DVCOMMIT = G.commitText('delta.dv_on_delete', 1, { kinds: ['add', 'remove'] });
-  G.expect(V5.files.length === 9 && V0.files.length === 1, 'the folder holds 9 data files after version 5 and 1 after version 0');
+  var PROTO = G.actions(KEY, 0, 'protocol')[0], DV = G.actions('delta.dv_on_delete', 1, 'add')[0].deletionVector;
+  var SILV = G.metrics('stream.silver_history', 2);
+  G.expect(V5.files.length === 9 && V0.files.length === 1 && G.log(KEY).length === 6 && G.counts('delta.orders_v5').numFiles === 1, 'six commits, nine data files in the folder, one live file after version 5');
+  G.expect(V5.log.every(function (f) { return !/checkpoint/.test(f); }), 'the short log holds no checkpoint');
+  G.expect(G.actions(KEY, 5, 'add').every(function (a) { return a.dataChange === false; }) && G.actions(KEY, 5, 'remove').every(function (a) { return a.dataChange === false; }), 'OPTIMIZE writes dataChange false');
+  G.expect(SILV.numTargetRowsUpdated === '0', 'the resent file updated no rows in the silver merge');
   G.expect(CONF.append_append.a === 'committed' && CONF.update_append.a === 'ConcurrentAppendException' && CONF.update_append_partitioned.a === 'committed', 'the writer conflict outcomes');
   G.expect(DVON.files_in_folder === 1 && DVOFF.files_in_folder === 2 && DVOFF.rows_after === DVON.rows_after, 'deletion vectors keep one file and give the same rows');
 
@@ -136,7 +141,7 @@
           { say: 'This is the real file for version 0. A commit is a list of actions. Each action is one JSON object. Press Next to read them.', lines: null },
           { say: '`commitInfo` records what happened: the operation (WRITE), the engine that did it, the mode, and the metrics. `isBlindAppend` is true because this write added rows without reading the table.', lines: G.span(COMMIT0, /"commitInfo"/, /^\}/) },
           { say: '`metaData` holds the table id, the format, the partition columns and the schema. The schema is a JSON string, which I shortened here. Every schema change writes a new `metaData` action.', lines: G.span(COMMIT0, /"metaData"/, /"schemaString"/) },
-          { say: '`protocol` says which reader and writer features a client needs. Here: reader version ' + 1 + ', writer version ' + 2 + '. A client that does not know the version must refuse to touch the table.', lines: G.span(COMMIT0, /"protocol"/, /"minWriterVersion"/) },
+          { say: '`protocol` says which reader and writer features a client needs. Here: reader version ' + PROTO.minReaderVersion + ', writer version ' + PROTO.minWriterVersion + '. A client that does not know the version must refuse to touch the table.', lines: G.span(COMMIT0, /"protocol"/, /"minWriterVersion"/) },
           { say: '`add` registers one data file: its path, its size, and **statistics**: the row count, and the smallest and largest value of each column. Delta writes the statistics for the first columns of the table by default (documentation).', lines: G.span(COMMIT0, /"add"/, /"stats"/) },
           { say: 'The `minValues` and `maxValues` are what data skipping reads. A query for `customer_id = \'C-90\'` can skip this file without opening it, because C-42 to C-77 cannot contain C-90. Mission 4 measures it.', lines: G.span(COMMIT0, /"minValues"/, /"nullCount"/) }
         ],
@@ -353,7 +358,7 @@
         ],
         steps: [
           { upto: 3, say: 'The classic delete wrote a new file with the two surviving rows and removed the old one. With a deletion vector, no data file was written at all.' },
-          { upto: 5, say: 'The vector is a tiny file, 34 bytes here. The folder holds one data file and the vector. The old design needs two data files, one dead.' },
+          { upto: 5, say: 'The vector is tiny, ' + DV.sizeInBytes + ' bytes here. The folder holds one data file plus the vector. The old design holds two data files, and one of them is dead.' },
           { upto: 6, say: 'Both tables return the same rows. Readers apply the vector and skip the marked positions.' }
         ],
         pick: 'Use deletion vectors on tables that get **many small deletes and updates**. A later `OPTIMIZE` or `REORG` rewrites the files and clears the vectors. Check which engine versions can read them before you turn them on for shared tables.'
@@ -363,7 +368,7 @@
         id: 'm3-dvlog', t: 3, src: 'rec', title: 'A deletion vector in the log', file: 'the delete commit, with deletion vectors', lang: 'json', code: DVCOMMIT,
         steps: [
           { say: 'This is the log of the delete with deletion vectors on. The `add` carries the same data file as before, plus a `deletionVector` field.', lines: G.span(DVCOMMIT, /"add"/, /"deletionVector"/) },
-          { say: '`cardinality: 1` is the number of rows marked deleted. `sizeInBytes: 34` is the size of the vector. The location is encoded, and I replaced it here.', lines: G.span(DVCOMMIT, /"deletionVector"/, /"storageType"/) },
+          { say: '`cardinality: ' + DV.cardinality + '` is the number of rows marked deleted. `sizeInBytes: ' + DV.sizeInBytes + '` is the size of the vector. The location is encoded, and I replaced it here.', lines: G.span(DVCOMMIT, /"deletionVector"/, /"storageType"/) },
           { say: 'The `remove` names the same file path. Delta removes the old version of the file entry and adds it back with the vector. The Parquet file itself did not change.', lines: G.span(DVCOMMIT, /"remove"/, /^\}/) }
         ]
       }),
@@ -441,7 +446,7 @@
         id: 'qa-merge', t: 2, tag: 'Delta', secs: 90,
         q: 'How do you write a MERGE that is safe to run twice and safe with late or duplicate data?',
         pts: ['A unique key in the target and one row per key in the source', 'Deduplicate the source: newest row for each key', 'Update only when the source row is newer', 'Insert when not matched', 'A partition filter in the condition to limit what is read', 'Check the metrics: inserted, updated, deleted'],
-        short: 'First I make sure the source has one row per key. If the source can hold several versions of an order, I keep the newest with a window function. Two source rows that match one target row make the merge fail.\n\nThen I write the merge with a guard: `WHEN MATCHED AND s._loaded_at > t._loaded_at THEN UPDATE SET *` and `WHEN NOT MATCHED THEN INSERT *`. The guard means a resend of an old file cannot overwrite a newer row, so I can run the merge twice and get the same table. In my test the rerun with the same data updated zero rows.\n\nFor a large partitioned table I add the partition column to the condition, so Delta reads only the files it needs, and so a backfill does not cause a conflict. After the run I read the metrics in `DESCRIBE HISTORY`: rows inserted, updated and deleted. A sudden change in those numbers is my alert.',
+        short: 'First I make sure the source has one row per key. If the source can hold several versions of an order, I keep the newest with a window function. Two source rows that match one target row make the merge fail.\n\nThen I write the merge with a guard: `WHEN MATCHED AND s._loaded_at > t._loaded_at THEN UPDATE SET *` and `WHEN NOT MATCHED THEN INSERT *`. The guard means a resend of an old file cannot overwrite a newer row, so I can run the merge twice and get the same table. In the pipeline of mission 5, a file that arrived twice updated ' + SILV.numTargetRowsUpdated + ' rows.\n\nFor a large partitioned table I add the partition column to the condition, so Delta reads only the files it needs, and so a backfill does not cause a conflict. After the run I read the metrics in `DESCRIBE HISTORY`: rows inserted, updated and deleted. A sudden change in those numbers is my alert.',
         fu: [
           ['What if the source has duplicates on the key?', 'The merge fails with an error about multiple source rows matching one target row. Deduplicate first.'],
           ['How do you handle deletes from the source?', 'Add `WHEN MATCHED AND s.deleted THEN DELETE`, or `WHEN NOT MATCHED BY SOURCE` to remove rows that vanished (documentation, current Delta versions).']

@@ -630,6 +630,7 @@ LAB.real = {
   },
   "stream.watermark_runs": [
    {
+    "dropped_by_watermark": 0,
     "emitted": [],
     "event_times": [
      "09:00",
@@ -641,6 +642,7 @@ LAB.real = {
     "watermark": "2026-03-18T08:57:00.000Z"
    },
    {
+    "dropped_by_watermark": 0,
     "emitted": [
      {
       "batch": 3,
@@ -658,6 +660,7 @@ LAB.real = {
     "watermark": "2026-03-18T09:15:00.000Z"
    },
    {
+    "dropped_by_watermark": 1,
     "emitted": [
      {
       "batch": 5,
@@ -2790,6 +2793,7 @@ LAB.real = {
   "delta.err_constraint": "[DELTA_VIOLATE_CONSTRAINT_WITH_VALUES] CHECK constraint positive_total (total_usd > 0) violated by row with values:\n - total_usd : -5.00",
   "delta.err_constraint_existing_rows": "[DELTA_NEW_CHECK_CONSTRAINT_VIOLATION] 3 rows in delta.`file:/... violate the new CHECK constraint (total_usd > 100)",
   "delta.err_extra_column": "[DELTA_METADATA_MISMATCH] A metadata mismatch was detected when writing to the Delta table.\n- A schema mismatch detected when writing to the Delta table (Table ID: <table id>).\nTo enable schema migration using DataFrameWriter or DataStreamWriter, please set: '.option(\"mergeSchema\", \"true\")'.\nFor other operations, set the session configuration spark.databricks.delta.schema.autoMerge.enabled to \"true\". See the documentation specific to the operation for details.\n\nTable schema:\nroot\n |-- order_id: string (nullable = true)\n |-- customer_id: string (nullable = true)\n |-- order_ts: timestamp (nullable = true)\n |-- status: string (nullable = true)\n |-- total_usd: decimal(12,2) (nullable = true)\n |-- _loaded_at: timestamp (nullable = true)\n\n\nData schema:\nroot\n |-- order_id: string (nullable = true)\n |-- customer_id: string (nullable = true)\n |-- order_ts: timestamp (nullable = true)\n |-- status: string (nullable = true)\n |-- total_usd: decimal(12,2) (nullable = true)\n |-- _loaded_at: timestamp (nullable = true)\n |-- channel: string (nullable = true)",
+  "delta.err_merge_duplicates": "[DELTA_MULTIPLE_SOURCE_ROW_MATCHING_TARGET_ROW_IN_MERGE] Cannot perform Merge as multiple source rows matched and attempted to modify the same\ntarget row in the Delta table in possibly conflicting ways. By SQL semantics of Merge,\nwhen multiple source rows match on the same target row, the result may be ambiguous\nas it is unclear which source row should be used to update or delete the matching\ntarget row. You can preprocess the source table to eliminate the possibility of\nmultiple matches. Please refer to\nhttps://docs.delta.io/latest/delta-update.html#upsert-into-a-table-using-merge",
   "delta.err_type": "[DELTA_FAILED_TO_MERGE_FIELDS] Failed to merge fields 'total_usd' and 'total_usd'",
   "delta.schema_after_merge": "root\n |-- order_id: string (nullable = true)\n |-- customer_id: string (nullable = true)\n |-- order_ts: timestamp (nullable = true)\n |-- status: string (nullable = true)\n |-- total_usd: decimal(12,2) (nullable = true)\n |-- _loaded_at: timestamp (nullable = true)\n |-- channel: string (nullable = true)",
   "layout.err_time_travel_after_vacuum": "[FAILED_READ_FILE.FILE_NOT_EXIST] Encountered error while reading file file:/... File does not exist. It is possible the underlying files have been updated.\nYou can explicitly invalidate the cache in Spark by running 'REFRESH TABLE tableName' command in SQL or by recreating the Dataset/DataFrame involved. SQLSTATE: KD001",
