@@ -356,7 +356,7 @@
     function monthly(o) {
       var t = TYPES.filter(function (x) { return x.k === o.type; })[0];
       var nodes = o.workers + 1;
-      var vm = t.serverless ? 0 : nodes * o.vm * (1 - o.spot) * o.hours * o.days;
+      var vm = t.serverless ? 0 : (1 + o.workers * (1 - o.spot)) * o.vm * o.hours * o.days;      /* spot prices apply to workers, the driver stays on demand */
       var dbu = t.serverless ? o.dbuh * o.hours * o.days : nodes * o.dbuh * o.hours * o.days;
       var dbuCost = dbu * t.rate;
       return { dbu: dbu, dbuCost: dbuCost, vmCost: vm, total: dbuCost + vm, nodes: nodes };
@@ -384,9 +384,9 @@
             '<div class="lab-row"><span class="lab-l">VM price an hour</span><div class="sel-chips">' + chips([0.25, 0.5, 1, 2], st.vm, 'd-vm', function (k) { return '$' + k.toFixed(2); }) + '</div></div>' +
             '<div class="lab-row"><span class="lab-l">DBUs a node uses an hour</span><div class="sel-chips">' + chips([0.5, 1, 2, 4], st.dbuh, 'd-dbu', function (k) { return String(k); }) + '</div></div>' +
             '<div class="lab-row"><span class="lab-l">Hours a day</span><div class="sel-chips">' + chips([1, 2, 6, 24], st.hours, 'd-h', function (k) { return String(k); }) + '</div></div>' +
-            '<div class="lab-row"><span class="lab-l">Spot or low-priority VMs</span><div class="sel-chips">' + chips([0, 0.6], st.spot, 'd-spot', function (k) { return k ? '60 percent off' : 'none'; }) + '</div></div>' +
+            '<div class="lab-row"><span class="lab-l">Spot or low-priority VMs</span><div class="sel-chips">' + chips([0, 0.6], st.spot, 'd-spot', function (k) { return k ? 'workers 60 percent off' : 'none'; }) + '</div></div>' +
             '<div class="lab-out"><div class="big"><b>' + fmtN(r.dbu) + '</b><span>DBUs a month</span></div><div class="big"><b>$' + fmtN(r.dbuCost) + '</b><span>Databricks charge</span></div><div class="big"><b>$' + fmtN(r.vmCost) + '</b><span>cloud VM charge' + (TYPES.filter(function (x) { return x.k === st.type; })[0].serverless ? ' (included in the rate)' : '') + '</span></div><div class="big ' + (r.total > 3000 ? 'bad' : r.total > 800 ? 'warn' : 'good') + '"><b>$' + fmtN(r.total) + '</b><span>a month of 30 days</span></div></div>' +
-            '<p class="lab-note">' + esc(TYPES.filter(function (x) { return x.k === st.type; })[0].note) + ' Spot discounts apply to the VM charge only.</p>';
+            '<p class="lab-note">' + esc(TYPES.filter(function (x) { return x.k === st.type; })[0].note) + ' Spot discounts apply to the worker VMs only. The driver stays on demand.</p>';
         } else if (i === 1) {
           var rows = TYPES.slice(0, 2).map(function (t) { var r2 = monthly(Object.assign({}, st, { type: t.k })); return [t.name, '$' + t.rate.toFixed(2), fmtN(r2.dbu), '$' + fmtN(r2.dbuCost), '$' + fmtN(r2.vmCost), '$' + fmtN(r2.total)]; });
           h += table(['Compute type', 'Price a DBU', 'DBUs a month', 'Databricks charge', 'VM charge', 'Total'], rows, function (r, k) { return k === 0 ? 'new' : 'dup'; }) +
