@@ -8,7 +8,8 @@
      YAML is parsed with PyYAML, Python is compiled, JSON is parsed.
 2. The logic of the lab widgets is checked against the recorded dbt output (node dbt/verify/check_widgets.js).
 3. With --recapture, the whole project is run again and the new recording is compared with js/real.js.
-   Differences in timings, run-time dates and hashes are ignored. Anything else is reported.
+   Differences in timings, clock stamps, run-time dates and hashes are ignored. Anything else is reported.
+   With --fresh FILE, an earlier fresh recording is compared instead, which is quicker when you tune the comparison.
 
 Run:  python3 dbt/verify/verify_dbt.py [--recapture] [--dbt PATH]
 Needs: pip install sqlglot pyyaml jinja2 (and dbt-core, dbt-duckdb for --recapture), Node 20 or later.
@@ -23,6 +24,8 @@ logging.getLogger('sqlglot').setLevel(logging.ERROR)
 ROOT = pathlib.Path(__file__).resolve().parent.parent.parent
 ap = argparse.ArgumentParser()
 ap.add_argument('--recapture', action='store_true')
+ap.add_argument('--fresh', help='compare with an existing fresh recording instead of running capture.py')
+ap.add_argument('--verbose', action='store_true', help='show the first differing lines of each difference')
 ap.add_argument('--dbt', default=shutil.which('dbt') or str(pathlib.Path(sys.executable).with_name('dbt')))
 args = ap.parse_args()
 
@@ -109,42 +112,56 @@ if w.returncode:
     bad('check_widgets.js failed')
 
 # ---- 3. recapture and compare -------------------------------------------------------------------
-if args.recapture:
-    tmp = pathlib.Path(tempfile.mkdtemp()) / 'real.js'
-    r = subprocess.run([sys.executable, str(ROOT / 'dbt' / 'verify' / 'capture.py'), '--dbt', args.dbt, '--out', str(tmp)], capture_output=True, text=True)
-    if r.returncode:
-        print(r.stdout[-2000:], r.stderr[-2000:])
-        bad('capture.py failed')
+def norm(v):
+    """Make two recordings comparable: drop timings, clock stamps, run-time dates and hashes."""
+    if isinstance(v, str):
+        v = re.sub(r'(?m)^\d\d:\d\d:\d\d', 'HH:MM:SS', v)
+        v = re.sub(r'\b\d+\.\d+s\b', 'Ns', v)
+        v = re.sub(r'in 0 hours 0 minutes and [\d.]+ seconds', 'in N seconds', v)
+        v = re.sub(r'20\d\d-\d\d-\d\d \d\d:\d\d:\d\d(\.\d+)?', lambda m: m.group(0) if m.group(0).startswith('2026-03') else 'RUNTIME', v)
+        v = re.sub(r'\b[0-9a-f]{32}\b', 'HASH', v)
+        v = re.sub(r'"execution_time": [\d.]+', '"execution_time": N', v)
+        v = re.sub(r'"checksum": "[0-9a-f.]+', '"checksum": "H', v)
+        v = re.sub(r'revision [0-9a-f]{40}', 'revision H', v)
+        return v
+    if isinstance(v, list):
+        return [norm(x) for x in v]
+    if isinstance(v, dict):
+        return {k: norm(x) for k, x in v.items()}
+    return v
+
+
+def compare(old, new):
+    diffs = 0
+    for section in sorted(set(old) | set(new)):
+        a, b = norm(old.get(section, {})), norm(new.get(section, {}))
+        if isinstance(a, dict) and isinstance(b, dict):
+            for key in sorted(set(a) | set(b)):
+                if a.get(key) != b.get(key):
+                    diffs += 1
+                    print('DIFF: %s / %s' % (section, key))
+                    if args.verbose:
+                        import difflib
+                        x, y = str(a.get(key)).splitlines(), str(b.get(key)).splitlines()
+                        for ln in list(difflib.unified_diff(x, y, 'recorded', 'fresh', lineterm='', n=0))[:8]:
+                            print('     ', ln[:160])
+        elif a != b:
+            diffs += 1
+            print('DIFF:', section)
+    return diffs
+
+
+if args.recapture or args.fresh:
+    if args.fresh:
+        fresh_path = pathlib.Path(args.fresh)
     else:
-        new = load_real(tmp)
-
-        def norm(v):
-            if isinstance(v, str):
-                v = re.sub(r'\b\d+\.\d+s\b', 'Ns', v)
-                v = re.sub(r'in 0 hours 0 minutes and [\d.]+ seconds', 'in N seconds', v)
-                v = re.sub(r'20\d\d-\d\d-\d\d \d\d:\d\d:\d\d(\.\d+)?', lambda m: m.group(0) if m.group(0).startswith('2026-03') else 'RUNTIME', v)
-                v = re.sub(r'\b[0-9a-f]{32}\b', 'HASH', v)
-                v = re.sub(r'"execution_time": [\d.]+', '"execution_time": N', v)
-                v = re.sub(r'"checksum": "[0-9a-f.]+', '"checksum": "H', v)
-                v = re.sub(r'revision [0-9a-f]{40}', 'revision H', v)
-                return v
-            if isinstance(v, list):
-                return [norm(x) for x in v]
-            if isinstance(v, dict):
-                return {k: norm(x) for k, x in v.items()}
-            return v
-
-        diffs = 0
-        for section in sorted(set(real) | set(new)):
-            a, b = norm(real.get(section, {})), norm(new.get(section, {}))
-            if isinstance(a, dict) and isinstance(b, dict):
-                for key in sorted(set(a) | set(b)):
-                    if a.get(key) != b.get(key):
-                        diffs += 1
-                        print('DIFF: %s / %s' % (section, key))
-            elif a != b:
-                diffs += 1
-                print('DIFF:', section)
+        fresh_path = pathlib.Path(tempfile.mkdtemp()) / 'real.js'
+        r = subprocess.run([sys.executable, str(ROOT / 'dbt' / 'verify' / 'capture.py'), '--dbt', args.dbt, '--out', str(fresh_path)], capture_output=True, text=True)
+        if r.returncode:
+            print(r.stdout[-2000:], r.stderr[-2000:])
+            bad('capture.py failed')
+    if fresh_path.exists():
+        diffs = compare(real, load_real(fresh_path))
         print('recapture: %d recorded items differ from a fresh run' % diffs)
         if diffs:
             bad('js/real.js is out of date: run python3 dbt/verify/capture.py and review the lessons that use the changed items')
