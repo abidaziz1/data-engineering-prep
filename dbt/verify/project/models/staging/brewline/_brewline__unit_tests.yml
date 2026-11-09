@@ -1,0 +1,14 @@
+unit_tests:
+  - name: test_stg_orders_keeps_the_latest_version
+    description: When an order has two versions, staging keeps only the newest one.
+    model: stg_brewline__orders
+    given:
+      - input: source('brewline', 'orders')
+        rows:
+          - {order_id: O-1, customer_id: C-1, order_ts: '2026-01-01 10:00:00', status: placed, total_usd: 10.00, _loaded_at: '2026-01-01 10:05:00'}
+          - {order_id: O-1, customer_id: C-1, order_ts: '2026-01-01 10:00:00', status: shipped, total_usd: 10.00, _loaded_at: '2026-01-01 11:05:00'}
+          - {order_id: O-2, customer_id: C-2, order_ts: '2026-01-01 12:00:00', status: placed, total_usd: 5.50, _loaded_at: '2026-01-01 12:05:00'}
+    expect:
+      rows:
+        - {order_id: O-1, customer_id: C-1, ordered_at: '2026-01-01 10:00:00', order_status: SHIPPED, order_total_usd: 10.00, loaded_at: '2026-01-01 11:05:00'}
+        - {order_id: O-2, customer_id: C-2, ordered_at: '2026-01-01 12:00:00', order_status: PLACED, order_total_usd: 5.50, loaded_at: '2026-01-01 12:05:00'}

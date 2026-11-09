@@ -1,0 +1,13 @@
+brewline:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: brewline.duckdb
+      schema: dev_alice
+      threads: 4
+    prod:
+      type: duckdb
+      path: brewline.duckdb
+      schema: analytics
+      threads: 4

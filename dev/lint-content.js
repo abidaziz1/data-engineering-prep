@@ -8,9 +8,17 @@ global.window = global; global.LAB = {};
 const shared = path.join(__dirname, '..', 'shared', 'js') + '/';
 const tut = path.join(__dirname, '..', name, 'js') + '/';
 const load = f => { (0, eval)(fs.readFileSync(f, 'utf8')); };
+const has = f => fs.existsSync(f);
 load(tut + 'config.js');
+if (has(tut + 'real.js')) load(tut + 'real.js');          // recorded dbt output (dbt tutorial only)
+load(shared + 'util.js');
+if (has(tut + 'helpers.js')) load(tut + 'helpers.js');
 load(shared + 'graph.js');
+load(shared + 'term.js');
 load(tut + 'graphs.js');
+load(shared + 'render1.js');
+load(shared + 'render2.js');
+if (has(tut + 'widgets.js')) load(tut + 'widgets.js');
 load(shared + 'build.js');
 fs.readdirSync(tut + 'content').filter(f => f.endsWith('.js')).sort().forEach(f => load(tut + 'content/' + f));
 
@@ -63,6 +71,18 @@ const checkStep = (where, g, st) => {
   if (st.pill && !g._edges.has(st.pill.edge)) bad(where + ': unknown pill edge "' + st.pill.edge + '"');
 };
 
+// ---------- the dbt DAG against the manifest dbt wrote ----------
+if (LAB.real && LAB.real.dag && G.dag) {
+  const byId = {}; (G.dag.nodes || []).forEach(n => { byId[n.id] = n.real; });
+  const drawn = new Set((G.dag.edges || []).map(e => byId[e.a] + ' > ' + byId[e.b]));
+  const real = new Set(LAB.real.dag.edges.map(e => e[0] + ' > ' + e[1]));
+  drawn.forEach(e => { if (!real.has(e)) bad('dag diagram draws an edge that dbt does not have: ' + e); });
+  real.forEach(e => { if (!drawn.has(e)) bad('dag diagram misses an edge that dbt has: ' + e); });
+  const realNodes = new Set(LAB.real.dag.nodes.map(n => n.name));
+  (G.dag.nodes || []).forEach(n => { if (!realNodes.has(n.real)) bad('dag node ' + n.id + ' names ' + n.real + ', which is not in the manifest'); });
+  realNodes.forEach(n => { if (!(G.dag.nodes || []).some(x => x.real === n)) bad('dag diagram has no node for ' + n); });
+}
+
 // ---------- scenes ----------
 const ids = new Set();
 let perType = {}, perTier = { 1: 0, 2: 0, 3: 0 };
@@ -109,7 +129,7 @@ LAB.chapters.forEach(ch => {
     }
     if (sc.type === 'order') { if (!sc.items || sc.items.length < 3) bad(where + ' order items'); }
     if (sc.type === 'mock') { if (!LAB.chapters.some(c => c.scenes.some(s => s.id === sc.qid && s.type === 'qa'))) bad(where + ' mock question ' + sc.qid + ' does not exist'); }
-    if (sc.type === 'widget') widgetKinds.add(sc.kind);
+    if (sc.type === 'widget') { widgetKinds.add(sc.kind); if (LAB.W && !LAB.W[sc.kind]) bad(where + ' unknown widget kind ' + sc.kind); }
     if (sc.type === 'challenge') { if (!sc.sol) bad(where + ' challenge needs sol'); if (!sc.hints || !sc.hints.length) bad(where + ' challenge needs hints'); }
   });
 });

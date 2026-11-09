@@ -1,0 +1,65 @@
+version: 2
+
+models:
+  - name: dim_customers
+    description: One row per customer, with country name and order counts.
+    config:
+      tags: [pii]
+    columns:
+      - name: customer_key
+        data_tests: [unique, not_null]
+      - name: customer_id
+        data_tests: [unique, not_null]
+
+  - name: dim_products
+    description: One row per product.
+    latest_version: 2
+    columns:
+      - name: product_key
+        data_tests: [unique, not_null]
+    versions:
+      - v: 1
+        deprecation_date: 2027-01-31
+      - v: 2
+        columns:
+          - include: all
+            exclude: [list_price_usd]
+          - name: price_usd
+            description: List price in US dollars. Renamed from list_price_usd in v1.
+          - name: price_band
+            description: premium for list prices of 30 dollars or more, otherwise standard.
+
+  - name: fct_orders
+    description: One row per order. Incremental, merged on order_id.
+    config:
+      tags: [daily]
+    columns:
+      - name: order_id
+        data_tests: [unique, not_null]
+      - name: customer_id
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_customers')
+                field: customer_id
+      - name: is_reconciled
+        description: True when the order total equals the sum of its lines.
+
+  - name: fct_daily_revenue
+    description: Revenue per day, without cancelled orders. A public interface with an enforced contract.
+    config:
+      tags: [daily]
+      group: finance
+      access: public
+      contract:
+        enforced: true
+    columns:
+      - name: order_date
+        data_type: date
+        constraints:
+          - type: not_null
+        data_tests: [unique, not_null]
+      - name: orders
+        data_type: bigint
+      - name: revenue_usd
+        data_type: decimal(38, 2)

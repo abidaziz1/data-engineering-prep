@@ -1,0 +1,57 @@
+version: 2
+
+models:
+  - name: stg_brewline__orders
+    description: One row per order, latest version only, cleaned and typed.
+    columns:
+      - name: order_id
+        description: Business key of the order.
+        data_tests:
+          - unique
+          - not_null
+      - name: customer_id
+        description: The customer who placed the order.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_brewline__customers')
+                field: customer_id
+      - name: order_status
+        description: '{{ doc("order_status") }}'
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['PLACED', 'SHIPPED', 'CANCELLED']
+      - name: order_total_usd
+        description: Order total in US dollars, as charged.
+        data_tests:
+          - positive_value
+
+  - name: stg_brewline__order_items
+    description: One row per order line.
+    columns:
+      - name: order_id
+        data_tests:
+          - not_null
+      - name: quantity
+        data_tests:
+          - positive_value
+
+  - name: stg_brewline__customers
+    description: One row per customer, with the email and country code cleaned.
+    config:
+      tags: [pii]
+    columns:
+      - name: customer_id
+        data_tests:
+          - unique
+          - not_null
+
+  - name: stg_brewline__products
+    description: One row per product.
+    columns:
+      - name: product_id
+        data_tests:
+          - unique
+          - not_null

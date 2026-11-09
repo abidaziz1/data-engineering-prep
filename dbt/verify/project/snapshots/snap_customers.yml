@@ -1,0 +1,8 @@
+snapshots:
+  - name: snap_customers
+    relation: source('brewline', 'customers')
+    config:
+      schema: snapshots
+      unique_key: customer_id
+      strategy: timestamp
+      updated_at: _loaded_at

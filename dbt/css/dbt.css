@@ -1,0 +1,60 @@
+/* dbt tutorial: styles for the lab widgets. */
+.lab{display:flex;flex-direction:column;gap:.7rem}
+.lab-row{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem .9rem}
+.lab-l{font-weight:800;min-width:8rem}
+.lab-note{font-size:.9rem;font-weight:600;color:var(--ink2);margin:.1rem 0 0}
+.lab button:disabled{opacity:.45}
+.lab-out{display:flex;flex-wrap:wrap;gap:.6rem}
+.lab-out .big{flex:1 1 9rem;background:#fff;border:3px solid var(--ink);border-radius:12px;padding:.4rem .8rem;box-shadow:0 3px 0 var(--ink)}
+.lab-out .big b{display:block;font:800 1.5rem Manrope,sans-serif}
+.lab-out .big span{font-size:.9rem;font-weight:700;color:var(--ink2)}
+.lab-out .big.warn{background:#FEF3C7}
+.lab-out .big.bad{background:#FEE2E2}
+.lab-out .big.good{background:#DCFCE7}
+.tbl td.wbad{background:#FEE2E2;font-weight:800}
+.tbl td.wgood{background:#DCFCE7;font-weight:800}
+.tbl tr.dup td{background:#FEE2E2}
+.tbl tr.old td{color:#64748B;text-decoration:line-through}
+.tbl tr.new td{background:#DCFCE7}
+
+/* two code panels side by side (source and compiled) */
+.pair{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:.8rem}
+.pair .code{margin:0}
+@media (max-width:900px){.pair{grid-template-columns:minmax(0,1fr)}}
+
+/* selector chips */
+.sel-chips{display:flex;flex-wrap:wrap;gap:.45rem}
+.sel-chip{background:#fff;border:3px solid var(--ink);border-radius:12px;padding:.35rem .7rem;font:600 .9rem 'IBM Plex Mono',monospace;cursor:pointer;text-align:left}
+.sel-chip:hover{background:var(--blue-bg)}
+.sel-chip.on{background:#FEF3C7;box-shadow:0 3px 0 var(--ink)}
+.sel-out{background:#fff;border:3px solid var(--ink);border-radius:12px;padding:.5rem .8rem}
+.sel-out b{font-weight:800}
+.sel-out .names{display:flex;flex-wrap:wrap;gap:.3rem;margin-top:.35rem}
+.sel-out .names span{border:2px solid var(--ink);border-radius:8px;padding:.05rem .45rem;font:600 .85rem 'IBM Plex Mono',monospace;background:#F1F5F9}
+.sel-out .names span.m{background:#DBEAFE}
+.sel-out .names span.s{background:#E2E8F0}
+
+/* incremental lab */
+.strat-row{display:flex;flex-wrap:wrap;gap:.45rem}
+.verdict-line{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center}
+.pill{display:inline-block;border:2px solid var(--ink);border-radius:999px;padding:.05rem .65rem;font:800 .85rem Manrope,sans-serif;letter-spacing:.04em;text-transform:uppercase;background:#fff}
+.pill.good{background:#BBF7D0}.pill.bad{background:#FECACA}.pill.warn{background:#FEF3C7}
+
+/* snapshot lab */
+.scd-cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.6fr);gap:.8rem}
+@media (max-width:900px){.scd-cols{grid-template-columns:minmax(0,1fr)}}
+
+/* test lab */
+.defect-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(16rem,1fr));gap:.5rem}
+.defect{text-align:left;background:#fff;border:3px solid var(--ink);border-radius:12px;padding:.45rem .7rem;font:600 .95rem Manrope,sans-serif;cursor:pointer}
+.defect:hover{background:var(--blue-bg)}
+.defect.on{background:#FEF3C7;box-shadow:0 3px 0 var(--ink)}
+.defect.done{background:#DCFCE7}
+
+/* thread lab */
+.gantt{display:flex;flex-direction:column;gap:.35rem}
+.lane{display:flex;align-items:center;gap:.6rem}
+.lane-n{min-width:6rem;font-weight:800;font-size:.9rem}
+.lane-track{position:relative;flex:1;height:2.3rem;background:#E2E8F0;border:3px solid var(--ink);border-radius:8px;overflow:hidden}
+.gbar{position:absolute;top:0;bottom:0;background:#FB923C;border-right:2px solid var(--ink);font:700 .85rem 'IBM Plex Mono',monospace;padding:.3rem .3rem;overflow:hidden;white-space:nowrap}
+.ev,.ev2{margin:0 0 .4rem}

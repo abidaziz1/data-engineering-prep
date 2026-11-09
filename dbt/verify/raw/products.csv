@@ -1,0 +1,7 @@
+product_id,name,category,price_usd,_loaded_at
+P-10,Ethiopia 250 g,coffee,14.00,2026-03-14 06:00:00
+P-11,Colombia 250 g,coffee,12.50,2026-03-14 06:00:00
+P-12,Kenya 250 g,coffee,16.00,2026-03-14 06:00:00
+P-22,Hand grinder,gear,39.00,2026-03-14 06:00:00
+P-30,Kettle,gear,55.00,2026-03-14 06:00:00
+P-31,Scale,gear,29.00,2026-03-14 06:00:00

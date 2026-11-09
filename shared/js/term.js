@@ -54,6 +54,57 @@
   }
   function sec(ms) { return (ms / 1000).toFixed(2) + 's'; }
 
+  /* Turn a recorded dbt log (plain text) into terminal lines, and tell the diagram which node changed.
+     opts.cmd     the command line to print first, for example 'dbt build --target prod'
+     opts.nodes   { shortName: graphNodeId }. A short name is the part of a relation after the schema, or the model of a test.
+     opts.extra   { fullTestName: graphNodeId } for tests that do not name their model (singular tests)
+     opts.hide    RegExp of lines to drop
+     opts.keep    [from, to] keep only these line numbers of the log (0-based, end exclusive)
+     opts.pace    1 is the normal speed, 0.5 is twice as fast */
+  var HEAD = /^(\d\d:\d\d:\d\d)\s+(\d+) of (\d+) (START|OK|PASS|WARN|FAIL|ERROR|SKIP|NO-OP)\b(.*?)\s*\[(RUN|OK[^\]]*|PASS[^\]]*|WARN[^\]]*|FAIL[^\]]*|ERROR[^\]]*|SKIP|NO-OP[^\]]*|INSERT[^\]]*|SUCCESS[^\]]*)\]\s*$/;
+  T.fromLog = function (text, opts) {
+    opts = opts || {};
+    var pace = opts.pace || 1;
+    var nodes = opts.nodes || {}, extra = opts.extra || {};
+    var names = Object.keys(nodes);
+    function nodeOf(name, isTest) {
+      if (extra[name]) return extra[name];
+      var short = name.indexOf('::') >= 0 ? name.split('::')[0] : name.split('.').pop();
+      if (!isTest) return nodes[short] || null;
+      var best = null, at = 1e9;
+      names.forEach(function (n) { var i = short.indexOf(n); if (i >= 0 && i < at) { at = i; best = n; } });
+      return best ? nodes[best] : null;
+    }
+    var lines = text.split('\n');
+    if (opts.keep) lines = lines.slice(opts.keep[0], opts.keep[1]);
+    var out = [];
+    if (opts.cmd) out.push({ c: 'cmd', t: '$ ' + opts.cmd, d: 350 * pace });
+    lines.forEach(function (ln) {
+      if (opts.hide && opts.hide.test(ln)) return;
+      var m = HEAD.exec(ln);
+      var l = { c: 'out', t: ln, d: 60 * pace };
+      if (m) {
+        var verb = m[4], head = m[5].replace(/[\s.]+$/, '').trim(), toks = head.split(/\s+/), name = toks[toks.length - 1];
+        var isUnit = head.indexOf('::') >= 0;
+        var isNode = !isUnit && /\b(model|seed|snapshot|exposure|relation|freshness)\b/.test(head);
+        var id = nodeOf(name, !isNode);
+        if (verb === 'START') { l.c = 'dim'; l.d = 110 * pace; if (id && isNode) { l.node = id; l.st = 'run'; } }
+        else if (verb === 'OK' || verb === 'NO-OP') { l.c = 'ok'; l.d = 130 * pace; if (id && isNode) { l.node = id; l.st = 'ok'; } }
+        else if (verb === 'PASS') { l.c = 'ok'; l.d = 130 * pace; }
+        else if (verb === 'WARN') { l.c = 'warn'; l.d = 130 * pace; if (id && isNode) { l.node = id; l.st = 'retry'; } }
+        else if (verb === 'SKIP') { l.c = 'warn'; l.d = 50 * pace; if (id && isNode) { l.node = id; l.st = 'skip'; } }
+        else { l.c = 'err'; l.d = 300 * pace; if (id) { l.node = id; l.st = 'fail'; } }
+      } else if (/\[ERROR\]|Completed with .*error/.test(ln)) { l.c = 'err'; l.d = 160 * pace; }
+      else if (/\[WARNING\]/.test(ln)) { l.c = 'warn'; }
+      else if (/Completed successfully/.test(ln)) { l.c = 'ok'; l.d = 160 * pace; }
+      else if (/^\S*\s*Done\./.test(ln) || /\sDone\. PASS=/.test(ln)) { l.c = /ERROR=[1-9]/.test(ln) ? 'err' : 'hl'; l.d = 120 * pace; }
+      else if (/^\d\d:\d\d:\d\d\s*$/.test(ln)) { l.t = ''; l.c = 'dim'; l.d = 30 * pace; }
+      else if (/^\d\d:\d\d:\d\d\s+(Running with|Registered adapter|Found |Concurrency|Finished running)/.test(ln)) { l.c = 'dim'; l.d = 90 * pace; }
+      out.push(l);
+    });
+    return out;
+  };
+
   /* items: [{ kind: 'seed'|'view'|'table'|'incremental'|'snapshot'|'test', name, schema, ms, res: 'ok'|'fail'|'warn'|'skip', n, node }] */
   T.dbt = function (cmd, items, opts) {
     opts = opts || {};

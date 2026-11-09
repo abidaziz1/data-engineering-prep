@@ -1,0 +1,19 @@
+unit_tests:
+  - name: test_fct_orders_incremental_reads_only_new_versions
+    description: On an incremental run, only versions loaded after the newest row already in the table are read.
+    model: fct_orders
+    overrides:
+      macros:
+        is_incremental: true
+    given:
+      - input: ref('int_orders__with_items')
+        rows:
+          - {order_id: O-1, customer_id: C-1, ordered_at: '2026-01-01 10:00:00', order_status: SHIPPED, order_total_usd: 10.00, loaded_at: '2026-01-01 11:05:00', item_lines: 1, units: 1, items_total_usd: 10.00}
+          - {order_id: O-2, customer_id: C-2, ordered_at: '2026-01-02 09:00:00', order_status: PLACED, order_total_usd: 8.00, loaded_at: '2026-01-02 09:05:00', item_lines: 1, units: 1, items_total_usd: 8.00}
+      - input: this
+        rows:
+          - {order_id: O-1, customer_id: C-1, ordered_at: '2026-01-01 10:00:00', order_status: PLACED, order_total_usd: 10.00, items_total_usd: 10.00, is_reconciled: true, loaded_at: '2026-01-01 10:05:00'}
+    expect:
+      rows:
+        - {order_id: O-1, customer_id: C-1, ordered_at: '2026-01-01 10:00:00', order_status: SHIPPED, order_total_usd: 10.00, items_total_usd: 10.00, is_reconciled: true, loaded_at: '2026-01-01 11:05:00'}
+        - {order_id: O-2, customer_id: C-2, ordered_at: '2026-01-02 09:00:00', order_status: PLACED, order_total_usd: 8.00, items_total_usd: 8.00, is_reconciled: true, loaded_at: '2026-01-02 09:05:00'}

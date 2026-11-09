@@ -1,0 +1,12 @@
+exposures:
+  - name: finance_dashboard
+    label: Finance revenue dashboard
+    type: dashboard
+    maturity: high
+    url: https://bi.brewline.example/dashboards/finance-revenue
+    description: Daily revenue that the finance team reviews every morning.
+    depends_on:
+      - ref('fct_daily_revenue')
+    owner:
+      name: Finance Analytics
+      email: finance-analytics@brewline.example
