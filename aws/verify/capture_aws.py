@@ -139,8 +139,8 @@ if 's3' in ONLY:
             r = s3.list_objects_v2(**kw)
             return {'prefix': prefix, 'delimiter': delim or '', 'common_prefixes': [p['Prefix'] for p in r.get('CommonPrefixes', [])],
                     'keys': [o['Key'] for o in r.get('Contents', [])], 'key_count': r['KeyCount'], 'is_truncated': r['IsTruncated']}
-        combos = [('', ''), ('', '/'), ('raw/', ''), ('raw/', '/'), ('raw/orders/', '/'), ('raw/orders/dt=2026-03-14/', '/'), ('raw/ord', '/'), ('raw/ord', ''), ('curated/', '/'), ('raw/orders/dt=2026-03-1', '/')]
-        counts('s3.listing', [listing(p, d) for p, d in combos])
+        prefixes = ['', 'raw/', 'raw/orders/', 'raw/orders/dt=2026-03-14/', 'raw/ord', 'curated/', 'raw/orders/dt=2026-03-1']
+        counts('s3.listing', [listing(p, d) for p in prefixes for d in ('', '/')])
 
         # pages: MaxKeys 4 over the 10 keys
         pages, token = [], None

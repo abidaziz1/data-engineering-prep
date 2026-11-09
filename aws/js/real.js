@@ -118,7 +118,7 @@ LAB.real = {
       "csv_by_day": 49830867,
       "csv_gz": 29513310,
       "parquet": 2119946,
-      "parquet_by_day": 3392165
+      "parquet_by_day": 3392797
      },
      "columns": [
       "customer_id",
@@ -136,7 +136,7 @@ LAB.real = {
       "csv_by_day": 144668830,
       "csv_gz": 29513310,
       "parquet": 1962043,
-      "parquet_by_day": 517152
+      "parquet_by_day": 515953
      },
      "columns": [
       "order_id",
@@ -162,7 +162,7 @@ LAB.real = {
       "csv_by_day": 144668830,
       "csv_gz": 29513310,
       "parquet": 322658,
-      "parquet_by_day": 443135
+      "parquet_by_day": 443378
      },
      "columns": [
       "status"
@@ -176,7 +176,7 @@ LAB.real = {
   },
   "athena.sizes": {
    "avg_day_csv_bytes": 1607431,
-   "avg_day_parquet_bytes": 399548,
+   "avg_day_parquet_bytes": 399710,
    "csv": 166660475,
    "csv_by_day": 144668830,
    "csv_columns": 11,
@@ -184,7 +184,7 @@ LAB.real = {
    "days": 90,
    "files_by_day": 90,
    "parquet": 31811874,
-   "parquet_by_day": 35959287,
+   "parquet_by_day": 35973884,
    "parquet_footer_bytes": 20143,
    "parquet_row_group_rows": 122880,
    "parquet_row_groups": 17,
@@ -245,7 +245,7 @@ LAB.real = {
     {
      "command": "aws s3 sync landing s3://brewline-lake/raw/orders/dt=2026-03-15/",
      "label": "sync",
-     "output": "upload: landing/orders-0001.json to s3://brewline-lake/raw/orders/dt=2026-03-15/orders-0001.json\nupload: landing/orders-0002.json to s3://brewline-lake/raw/orders/dt=2026-03-15/orders-0002.json\nupload: landing/orders-0003.json to s3://brewline-lake/raw/orders/dt=2026-03-15/orders-0003.json",
+     "output": "upload: landing/orders-0001.json to s3://brewline-lake/raw/orders/dt=2026-03-15/orders-0001.json\nupload: landing/orders-0003.json to s3://brewline-lake/raw/orders/dt=2026-03-15/orders-0003.json\nupload: landing/orders-0002.json to s3://brewline-lake/raw/orders/dt=2026-03-15/orders-0002.json",
      "rc": 0
     },
     {
@@ -1198,6 +1198,18 @@ LAB.real = {
     "prefix": "raw/"
    },
    {
+    "common_prefixes": [],
+    "delimiter": "",
+    "is_truncated": false,
+    "key_count": 3,
+    "keys": [
+     "raw/orders/dt=2026-03-14/orders-0001.json",
+     "raw/orders/dt=2026-03-14/orders-0002.json",
+     "raw/orders/dt=2026-03-15/orders-0001.json"
+    ],
+    "prefix": "raw/orders/"
+   },
+   {
     "common_prefixes": [
      "raw/orders/dt=2026-03-14/",
      "raw/orders/dt=2026-03-15/"
@@ -1210,6 +1222,17 @@ LAB.real = {
    },
    {
     "common_prefixes": [],
+    "delimiter": "",
+    "is_truncated": false,
+    "key_count": 2,
+    "keys": [
+     "raw/orders/dt=2026-03-14/orders-0001.json",
+     "raw/orders/dt=2026-03-14/orders-0002.json"
+    ],
+    "prefix": "raw/orders/dt=2026-03-14/"
+   },
+   {
+    "common_prefixes": [],
     "delimiter": "/",
     "is_truncated": false,
     "key_count": 2,
@@ -1218,6 +1241,18 @@ LAB.real = {
      "raw/orders/dt=2026-03-14/orders-0002.json"
     ],
     "prefix": "raw/orders/dt=2026-03-14/"
+   },
+   {
+    "common_prefixes": [],
+    "delimiter": "",
+    "is_truncated": false,
+    "key_count": 3,
+    "keys": [
+     "raw/orders/dt=2026-03-14/orders-0001.json",
+     "raw/orders/dt=2026-03-14/orders-0002.json",
+     "raw/orders/dt=2026-03-15/orders-0001.json"
+    ],
+    "prefix": "raw/ord"
    },
    {
     "common_prefixes": [
@@ -1235,11 +1270,11 @@ LAB.real = {
     "is_truncated": false,
     "key_count": 3,
     "keys": [
-     "raw/orders/dt=2026-03-14/orders-0001.json",
-     "raw/orders/dt=2026-03-14/orders-0002.json",
-     "raw/orders/dt=2026-03-15/orders-0001.json"
+     "curated/daily_revenue/part-0.parquet",
+     "curated/orders/dt=2026-03-14/part-0.parquet",
+     "curated/orders/dt=2026-03-15/part-0.parquet"
     ],
-    "prefix": "raw/ord"
+    "prefix": "curated/"
    },
    {
     "common_prefixes": [
@@ -1251,6 +1286,18 @@ LAB.real = {
     "key_count": 2,
     "keys": [],
     "prefix": "curated/"
+   },
+   {
+    "common_prefixes": [],
+    "delimiter": "",
+    "is_truncated": false,
+    "key_count": 3,
+    "keys": [
+     "raw/orders/dt=2026-03-14/orders-0001.json",
+     "raw/orders/dt=2026-03-14/orders-0002.json",
+     "raw/orders/dt=2026-03-15/orders-0001.json"
+    ],
+    "prefix": "raw/orders/dt=2026-03-1"
    },
    {
     "common_prefixes": [

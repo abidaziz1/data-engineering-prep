@@ -1,0 +1,117 @@
+/* AWS tutorial: styles for the lab widgets. */
+.lab{display:flex;flex-direction:column;gap:.7rem}
+.lab-row{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem .9rem}
+.lab-l{font-weight:800;min-width:8rem}
+.lab-note{font-size:.9rem;font-weight:600;color:var(--ink2);margin:.1rem 0 0}
+.lab button:disabled{opacity:.45}
+.lab-out{display:flex;flex-wrap:wrap;gap:.6rem}
+.lab-out .big{flex:1 1 9rem;background:#fff;border:3px solid var(--ink);border-radius:12px;padding:.4rem .8rem;box-shadow:0 3px 0 var(--ink)}
+.lab-out .big b{display:block;font:800 1.5rem Manrope,sans-serif}
+.lab-out .big span{font-size:.9rem;font-weight:700;color:var(--ink2)}
+.lab-out .big.warn{background:#FEF3C7}
+.lab-out .big.bad{background:#FEE2E2}
+.lab-out .big.good{background:#DCFCE7}
+.tbl td.wbad{background:#FEE2E2;font-weight:800}
+.tbl td.wgood{background:#DCFCE7;font-weight:800}
+.tbl tr.dup td{background:#FEE2E2}
+.tbl tr.old td{color:#64748B;text-decoration:line-through}
+.tbl tr.new td{background:#DCFCE7}
+
+/* two code panels side by side (source and compiled) */
+.pair{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:.8rem}
+.pair .code{margin:0}
+@media (max-width:900px){.pair{grid-template-columns:minmax(0,1fr)}}
+
+/* selector chips */
+.sel-chips{display:flex;flex-wrap:wrap;gap:.45rem}
+.sel-chip{background:#fff;border:3px solid var(--ink);border-radius:12px;padding:.35rem .7rem;font:600 .9rem 'IBM Plex Mono',monospace;cursor:pointer;text-align:left}
+.sel-chip:hover{background:var(--blue-bg)}
+.sel-chip.on{background:#FEF3C7;box-shadow:0 3px 0 var(--ink)}
+.sel-out{background:#fff;border:3px solid var(--ink);border-radius:12px;padding:.5rem .8rem}
+.sel-out b{font-weight:800}
+.sel-out .names{display:flex;flex-wrap:wrap;gap:.3rem;margin-top:.35rem}
+.sel-out .names span{border:2px solid var(--ink);border-radius:8px;padding:.05rem .45rem;font:600 .85rem 'IBM Plex Mono',monospace;background:#F1F5F9}
+.sel-out .names span.m{background:#DBEAFE}
+.sel-out .names span.s{background:#E2E8F0}
+
+/* incremental lab */
+.strat-row{display:flex;flex-wrap:wrap;gap:.45rem}
+.verdict-line{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center}
+.pill{display:inline-block;border:2px solid var(--ink);border-radius:999px;padding:.05rem .65rem;font:800 .85rem Manrope,sans-serif;letter-spacing:.04em;text-transform:uppercase;background:#fff}
+.pill.good{background:#BBF7D0}.pill.bad{background:#FECACA}.pill.warn{background:#FEF3C7}
+
+/* snapshot lab */
+.scd-cols{display:grid;grid-template-columns:minmax(0,1fr);gap:.8rem}
+
+/* test lab */
+.defect-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(16rem,1fr));gap:.5rem}
+.defect{text-align:left;background:#fff;border:3px solid var(--ink);border-radius:12px;padding:.45rem .7rem;font:600 .95rem Manrope,sans-serif;cursor:pointer}
+.defect:hover{background:var(--blue-bg)}
+.defect.on{background:#FEF3C7;box-shadow:0 3px 0 var(--ink)}
+.defect.done{background:#DCFCE7}
+
+/* thread lab */
+.gantt{display:flex;flex-direction:column;gap:.35rem}
+.lane{display:flex;align-items:center;gap:.6rem}
+.lane-n{min-width:6rem;font-weight:800;font-size:.9rem}
+.lane-track{position:relative;flex:1;height:2.3rem;background:#E2E8F0;border:3px solid var(--ink);border-radius:8px;overflow:hidden}
+.gbar{position:absolute;top:0;bottom:0;background:#FB923C;border-right:2px solid var(--ink);font:700 .85rem 'IBM Plex Mono',monospace;padding:.3rem .3rem;overflow:hidden;white-space:nowrap}
+.ev,.ev2{margin:0 0 .4rem}
+
+/* settings lab: label in front of each statement */
+.stag{display:inline-block;border:2px solid var(--ink);border-radius:999px;padding:.05rem .7rem;font:800 .82rem Manrope,sans-serif;letter-spacing:.04em;text-transform:uppercase;background:#fff;margin:.2rem .4rem .2rem 0}
+.stag.same,.stag.base{background:#E2E8F0}.stag.changed{background:#FEF3C7}.stag.added{background:#BBF7D0}
+
+/* section headings inside a lab */
+.lab-h{font:800 1.05rem Manrope,sans-serif;margin:.3rem 0 .1rem}
+
+/* data skipping lab: one tile per data file */
+.skipgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(3.2rem,1fr));gap:.35rem}
+.skipgrid.big{grid-template-columns:repeat(auto-fit,minmax(11rem,1fr))}
+.skf{border:3px solid var(--ink);border-radius:10px;padding:.3rem .4rem;font:700 .8rem 'IBM Plex Mono',monospace;display:flex;flex-direction:column;gap:.1rem;min-height:2.4rem;justify-content:center}
+.skf b{font-weight:800}
+.skf span{font-weight:600;font-size:.78rem}
+.skf.read{background:#FDBA74}
+.skf.skipped{background:#E2E8F0;color:#475569;opacity:.75}
+
+/* number at the end of a bar, so a short bar never clips it */
+.lane-v{min-width:5.2rem;text-align:right;font:700 .95rem 'IBM Plex Mono',monospace}
+.gbar.bad{background:#F87171}
+
+/* S3 listing lab */
+.keylist{list-style:none;margin:.2rem 0 0;padding:0;display:flex;flex-direction:column;gap:.25rem}
+.keylist li{border:2px solid var(--ink);border-radius:8px;padding:.15rem .55rem;font:600 .9rem 'IBM Plex Mono',monospace;background:#fff;word-break:break-all}
+.keylist li.cp{background:#DBEAFE}
+
+/* versioning lab */
+.vstack{display:flex;flex-direction:column;gap:.35rem;max-width:26rem}
+.vbox{display:flex;justify-content:space-between;align-items:center;gap:.8rem;border:3px solid var(--ink);border-radius:10px;padding:.35rem .7rem;background:#fff}
+.vbox b{font:800 1.05rem 'IBM Plex Mono',monospace}
+.vbox span{font-weight:700;font-size:.9rem;color:var(--ink2)}
+.vbox.marker{background:#FEE2E2}
+.vbox.cur{box-shadow:0 3px 0 var(--ink);background:#DCFCE7}
+.vbox.marker.cur{background:#FECACA}
+
+/* reasons under a verdict */
+.why{margin:.2rem 0 0;padding-left:1.3rem;display:flex;flex-direction:column;gap:.3rem;font-weight:600}
+
+/* Kinesis hash ring */
+.ring{position:relative;display:flex;height:3.2rem;border:3px solid var(--ink);border-radius:12px;background:#fff;margin:.3rem 0 .5rem}
+.rseg{display:flex;align-items:center;justify-content:center;border-right:3px solid var(--ink);font:800 .9rem Manrope,sans-serif}
+.rseg:first-child{border-radius:9px 0 0 9px}
+.rseg:last-of-type{border-right:0;border-radius:0 9px 9px 0}
+.rmark{position:absolute;top:-.35rem;bottom:-.35rem;width:.5rem;margin-left:-.25rem;background:#C2410C;border:2px solid var(--ink);border-radius:4px}
+
+/* SQS boxes */
+.qrow{display:grid;grid-template-columns:repeat(auto-fit,minmax(13rem,1fr));gap:.6rem}
+.qbox{border:3px solid var(--ink);border-radius:12px;padding:.5rem .8rem;background:#F1F5F9;display:flex;flex-direction:column;gap:.2rem}
+.qbox b{font:800 1.05rem Manrope,sans-serif}
+.qbox span{font-weight:600;font-size:.92rem}
+.qbox.here{background:#FDE68A;box-shadow:0 3px 0 var(--ink)}
+.qbox.ready{background:#DBEAFE}
+.qbox.dl.here{background:#FECACA}
+
+/* bars with a name column, and bars that are on or off */
+.lane-wide{min-width:11.5rem}
+.gbar.sel{background:#F97316}
+.gbar.off{background:#CBD5E1}
