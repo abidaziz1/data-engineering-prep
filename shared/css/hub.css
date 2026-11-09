@@ -27,7 +27,7 @@ h2{font-size:1.4rem;margin:2rem 0 .8rem}
 .card h3{font-size:1.25rem}
 .card p{margin:0;font-size:1rem}
 .chip{align-self:flex-start;font:800 .8rem Manrope,sans-serif;letter-spacing:.06em;text-transform:uppercase;border:2.5px solid var(--ink);border-radius:999px;padding:.1rem .65rem;background:#fff}
-.chip.ready{background:#BBF7D0}.chip.soon{background:#FDE68A}
+.chip.ready{background:#BBF7D0}.chip.soon{background:#FDE68A}.chip.next{background:#BFDBFE}
 a.card.ready:hover{background:#F0FDF4}
 .card.soon{box-shadow:0 5px 0 #94A3B8;border-color:#475569;background:#F8FAFC}
 .paths{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.2rem}
@@ -36,3 +36,12 @@ a.card.ready:hover{background:#F0FDF4}
 .note{margin-top:2rem;font-size:.95rem;color:var(--ink3)}
 footer{max-width:1100px;margin:0 auto;padding:0 1.5rem 2rem;font-size:.9rem;color:var(--ink3)}
 @media (max-width:760px){html{font-size:18px}.rhythm{grid-template-columns:1fr}.hero h1{font-size:1.9rem}.top{padding:.6rem 1rem}main{padding:1rem 1rem 2rem}}
+
+/* the plan: one pill per tool */
+.plan{display:grid;grid-template-columns:repeat(auto-fill,minmax(15rem,1fr));gap:1rem}
+.plan>div{background:#fff;border:3px solid var(--ink);border-radius:14px;padding:.8rem 1rem}
+.plan h3{font-size:1.05rem;margin:0 0 .55rem}
+.plan ul{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:.4rem}
+.plan li{border:2px solid #475569;border-radius:999px;padding:.05rem .7rem;font:700 .95rem Manrope,sans-serif;background:#F8FAFC;color:#334155}
+.plan li.ready{background:#BBF7D0;border-color:var(--ink);color:var(--ink)}
+.plan li.next{background:#BFDBFE;border-color:var(--ink);color:var(--ink)}

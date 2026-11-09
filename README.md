@@ -11,15 +11,13 @@ No install. No account. No server. Open `index.html` in a browser and press **Ne
 | **Snowflake**: from first query to production | Ready. 13 missions, 3 paths | [`snowflake/`](snowflake/README.md) |
 | **dbt**: from first model to production | Ready. 13 missions, 3 paths, every output recorded from a real run | [`dbt/`](dbt/README.md) |
 | **Snowflake and dbt together**: one pipeline, end to end | Ready. 10 missions, 3 paths, every statement dbt sends was recorded | [`snowflake-dbt/`](snowflake-dbt/README.md) |
-| Databricks | Planned | |
-| AWS for data engineers | Planned | |
-| Airflow | Planned | |
-| SQL and data modeling | Planned | |
-| Snowflake, dbt and Airflow (combined) | Planned | |
-| AWS and Snowflake (combined) | Planned | |
-| Databricks and dbt (combined) | Planned | |
+| Databricks and Azure Databricks | **Next** | |
+| AWS for data engineers | **Next** | |
+| Planned, one tutorial each | Azure, GCP, Microsoft Fabric, Spark, Hadoop, Kafka, Flink, Airflow, Python, SQL, Scala, Java, Docker, Kubernetes, Terraform, Git, PostgreSQL, Oracle, MongoDB, Power BI, Tableau | |
 
-The order of the combined stacks follows what job postings ask for most often. A check of 2026 postings found dbt, Airflow, Dynamic Tables and Cortex mentioned most for Snowflake roles, but it was a small sample. Treat it as a direction, not a statistic.
+Combined stacks come after the single tools. Snowflake with dbt is the first of them and is ready.
+
+The order follows what job postings ask for most often. A check of 2026 postings found dbt, Airflow, Dynamic Tables and Cortex mentioned most for Snowflake roles, but it was a small sample. Treat it as a direction, not a statistic.
 
 ## How each tutorial teaches
 
