@@ -19,6 +19,20 @@
     table: function (k) { return need(R.tables, k, 'table'); },
     text: function (k) { return need(R.text, k, 'text'); },
     ls: function (k) { return need(R.ls, k, 'selector result'); },
+    /* the 1-based number of the first line that matches a pattern, so lessons never count lines by hand */
+    at: function (code, re) {
+      var l = code.split('\n');
+      for (var i = 0; i < l.length; i++) if (re.test(l[i])) return i + 1;
+      throw new Error('no line matches ' + re + ' in ' + code.slice(0, 60));
+    },
+    /* [first, last] line numbers: from the first line that matches `a` to the first line at or after it that matches `b` */
+    span: function (code, a, b) {
+      var s = G.at(code, a);
+      if (!b) return [s, s];
+      var l = code.split('\n');
+      for (var i = s - 1; i < l.length; i++) if (b.test(l[i])) return [s, i + 1];
+      throw new Error('no line matches ' + b + ' after line ' + s);
+    },
     /* lines a to b (1-based, inclusive) of a text */
     lines: function (text, a, b) { return text.split('\n').slice(a - 1, b).join('\n'); },
     /* the lines of a text that match a pattern */
@@ -39,13 +53,14 @@
     /* graph node id -> status 'wait' for every DAG node of a diagram */
     wait: function (graph) {
       var o = {};
-      (LAB.graphs[graph].nodes || []).forEach(function (n) { if (n.k === 'dag') o[n.id] = 'wait'; });
+      (LAB.graphs[graph].nodes || []).forEach(function (n) { if (n.k === 'dag') o[n.id] = /^source:/.test(n.real || '') ? 'ok' : 'wait'; });
       return o;
     },
     /* map of project name -> diagram node id for a diagram whose nodes carry `real` */
     nodeMap: function (graph) {
       var o = {};
-      (LAB.graphs[graph].nodes || []).forEach(function (n) { if (n.real) o[n.real.replace(/^source:/, '')] = n.id; });
+      (LAB.graphs[graph].nodes || []).forEach(function (n) { if (n.real) o[n.real] = n.id; });
+      if (o.dim_products) { o.dim_products_v1 = o.dim_products; o.dim_products_v2 = o.dim_products; }
       return o;
     },
     /* a terminal built from a recorded log */
@@ -60,5 +75,5 @@
         pace: opts.pace
       });
     }
-  };
+  });
 })();

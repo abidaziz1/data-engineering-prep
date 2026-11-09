@@ -403,7 +403,23 @@
 
   /* ====================== Threads ====================== */
   (function () {
-    var DUR = { stg_products: 12, stg_items: 18, stg_orders: 20, stg_customers: 10, int_orders: 25, seed_country: 4, snap_customers: 30, dim_products: 14, fct_orders: 70, dim_customers: 35, fct_revenue: 15 };
+    var DUR = { stg_products: 20, stg_items: 30, stg_orders: 25, stg_customers: 20, int_orders: 30, seed_country: 5, snap_customers: 40, dim_products: 25, fct_orders: 60, dim_customers: 50, fct_revenue: 20 };
+    /* the longest chain of dependent nodes and its length: no number of threads can beat it */
+    function chain() {
+      var ids = Object.keys(DUR), succ = {}, memo = {};
+      ids.forEach(function (n) { succ[n] = []; });
+      LAB.graphs.dag.edges.forEach(function (e) { if (DUR[e.a] && DUR[e.b]) succ[e.a].push(e.b); });
+      function best(n) {
+        if (memo[n]) return memo[n];
+        var tail = [], len = 0;
+        succ[n].forEach(function (c) { var b = best(c); if (b.len > len) { len = b.len; tail = b.path; } });
+        return (memo[n] = { len: DUR[n] + len, path: [n].concat(tail) });
+      }
+      var top = null;
+      ids.forEach(function (n) { var b = best(n); if (!top || b.len > top.len) top = b; });
+      return top;
+    }
+    W.chain = chain;
     function schedule(threads) {
       var ids = Object.keys(DUR), preds = {}, succ = {};
       ids.forEach(function (n) { preds[n] = []; succ[n] = []; });
@@ -430,9 +446,10 @@
       steps: function () { return 2; },
       hint: 'Change the thread count and watch the total time.',
       say: function (s, i) {
+        var c = chain();
         return i === 0
           ? 'dbt runs every model that is ready, up to the number of threads you give it. These durations are made up, but the dependencies are the real Brewline graph. Change the threads and watch the total time.'
-          : 'More threads help until the longest chain is the limit. Here fct_orders waits for the staging views and the intermediate view, so after four threads the total barely moves. Past that point the fix is a faster chain, not more threads.';
+          : 'More threads help only until the longest chain is the limit. Here the chain is ' + c.path.join(', then ') + ': ' + c.len + ' seconds. Each step waits for the one before, so no thread count can beat it. Past that point the fix is a faster model on the chain, not more threads.';
       },
       mood: function () { return 'think'; },
       render: function (box, s, i, A) {
@@ -445,7 +462,8 @@
             return '<span class="gbar" title="' + x.n + ': ' + x.start + ' to ' + x.end + ' s" style="left:' + (x.start / one * 100) + '%;width:' + ((x.end - x.start) / one * 100) + '%">' + (x.end - x.start >= 14 ? esc(x.n.replace('stg_', 's_')) : '') + '</span>';
           }).join('') + '</div></div>';
         }
-        h += '</div><p class="lab-note">Bars are drawn to the same scale. The longest chain is stg_orders, int_orders, fct_orders, fct_revenue: ' + (DUR.stg_orders + DUR.int_orders + DUR.fct_orders + DUR.fct_revenue) + ' s.</p>';
+        var ch = chain();
+        h += '</div><p class="lab-note">Bars are drawn to the same scale. The longest chain is ' + ch.path.join(', ') + ': ' + ch.len + ' s.</p>';
         box.innerHTML = h + '</div>';
         A.bindWidget = function (act, el) { if (act === 'th-n') { st.n = +el.getAttribute('data-v'); A.render(true); } };
       }

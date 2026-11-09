@@ -549,6 +549,233 @@ res = sc.sh([sys.executable, '-c', SLOW])
 OUT['text']['slowest_code'] = SLOW
 OUT['text']['slowest_out'] = clean(res.stdout, [sc.dir])
 
+# ----------------------------------------------------------------------------- mistakes that the tutorial asks you to spot
+sc = after_day2.clone('cfg_typo')
+sc.patch('dbt_project.yml', '  brewline:\n    staging:', '  brewlin:\n    staging:')
+OUT['files']['scenario/dbt_project_typo.yml'] = sc.read('dbt_project.yml')
+sc.dbt('parse', key='cfg_typo')
+
+sc = after_day2.clone('hardcoded')
+sc.patch('models/intermediate/int_orders__with_items.sql', "{{ ref('stg_brewline__order_items') }}", 'analytics_staging.stg_brewline__order_items')
+OUT['files']['scenario/int_orders_hardcoded.sql'] = sc.read('models/intermediate/int_orders__with_items.sql')
+ls(sc, '+fct_orders', 'hardcoded_up')
+
+sc = after_day2.clone('raw_direct')
+sc.patch('models/staging/brewline/stg_brewline__orders.sql', "{{ source('brewline', 'orders') }}", 'raw.orders')
+OUT['files']['scenario/stg_orders_raw_direct.sql'] = sc.read('models/staging/brewline/stg_brewline__orders.sql')
+ls(sc, 'source:brewline.orders+', 'raw_direct_down')
+
+for mode in ['append_new_columns', 'fail', 'ignore']:
+    sc = after_day2.clone('osc_' + mode)
+    sc.patch('models/marts/core/fct_orders.sql', "on_schema_change='append_new_columns'", "on_schema_change='%s'" % mode)
+    sc.patch('models/marts/core/fct_orders.sql', '    loaded_at\nfrom', "    loaded_at,\n    order_status = 'CANCELLED' as is_cancelled\nfrom")
+    if mode == 'fail':
+        OUT['files']['scenario/fct_orders_new_column.sql'] = sc.read('models/marts/core/fct_orders.sql')
+    sc.exec("insert into raw.orders values ('O-5012','C-12','2026-03-19 10:00:00','PLACED',9.00,'2026-03-19 10:05:00')")
+    sc.dbt('run', '-s', 'fct_orders', key='osc_' + mode)
+    sc.table('osc_%s_cols' % mode, "select column_name from information_schema.columns where table_schema = 'analytics_marts' and table_name = 'fct_orders' order by ordinal_position")
+    if mode == 'append_new_columns':
+        sc.table('osc_rows', 'select order_id, order_status, is_cancelled from analytics_marts.fct_orders where order_id in (\'O-5001\', \'O-5005\', \'O-5012\') order by 1')
+
+sc = after_day2.clone('run_op')
+PRINT = """{% macro print_counts(models) %}
+    {% for m in models %}
+        {% set r = run_query('select count(*) from ' ~ ref(m)) %}
+        {{ log(m ~ ': ' ~ r.columns[0].values()[0] ~ ' rows', info=True) }}
+    {% endfor %}
+{% endmacro %}
+"""
+sc.write('macros/print_counts.sql', PRINT)
+OUT['files']['scenario/print_counts.sql'] = PRINT
+sc.dbt('run-operation', 'print_counts', '--args', '{models: [fct_orders, dim_customers]}', key='run_operation', show='dbt run-operation print_counts --args \'{models: [fct_orders, dim_customers]}\'')
+
+# ----------------------------------------------------------------------------- coding problems: every solution is run by dbt
+CH = {
+    'm2_customers': """select
+    c.customer_id,
+    c.full_name,
+    count(o.order_id) as orders_count,
+    min(o.ordered_at) as first_order_at
+from {{ ref('stg_brewline__customers') }} as c
+left join {{ ref('stg_brewline__orders') }} as o
+    on o.customer_id = c.customer_id
+group by c.customer_id, c.full_name
+order by c.customer_id
+""",
+    'm3_latest': """with ranked as (
+
+    select
+        *,
+        row_number() over (partition by order_id order by _loaded_at desc) as rn
+    from {{ source('brewline', 'orders') }}
+
+)
+
+select order_id, status, total_usd, _loaded_at
+from ranked
+where rn = 1
+order by order_id
+""",
+    'm4_category': """select
+    cast(o.ordered_at as date) as order_date,
+    p.category,
+    sum(i.line_total_usd) as revenue_usd
+from {{ ref('stg_brewline__order_items') }} as i
+join {{ ref('stg_brewline__orders') }} as o on o.order_id = i.order_id
+join {{ ref('stg_brewline__products') }} as p on p.product_id = i.product_id
+where o.order_status <> 'CANCELLED'
+group by 1, 2
+order by 1, 2
+""",
+    'm8_asof': """select
+    o.order_id,
+    o.ordered_at,
+    o.customer_id,
+    s.tier,
+    s.country
+from {{ ref('fct_orders') }} as o
+join {{ ref('snap_customers') }} as s
+    on s.customer_id = o.customer_id
+   and o.ordered_at >= s.dbt_valid_from
+   and o.ordered_at < coalesce(s.dbt_valid_to, timestamp '9999-12-31')
+where o.customer_id in ('C-42', 'C-77')
+order by o.ordered_at
+"""
+}
+sc = after_day2.clone('challenges')
+for k, v in CH.items():
+    sc.write('models/scratch/ch_%s.sql' % k, v)
+    OUT['files']['scenario/ch_%s.sql' % k] = v
+UT = """unit_tests:
+  - name: test_stg_customers_cleans_email_and_country
+    model: stg_brewline__customers
+    given:
+      - input: source('brewline', 'customers')
+        rows:
+          - {customer_id: C-1, full_name: Ada Test, email: Ada.Test@Mail.Test, country: us, tier: gold, _loaded_at: '2026-01-01 00:00:00'}
+    expect:
+      rows:
+        - {customer_id: C-1, full_name: Ada Test, email: ada.test@mail.test, country_code: US, tier: gold}
+"""
+sc.write('models/staging/brewline/_scratch_unit_tests.yml', UT)
+OUT['files']['scenario/ch_m6_unit_test.yml'] = UT
+sc.dbt('run', '-s', 'path:models/scratch', key='challenges_run')
+for k in CH:
+    sc.table('ch_' + k, 'select * from analytics.ch_%s order by 1, 2' % k)
+sc.dbt('test', '-s', 'test_name:test_stg_customers_cleans_email_and_country', key='unit_challenge')
+
+# ----------------------------------------------------------------------------- versions that passed their deprecation date, hooks, a Python model
+sc = after_day2.clone('deprecated')
+sc.patch('models/marts/_marts__models.yml', 'deprecation_date: 2027-01-31', 'deprecation_date: 2026-01-31')
+sc.write('models/scratch/uses_v1.sql', "select product_id, list_price_usd\nfrom {{ ref('dim_products', v=1) }}\n")
+OUT['files']['scenario/uses_v1.sql'] = sc.read('models/scratch/uses_v1.sql')
+sc.dbt('run', '-s', 'uses_v1', key='deprecated_v1')
+
+sc = after_day2.clone('hooks')
+HOOK = "on-run-end:\n  - \"{{ log('Run finished with ' ~ results | length ~ ' results', info=True) }}\"\n"
+sc.write('dbt_project.yml', sc.read('dbt_project.yml') + '\n' + HOOK)
+OUT['files']['scenario/on_run_end.yml'] = HOOK
+sc.dbt('run', '-s', 'stg_brewline__customers', key='hook_run')
+
+sc = after_day2.clone('python_model')
+PY = """def model(dbt, session):
+    dbt.config(materialized="table")
+
+    orders = dbt.ref("stg_brewline__orders").df()
+    kept = orders[orders["order_status"] != "CANCELLED"]
+
+    return kept.groupby("customer_id", as_index=False).agg(
+        orders=("order_id", "count"),
+        revenue_usd=("order_total_usd", "sum"),
+    )
+"""
+sc.write('models/scratch/py_customer_revenue.py', PY)
+OUT['files']['scenario/py_customer_revenue.py'] = PY
+sc.dbt('run', '-s', 'py_customer_revenue', key='python_model')
+sc.table('python_model_rows', 'select * from analytics.py_customer_revenue order by customer_id')
+
+# ----------------------------------------------------------------------------- more lessons: severity, wrong values, lookback, hard deletes, versions, nothing to do, dropping a schema
+sc = after_day2.clone('sev')
+sc.exec("insert into raw.orders values ('O-5092','C-12','2026-03-19 09:20:00','PLACED',-5.00,'2026-03-19 09:25:00')")
+SEV = """      - name: order_total_usd
+        description: Order total in US dollars, as charged.
+        data_tests:
+          - positive_value:
+              config:
+                warn_if: ">0"
+                error_if: ">5"
+"""
+sc.patch('models/staging/brewline/_brewline__models.yml', """      - name: order_total_usd
+        description: Order total in US dollars, as charged.
+        data_tests:
+          - positive_value
+""", SEV)
+OUT['files']['scenario/severity.yml'] = SEV
+sc.dbt('test', '-s', 'stg_brewline__orders,test_name:positive_value', key='severity')
+
+sc = after_day2.clone('bad_values')
+BAD = """      - name: order_status
+        description: '{{ doc("order_status") }}'
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['placed', 'shipped', 'cancelled']
+"""
+sc.patch('models/staging/brewline/_brewline__models.yml', """      - name: order_status
+        description: '{{ doc("order_status") }}'
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['PLACED', 'SHIPPED', 'CANCELLED']
+""", BAD)
+OUT['files']['scenario/accepted_values_lowercase.yml'] = BAD
+sc.dbt('test', '-s', 'stg_brewline__orders,test_name:accepted_values', key='bad_values')
+
+sc = after_day1.clone('lookback')
+sc.patch('models/marts/core/fct_orders.sql', "where loaded_at > (select coalesce(max(loaded_at), timestamp '1900-01-01') from {{ this }})", "where loaded_at > (select coalesce(max(loaded_at), timestamp '1900-01-01') - interval 1 day from {{ this }})")
+OUT['files']['scenario/fct_orders_lookback.sql'] = sc.read('models/marts/core/fct_orders.sql')
+sc.day2()
+sc.dbt('run', '-s', 'fct_orders', key='lookback_run')
+sc.sql_of('compiled/lookback/fct_orders', 'compiled', 'models/marts/core/fct_orders.sql')
+sc.table('lookback_counts', 'select count(*) as rows_in_table, count(distinct order_id) as distinct_orders from analytics_marts.fct_orders')
+
+sc = after_day2.clone('snap_delete')
+sc.write('snapshots/snap_customers.yml', sc.read('snapshots/snap_customers.yml') + "      hard_deletes: invalidate\n")
+OUT['files']['scenario/snap_customers_hard_deletes.yml'] = sc.read('snapshots/snap_customers.yml')
+sc.exec("delete from raw.customers where customer_id = 'C-91'")
+sc.dbt('snapshot', key='snap_delete_run')
+sc.table('snap_delete_rows', "select customer_id, tier, country, dbt_valid_from, dbt_valid_to from analytics_snapshots.snap_customers where customer_id in ('C-91', 'C-12') order by customer_id, dbt_valid_from")
+
+code, text = after_day2.dbt('ls', '-s', 'dim_products', '--resource-type', 'model', '--output', 'json', '--output-keys', 'name', 'version', 'latest_version', 'access', 'group', key='versions_ls')
+
+sc = after_day2.clone('slim_none')
+sc.dbt('build', '-s', 'state:modified+', '--defer', '--state', 'state', target='dev', key='slim_none')
+
+DROP = """{% macro drop_schema(name) %}
+    {% do run_query('drop schema if exists ' ~ adapter.quote(name) ~ ' cascade') %}
+    {{ log('dropped schema ' ~ name, info=True) }}
+{% endmacro %}
+"""
+d2.write('macros/drop_schema.sql', DROP)
+OUT['files']['scenario/drop_schema.sql'] = DROP
+d2.dbt('run-operation', 'drop_schema', '--args', '{name: dev_alice_staging}', target='dev', key='drop_schema', show='dbt run-operation drop_schema --args \'{name: dev_alice_staging}\' --target dev')
+d2.table('drop_schema_after', "select schema_name from information_schema.schemata where schema_name like 'dev%' order by 1")
+
+# ----------------------------------------------------------------------------- a snapshot that watches a volatile column
+sc = Sc('snap_all')
+sc.write('snapshots/snap_customers.yml', "snapshots:\n  - name: snap_customers\n    relation: source('brewline', 'customers')\n    config:\n      schema: snapshots\n      unique_key: customer_id\n      strategy: check\n      check_cols: all\n")
+OUT['files']['scenario/snap_customers_check_all.yml'] = sc.read('snapshots/snap_customers.yml')
+sc.dbt('snapshot', key='snap_all_run1')
+sc.exec("update raw.customers set _loaded_at = _loaded_at + interval 1 day")
+sc.dbt('snapshot', key='snap_all_run2')
+sc.table('snap_all_counts', 'select count(*) as rows_in_snapshot, count(distinct customer_id) as customers from analytics_snapshots.snap_customers')
+sc.table('snap_all_rows', "select customer_id, tier, country, _loaded_at, dbt_valid_from, dbt_valid_to from analytics_snapshots.snap_customers where customer_id = 'C-12' order by dbt_valid_from")
+
+# ----------------------------------------------------------------------------- the loader renamed a column
+sc = after_day2.clone('source_rename')
+sc.exec("alter table raw.orders rename column total_usd to total_amount_usd")
+sc.dbt('build', key='source_rename')
+
 # ----------------------------------------------------------------------------- --empty
 sc = after_day2.clone('empty')
 sc.dbt('run', '-s', 'stg_brewline__orders', '--empty', key='empty_run', target='dev')

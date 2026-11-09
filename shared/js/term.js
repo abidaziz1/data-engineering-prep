@@ -66,10 +66,11 @@
     opts = opts || {};
     var pace = opts.pace || 1;
     var nodes = opts.nodes || {}, extra = opts.extra || {};
-    var names = Object.keys(nodes);
-    function nodeOf(name, isTest) {
+    var names = Object.keys(nodes).filter(function (n) { return n.indexOf('source:') !== 0; });
+    function nodeOf(name, isTest, isSource) {
       if (extra[name]) return extra[name];
       var short = name.indexOf('::') >= 0 ? name.split('::')[0] : name.split('.').pop();
+      if (isSource) return nodes['source:' + short] || null;
       if (!isTest) return nodes[short] || null;
       var best = null, at = 1e9;
       names.forEach(function (n) { var i = short.indexOf(n); if (i >= 0 && i < at) { at = i; best = n; } });
@@ -87,7 +88,7 @@
         var verb = m[4], head = m[5].replace(/[\s.]+$/, '').trim(), toks = head.split(/\s+/), name = toks[toks.length - 1];
         var isUnit = head.indexOf('::') >= 0;
         var isNode = !isUnit && /\b(model|seed|snapshot|exposure|relation|freshness)\b/.test(head);
-        var id = nodeOf(name, !isNode);
+        var id = nodeOf(name, !isNode, /\bfreshness\b/.test(head));
         if (verb === 'START') { l.c = 'dim'; l.d = 110 * pace; if (id && isNode) { l.node = id; l.st = 'run'; } }
         else if (verb === 'OK' || verb === 'NO-OP') { l.c = 'ok'; l.d = 130 * pace; if (id && isNode) { l.node = id; l.st = 'ok'; } }
         else if (verb === 'PASS') { l.c = 'ok'; l.d = 130 * pace; }
