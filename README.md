@@ -11,7 +11,7 @@ No install. No account. No server. Open `index.html` in a browser and press **Ne
 | **Snowflake**: from first query to production | Ready. 13 missions, 3 paths | [`snowflake/`](snowflake/README.md) |
 | **dbt**: from first model to production | Ready. 13 missions, 3 paths, every output recorded from a real run | [`dbt/`](dbt/README.md) |
 | **Snowflake and dbt together**: one pipeline, end to end | Ready. 10 missions, 3 paths, every statement dbt sends was recorded | [`snowflake-dbt/`](snowflake-dbt/README.md) |
-| Databricks and Azure Databricks | **Next** | |
+| **Databricks and Azure Databricks**: from first notebook to production | Ready. 13 missions, 3 paths, Spark and Delta Lake output recorded from the open-source engines | [`databricks/`](databricks/README.md) |
 | AWS for data engineers | **Next** | |
 | Planned, one tutorial each | Azure, GCP, Microsoft Fabric, Spark, Hadoop, Kafka, Flink, Airflow, Python, SQL, Scala, Java, Docker, Kubernetes, Terraform, Git, PostgreSQL, Oracle, MongoDB, Power BI, Tableau | |
 
@@ -46,7 +46,7 @@ A small tag on a screen shows whether it belongs only to Senior or Extra. Times 
 ## Open it
 
 1. Download or clone this repository.
-2. Double-click **`index.html`**, or open **`snowflake/index.html`**, **`dbt/index.html`** or **`snowflake-dbt/index.html`** directly.
+2. Double-click **`index.html`**, or open **`snowflake/index.html`**, **`dbt/index.html`**, **`databricks/index.html`** or **`snowflake-dbt/index.html`** directly.
 
 It works from `file://` and from any web server, because every path is relative and there are no modules.
 
@@ -56,7 +56,7 @@ It works from `file://` and from any web server, because every path is relative 
 2. Open **Settings, Pages**. Under **Build and deployment**, choose one of:
    - **Source: GitHub Actions.** The included `.github/workflows/pages.yml` publishes everything except the check tools. Run it once from the **Actions** tab if you want it right away.
    - **Source: Deploy from a branch**, branch `main`, folder `/ (root)`. This also works, because `.nojekyll` is present.
-3. The library is at `https://<your-user>.github.io/<repository-name>/`, Snowflake is under `/snowflake/`, dbt is under `/dbt/` and Snowflake with dbt is under `/snowflake-dbt/`.
+3. The library is at `https://<your-user>.github.io/<repository-name>/`, Snowflake is under `/snowflake/`, dbt is under `/dbt/`, Databricks is under `/databricks/` and Snowflake with dbt is under `/snowflake-dbt/`.
 
 Progress, XP and answers are stored in each visitor's own browser (`localStorage`), one key per tutorial.
 
@@ -80,6 +80,10 @@ dbt/                     one tutorial, same layout, plus
   js/real.js               everything recorded from a real dbt run
   verify/project/          the Brewline dbt project that produced it
   verify/capture.py        runs the project and writes js/real.js
+databricks/              one tutorial, same layout, plus
+  js/real.js               query plans, Delta logs, tables and errors recorded from open-source Spark and Delta Lake
+  verify/capture_db.py     runs Spark, Delta Lake and Spark Declarative Pipelines and writes js/real.js
+  verify/verify_db.py      checks every snippet, the bundle schema, lab logic and, with --recapture, the recording
 snowflake-dbt/           the combined tutorial, same layout, plus
   js/real.js               every statement dbt-snowflake sent, in 43 scenarios
   verify/stand_in/         the stand-in for the Snowflake connection that recorded them
@@ -111,6 +115,7 @@ pip install -r dev/requirements.txt
 python3 dev/verify_sql.py snowflake       # parses SQL, compiles Python, parses YAML and JSON, re-runs worksheets in DuckDB
 python3 dbt/verify/verify_dbt.py          # dbt: syntax of hand-written snippets, lab logic; add --recapture to rerun dbt
 python3 snowflake-dbt/verify/verify_sf.py # Snowflake and dbt: hand-written SQL, YAML and shell, dbt flags, lab logic; --recapture records again
+python3 databricks/verify/verify_db.py    # Databricks: snippets, SDK and CLI schema checks, runs on local Spark and Delta Lake; --recapture records again
 ```
 
 `node dev/smoke.js snowflake --path all --width 390 --height 844` repeats the walk at phone width. `node dev/shot.js snowflake m2-lab:0 out.png --click "..."` saves a screenshot of one frame.
@@ -128,6 +133,7 @@ python3 snowflake-dbt/verify/verify_sf.py # Snowflake and dbt: hand-written SQL,
 - **Nothing was run on a live Snowflake account.** The SQL that DuckDB understands (joins, windows, `QUALIFY`, JSON paths, merge counts) was executed, and its result tables are real output. Snowflake-only statements (warehouses, stages, pipes, Time Travel, policies, tasks and so on) were checked against the documented syntax from memory and, where a parser could read them, by `sqlglot`. Their result tables are examples, and the welcome screen says so.
 - **The dbt tutorial is different: its outputs are real.** Every log, compiled query and result table was recorded from dbt Core 1.12.6 running a real project on DuckDB, and `dbt/verify/capture.py` records them again. It is adapter-neutral, and nothing in it ran on Snowflake, Databricks or the dbt platform. The dbt documentation was also unreachable, so facts about dbt v2, Fusion and 1.12 come from release summaries. See [`dbt/README.md`](dbt/README.md).
 - **The Snowflake and dbt tutorial records statements, not results.** Every SQL statement that dbt sends in it was recorded from dbt-snowflake 1.12.5 (dbt Core 1.12.6) running the Brewline project against a stand-in for the Snowflake connection (`snowflake-dbt/verify/stand_in`). The stand-in writes each statement down and answers dbt's metadata questions from a small state file. Nothing ran on a Snowflake account, so results, timings and credit figures in the lessons are examples, and the screens say so. Facts about Snowflake itself come from its public documentation as known when the course was written. The ones to check are listed in [`snowflake-dbt/README.md`](snowflake-dbt/README.md).
+- **The Databricks tutorial records the open-source engines, not Databricks.** The Spark and Delta Lake output (query plans, Delta log files, `DESCRIBE HISTORY`, error messages, file counts, a bronze, silver and gold run, a declarative pipeline run and pytest runs) was recorded from Apache Spark 4.2.0 and Delta Lake 4.4.1 on one machine, and `databricks/verify/capture_db.py` records it again. Unity Catalog, Auto Loader, expectations, AUTO CDC on Delta, jobs, Photon, serverless compute, bundles and the Azure integration did not run anywhere. Those screens carry a "From documentation" tag. The Databricks documentation could not be opened, so their facts come from search summaries of the Databricks and Microsoft pages. Job and cluster JSON was checked against the Databricks Python SDK and the bundle file against the schema of Databricks CLI v1.25.0. The claims to re-check are listed in [`databricks/README.md`](databricks/README.md).
 - **The Snowflake documentation could not be opened** from the environment that built this, because its network policy blocked the host. Facts about recent features were checked through search summaries only, and the ones that need a second look are listed in [`snowflake/README.md`](snowflake/README.md).
 - **The first site's SQL highlighter did not color uppercase keywords.** This engine fixes that. The earlier Interview Quest repository still has the old behavior.
 - The coach is an illustration. To use a photo, see the Snowflake README.

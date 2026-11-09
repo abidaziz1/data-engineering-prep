@@ -27,5 +27,6 @@ LAB.chapters.forEach(ch => ch.scenes.forEach(sc => {
   if (sc.steps) sc.steps.forEach((st, i) => { if (st.code && st.code.code) add(sc.id + ' step ' + i, 'step', st.code.lang, st.code.code); });
   if (sc.result) out.results.push({ id: sc.id, kind: 'result', cols: sc.result.cols, rows: sc.result.rows });
   if (sc.res) out.results.push({ id: sc.id, kind: 'res', cols: sc.res.cols, rows: sc.res.rows });
+  if (sc.data) sc.data.forEach(d => out.results.push({ id: sc.id, kind: 'data', name: d.name, cols: d.cols, rows: d.rows }));
 }));
 process.stdout.write(JSON.stringify(out));

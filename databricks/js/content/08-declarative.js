@@ -5,6 +5,8 @@
   var B = LAB.b, G = LAB.get;
   var RUNS = G.counts('sdp.runs'), DRY = G.counts('sdp.dry_run'), FULL = G.counts('sdp.full_refresh'), VERS = G.counts('sdp.versions_after_run3'), TYPO = G.counts('sdp.dry_run_typo');
   var ERR_TYPO = G.text('sdp.err_typo'), CAUSE = G.text('sdp.err_typo_cause');
+  var CDC_ERR = G.text('sdp.err_autocdc'), CDC_CLASS = (/^\[([A-Z_]+)\]/.exec(CDC_ERR) || [])[1];
+  G.expect(CDC_CLASS === 'AUTOCDC_TARGET_DOES_NOT_SUPPORT_MERGE' && /row-level operations/.test(CDC_ERR) && G.counts('sdp.autocdc_attempt').rc !== 0, 'open-source Spark refused AUTO CDC on a Delta target');
   var SPEC = G.file('sdp/spark-pipeline.yml'), BRZ = G.file('sdp/transformations/bronze.py'), SLV = G.file('sdp/transformations/silver.py'), GLD = G.file('sdp/transformations/gold.sql'), TYPOSQL = G.file('sdp/gold_typo.sql');
   var GOLD = G.table('sdp.gold_rows');
   var idx = function (log, re) { for (var i = 0; i < log.length; i++) if (re.test(log[i])) return i; throw new Error('no log line matches ' + re); };
@@ -290,7 +292,7 @@
           { say: '`KEYS` names the column that identifies a row. `SEQUENCE BY` names the column that says which change is newer. The pipeline uses it to handle changes that arrive out of order, which was the job of the guard in your merge.', lines: [5, 6] },
           { say: '`STORED AS SCD TYPE 1` keeps the latest row for each key. `SCD TYPE 2` keeps the history and adds start and end columns, which replaces the staged-union merge of mission 5.', lines: [7, 7] }
         ],
-        note: 'I tried the same call, `create_auto_cdc_flow`, in the open-source framework of Spark ' + G.meta('spark') + ' with a Delta target. It refused to start, so this screen comes from the Databricks documentation. A streaming read of a table also fails when an existing row of the source changes, unless you set an option to skip such commits (documentation).'
+        note: 'I tried the same call, `create_auto_cdc_flow`, in the open-source framework of Spark ' + G.meta('spark') + ' with a Delta target. It refused to start with the error `' + CDC_CLASS + '`, which says the target table does not support row-level operations. So this screen comes from the Databricks documentation, and I have not run AUTO CDC. A streaming read of a table also fails when an existing row of the source changes, unless you set an option to skip such commits (documentation).'
       }),
 
       B.cmp({

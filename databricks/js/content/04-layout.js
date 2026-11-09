@@ -41,10 +41,16 @@
     '      .collect())'
   ].join('\n');
   var BUG = [
+    'DESCRIBE DETAIL orders;',
+    'OPTIMIZE orders;',
     'SET spark.databricks.delta.retentionDurationCheck.enabled = false;',
     'VACUUM orders RETAIN 0 HOURS;'
   ].join('\n');
-  var BUGFIX = 'VACUUM orders;';
+  var BUGFIX = [
+    'DESCRIBE DETAIL orders;',
+    'OPTIMIZE orders;',
+    'VACUUM orders;'
+  ].join('\n');
 
   LAB.addChapter({
     id: 'm4', n: 4, title: 'Layout: small files, skipping and cleanup', short: 'Layout', blurb: 'OPTIMIZE, data skipping, partitions, Z-order, liquid clustering and VACUUM', minutes: 40,
@@ -263,9 +269,9 @@
 
       B.bug({
         id: 'm4-bug', t: 2, q: 'A teammate wants to save storage and runs this on the production orders table. Click a line that should not be there.',
-        file: 'cleanup.sql', lang: 'sql', code: BUG, bad: [1, 2],
-        hint: 'One line switches off a safety check. The other uses a retention that is too short to be safe.',
-        why: 'The first line turns off the check that refuses a short retention. The second deletes every file that the current version does not use. Time travel, `RESTORE` and any running job that started before the command can fail with `FILE_NOT_EXIST`, as the recording showed.',
+        file: 'cleanup.sql', lang: 'sql', code: BUG, bad: [3, 4],
+        hint: 'Two lines are dangerous together. One switches off a safety check. The other uses a retention that is too short to be safe.',
+        why: 'The third line turns off the check that refuses a short retention. The fourth deletes every file that the current version does not use. Time travel, `RESTORE` and any running job that started before the command can fail with `FILE_NOT_EXIST`, as the recording showed. `DESCRIBE DETAIL` only reads, and `OPTIMIZE` removes small files from the current version without deleting them from storage, so both are safe to keep. A plain `VACUUM` keeps the default 7 days.',
         fix: BUGFIX,
         cheer: 'Spotting a disabled safety check is a senior habit.'
       }),

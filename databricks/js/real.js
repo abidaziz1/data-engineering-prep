@@ -109,7 +109,7 @@ LAB.real = {
    "numFiles": 2,
    "partitionColumns": [],
    "properties": {},
-   "sizeInBytes": 2712491,
+   "sizeInBytes": 2713106,
    "tableFeatures": [
     "appendOnly",
     "clustering",
@@ -145,7 +145,7 @@ LAB.real = {
    "numFiles": 2,
    "partitionColumns": [],
    "properties": {},
-   "sizeInBytes": 2712491,
+   "sizeInBytes": 2713106,
    "tableFeatures": [
     "appendOnly",
     "clustering",
@@ -236,7 +236,7 @@ LAB.real = {
    "numFiles": 1,
    "partitionColumns": [],
    "properties": {},
-   "sizeInBytes": 10878,
+   "sizeInBytes": 10900,
    "tableFeatures": [
     "appendOnly",
     "invariants"
@@ -262,10 +262,10 @@ LAB.real = {
   },
   "layout.small_optimize": {
    "filesAdded": {
-    "max": 10878,
-    "min": 10878,
+    "max": 10900,
+    "min": 10900,
     "totalFiles": 1,
-    "totalSize": 10878
+    "totalSize": 10900
    },
    "filesRemoved": {
     "max": 1655,
@@ -326,25 +326,25 @@ LAB.real = {
   "layout.zorder": {
    "files_after": [
     {
-     "bytes": 929598,
+     "bytes": 1028296,
      "file": "part-0017.snappy.parquet",
-     "max": "C-0609",
+     "max": "C-0676",
      "min": "C-0000",
-     "rows": 122043
+     "rows": 135092
     },
     {
-     "bytes": 1016810,
+     "bytes": 1057049,
      "file": "part-0018.snappy.parquet",
-     "max": "C-1278",
-     "min": "C-0607",
-     "rows": 133475
+     "max": "C-1369",
+     "min": "C-0675",
+     "rows": 138810
     },
     {
-     "bytes": 1099755,
+     "bytes": 960523,
      "file": "part-0019.snappy.parquet",
      "max": "C-1999",
-     "min": "C-1277",
-     "rows": 144482
+     "min": "C-1368",
+     "rows": 126098
     }
    ],
    "files_before": [
@@ -470,6 +470,10 @@ LAB.real = {
    "total_files_after": 3,
    "total_files_before": 16,
    "zOrderBy": "customer_id"
+  },
+  "sdp.autocdc_attempt": {
+   "error": "[AUTOCDC_TARGET_DOES_NOT_SUPPORT_MERGE] Cannot start AutoCDC flow: the target table `spark_catalog`.`default`.`silver_orders_cdc` (format: delta) does not support row-level operations. AutoCDC requires a target backed by a connector that supports MERGE.",
+   "rc": 1
   },
   "sdp.dry_run": {
    "cause": null,
@@ -840,7 +844,7 @@ LAB.real = {
    "progress": [
     {
      "batchId": 0,
-     "endOffset": "{\"sourceVersion\": 1, \"reservoirId\": \"06a81835-4c29-46ef-97bd-4752428be28d\", \"reservoirVersion\": 2, \"index\": -1, \"isStartingVersion\": false}",
+     "endOffset": "{\"sourceVersion\": 1, \"reservoirId\": \"5a3ce86c-70f7-41af-b655-b27af51cbdb1\", \"reservoirVersion\": 2, \"index\": -1, \"isStartingVersion\": false}",
      "numInputRows": 7,
      "startOffset": "null"
     }
@@ -851,9 +855,9 @@ LAB.real = {
    "progress": [
     {
      "batchId": 1,
-     "endOffset": "{\"sourceVersion\": 1, \"reservoirId\": \"06a81835-4c29-46ef-97bd-4752428be28d\", \"reservoirVersion\": 3, \"index\": -1, \"isStartingVersion\": false}",
+     "endOffset": "{\"sourceVersion\": 1, \"reservoirId\": \"5a3ce86c-70f7-41af-b655-b27af51cbdb1\", \"reservoirVersion\": 3, \"index\": -1, \"isStartingVersion\": false}",
      "numInputRows": 7,
-     "startOffset": "{\"sourceVersion\": 1, \"reservoirId\": \"06a81835-4c29-46ef-97bd-4752428be28d\", \"reservoirVersion\": 2, \"index\": -1, \"isStartingVersion\": false}"
+     "startOffset": "{\"sourceVersion\": 1, \"reservoirId\": \"5a3ce86c-70f7-41af-b655-b27af51cbdb1\", \"reservoirVersion\": 2, \"index\": -1, \"isStartingVersion\": false}"
     }
    ],
    "silver_rows": 10
@@ -919,6 +923,7 @@ LAB.real = {
   "delta/merge.sql": "MERGE INTO orders AS t\nUSING updates AS s\nON t.order_id = s.order_id\nWHEN MATCHED AND s._loaded_at > t._loaded_at THEN UPDATE SET *\nWHEN NOT MATCHED THEN INSERT *\n",
   "pipeline/scd2.py": "changes = spark.createDataFrame(\n    [(\"C-42\", \"Ava Martin\", \"gold\", datetime.datetime(2026, 3, 16, 8, 0)),\n     (\"C-55\", \"Mia Rossi\", \"standard\", datetime.datetime(2026, 3, 16, 8, 0))],\n    \"customer_id string, full_name string, tier string, effective_at timestamp\")\n\ndim = DeltaTable.forPath(spark, dim_path)\ncurrent = dim.toDF().filter(\"is_current\")\n\nnew_versions = (changes.alias(\"s\").join(current.alias(\"t\"), \"customer_id\")\n    .where(\"s.tier <> t.tier\")\n    .selectExpr(\"CAST(NULL AS STRING) AS merge_key\", \"s.customer_id\", \"s.full_name\", \"s.tier\", \"s.effective_at\"))\n\nstaged = new_versions.unionByName(\n    changes.selectExpr(\"customer_id AS merge_key\", \"customer_id\", \"full_name\", \"tier\", \"effective_at\"))\n\n(dim.alias(\"t\")\n    .merge(staged.alias(\"s\"), \"t.customer_id = s.merge_key AND t.is_current\")\n    .whenMatchedUpdate(condition=\"t.tier <> s.tier\", set={\"is_current\": \"false\", \"valid_to\": \"s.effective_at\"})\n    .whenNotMatchedInsert(values={\"customer_id\": \"s.customer_id\", \"full_name\": \"s.full_name\", \"tier\": \"s.tier\",\n                                  \"valid_from\": \"s.effective_at\", \"valid_to\": \"NULL\", \"is_current\": \"true\"})\n    .execute())\n",
   "sdp/gold_typo.sql": "CREATE MATERIALIZED VIEW gold_daily_revenue\nAS SELECT to_date(order_ts) AS order_date,\n          count(*) AS orders,\n          sum(total_usd) AS revenue_usd\nFROM silver_ordres\nWHERE status <> 'CANCELLED'\nGROUP BY to_date(order_ts)\n",
+  "sdp/silver_autocdc.py": "from pyspark import pipelines as dp\n\ndp.create_streaming_table(\"silver_orders_cdc\")\n\ndp.create_auto_cdc_flow(\n    target=\"silver_orders_cdc\",\n    source=\"bronze_orders_cdc\",\n    keys=[\"order_id\"],\n    sequence_by=\"_loaded_at\",\n    stored_as_scd_type=1,\n)\n",
   "sdp/spark-pipeline.yml": "name: brewline\nstorage: file:///data/brewline/pipeline-storage\nlibraries:\n  - glob:\n      include: transformations/**\nconfiguration:\n  brewline.landing: /data/brewline/landing/orders\n",
   "sdp/transformations/bronze.py": "from pyspark import pipelines as dp\nfrom pyspark.sql import functions as F\n\nORDERS = (\"order_id string, customer_id string, order_ts timestamp, \"\n          \"status string, total_usd decimal(12,2), _loaded_at timestamp\")\n\n\n@dp.table(name=\"bronze_orders\", comment=\"Orders as they arrived\")\ndef bronze_orders():\n    return (spark.readStream.format(\"json\")\n            .schema(ORDERS)\n            .load(spark.conf.get(\"brewline.landing\"))\n            .select(\"*\", F.col(\"_metadata.file_name\").alias(\"_source_file\")))\n",
   "sdp/transformations/gold.sql": "CREATE MATERIALIZED VIEW gold_daily_revenue\nAS SELECT to_date(order_ts) AS order_date,\n          count(*) AS orders,\n          sum(total_usd) AS revenue_usd\nFROM silver_orders\nWHERE status <> 'CANCELLED'\nGROUP BY to_date(order_ts)\n",
@@ -1289,16 +1294,16 @@ LAB.real = {
     "isBlindAppend": false,
     "operation": "OPTIMIZE",
     "operationMetrics": {
-     "maxFileSize": "10878",
-     "minFileSize": "10878",
-     "numAddedBytes": "10878",
+     "maxFileSize": "10900",
+     "minFileSize": "10900",
+     "numAddedBytes": "10900",
      "numAddedFiles": "1",
      "numDeletionVectorsRemoved": "0",
      "numRemovedBytes": "65499",
      "numRemovedFiles": "40",
-     "p25FileSize": "10878",
-     "p50FileSize": "10878",
-     "p75FileSize": "10878"
+     "p25FileSize": "10900",
+     "p50FileSize": "10900",
+     "p75FileSize": "10900"
     },
     "operationParameters": {
      "auto": "false",
@@ -1342,16 +1347,16 @@ LAB.real = {
     "isBlindAppend": false,
     "operation": "OPTIMIZE",
     "operationMetrics": {
-     "maxFileSize": "1099755",
-     "minFileSize": "929598",
-     "numAddedBytes": "3046163",
+     "maxFileSize": "1057049",
+     "minFileSize": "960523",
+     "numAddedBytes": "3045868",
      "numAddedFiles": "3",
      "numDeletionVectorsRemoved": "0",
      "numRemovedBytes": "3247724",
      "numRemovedFiles": "16",
-     "p25FileSize": "929598",
-     "p50FileSize": "1016810",
-     "p75FileSize": "1099755"
+     "p25FileSize": "960523",
+     "p50FileSize": "1028296",
+     "p75FileSize": "1057049"
     },
     "operationParameters": {
      "auto": "false",
@@ -1422,7 +1427,7 @@ LAB.real = {
     "operationParameters": {
      "epochId": "0",
      "outputMode": "Append",
-     "queryId": "b047779d-02d2-4689-add1-3d810bdbc4bf"
+     "queryId": "c8672a27-f378-4e21-bdda-19e6c79b6d7e"
     },
     "version": 0
    },
@@ -1438,7 +1443,7 @@ LAB.real = {
     "operationParameters": {
      "epochId": "1",
      "outputMode": "Append",
-     "queryId": "b047779d-02d2-4689-add1-3d810bdbc4bf"
+     "queryId": "c8672a27-f378-4e21-bdda-19e6c79b6d7e"
     },
     "version": 1
    },
@@ -1454,7 +1459,7 @@ LAB.real = {
     "operationParameters": {
      "epochId": "2",
      "outputMode": "Append",
-     "queryId": "b047779d-02d2-4689-add1-3d810bdbc4bf"
+     "queryId": "c8672a27-f378-4e21-bdda-19e6c79b6d7e"
     },
     "version": 2
    }
@@ -1612,7 +1617,7 @@ LAB.real = {
         "sourceTableSize": "3664"
        },
        "operationParameters": {
-        "source": "delta.`file:/tmp/db-capture-f23vdx9f/delta/orders`",
+        "source": "delta.`file:/tmp/db-capture-bla9yzfk/delta/orders`",
         "sourceVersion": 6
        },
        "readVersion": -1,
@@ -2229,16 +2234,16 @@ LAB.real = {
        "isolationLevel": "SnapshotIsolation",
        "operation": "OPTIMIZE",
        "operationMetrics": {
-        "maxFileSize": "1458036",
-        "minFileSize": "1254455",
-        "numAddedBytes": "2712491",
+        "maxFileSize": "1487020",
+        "minFileSize": "1226086",
+        "numAddedBytes": "2713106",
         "numAddedFiles": "2",
         "numDeletionVectorsRemoved": "0",
         "numRemovedBytes": "2883763",
         "numRemovedFiles": "16",
-        "p25FileSize": "1254455",
-        "p50FileSize": "1458036",
-        "p75FileSize": "1458036"
+        "p25FileSize": "1226086",
+        "p50FileSize": "1487020",
+        "p75FileSize": "1487020"
        },
        "operationParameters": {
         "auto": false,
@@ -3170,6 +3175,7 @@ LAB.real = {
   "plan.skew_off": "== Physical Plan ==\nAdaptiveSparkPlan isFinalPlan=true\n+- == Final Plan ==\n   ResultQueryStage 2\n   +- *(5) Project [k#N, v#N, dim_id#N]\n      +- *(5) SortMergeJoin [k#N], [k#N], Inner\n         :- *(3) Sort [k#N ASC NULLS FIRST], false, 0\n         :  +- AQEShuffleRead coalesced\n         :     +- ShuffleQueryStage 0\n         :        +- Exchange hashpartitioning(k#N, 8), ENSURE_REQUIREMENTS, \n         :           +- *(1) Project [CASE WHEN ((id#N % 10) < 8) THEN K-0 ELSE concat(K-, cast(((id#N % 49) + 1) as string)) END AS k#N, id#N AS v#N]\n         :              +- *(1) Filter CASE WHEN ((id#N % 10) < 8) THEN true ELSE isnotnull(concat(K-, cast(((id#N % 49) + 1) as string))) END\n         :                 +- *(1) Range (0, 300000, step=1, splits=4)\n         +- *(4) Sort [k#N ASC NULLS FIRST], false, 0\n            +- AQEShuffleRead coalesced\n               +- ShuffleQueryStage 1\n                  +- Exchange hashpartitioning(k#N, 8), ENSURE_REQUIREMENTS, \n                     +- *(2) Project [concat(K-, cast(id#N as string)) AS k#N, id#N AS dim_id#N]\n                        +- *(2) Range (0, 50, step=1, splits=4)\n+- == Initial Plan ==\n   Project [k#N, v#N, dim_id#N]\n   +- SortMergeJoin [k#N], [k#N], Inner\n      :- Sort [k#N ASC NULLS FIRST], false, 0\n      :  +- Exchange hashpartitioning(k#N, 8), ENSURE_REQUIREMENTS, \n      :     +- Project [CASE WHEN ((id#N % 10) < 8) THEN K-0 ELSE concat(K-, cast(((id#N % 49) + 1) as string)) END AS k#N, id#N AS v#N]\n      :        +- Filter CASE WHEN ((id#N % 10) < 8) THEN true ELSE isnotnull(concat(K-, cast(((id#N % 49) + 1) as string))) END\n      :           +- Range (0, 300000, step=1, splits=4)\n      +- Sort [k#N ASC NULLS FIRST], false, 0\n         +- Exchange hashpartitioning(k#N, 8), ENSURE_REQUIREMENTS, \n            +- Project [concat(K-, cast(id#N as string)) AS k#N, id#N AS dim_id#N]\n               +- Range (0, 50, step=1, splits=4)",
   "plan.skew_on": "== Physical Plan ==\nAdaptiveSparkPlan isFinalPlan=true\n+- == Final Plan ==\n   ResultQueryStage 2\n   +- *(5) Project [k#N, v#N, dim_id#N]\n      +- *(5) SortMergeJoin(skew=true) [k#N], [k#N], Inner\n         :- *(3) Sort [k#N ASC NULLS FIRST], false, 0\n         :  +- AQEShuffleRead skewed\n         :     +- ShuffleQueryStage 0\n         :        +- Exchange hashpartitioning(k#N, 8), ENSURE_REQUIREMENTS, \n         :           +- *(1) Project [CASE WHEN ((id#N % 10) < 8) THEN K-0 ELSE concat(K-, cast(((id#N % 49) + 1) as string)) END AS k#N, id#N AS v#N]\n         :              +- *(1) Filter CASE WHEN ((id#N % 10) < 8) THEN true ELSE isnotnull(concat(K-, cast(((id#N % 49) + 1) as string))) END\n         :                 +- *(1) Range (0, 300000, step=1, splits=4)\n         +- *(4) Sort [k#N ASC NULLS FIRST], false, 0\n            +- AQEShuffleRead\n               +- ShuffleQueryStage 1\n                  +- Exchange hashpartitioning(k#N, 8), ENSURE_REQUIREMENTS, \n                     +- *(2) Project [concat(K-, cast(id#N as string)) AS k#N, id#N AS dim_id#N]\n                        +- *(2) Range (0, 50, step=1, splits=4)\n+- == Initial Plan ==\n   Project [k#N, v#N, dim_id#N]\n   +- SortMergeJoin [k#N], [k#N], Inner\n      :- Sort [k#N ASC NULLS FIRST], false, 0\n      :  +- Exchange hashpartitioning(k#N, 8), ENSURE_REQUIREMENTS, \n      :     +- Project [CASE WHEN ((id#N % 10) < 8) THEN K-0 ELSE concat(K-, cast(((id#N % 49) + 1) as string)) END AS k#N, id#N AS v#N]\n      :        +- Filter CASE WHEN ((id#N % 10) < 8) THEN true ELSE isnotnull(concat(K-, cast(((id#N % 49) + 1) as string))) END\n      :           +- Range (0, 300000, step=1, splits=4)\n      +- Sort [k#N ASC NULLS FIRST], false, 0\n         +- Exchange hashpartitioning(k#N, 8), ENSURE_REQUIREMENTS, \n            +- Project [concat(K-, cast(id#N as string)) AS k#N, id#N AS dim_id#N]\n               +- Range (0, 50, step=1, splits=4)",
   "plan.udf": "== Physical Plan ==\n*(1) Project [pythonUDF0#N AS s#N]\n+- ArrowEvalPython [<lambda>(status#N)#N], [pythonUDF0#N], 101\n   +- FileScan csv [status#N] Batched: false, DataFilters: [], Format: CSV, Location: InMemoryFileIndex(1 paths)[file:/...], PartitionFilters: [], PushedFilters: [], ReadSchema: struct<status:string>",
+  "sdp.err_autocdc": "[AUTOCDC_TARGET_DOES_NOT_SUPPORT_MERGE] Cannot start AutoCDC flow: the target table `spark_catalog`.`default`.`silver_orders_cdc` (format: delta) does not support row-level operations. AutoCDC requires a target backed by a connector that supports MERGE.",
   "sdp.err_typo": "Failed to resolve flows in the pipeline. A flow can fail to resolve because the flow itself contains errors or because it reads from an upstream flow which failed to resolve. Flows with errors: spark_catalog.default.gold_daily_revenue Flows that failed due to upstream errors: To view the exceptions that were raised while resolving these flows, look for flow failures that precede this log.",
   "sdp.err_typo_cause": "[TABLE_OR_VIEW_NOT_FOUND] The table or view `spark_catalog`.`default`.`silver_ordres` cannot be found. Verify the spelling and correctness of the schema and catalog.",
   "spark.schema_orders": "root\n |-- order_id: string (nullable = true)\n |-- customer_id: string (nullable = true)\n |-- order_ts: timestamp (nullable = true)\n |-- status: string (nullable = true)\n |-- total_usd: decimal(12,2) (nullable = true)\n |-- _loaded_at: timestamp (nullable = true)",

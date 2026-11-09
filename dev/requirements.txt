@@ -7,3 +7,16 @@ dbt-duckdb~=1.11.1
 # snowflake-dbt/verify (the recorder and verify_sf.py --recapture):
 dbt-snowflake~=1.12.5
 cryptography
+# databricks/verify (the recorder, verify_db.py and its --recapture). Needs Java 17 or 21 and Node 20 or later:
+pyspark==4.2.0
+delta-spark==4.4.1
+pytest
+pyarrow
+databricks-sdk
+jsonschema
+regex
+grpcio
+grpcio-status
+googleapis-common-protos
+protobuf
+zstandard

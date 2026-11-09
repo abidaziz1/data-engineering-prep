@@ -63,12 +63,16 @@
     'ORDER BY event_time DESC;'
   ].join('\n');
   var BUG = [
+    'GRANT USE CATALOG ON CATALOG brewline_prod TO `data_engineers`;',
     'GRANT ALL PRIVILEGES ON CATALOG brewline_prod TO `alice@brewline.example`;',
+    'GRANT USE SCHEMA, SELECT ON SCHEMA brewline_prod.silver TO `data_engineers`;',
     'GRANT SELECT ON TABLE brewline_prod.silver.orders TO `bob@brewline.example`;'
   ].join('\n');
   var BUGFIX = [
     'GRANT USE CATALOG ON CATALOG brewline_prod TO `data_engineers`;',
-    'GRANT USE SCHEMA, SELECT ON SCHEMA brewline_prod.silver TO `data_engineers`;'
+    'GRANT USE SCHEMA, SELECT ON SCHEMA brewline_prod.silver TO `data_engineers`;',
+    'GRANT USE CATALOG ON CATALOG brewline_prod TO `analysts`;',
+    'GRANT USE SCHEMA, SELECT ON SCHEMA brewline_prod.silver TO `analysts`;'
   ].join('\n');
 
   LAB.addChapter({
@@ -272,9 +276,9 @@
 
       B.bug({
         id: 'm7-bug', t: 1, q: 'A teammate sets up access for two people on the production catalog. Click a line that breaks the rules of good governance.',
-        file: 'access.sql', lang: 'sql', code: BUG, bad: [1, 2],
-        hint: 'Look at who receives the grants, and how much power the first one gives.',
-        why: 'Both lines grant to **individual people**. When Alice or Bob changes team or leaves, someone must find and remove each grant. The first line also gives `ALL PRIVILEGES` on the whole production catalog to one person. Grant to a group, and give only the privileges the role needs.',
+        file: 'access.sql', lang: 'sql', code: BUG, bad: [2, 4],
+        hint: 'Look at who receives each grant, and how much power one of them gives.',
+        why: 'Lines 2 and 4 grant to **individual people**. When Alice or Bob changes team or leaves, someone must find and remove each grant. Line 2 also gives `ALL PRIVILEGES` on the whole production catalog to one person. Lines 1 and 3 are right: they give the minimum to a group. Put Alice in `data_engineers` and Bob in an `analysts` group, and give each group `USE CATALOG`, `USE SCHEMA` and `SELECT`.',
         fix: BUGFIX,
         cheer: 'Grants to groups are the first thing a reviewer checks.'
       }),

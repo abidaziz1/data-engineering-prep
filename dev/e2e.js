@@ -312,6 +312,142 @@ const ok = (c, m) => { if (c) pass++; else { fail++; console.log('FAIL:', m); } 
     ok(code.includes('BREWLINE.staging.stg_brewline__customers') && !code.includes('PR_123'), 'environment lab: with defer the parents come from production');
   }
 
+  // ---------- databricks only: the labs must show what Spark and Delta Lake recorded, and the arithmetic must be right ----------
+  // The expected values below were worked out by hand from the recording (see databricks/verify/check_widgets.js) and are not read from the widgets.
+  if (name === 'databricks') {
+    const norm = s => s.replace(/ /g, ' ').split('\n').map(l => l.trimEnd()).join('\n').trim();
+    const blocks = () => page.$$eval('#stage-body .code', bs => bs.map(b => [...b.querySelectorAll('.ln .tx')].map(x => x.textContent).join('\n')));
+    const tables = () => page.$$eval('.lab .tbl', ts => ts.map(t => [...t.querySelectorAll('tbody tr')].map(r => [...r.children].map(td => td.innerText.trim()))));
+    const bigs = () => page.$$eval('.lab-out .big b', els => els.map(e => e.textContent));
+    const pick = async (act, v) => { await page.click('[data-act="' + act + '"][data-v="' + v + '"]'); await page.waitForTimeout(15); };
+    const scene = kind => S.find(x => x.type === 'widget' && x.kind === kind);
+    const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+
+    // Delta log lab: six commits, the files that are live at each, and the rows that changed between two versions
+    const dl = scene('deltalog');
+    const OPS = ['WRITE', 'WRITE', 'UPDATE', 'DELETE', 'MERGE', 'OPTIMIZE'], LIVE = [1, 2, 2, 2, 5, 1], ROWS = [3, 5, 5, 4, 9, 9];
+    await go(dl.id + ':0');
+    for (let v = 0; v < 6; v++) {
+      await pick('dl-v', v);
+      const want = await page.evaluate(v => LAB.get.commitText('delta.orders', v), v);
+      ok(norm((await blocks())[0]) === norm(want), 'Delta log lab, version ' + v + ': the JSON on screen is the commit file that was recorded');
+      ok((await bigs())[0] === OPS[v], 'Delta log lab, version ' + v + ' is a ' + OPS[v]);
+    }
+    await go(dl.id + ':1');
+    for (let v = 0; v < 6; v++) {
+      await pick('dl-v', v);
+      const b = await bigs();
+      ok(same(b, [LIVE[v] + ' files', ROWS[v] + ' rows']), 'Delta log lab, version ' + v + ': ' + LIVE[v] + ' live files and ' + ROWS[v] + ' rows (got ' + b.join(' | ') + ')');
+      ok((await tables())[0].length === LIVE[v] && await cnt('.lab-out .big.good') === 1, 'Delta log lab, version ' + v + ': the table lists the live files and the log statistics add up to the rows');
+    }
+    await go(dl.id + ':2');
+    await pick('dl-a', 1); await pick('dl-b', 4);
+    let t = (await tables())[0];
+    ok(same(t.filter(r => r[0] === 'added').map(r => r[1]), ['O-5006', 'O-5007', 'O-5008', 'O-5009', 'O-5010']), 'Delta log lab: version 4 adds five orders to version 1');
+    ok(same(t.filter(r => r[0] === 'changed').map(r => r[1] + ' ' + r[4].split(',')[0]), ['O-5002 PLACED']), 'Delta log lab: one order changed from PLACED');
+    ok(same(t.filter(r => r[0] === 'removed').map(r => r[1]), ['O-5005']), 'Delta log lab: the cancelled order was deleted');
+    await pick('dl-a', 3); await pick('dl-b', 3);
+    ok(await cnt('.lab .tbl') === 0 && /hold the same rows/.test(await text()), 'Delta log lab: a version does not differ from itself');
+
+    // writer lab: which of the four pairs fails, and the error that Delta Lake printed
+    const cf = scene('conflicts');
+    await go(cf.id + ':0');
+    for (const [k, verdict] of [['append_append', 'A committed'], ['update_append', 'A failed'], ['update_append_partitioned', 'A committed'], ['update_update', 'A failed']]) {
+      await pick('cf-pick', k);
+      ok((await bigs())[0] === verdict, 'writer lab, ' + k + ': ' + verdict);
+      const bl = await blocks();
+      if (verdict === 'A failed') {
+        const want = await page.evaluate(k => LAB.get.text('delta.conflict_' + k), k);
+        ok(bl.length === 1 && norm(bl[0]) === norm(want) && norm(bl[0]).startsWith('[DELTA_CONCURRENT_APPEND'), 'writer lab, ' + k + ': the error on screen is the one that was recorded');
+      } else ok(bl.length === 0, 'writer lab, ' + k + ': no error is shown when both writers commit');
+    }
+    await go(cf.id + ':1');
+    t = (await tables())[0];
+    ok(same(t.map(r => [r[1], r[2], r[3]]), [['committed', 'committed', '5'], ['ConcurrentAppendException', 'committed', '4'], ['committed', 'committed', '4'], ['ConcurrentAppendException', 'committed', '3']]), 'writer lab: the summary lists the outcome of all four pairs');
+
+    // watermark lab: the three arrivals, the window table, and the stream against the batch recount
+    const wm = scene('watermark');
+    await go(wm.id + ':0');
+    const WM = [['09:07', '08:57', '0'], ['09:25', '09:15', '0'], ['09:31', '09:21', '1']];
+    for (let k = 0; k < 3; k++) {
+      await pick('wm-k', k);
+      const b = await bigs();
+      ok(same(b, WM[k]), 'watermark lab, arrival ' + (k + 1) + ': largest event ' + WM[k][0] + ', watermark ' + WM[k][1] + ', dropped ' + WM[k][2] + ' (got ' + b.join(' | ') + ')');
+      const rec = await page.evaluate(k => LAB.real.counts['stream.watermark_runs'][k].watermark.slice(11, 16), k);
+      ok(b[1] === rec, 'watermark lab, arrival ' + (k + 1) + ': the watermark is the one Spark reported');
+    }
+    t = await tables();
+    ok(t[0].length === 2 && t[0][0][0] === '09:04' && t[0][0][2].startsWith('dropped') && t[0][1][2] === 'counted', 'watermark lab: in arrival 3 the 09:04 event is dropped and the 09:31 event is counted');
+    ok(same(t[1], [['09:00 to 09:10', '3', 'emitted with 3 orders'], ['09:10 to 09:20', '1', 'emitted with 1 orders'], ['09:20 to 09:30', '1', 'open'], ['09:30 to 09:40', '1', 'open']]), 'watermark lab: window states after arrival 3 (got ' + JSON.stringify(t[1]) + ')');
+    await go(wm.id + ':1');
+    t = (await tables())[0];
+    ok(same(t, [['09:00 to 09:10', '3', '4', '1'], ['09:10 to 09:20', '1', '1', '0'], ['09:20 to 09:30', 'not emitted yet', '1', 'still open'], ['09:30 to 09:40', 'not emitted yet', '1', 'still open']]), 'watermark lab: the stream says 3 and the batch recount says 4 for the first window (got ' + JSON.stringify(t) + ')');
+
+    // join lab: the operators counted in each plan, and the highlighted line
+    const jn = scene('joins');
+    const JN = [['plan.join_default', 'BroadcastHashJoin', 0, 1, 0], ['plan.join_no_broadcast', 'SortMergeJoin', 2, 0, 2], ['plan.join_hint_shuffle_hash', 'ShuffledHashJoin', 2, 0, 0], ['plan.join_hint_merge', 'SortMergeJoin', 2, 0, 2], ['plan.join_hint_broadcast', 'BroadcastHashJoin', 0, 1, 0]];
+    await go(jn.id + ':0');
+    for (const [k, join, sh, br] of JN) {
+      await pick('jn-pick', k);
+      ok(same(await bigs(), [join, String(sh), String(br)]), 'join lab, ' + k + ': ' + join + ', ' + sh + ' shuffles, ' + br + ' broadcasts');
+      const want = await page.evaluate(k => LAB.get.text(k), k);
+      ok(norm((await blocks())[0]) === norm(want), 'join lab, ' + k + ': the plan on screen is the plan Spark printed');
+      const hl = await page.$$eval('#stage-body .ln.on .tx', xs => xs.map(x => x.textContent));
+      ok(hl.length === 1 && hl[0].includes(join), 'join lab, ' + k + ': the highlighted line holds the join');
+    }
+    await go(jn.id + ':1');
+    ok(same((await tables())[0].map(r => r.slice(1)), JN.map(([, j, s, b, o]) => [j, String(s), String(b), String(o)])), 'join lab: the summary counts joins, shuffles, broadcasts and sorts of all five plans');
+
+    // skew lab: partition sizes by key and with a salt, and the two final plans
+    const sk = scene('skew');
+    await go(sk.id + ':0');
+    ok(same(await bigs(), ['6.6x', '1.4x']), 'skew lab: the biggest partition is 6.6 times the average by key and 1.4 times with a salt');
+    const lanes = await page.$$eval('.gantt', gs => gs.map(g => [...g.querySelectorAll('.lane-v')].map(x => +x.textContent.replace(/,/g, ''))));
+    ok(lanes.length === 2 && lanes.every(l => l.length === 8 && l.reduce((a, b) => a + b, 0) === 300000), 'skew lab: both layouts show 8 partitions that hold 300,000 rows');
+    ok(Math.max(...lanes[0]) >= 240000 && Math.max(...lanes[1]) < 60000, 'skew lab: by key one partition holds at least the 240,000 rows of K-0 (80 percent of 300,000), with a salt none holds 60,000');
+    await go(sk.id + ':1');
+    const sb = await blocks();
+    ok(sb.length === 2 && !/skew=true/.test(sb[0]) && /skew=true/.test(sb[1]) && /AQEShuffleRead skewed/.test(sb[1]), 'skew lab: only the plan with skew handling on says skew=true');
+
+    // data skipping lab: the lit squares are the files whose min and max can hold the value
+    const sp = scene('skipping');
+    await go(sp.id + ':0');
+    for (const c of ['C-0420', 'C-0000', 'C-0603', 'C-1000', 'C-1999']) {
+      await pick('sk-v', c);
+      const b = await bigs(), grids = await page.$$eval('.skipgrid', gs => gs.map(g => g.querySelectorAll('.skf.read').length));
+      ok(same(b, ['16 of 16', '1 of 3']) && same(grids, [16, 1]), 'skipping lab, ' + c + ': 16 of 16 files before and 1 of 3 after, and the squares agree (got ' + b.join(' | ') + ' and ' + grids.join(',') + ')');
+    }
+    await pick('sk-v', 'C-0420');
+    ok(/Recorded\./.test(await text()), 'skipping lab: the filter that Spark really ran is marked as recorded');
+    await go(sp.id + ':1');
+    ok(same(await bigs(), ['customer_id', '1 of 2', '16 to 2']), 'skipping lab: liquid clustering reads 1 of 2 files and OPTIMIZE joined 16 files into 2 (got ' + (await bigs()).join(' | ') + ')');
+
+    // cost lab: every number below was worked out by hand
+    const dbu = scene('dbu');
+    await go(dbu.id + ':0');
+    for (const [a, v] of [['d-type', 'jobs'], ['d-w', 4], ['d-vm', 0.5], ['d-dbu', 1], ['d-h', 2], ['d-spot', 0]]) await pick(a, v);   // the lab keeps its state, so set every choice
+    ok(same(await bigs(), ['300', '$90', '$150', '$240']), 'cost lab default: 5 nodes x 1 DBU x 2 h x 30 days = 300 DBUs at $0.30 = $90, VMs 5 x $0.50 x 60 h = $150, total $240');
+    await pick('d-type', 'allp');
+    ok(same(await bigs(), ['300', '$165', '$150', '$315']), 'cost lab: all-purpose compute, 300 DBUs at $0.55 = $165');
+    await pick('d-type', 'sql');
+    ok(same(await bigs(), ['60', '$42', '$0', '$42']), 'cost lab: serverless SQL, 60 DBUs at $0.70 = $42 and no VM charge');
+    await pick('d-type', 'jobs'); await pick('d-spot', 0.6);
+    ok(same(await bigs(), ['300', '$90', '$78', '$168']), 'cost lab: spot workers, the driver stays on demand: (1 + 4 x 0.4) x $0.50 x 60 h = $78');
+    await pick('d-spot', 0); await pick('d-w', 16); await pick('d-h', 24);
+    ok(same(await bigs(), ['12,240', '$3,672', '$6,120', '$9,792']) && await cnt('.lab-out .big.bad') === 1, 'cost lab: 17 nodes for 24 h a day: 12,240 DBUs, $3,672 and $6,120 give $9,792, flagged red');
+    await pick('d-w', 4); await pick('d-h', 2);
+    await go(dbu.id + ':1');
+    t = (await tables())[0];
+    ok(same(t, [['Jobs compute', '$0.30', '300', '$90', '$150', '$240'], ['All-purpose compute', '$0.55', '300', '$165', '$150', '$315']]) && /1\.8 times/.test(await text()), 'cost lab: the same cluster costs $240 on jobs compute and $315 on all-purpose compute, 1.8 times the DBU charge');
+    await go(dbu.id + ':2');
+    await pick('d-run', 45); await pick('d-idle', 120);
+    t = (await tables())[0];
+    ok(same(t, [['120 minutes', '2.75', '$433'], ['10 minutes', '0.92', '$144']]), 'cost lab: a 45 minute job with 120 idle minutes bills 2.75 hours and $433, with 10 idle minutes 0.92 hours and $144 (got ' + JSON.stringify(t) + ')');
+    await pick('d-idle', 10);
+    t = (await tables())[0];
+    ok(t[0][0] === '10 minutes' && t[0][2] === '$144' && await cnt('.callout.good') >= 1, 'cost lab: with 10 idle minutes the two rows agree');
+  }
+
   // score screen counts every mock question on the path
   await go('mock-score:0');
   ok(await cnt('.ring') === 1 && await cnt('.srow') === S.filter(x => x.type === 'mock').length, 'scorecard lists every boss question');
