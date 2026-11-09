@@ -226,6 +226,92 @@ const ok = (c, m) => { if (c) pass++; else { fail++; console.log('FAIL:', m); } 
     ok(await cnt('.tbl tr.new') === 3 && await cnt('.tbl tr.dup') === 2, 'incremental lab: three strategies are correct and two are not');
   }
 
+  // ---------- snowflake-dbt only: the labs must show what was recorded, and the arithmetic must be right ----------
+  if (name === 'snowflake-dbt') {
+    const norm = s => s.replace(/ /g, ' ').split('\n').map(l => l.trimEnd()).join('\n').trim();
+    const blocks = () => page.$$eval('#stage-body .code', bs => bs.map(b => [...b.querySelectorAll('.ln .tx')].map(x => x.textContent).join('\n')));
+    const cells = sel => page.$$eval(sel + ' tbody tr', rs => rs.map(r => [...r.children].map(td => td.innerText.trim())));
+    const bigs = () => page.$$eval('.lab-out .big b', els => els.map(e => e.textContent));
+    // settings lab: every setting shows the statements that were recorded for it
+    const cfgScene = S.find(x => x.type === 'widget' && x.kind === 'cfg');
+    await go(cfgScene.id + ':0');
+    const cfgKeys = await page.$$eval('.sel-chip', els => els.map(e => e.getAttribute('data-v')));
+    ok(cfgKeys.length === 10, 'settings lab offers ten settings');
+    for (const k of cfgKeys) {
+      await page.click('.sel-chip[data-v="' + k + '"]'); await page.waitForTimeout(15);
+      const want = await page.evaluate(k => LAB.real.stmts['cfg_' + k].filter(s => s.kind !== 'meta' && s.kind !== 'txn').map(s => s.sql), k);
+      ok(JSON.stringify((await blocks()).map(norm)) === JSON.stringify(want.map(norm)), 'settings lab, ' + k + ': the statements shown are the recorded ones');
+    }
+    await go(cfgScene.id + ':1');
+    ok((await cells('.lab .tbl')).length === 10, 'settings lab lists ten settings in the summary');
+    // strategies lab: statements are the recorded ones, and the table says which strategies ran in one transaction
+    const stScene = S.find(x => x.type === 'widget' && x.kind === 'strat');
+    await go(stScene.id + ':0');
+    const strat = await page.evaluate(() => LAB.W.stratInfo.list.map(x => [x.k, x.sc]));
+    for (const [k, sc] of strat) {
+      await page.click('.sel-chip[data-v="' + k + '"]'); await page.waitForTimeout(15);
+      const want = await page.evaluate(sc => LAB.W.stratInfo.oneBatch(sc).map(s => s.sql), sc);
+      ok(JSON.stringify((await blocks()).map(norm)) === JSON.stringify(want.map(norm)), 'strategies lab, ' + k + ': the statements shown are the recorded ones');
+    }
+    await go(stScene.id + ':1');
+    const srows = await cells('.lab .tbl');
+    const expectTxn = { merge: 'yes', di: 'yes', append: 'yes', mb: 'no', cols: 'yes', pred: 'yes' };
+    const expectTmp = { merge: 'view', di: 'table', append: 'view', mb: 'view', cols: 'view', pred: 'view' };
+    const expectVerbs = { merge: 'merge', di: 'delete, then insert', append: 'insert', mb: 'delete, then insert', cols: 'merge', pred: 'merge' };
+    strat.forEach(([k], i) => {
+      ok(srows[i][3] === expectTxn[k], 'strategies lab, ' + k + ': one transaction is ' + expectTxn[k] + ' (the table says ' + srows[i][3] + ')');
+      ok(srows[i][1] === expectTmp[k], 'strategies lab, ' + k + ': the temporary object is a ' + expectTmp[k]);
+      ok(srows[i][2] === expectVerbs[k], 'strategies lab, ' + k + ': statements on the table are ' + expectVerbs[k] + ' (the table says ' + srows[i][2] + ')');
+    });
+    await go(stScene.id + ':2');
+    ok((await cells('.lab .tbl')).length === 6, 'strategies lab: the documentation table lists six strategies');
+    // credit calculator: checked against hand arithmetic
+    const costScene = S.find(x => x.type === 'widget' && x.kind === 'cost');
+    const set = async list => { for (const [a, v] of list) await page.click('[data-act="' + a + '"][data-v="' + v + '"]'); await page.waitForTimeout(15); };
+    await go(costScene.id + ':0');
+    await set([['c-size', 'S'], ['c-run', '120'], ['c-per', '24'], ['c-price', '3']]);
+    let b = await bigs();
+    ok(b[0] === '0.067' && b[1] === '1.60' && b[2] === '$144', 'cost lab default: Small, 120 s, 24 runs, $3 gives 0.067, 1.60 and $144 (got ' + b.join(' | ') + ')');
+    await set([['c-size', 'L'], ['c-run', '600'], ['c-per', '96'], ['c-price', '4']]);
+    b = await bigs();
+    ok(b[0] === '1.333' && b[1] === '128.00' && b[2] === '$15,360', 'cost lab: Large, 600 s, 96 runs, $4 gives 1.333, 128.00 and $15,360 (got ' + b.join(' | ') + ')');
+    await set([['c-size', 'XS'], ['c-run', '20'], ['c-per', '24'], ['c-price', '3']]);
+    b = await bigs();
+    ok(b[0] === '0.017', 'cost lab: a 20 second run is billed as 60 seconds (got ' + b[0] + ')');
+    await go(costScene.id + ':1');
+    await set([['c-eff', '1']]);
+    let rows = await cells('.lab .tbl');
+    ok(rows.map(r => r[2]).join(',') === '0.53,0.53,0.53,0.53,0.53', 'cost lab: a query that doubles in speed per size costs the same at every size (got ' + rows.map(r => r[2]).join(',') + ')');
+    await page.click('[data-act="c-eff"][data-v="0.5"]');
+    rows = await cells('.lab .tbl');
+    ok(rows.map(r => r[2]).join(',') === '0.53,0.71,0.95,1.26,1.69', 'cost lab: a query that gains 50 percent per size gets dearer (got ' + rows.map(r => r[2]).join(',') + ')');
+    await go(costScene.id + ':2');
+    await set([['c-size', 'S'], ['c-gap', '300'], ['c-rl', '30']]);
+    rows = await cells('.lab .tbl');
+    ok(JSON.stringify(rows.map(r => [r[1], r[2], r[3]])) === JSON.stringify([['7.2 hours', '14.4', '$1,296'], ['24.0 hours', '48.0', '$4,322'], ['24.1 hours', '48.2', '$4,337']]), 'cost lab: auto-suspend of 60, 300 and 600 s with a run every 5 minutes (got ' + JSON.stringify(rows) + ')');
+    await page.click('[data-act="c-gap"][data-v="3600"]');
+    rows = await cells('.lab .tbl');
+    ok(JSON.stringify(rows.map(r => r[1])) === JSON.stringify(['0.6 hours', '2.2 hours', '4.2 hours']), 'cost lab: with a run every hour the warehouse is on for 0.6, 2.2 and 4.2 hours (got ' + JSON.stringify(rows.map(r => r[1])) + ')');
+    // environment lab: role, warehouse and names come from the recorded connection and statements
+    const tgScene = S.find(x => x.type === 'widget' && x.kind === 'targets');
+    await go(tgScene.id + ':0');
+    for (const [t, role, wh, db, schema, dim] of [
+      ['dev', 'TRANSFORMER', 'WH_TRANSFORM_DEV', 'BREWLINE_DEV', 'DEV_ALICE', 'BREWLINE_DEV.DEV_ALICE.dim_customers'],
+      ['ci', 'CI_DEPLOYER', 'WH_CI', 'BREWLINE_CI', 'PR_123', 'BREWLINE_CI.PR_123.dim_customers'],
+      ['prod', 'TRANSFORMER', 'WH_TRANSFORM', 'BREWLINE', 'ANALYTICS', 'BREWLINE.marts.dim_customers']]) {
+      await page.click('[data-act="tg-pick"][data-v="' + t + '"]'); await page.waitForTimeout(15);
+      const txt = await text();
+      ok([role, wh, db, schema, dim].every(x => txt.includes(x)), 'environment lab, ' + t + ': role, warehouse, database, schema and the full table name match the recording');
+    }
+    await go(tgScene.id + ':1');
+    await set([['ci-pick', 'build']]);
+    let code = (await blocks()).map(norm).join('\n');
+    ok(code.includes('BREWLINE_CI.PR_123.stg_brewline__customers'), 'environment lab: building the parents reads them from the pull request schema');
+    await page.click('[data-act="ci-pick"][data-v="defer"]'); await page.waitForTimeout(15);
+    code = (await blocks()).map(norm).join('\n');
+    ok(code.includes('BREWLINE.staging.stg_brewline__customers') && !code.includes('PR_123'), 'environment lab: with defer the parents come from production');
+  }
+
   // score screen counts every mock question on the path
   await go('mock-score:0');
   ok(await cnt('.ring') === 1 && await cnt('.srow') === S.filter(x => x.type === 'mock').length, 'scorecard lists every boss question');

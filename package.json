@@ -3,7 +3,7 @@
   "private": true,
   "description": "Interactive data engineering tutorials. The site itself needs no build step. These scripts only check it.",
   "scripts": {
-    "lint": "node dev/lint-content.js snowflake && node dev/lint-content.js dbt",
+    "lint": "node dev/lint-content.js snowflake && node dev/lint-content.js dbt && node dev/lint-content.js snowflake-dbt",
     "lint:snowflake": "node dev/lint-content.js snowflake",
     "lint:dbt": "node dev/lint-content.js dbt",
     "smoke": "node dev/smoke.js snowflake --path all",
@@ -12,7 +12,12 @@
     "e2e:dbt": "node dev/e2e.js dbt",
     "stats": "node dev/stats.js snowflake",
     "stats:dbt": "node dev/stats.js dbt",
-    "verify:dbt": "python3 dbt/verify/verify_dbt.py"
+    "verify:dbt": "python3 dbt/verify/verify_dbt.py",
+    "lint:snowflake-dbt": "node dev/lint-content.js snowflake-dbt",
+    "smoke:snowflake-dbt": "node dev/smoke.js snowflake-dbt --path all",
+    "e2e:snowflake-dbt": "node dev/e2e.js snowflake-dbt",
+    "stats:snowflake-dbt": "node dev/stats.js snowflake-dbt",
+    "verify:snowflake-dbt": "python3 snowflake-dbt/verify/verify_sf.py"
   },
   "devDependencies": {
     "playwright": "^1.63.0"
