@@ -12,7 +12,7 @@
   }
 
   var G = (LAB.get = {
-    file: function (p) { return need(R.files, p, 'file'); },
+    file: function (p) { return need(R.files, p, 'file').replace(/\n+$/, ''); },
     sql: function (k) { return need(R.sql, k, 'compiled or run SQL'); },
     log: function (k) { return need(R.logs, k, 'log'); },
     cmd: function (k) { return need(R.cmds, k, 'command'); },

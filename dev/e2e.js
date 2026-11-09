@@ -170,6 +170,7 @@ const ok = (c, m) => { if (c) pass++; else { fail++; console.log('FAIL:', m); } 
     // snapshot lab: replay the two real runs through the buttons
     const labScene = S.find(x => x.type === 'widget' && x.kind === 'snap');
     await go(labScene.id + ':0');
+    await page.click('[data-act="sn-reset"]'); await page.waitForTimeout(15);
     await page.click('[data-act="sn-run"]'); await page.waitForTimeout(20);
     let rows = await tableRows('.scd-cols > div:nth-child(2)');
     const real1 = await page.evaluate(() => LAB.real.tables.snap_day1.rows);
@@ -214,7 +215,8 @@ const ok = (c, m) => { if (c) pass++; else { fail++; console.log('FAIL:', m); } 
     const defs = await page.evaluate(() => LAB.W.testlab.DEF.map(d => [d.id, d.a]));
     for (const [id, ans] of defs) {
       await page.click('[data-act="tl-def"][data-v="' + id + '"]'); await page.waitForTimeout(10);
-      await page.click('[data-act="tl-pick"][data-v="' + ans + '"]'); await page.waitForTimeout(15);
+      const pickBtn = page.locator('[data-act="tl-pick"][data-v="' + ans + '"]');
+      if (await pickBtn.isEnabled()) { await pickBtn.click(); await page.waitForTimeout(15); }
       ok(await cnt('.ev .code') === 1, 'test lab shows the real dbt output for ' + id);
     }
     ok(/Solved 9 of 9/.test(await text()), 'test lab counts all nine problems solved');

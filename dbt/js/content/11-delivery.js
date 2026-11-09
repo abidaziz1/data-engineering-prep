@@ -33,7 +33,8 @@
     '        run: dbt build --select state:modified+ --defer --state state --target ci',
     '      - name: Drop the PR schema',
     '        if: always()',
-    '        run: dbt run-operation drop_schema --args "{name: $PR_SCHEMA}" --target ci'
+    '        run: |',
+    '          dbt run-operation drop_schema --args "{name: $PR_SCHEMA}" --target ci'
   ].join('\n');
 
   var BADCI = [

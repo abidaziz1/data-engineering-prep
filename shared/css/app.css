@@ -393,7 +393,8 @@ mark{background:#FDE047;color:var(--ink);padding:0 .2em;border-radius:4px}
 .srow{display:flex;align-items:center;gap:.8rem;background:#fff;border:3px solid var(--ink);border-radius:12px;padding:.5rem .8rem;margin:.45rem 0;font-weight:600}
 .srow .sg{flex:none;width:6.2rem;text-align:center;font-weight:800;border-radius:8px;padding:.1rem 0;border:2.5px solid var(--ink)}
 .srow.g3 .sg{background:var(--green-bg)}.srow.g2 .sg{background:var(--amber-bg)}.srow.g1 .sg{background:var(--red-bg)}.srow.g0 .sg{background:#E2E8F0}
-.srow .sq{flex:1}
+.srow{flex-wrap:wrap}
+.srow .sq{flex:1;min-width:0;overflow-wrap:anywhere}
 
 /* ---------- recap, cheat ---------- */
 .recap{background:#fff;border:3px solid var(--ink);border-radius:18px;padding:1rem 1.3rem;box-shadow:0 5px 0 var(--ink)}

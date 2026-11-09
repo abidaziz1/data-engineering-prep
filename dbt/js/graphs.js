@@ -73,7 +73,7 @@
   /* 3. The Brewline DAG                                                 */
   /* ------------------------------------------------------------------ */
   S.dag = {
-    w: 1100, h: 490, label: 'The Brewline project as a graph: four sources, four staging views, an intermediate view, a seed, a snapshot, three marts, a daily revenue table and the finance dashboard',
+    w: 1100, h: 520, label: 'The Brewline project as a graph: four sources, four staging views, an intermediate view, a seed, a snapshot, three marts, a daily revenue table and the finance dashboard',
     nodes: [
       { id: 's_products', real: 'source:products', k: 'dag', x: 0, y: 10, w: 130, h: 66, t: 'products', s: 'source', c: 'src' },
       { id: 's_items', real: 'source:order_items', k: 'dag', x: 0, y: 105, w: 130, h: 66, t: 'order_items', s: 'source', c: 'src' },
@@ -84,8 +84,8 @@
       { id: 'stg_orders', real: 'stg_brewline__orders', k: 'dag', x: 170, y: 200, w: 190, h: 66, t: 'stg_orders', s: 'view', c: 'stg' },
       { id: 'stg_customers', real: 'stg_brewline__customers', k: 'dag', x: 170, y: 295, w: 190, h: 66, t: 'stg_customers', s: 'view', c: 'stg' },
       { id: 'int_orders', real: 'int_orders__with_items', k: 'dag', x: 410, y: 150, w: 190, h: 66, t: 'int_orders', s: 'view', c: 'int' },
-      { id: 'seed_country', real: 'country_names', k: 'dag', x: 410, y: 300, w: 190, h: 66, t: 'country_names', s: 'seed', c: 'seed' },
-      { id: 'snap_customers', real: 'snap_customers', k: 'dag', x: 410, y: 395, w: 190, h: 66, t: 'snap_customers', s: 'snapshot', c: 'snap' },
+      { id: 'seed_country', real: 'country_names', k: 'dag', x: 410, y: 340, w: 190, h: 66, t: 'country_names', s: 'seed', c: 'seed' },
+      { id: 'snap_customers', real: 'snap_customers', k: 'dag', x: 410, y: 440, w: 190, h: 66, t: 'snap_customers', s: 'snapshot', c: 'snap' },
       { id: 'dim_products', real: 'dim_products', k: 'dag', x: 640, y: 10, w: 190, h: 66, t: 'dim_products', s: 'table, 2 versions', c: 'mart' },
       { id: 'fct_orders', real: 'fct_orders', k: 'dag', x: 640, y: 150, w: 190, h: 66, t: 'fct_orders', s: 'incremental', c: 'mart' },
       { id: 'dim_customers', real: 'dim_customers', k: 'dag', x: 640, y: 265, w: 190, h: 66, t: 'dim_customers', s: 'table', c: 'mart' },
@@ -97,13 +97,13 @@
       { id: 'a2', a: 's_items', b: 'stg_items', d: 'M130 138 H170' },
       { id: 'a3', a: 's_orders', b: 'stg_orders', d: 'M130 233 H170' },
       { id: 'a4', a: 's_customers', b: 'stg_customers', d: 'M130 328 H170' },
-      { id: 'a5', a: 's_customers', b: 'snap_customers', d: 'M65 361 V428 H410' },
+      { id: 'a5', a: 's_customers', b: 'snap_customers', d: 'M65 361 V473 H410' },
       { id: 'b1', a: 'stg_products', b: 'dim_products', d: 'M360 43 H640' },
       { id: 'b2', a: 'stg_items', b: 'int_orders', d: H(360, 138, 410, 183) },
       { id: 'b3', a: 'stg_orders', b: 'int_orders', d: H(360, 233, 410, 183) },
       { id: 'b4', a: 'stg_orders', b: 'dim_customers', d: H(360, 233, 640, 298) },
       { id: 'b5', a: 'stg_customers', b: 'dim_customers', d: H(360, 328, 640, 298) },
-      { id: 'b6', a: 'seed_country', b: 'dim_customers', d: H(600, 333, 640, 298) },
+      { id: 'b6', a: 'seed_country', b: 'dim_customers', d: H(600, 373, 640, 298) },
       { id: 'c1', a: 'int_orders', b: 'fct_orders', d: 'M600 183 H640' },
       { id: 'c2', a: 'fct_orders', b: 'fct_revenue', d: 'M830 183 H870' },
       { id: 'c3', a: 'fct_revenue', b: 'dash', d: 'M985 216 V250' }

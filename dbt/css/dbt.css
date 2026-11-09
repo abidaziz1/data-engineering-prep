@@ -41,8 +41,7 @@
 .pill.good{background:#BBF7D0}.pill.bad{background:#FECACA}.pill.warn{background:#FEF3C7}
 
 /* snapshot lab */
-.scd-cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.6fr);gap:.8rem}
-@media (max-width:900px){.scd-cols{grid-template-columns:minmax(0,1fr)}}
+.scd-cols{display:grid;grid-template-columns:minmax(0,1fr);gap:.8rem}
 
 /* test lab */
 .defect-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(16rem,1fr));gap:.5rem}

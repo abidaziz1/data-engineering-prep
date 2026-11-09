@@ -9,7 +9,7 @@ No install. No account. No server. Open `index.html` in a browser and press **Ne
 | Tutorial | Status | Folder |
 | --- | --- | --- |
 | **Snowflake**: from first query to production | Ready. 13 missions, 3 paths | [`snowflake/`](snowflake/README.md) |
-| dbt | Planned | |
+| **dbt**: from first model to production | Ready. 13 missions, 3 paths, every output recorded from a real run | [`dbt/`](dbt/README.md) |
 | Databricks | Planned | |
 | AWS for data engineers | Planned | |
 | Airflow | Planned | |
@@ -48,7 +48,7 @@ A small tag on a screen shows whether it belongs only to Senior or Extra. Times 
 ## Open it
 
 1. Download or clone this repository.
-2. Double-click **`index.html`**, or open **`snowflake/index.html`** directly.
+2. Double-click **`index.html`**, or open **`snowflake/index.html`** or **`dbt/index.html`** directly.
 
 It works from `file://` and from any web server, because every path is relative and there are no modules.
 
@@ -58,7 +58,7 @@ It works from `file://` and from any web server, because every path is relative 
 2. Open **Settings, Pages**. Under **Build and deployment**, choose one of:
    - **Source: GitHub Actions.** The included `.github/workflows/pages.yml` publishes everything except the check tools. Run it once from the **Actions** tab if you want it right away.
    - **Source: Deploy from a branch**, branch `main`, folder `/ (root)`. This also works, because `.nojekyll` is present.
-3. The library is at `https://<your-user>.github.io/<repository-name>/`, and Snowflake is under `/snowflake/`.
+3. The library is at `https://<your-user>.github.io/<repository-name>/`, Snowflake is under `/snowflake/` and dbt is under `/dbt/`.
 
 Progress, XP and answers are stored in each visitor's own browser (`localStorage`), one key per tutorial.
 
@@ -78,6 +78,10 @@ snowflake/               one tutorial
   js/widgets.js            the interactive labs
   js/content/              the lessons, one file per mission
   verify/                  DuckDB checks for the worksheet results
+dbt/                     one tutorial, same layout, plus
+  js/real.js               everything recorded from a real dbt run
+  verify/project/          the Brewline dbt project that produced it
+  verify/capture.py        runs the project and writes js/real.js
 dev/                     check tools (not published)
 ```
 
@@ -97,11 +101,13 @@ node dev/lint-content.js snowflake        # ids, tiers, code line ranges, diagra
 node dev/smoke.js snowflake --path all    # walks every frame: errors, overflow, text size, stray undefined
 node dev/e2e.js snowflake                 # clicks every interactive element and asserts the result
 node dev/stats.js snowflake               # minutes per mission and path, content counts
+                                          # the same four commands work for dbt
 ```
 
 ```bash
 pip install -r dev/requirements.txt
 python3 dev/verify_sql.py snowflake       # parses SQL, compiles Python, parses YAML and JSON, re-runs worksheets in DuckDB
+python3 dbt/verify/verify_dbt.py          # dbt: syntax of hand-written snippets, lab logic; add --recapture to rerun dbt
 ```
 
 `node dev/smoke.js snowflake --path all --width 390 --height 844` repeats the walk at phone width. `node dev/shot.js snowflake m2-lab:0 out.png --click "..."` saves a screenshot of one frame.
@@ -117,8 +123,9 @@ python3 dev/verify_sql.py snowflake       # parses SQL, compiles Python, parses 
 ## Honest notes
 
 - **Nothing was run on a live Snowflake account.** The SQL that DuckDB understands (joins, windows, `QUALIFY`, JSON paths, merge counts) was executed, and its result tables are real output. Snowflake-only statements (warehouses, stages, pipes, Time Travel, policies, tasks and so on) were checked against the documented syntax from memory and, where a parser could read them, by `sqlglot`. Their result tables are examples, and the welcome screen says so.
+- **The dbt tutorial is different: its outputs are real.** Every log, compiled query and result table was recorded from dbt Core 1.12.6 running a real project on DuckDB, and `dbt/verify/capture.py` records them again. It is adapter-neutral, and nothing in it ran on Snowflake, Databricks or the dbt platform. The dbt documentation was also unreachable, so facts about dbt v2, Fusion and 1.12 come from release summaries. See [`dbt/README.md`](dbt/README.md).
 - **The Snowflake documentation could not be opened** from the environment that built this, because its network policy blocked the host. Facts about recent features were checked through search summaries only, and the ones that need a second look are listed in [`snowflake/README.md`](snowflake/README.md).
 - **The first site's SQL highlighter did not color uppercase keywords.** This engine fixes that. The earlier Interview Quest repository still has the old behavior.
 - The coach is an illustration. To use a photo, see the Snowflake README.
 - No license file has been added yet. Choose one before you publish if you want others to reuse the work.
-- This is independent study material. It is not affiliated with or endorsed by Snowflake Inc. or any other vendor named here.
+- This is independent study material. It is not affiliated with or endorsed by Snowflake Inc., dbt Labs or any other vendor named here.
