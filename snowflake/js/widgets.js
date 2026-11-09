@@ -312,4 +312,88 @@
       }
     };
   })();
+
+  /* ====================== Can this role do that? ====================== */
+  (function () {
+    var ROLES = ['LOADER', 'TRANSFORMER', 'ANALYST', 'PII_READER'];
+    var NO_RAW = 'has no privileges on the RAW schema.';
+    var ACTS = [
+      { k: 'a1', sql: "INSERT INTO raw.orders VALUES ('O-9','C-1',...)", r: { LOADER: ['ok', 'LOADER has INSERT on the RAW tables.'], TRANSFORMER: ['no', 'TRANSFORMER reads RAW to build CORE. It cannot write to RAW.'], ANALYST: ['no', 'ANALYST ' + NO_RAW], PII_READER: ['no', 'PII_READER inherits ANALYST, which ' + NO_RAW.replace('has no', 'has no')] } },
+      { k: 'a2', sql: 'SELECT * FROM raw.orders', r: { LOADER: ['ok', 'LOADER can read what it loads.'], TRANSFORMER: ['ok', 'TRANSFORMER has SELECT on RAW to build CORE.'], ANALYST: ['no', 'ANALYST ' + NO_RAW], PII_READER: ['no', 'PII_READER inherits ANALYST, which has nothing on RAW.'] } },
+      { k: 'a3', sql: 'CREATE TABLE core.dim_region (...)', r: { LOADER: ['no', 'LOADER has no CREATE TABLE privilege on CORE.'], TRANSFORMER: ['ok', 'TRANSFORMER has CREATE TABLE on CORE and MARTS.'], ANALYST: ['no', 'ANALYST can only read MARTS.'], PII_READER: ['no', 'PII_READER only adds clear-text access to PII columns.'] } },
+      { k: 'a4', sql: 'SELECT revenue_usd FROM marts.daily_revenue', r: { LOADER: ['no', 'LOADER has no privileges on MARTS.'], TRANSFORMER: ['ok', 'TRANSFORMER owns the MARTS tables it builds.'], ANALYST: ['ok', 'ANALYST has USAGE on MARTS and SELECT on its tables.'], PII_READER: ['ok', 'PII_READER inherits everything ANALYST can do.'] } },
+      { k: 'a5', sql: 'SELECT email FROM marts.dim_customer', r: { LOADER: ['no', 'LOADER has no privileges on MARTS.'], TRANSFORMER: ['mask', 'TRANSFORMER can read the table, but the masking policy hides the email unless the role is PII_READER.'], ANALYST: ['mask', 'ANALYST can read the table. The masking policy returns ***@mail.test.'], PII_READER: ['ok', 'The masking policy shows clear text to PII_READER.'] } },
+      { k: 'a6', sql: 'CREATE WAREHOUSE wh_scratch', r: { LOADER: ['no', 'Creating warehouses needs CREATE WAREHOUSE, which only SYSADMIN holds here.'], TRANSFORMER: ['no', 'Creating warehouses needs CREATE WAREHOUSE, which only SYSADMIN holds here.'], ANALYST: ['no', 'Creating warehouses needs CREATE WAREHOUSE, which only SYSADMIN holds here.'], PII_READER: ['no', 'Creating warehouses needs CREATE WAREHOUSE, which only SYSADMIN holds here.'] } }
+    ];
+    var GRANTS = { LOADER: ['USAGE on database BREWLINE and schema RAW', 'INSERT and SELECT on RAW tables', 'USAGE on WH_LOAD'], TRANSFORMER: ['SELECT on RAW tables', 'CREATE TABLE and ownership in CORE and MARTS', 'USAGE on WH_TRANSFORM'], ANALYST: ['USAGE on database BREWLINE and schema MARTS', 'SELECT on MARTS tables, present and future', 'USAGE on WH_BI'], PII_READER: ['Inherits ANALYST', 'Seen as PII_READER by the masking policy: clear text for email and phone'] };
+    W.perm = {
+      steps: function () { return 2; },
+      hint: function (s, i) { return i === 0 ? 'Pick a role, then try each action.' : 'Read the grants behind each role.'; },
+      say: function (s, i) {
+        return [
+          'Pick a role, then try the actions one at a time. Allowed, denied and masked all teach something. Notice how the masked case still returns rows.',
+          'Behind every answer is a short list of grants. A good role design fits on one screen like this. If a role needs a page of grants, it is probably doing two jobs.'
+        ][i];
+      },
+      mood: function (s, i) { return i === 0 ? 'think' : 'happy'; },
+      render: function (box, s, i, A) {
+        var st = A.local.perm || (A.local.perm = { role: 'ANALYST', act: null });
+        var h = '<div class="lab">';
+        if (i === 0) {
+          var act = ACTS.filter(function (x) { return x.k === st.act; })[0];
+          h += '<div class="lab-row"><span class="lab-l">Active role</span><span class="seg2">' + ROLES.map(function (r) { return '<button type="button" class="tg' + (st.role === r ? ' on' : '') + '" data-act="pm-role" data-v="' + r + '">' + r + '</button>'; }).join('') + '</span></div>' +
+            '<div class="pm-acts">' + ACTS.map(function (x) { return '<button type="button" class="pm-act' + (st.act === x.k ? ' on' : '') + '" data-act="pm-act" data-v="' + x.k + '">' + LAB.hl(x.sql, 'sql').join('') + '</button>'; }).join('') + '</div>';
+          if (act) {
+            var r = act.r[st.role];
+            h += '<div class="callout ' + (r[0] === 'ok' ? 'good' : (r[0] === 'mask' ? 'warn' : 'bad')) + '"><b>' + (r[0] === 'ok' ? 'Allowed.' : (r[0] === 'mask' ? 'Allowed, but masked.' : 'Denied.')) + '</b> ' + esc(r[1]) + '</div>';
+          } else h += '<p class="lab-note">Pick an action to run as ' + esc(st.role) + '.</p>';
+        } else {
+          h += '<div class="tbl-wrap"><table class="tbl wtbl"><thead><tr><th>Role</th><th>What it is granted</th></tr></thead><tbody>' + ROLES.map(function (r) { return '<tr class="' + (r === st.role ? 'trk' : '') + '"><td><b>' + r + '</b></td><td>' + GRANTS[r].map(esc).join('<br>') + '</td></tr>'; }).join('') + '</tbody></table></div>' +
+            '<div class="callout tip"><b>Least privilege.</b> Grant each role only what its job needs, build bigger roles by inheriting smaller ones, and give roles to people, never privileges directly to users.</div>';
+        }
+        box.innerHTML = h + '</div>';
+        A.bindWidget = function (act, el) {
+          if (act === 'pm-role') st.role = el.getAttribute('data-v');
+          if (act === 'pm-act') st.act = el.getAttribute('data-v');
+          A.render(true);
+        };
+      }
+    };
+  })();
+
+  /* ====================== Masking by role ====================== */
+  (function () {
+    var MASK_SQL = "CREATE OR REPLACE MASKING POLICY governance.mask_email AS (val STRING)\n  RETURNS STRING ->\n  CASE\n    WHEN IS_ROLE_IN_SESSION('PII_READER') THEN val\n    ELSE '***@' || SPLIT_PART(val, '@', 2)\n  END;\n\nALTER TABLE marts.dim_customer\n  MODIFY COLUMN email SET MASKING POLICY governance.mask_email;";
+    var REBUILD_SQL = "-- A table rebuilt with CREATE OR REPLACE is a new table\nCREATE OR REPLACE TABLE marts.dim_customer AS\n  SELECT customer_id, full_name, email FROM core.customers;\n\n-- So apply the policy again in the same deployment step\nALTER TABLE marts.dim_customer\n  MODIFY COLUMN email SET MASKING POLICY governance.mask_email;";
+    W.mask = {
+      steps: function () { return 3; },
+      hint: function (s, i) { return i === 0 ? 'Switch the role and watch the same query change.' : 'Press Next.'; },
+      say: function (s, i) {
+        return [
+          'Same table, same query, two roles. Switch the role and compare the email column. The data in storage never changes. Snowflake applies the policy when the query runs.',
+          'Here is the policy. It lives on the column, not in the query, so every tool that reads the table (BI, API, notebooks) gets the same protection. Use IS_ROLE_IN_SESSION, so inherited roles are handled.',
+          'The catch seniors know. A table rebuilt with CREATE OR REPLACE is a new table, and the policy on the old one is gone. Re-apply the policy in the same deployment step, or manage policies as code that runs after every build.'
+        ][i];
+      },
+      mood: function (s, i) { return i === 2 ? 'oops' : 'happy'; },
+      render: function (box, s, i, A) {
+        var role = A.local.maskRole || 'ANALYST', clear = role === 'PII_READER', h = '';
+        if (i === 0) {
+          var rows = [['C-42', 'Ava Martin', clear ? 'ava.martin@mail.test' : '***@mail.test'], ['C-77', 'Noah Singh', clear ? 'noah.singh@mail.test' : '***@mail.test']];
+          h += '<div class="wsbar"><span><b>Role</b> <span class="rolebtns"><button type="button" class="tg' + (role === 'ANALYST' ? ' on' : '') + '" data-act="mk-role" data-v="ANALYST">ANALYST</button><button type="button" class="tg' + (role === 'PII_READER' ? ' on' : '') + '" data-act="mk-role" data-v="PII_READER">PII_READER</button></span></span></div>' +
+            sqlBox('SELECT customer_id, full_name, email FROM marts.dim_customer;') +
+            '<div class="result"><div class="result-h">Results as ' + esc(role) + '</div>' + LAB.H.table(['customer_id', 'full_name', 'email'], rows, { chg: clear ? [[0, 2], [1, 2]] : [] }) + '</div>';
+        } else if (i === 1) {
+          h += LAB.H.code({ file: 'governance/masking_policies.sql', lang: 'sql', code: MASK_SQL, hl: [3, 6] });
+        } else {
+          h += LAB.H.code({ file: 'deploy/dim_customer.sql', lang: 'sql', code: REBUILD_SQL, hl: [6, 7] }) +
+            '<div class="callout warn"><b>Why:</b> table models in dbt are rebuilt with CREATE OR REPLACE, so a policy set by hand is gone after the next run. Re-attach it in a post-hook, or use tag-based masking that a deployment step re-applies.</div>';
+        }
+        box.innerHTML = h;
+        if (i === 1) LAB.H.bindCode(box, MASK_SQL);
+        if (i === 2) LAB.H.bindCode(box, REBUILD_SQL);
+        A.bindWidget = function (act, el) { if (act === 'mk-role') { A.local.maskRole = el.getAttribute('data-v'); A.render(true); } };
+      }
+    };
+  })();
 })();

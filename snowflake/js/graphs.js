@@ -238,4 +238,55 @@
       { id: 'tg3', x: 681, y: 185, t: 'Spilling to remote storage', c: 'qual' }
     ]
   };
+
+  /* ------------------------------------------------------------------ */
+  /* 9. Role hierarchy                                                   */
+  /* ------------------------------------------------------------------ */
+  var V2 = LAB.Graph.v;
+  S.rbac = {
+    w: 1100, h: 470, label: 'Role hierarchy: ACCOUNTADMIN above SECURITYADMIN and SYSADMIN, custom roles below SYSADMIN, and PII_READER inheriting ANALYST',
+    nodes: [
+      { id: 'acct', x: 440, y: 6, w: 220, h: 64, t: 'ACCOUNTADMIN', s: 'use rarely', c: 'qual', k: 'chip' },
+      { id: 'sec', x: 170, y: 120, w: 240, h: 64, t: 'SECURITYADMIN', s: 'manages grants', c: 'int', k: 'chip' },
+      { id: 'sys', x: 640, y: 120, w: 240, h: 64, t: 'SYSADMIN', s: 'owns databases', c: 'int', k: 'chip' },
+      { id: 'usr', x: 170, y: 240, w: 240, h: 64, t: 'USERADMIN', s: 'creates users + roles', c: 'int', k: 'chip' },
+      { id: 'loader', x: 440, y: 250, w: 200, h: 64, t: 'LOADER', s: 'writes RAW', c: 'ing', k: 'chip' },
+      { id: 'transformer', x: 660, y: 250, w: 200, h: 64, t: 'TRANSFORMER', s: 'builds CORE + MARTS', c: 'stg', k: 'chip' },
+      { id: 'analyst', x: 880, y: 250, w: 200, h: 64, t: 'ANALYST', s: 'reads MARTS', c: 'mart', k: 'chip' },
+      { id: 'pii', x: 880, y: 380, w: 200, h: 64, t: 'PII_READER', s: 'inherits ANALYST', c: 'con', k: 'chip' }
+    ],
+    edges: [
+      { id: 'r1', a: 'acct', b: 'sec', d: V2(520, 70, 290, 120), pk: 1 },
+      { id: 'r2', a: 'acct', b: 'sys', d: V2(580, 70, 760, 120), pk: 1 },
+      { id: 'r3', a: 'sec', b: 'usr', d: 'M290 184 V240', pk: 1 },
+      { id: 'r4', a: 'sys', b: 'loader', d: V2(700, 184, 540, 250), pk: 1 },
+      { id: 'r5', a: 'sys', b: 'transformer', d: V2(760, 184, 760, 250), pk: 1 },
+      { id: 'r6', a: 'sys', b: 'analyst', d: V2(820, 184, 980, 250), pk: 1 },
+      { id: 'r7', a: 'pii', b: 'analyst', d: 'M980 380 V314', pk: 1 }
+    ]
+  };
+
+  /* ------------------------------------------------------------------ */
+  /* 10. Secure data sharing                                             */
+  /* ------------------------------------------------------------------ */
+  S.sharing = {
+    w: 1100, h: 420, label: 'Secure data sharing: the provider adds objects to a share, no data is copied, the consumer creates a read-only database and queries it with its own warehouse',
+    groups: [
+      { id: 'g_prov', x: 0, y: 40, w: 360, h: 360, t: 'PROVIDER ACCOUNT', c: 'mart' },
+      { id: 'g_cons', x: 740, y: 40, w: 360, h: 360, t: 'CONSUMER ACCOUNT', c: 'con' }
+    ],
+    nodes: [
+      { id: 'pdb', x: 20, y: 92, w: 320, h: 100, t: 'Secure view', s: 'marts.v_partner_sales', c: 'mart' },
+      { id: 'shr', x: 20, y: 262, w: 320, h: 100, t: 'SHARE', s: 'brewline_partner_share', c: 'int' },
+      { id: 'store', x: 450, y: 150, w: 200, h: 120, t: 'One copy', s: 'no data copied', c: 'raw' },
+      { id: 'cdb', x: 760, y: 92, w: 320, h: 100, t: 'Shared database', s: 'read-only, live data', c: 'con' },
+      { id: 'cwh', x: 760, y: 262, w: 320, h: 100, t: 'Consumer warehouse', s: 'the consumer pays compute', c: 'air' }
+    ],
+    edges: [
+      { id: 'sh1', a: 'pdb', b: 'shr', d: 'M180 192 V262', n: 1, pk: 1 },
+      { id: 'sh2', a: 'shr', b: 'store', d: 'M340 312 C395 312 395 210 450 210', n: 2, pk: 1 },
+      { id: 'sh3', a: 'store', b: 'cdb', d: 'M650 210 C705 210 705 142 760 142', n: 3, pk: 1 },
+      { id: 'sh4', a: 'cdb', b: 'cwh', d: 'M920 192 V262', n: 4, pk: 1 }
+    ]
+  };
 })();

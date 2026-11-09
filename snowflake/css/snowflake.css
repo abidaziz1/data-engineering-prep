@@ -39,3 +39,8 @@
 .tile{display:inline-block;min-width:3.2rem;text-align:center;border:3px solid var(--ink);border-radius:10px;padding:.2rem .6rem;font:800 .95rem Manrope,sans-serif}
 .tile.shared{background:#BFDBFE}.tile.prodonly{background:#BBF7D0}.tile.cloneonly{background:#FED7AA}
 .lab button:disabled{opacity:.45}
+
+.pm-acts{display:grid;grid-template-columns:repeat(auto-fit,minmax(18rem,1fr));gap:.5rem}
+.pm-act{text-align:left;background:#fff;border:3px solid var(--ink);border-radius:12px;padding:.45rem .7rem;font:500 .84rem 'IBM Plex Mono',monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pm-act:hover{background:var(--blue-bg)}
+.pm-act.on{background:#FEF3C7;box-shadow:0 3px 0 var(--ink)}

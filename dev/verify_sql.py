@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check the SQL in a tutorial.
+"""Check the code in a tutorial.
 
 1. Every SQL snippet is parsed with sqlglot in the Snowflake dialect (syntax only).
 2. If <tutorial>/verify/duckdb_checks.py exists, its checks run the worksheet queries in DuckDB
@@ -29,11 +29,14 @@ def bad(msg):
 
 
 # ---- 1. syntax of every SQL snippet --------------------------------------------------------
+# Valid Snowflake statements that sqlglot cannot parse (checked by hand against the documented grammar).
+KNOWN_GAPS = re.compile(r'^\s*CREATE\s+(OR\s+REPLACE\s+)?(ROW\s+ACCESS\s+POLICY|FUNCTION|PROCEDURE)', re.I)
+
 n_stmt = n_opaque = 0
 for sn in data['snippets']:
     if sn['lang'] not in ('sql', 'jinja') or sn['kind'] == 'starter':   # starters are deliberately incomplete
         continue
-    code = sn['code']
+    code = re.sub(r'\$\$.*?\$\$', "'__body__'", sn['code'], flags=re.S)   # bodies in $$...$$ are other languages
     # split on semicolons that end a line, so one bad statement is reported on its own
     parts = [p.strip() for p in re.split(r';\s*(?:\n|$)', code) if p.strip()]
     for p in parts:
@@ -46,8 +49,39 @@ for sn in data['snippets']:
             if isinstance(tree, exp.Command):
                 n_opaque += 1          # parsed only as an opaque command: syntax is NOT validated
         except errors.SqlglotError as e:
+            if KNOWN_GAPS.match(body):
+                n_opaque += 1          # valid Snowflake syntax that sqlglot's parser rejects: counted as not machine-checked
+                continue
             bad('%s (%s): %s\n    %s' % (sn['id'], sn['kind'], str(e).splitlines()[0][:150], body.splitlines()[0][:120]))
 print('syntax: %d statements. %d parsed fully by sqlglot (snowflake dialect). %d are Snowflake-specific statements that sqlglot only accepts as opaque commands, so their syntax was reviewed by hand, not by a parser.' % (n_stmt, n_stmt - n_opaque, n_opaque))
+
+# ---- 1b. Python compiles, YAML and JSON parse ----------------------------------------------
+try:
+    import yaml
+except ImportError:      # PyYAML is optional
+    yaml = None
+n_py = n_yaml = n_json = 0
+for sn in data['snippets']:
+    lang, code = sn['lang'], sn['code']
+    if lang in ('python', 'py') and sn['kind'] != 'starter':
+        n_py += 1
+        try:
+            compile(code, sn['id'], 'exec')
+        except SyntaxError as e:
+            bad('%s (%s): python syntax error: %s' % (sn['id'], sn['kind'], e))
+    elif lang in ('yaml', 'yml') and yaml:
+        n_yaml += 1
+        try:
+            list(yaml.safe_load_all(re.sub(r'\{\{.*?\}\}', 'x', code)))
+        except yaml.YAMLError as e:
+            bad('%s (%s): yaml error: %s' % (sn['id'], sn['kind'], str(e).splitlines()[0]))
+    elif lang == 'json':
+        n_json += 1
+        try:
+            json.loads(code)
+        except ValueError as e:
+            bad('%s (%s): json error: %s' % (sn['id'], sn['kind'], e))
+print('other code: %d python snippets compile, %d yaml snippets parse, %d json snippets parse' % (n_py, n_yaml if yaml else 0, n_json))
 
 # ---- 2. results re-run in DuckDB ------------------------------------------------------------
 chk = ROOT / name / 'verify' / 'duckdb_checks.py'

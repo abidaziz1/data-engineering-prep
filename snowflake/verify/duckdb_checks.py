@@ -138,6 +138,11 @@ def run():
         HAVING o.total_usd <> COALESCE(SUM(i.qty * i.unit_price), 0)
         ORDER BY o.order_id""")
 
+    # m9-sql: what a partner sees through the shared secure view (the first three days)
+    out['m9-sql'] = q(con, """
+        SELECT DATE_TRUNC('day', order_ts) AS order_day, COUNT(*) AS orders, SUM(total_usd) AS revenue_usd
+        FROM orders WHERE status <> 'CANCELLED' GROUP BY 1 ORDER BY 1 LIMIT 3""")
+
     # m4-bug2: NOT IN with a NULL in the subquery returns no rows. Both forms below.
     con.execute("CREATE TABLE guest_orders AS SELECT * FROM (VALUES ('C-42'),('C-77'),(NULL)) t(customer_id)")
     out['_notin'] = q(con, "SELECT customer_id FROM customers WHERE customer_id NOT IN (SELECT customer_id FROM guest_orders)")
