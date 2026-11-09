@@ -116,6 +116,8 @@ def norm(v):
     """Make two recordings comparable: drop timings, clock stamps, run-time dates and hashes."""
     if isinstance(v, str):
         v = re.sub(r'(?m)^\d\d:\d\d:\d\d', 'HH:MM:SS', v)
+        v = re.sub(r'(?m)^(HH:MM:SS  |Batch )\d+ of \d+ ', r'\1N of M ', v)   # which node gets which number depends on thread timing
+        v = re.sub(r'[ ]*\.{2,}[ ]*', ' ... ', v)                                  # dbt pads log lines with dots to a fixed width
         v = re.sub(r'\b\d+\.\d+s\b', 'Ns', v)
         v = re.sub(r'in 0 hours 0 minutes and [\d.]+ seconds', 'in N seconds', v)
         v = re.sub(r'20\d\d-\d\d-\d\d \d\d:\d\d:\d\d(\.\d+)?', lambda m: m.group(0) if m.group(0).startswith('2026-03') else 'RUNTIME', v)
@@ -131,10 +133,23 @@ def norm(v):
     return v
 
 
+def settle(section, d):
+    """Parallel threads print their lines in a different order on every run, so logs are compared as sets of lines.
+    Timings of single nodes depend on the machine, so the ranking of the slowest nodes is not compared."""
+    d = dict(d)
+    if section == 'logs':
+        d = {k: '\n'.join(sorted(str(v).splitlines())) for k, v in d.items()}
+    if section == 'text':
+        d.pop('slowest_out', None)
+    return d
+
+
 def compare(old, new):
     diffs = 0
     for section in sorted(set(old) | set(new)):
         a, b = norm(old.get(section, {})), norm(new.get(section, {}))
+        if isinstance(a, dict) and isinstance(b, dict):
+            a, b = settle(section, a), settle(section, b)
         if isinstance(a, dict) and isinstance(b, dict):
             for key in sorted(set(a) | set(b)):
                 if a.get(key) != b.get(key):
