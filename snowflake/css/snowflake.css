@@ -1,0 +1,25 @@
+/* Snowflake tutorial: styles for the lab widgets. */
+.lab{display:flex;flex-direction:column;gap:.7rem}
+.lab-row{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem .9rem}
+.lab-l{font-weight:800;min-width:9rem}
+.lab-note{font-size:.9rem;font-weight:600;color:var(--ink2);margin:.1rem 0 0}
+.lab-run{margin-left:0;padding:.2rem .9rem;font-size:.9rem}
+.wtbl td{vertical-align:middle}
+.wbar{display:inline-block;vertical-align:middle;width:9rem;max-width:30vw;height:.9rem;background:#E2E8F0;border:2px solid var(--ink);border-radius:6px;overflow:hidden;margin-right:.6rem}
+.wbar i{display:block;height:100%;background:#2563EB}
+.wbar.cost i{background:#EA580C}
+.wtag{display:inline-block;margin-left:.5rem;font:800 .78rem Manrope,sans-serif;letter-spacing:.04em;text-transform:uppercase;border:2px solid var(--ink);border-radius:999px;padding:.05rem .5rem;background:#fff}
+.wtag.cheap{background:#BBF7D0}.wtag.fast{background:#BFDBFE}
+.lab-out{display:flex;flex-wrap:wrap;gap:.6rem}
+.lab-out .big{flex:1 1 9rem;background:#fff;border:3px solid var(--ink);border-radius:12px;padding:.4rem .8rem;box-shadow:0 3px 0 var(--ink)}
+.lab-out .big b{display:block;font:800 1.5rem Manrope,sans-serif}
+.lab-out .big span{font-size:.9rem;font-weight:700;color:var(--ink2)}
+.lab-out .big.warn{background:#FEF3C7}
+.clusters{display:grid;grid-template-columns:repeat(auto-fill,minmax(9rem,1fr));gap:.6rem}
+.cl{background:#fff;border:3px solid var(--ink);border-radius:12px;padding:.4rem .6rem}
+.cl b{display:block;font:800 .9rem Manrope,sans-serif}
+.slots{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:.3rem}
+.slots i{height:.9rem;border:2px solid var(--ink);border-radius:4px;background:#E2E8F0}
+.slots i.run{background:#FB923C}
+.tbl td.wbad{background:#FEE2E2;font-weight:800}
+.tbl td.wgood{background:#DCFCE7;font-weight:800}
