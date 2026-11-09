@@ -5,3 +5,4 @@ dev/out/
 __pycache__/
 *.pyc
 databricks/verify/.cache/
+aws/verify/node_modules/

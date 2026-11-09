@@ -1,0 +1,62 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: The Brewline nightly orders pipeline as a Step Functions state machine
+Resources:
+  PipelineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: states.amazonaws.com
+            Action: sts:AssumeRole
+  FailureTopic:
+    Type: AWS::SNS::Topic
+  OrdersPipeline:
+    Type: AWS::StepFunctions::StateMachine
+    Properties:
+      StateMachineName: brewline-orders-pipeline
+      RoleArn: !GetAtt PipelineRole.Arn
+      Definition:
+        Comment: Load the day of orders, check it, and tell someone if it fails
+        StartAt: RunGlueJob
+        States:
+          RunGlueJob:
+            Type: Task
+            Resource: arn:aws:states:::glue:startJobRun.sync
+            Parameters:
+              JobName: brewline-orders-to-parquet-prod
+            Retry:
+              - ErrorEquals:
+                  - Glue.ConcurrentRunsExceededException
+                IntervalSeconds: 30
+                BackoffRate: 2.0
+                MaxAttempts: 5
+            Catch:
+              - ErrorEquals:
+                  - States.ALL
+                Next: NotifyFailure
+            Next: CheckRowCount
+          CheckRowCount:
+            Type: Task
+            Resource: arn:aws:states:::athena:startQueryExecution.sync
+            Parameters:
+              QueryString: SELECT count(*) FROM brewline_lake.orders WHERE dt = current_date - interval '1' day
+              WorkGroup: brewline
+            Catch:
+              - ErrorEquals:
+                  - States.ALL
+                Next: NotifyFailure
+            End: true
+          NotifyFailure:
+            Type: Task
+            Resource: arn:aws:states:::sns:publish
+            Parameters:
+              TopicArn: !Ref FailureTopic
+              Message: The nightly orders pipeline failed
+            Next: Failed
+          Failed:
+            Type: Fail
+            Error: PipelineFailed
+            Cause: See the execution history

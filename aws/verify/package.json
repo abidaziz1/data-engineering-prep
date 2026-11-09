@@ -1,0 +1,8 @@
+{
+  "name": "aws-verify-tools",
+  "private": true,
+  "description": "Node tools used by aws/verify. Install with: npm install --prefix aws/verify",
+  "dependencies": {
+    "asl-validator": "4.0.0"
+  }
+}
