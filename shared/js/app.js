@@ -246,6 +246,13 @@
       tc.textContent = tl || '';
       tc.style.display = tl ? '' : 'none';
       tc.className = 'tier-chip tier-' + (sc.t || 3);
+      /* optional second chip: where the content of this screen comes from (CFG.srcLabels, scene field src) */
+      var srcChip = document.getElementById('src-chip');
+      if (!srcChip) { srcChip = document.createElement('span'); srcChip.id = 'src-chip'; tc.parentNode.insertBefore(srcChip, tc.nextSibling); }
+      var sl = (CFG.srcLabels || {})[sc.src];
+      srcChip.textContent = sl || '';
+      srcChip.style.display = sl ? '' : 'none';
+      srcChip.className = 'src-chip src-' + (sc.src || 'none');
     }
     var title = sc.title || (sc.type === 'intro' ? 'Mission ' + sc.n + ': ' + sc.title : DEFAULT_TITLE[sc.type] || '');
     if (sc.type === 'intro') title = ch.n ? 'Mission ' + ch.n + ': ' + ch.title : ch.title;

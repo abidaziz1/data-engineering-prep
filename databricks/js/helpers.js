@@ -38,7 +38,7 @@
     /* DESCRIBE HISTORY rows */
     history: function (k) { return need(R.history, k, 'history'); },
     /* the commits of a Delta log: [{version, actions:[{kind, body}]}] */
-    log: function (k) { return need(R.logs, k, 'Delta log'); },
+    log: function (k) { var l = need(R.logs, k, 'Delta log'); return Array.isArray(l) ? l : [l]; },
     commit: function (k, version) {
       var c = G.log(k).filter(function (x) { return x.version === version; })[0];
       if (!c) throw new Error('log "' + k + '" has no version ' + version);

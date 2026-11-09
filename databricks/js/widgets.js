@@ -175,7 +175,7 @@
     function grid(files, v, big) {
       return '<div class="skipgrid' + (big ? ' big' : '') + '">' + files.map(function (f) {
         var on = inRange(v, f);
-        return '<div class="skip ' + (on ? 'read' : 'skipped') + '" title="' + esc(f.file + ' ' + f.min + ' to ' + f.max) + '"><b>' + esc(f.file.replace('part-', '').replace('.snappy.parquet', '')) + '</b>' + (big ? '<span>' + esc(f.min + ' to ' + f.max) + '</span><span>' + fmtN(f.rows) + ' rows</span>' : '') + '</div>';
+        return '<div class="skf ' + (on ? 'read' : 'skipped') + '" title="' + esc(f.file + ' ' + f.min + ' to ' + f.max) + '"><b>' + esc(f.file.replace('part-', '').replace('.snappy.parquet', '')) + '</b>' + (big ? '<span>' + esc(f.min + ' to ' + f.max) + '</span><span>' + fmtN(f.rows) + ' rows</span>' : '') + '</div>';
       }).join('') + '</div>';
     }
     W.skipping = {

@@ -48,7 +48,7 @@
   /* 2. Control plane, compute plane and your storage                    */
   /* ------------------------------------------------------------------ */
   S.planes = {
-    w: 1100, h: 500, label: 'Databricks planes: the control plane in the Databricks account runs the web app, jobs, cluster manager and catalog. Classic compute runs in your cloud subscription. Serverless compute runs in the Databricks account. Your data stays in your storage',
+    w: 1100, h: 500, label: 'Databricks planes: the control plane in the Databricks account runs the web app, jobs, cluster manager and catalog. Classic compute runs in your cloud subscription. Serverless compute runs in the Databricks account. Your tables stay in your storage',
     groups: [
       { id: 'g_cp', x: 0, y: 30, w: 330, h: 440, t: 'CONTROL PLANE, DATABRICKS ACCOUNT', c: 'dbt' },
       { id: 'g_cc', x: 390, y: 30, w: 330, h: 205, t: 'CLASSIC COMPUTE, YOUR SUBSCRIPTION', c: 'air' },
@@ -72,7 +72,7 @@
       { id: 'p6', a: 'uc', b: 'lake', d: 'M310 415 H1030 V360', n: 4, bx: 700, by: 441, pk: 1 }
     ],
     tags: [
-      { id: 'tg_data', x: 780, y: 385, t: 'data never leaves your storage', c: 'raw' }
+      { id: 'tg_data', x: 780, y: 385, t: 'your tables stay in your storage', c: 'raw' }
     ]
   };
 

@@ -77,6 +77,8 @@ mark{background:#FDE047;color:var(--ink);padding:0 .2em;border-radius:4px}
 .seg-chip{font:800 .8rem Manrope,sans-serif;letter-spacing:.08em;border:3px solid var(--ink);border-radius:10px;padding:.2rem .65rem;background:#fff;box-shadow:0 3px 0 var(--ink)}
 .tier-chip{font:800 .78rem Manrope,sans-serif;letter-spacing:.08em;text-transform:uppercase;border:2.5px solid var(--ink);border-radius:999px;padding:.12rem .6rem;background:#fff}
 .tier-chip.tier-2{background:#E9D5FF}.tier-chip.tier-3{background:#FDE68A}
+.src-chip{font:800 .78rem Manrope,sans-serif;letter-spacing:.08em;text-transform:uppercase;border:2.5px solid var(--ink);border-radius:999px;padding:.12rem .6rem;background:#fff}
+.src-chip.src-rec{background:#BBF7D0}.src-chip.src-docs{background:#BFDBFE}
 .s-see{background:#BFDBFE}.s-try{background:#FED7AA}.s-say{background:#BBF7D0}.s-meta{background:#E9D5FF}
 .stage-body{min-width:0}
 

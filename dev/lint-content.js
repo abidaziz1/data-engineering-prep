@@ -93,6 +93,7 @@ LAB.chapters.forEach(ch => {
     if (ids.has(sc.id)) bad('duplicate id ' + sc.id); ids.add(sc.id);
     perType[sc.type] = (perType[sc.type] || 0) + 1;
     const where = ch.id + '/' + sc.id;
+    if (LAB.config.srcLabels && ['talk', 'flow', 'cmp', 'rows', 'code', 'sql', 'term', 'widget', 'cheat'].includes(sc.type) && !LAB.config.srcLabels[sc.src]) bad(where + ' needs src: one of ' + Object.keys(LAB.config.srcLabels).join(', ') + ' (has ' + sc.src + ')');
     if (![1, 2, 3].includes(sc.t)) bad(where + ' needs a tier t of 1, 2 or 3 (has ' + sc.t + ')');
     else perTier[sc.t]++;
     if (sc.type === 'flow' || sc.type === 'term') {

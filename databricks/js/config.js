@@ -26,6 +26,7 @@ LAB.config = {
     { id: 'all', level: 3, name: 'Everything', text: 'Adds the newest features and the deepest follow-up questions.' }
   ],
   tierLabels: { 2: 'Senior', 3: 'Extra' },
+  srcLabels: { rec: 'Recorded', docs: 'From documentation' },
   levels: ['Rookie', 'Platform Pilot', 'Spark Reader', 'Delta Keeper', 'Layout Tuner', 'Pipeline Builder', 'Stream Watcher', 'Catalog Steward', 'Pipeline Author', 'Job Runner', 'Cost Watcher', 'Release Engineer', 'Azure Guardian', 'Databricks Architect'],
   miniMap: {
     caption: 'You are here in the Brewline lakehouse:',
