@@ -616,6 +616,21 @@ def sec_eventhubs():
                                      'checkpoints': [{'partition_id': c['partition_id'], 'offset': c['offset'], 'sequence_number': c['sequence_number']} for c in cps],
                                      'blobs': blobs, 'store': 'BlobCheckpointStore', 'container': 'checkpoints', 'etag_is_opaque': True})
 
+    # how the 600,000 order events would spread over 4 partitions, for different partition keys. Event Hubs does not publish how it hashes a key,
+    # so MD5 of the key as text, modulo 4, stands in for it. The point is the shape: few values, or one dominant value, make one hot partition.
+    con = build_orders()['con']
+    parts = 4
+    spread = {}
+    for col in ('order_id', 'customer_id', 'store_id', 'channel', 'status'):
+        vals = con.execute("SELECT CAST(%s AS VARCHAR), count(*) FROM orders GROUP BY 1" % col).fetchall()
+        buckets = [0] * parts
+        for v, n in vals:
+            buckets[int(hashlib.md5(v.encode()).hexdigest(), 16) % parts] += n
+        spread[col] = {'distinct': len(vals), 'partitions': buckets, 'busiest_share': round(max(buckets) / ORDERS_N, 4), 'skew': round(max(buckets) / (ORDERS_N / parts), 2),
+                       'empty': sum(1 for b in buckets if b == 0)}
+    counts('eventhubs.keyspread', {'partitions': parts, 'events': ORDERS_N, 'by_key': spread,
+                                   'stand_in_hash': 'MD5 of the key as text, as an integer, modulo 4. Event Hubs does not publish how it hashes a partition key.'})
+
 
 # ---------------------------------------------------------------------------------------------------------------------------
 # Event Grid: the events that Storage can raise, and a parsed BlobCreated event

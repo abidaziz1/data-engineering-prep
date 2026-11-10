@@ -1493,6 +1493,73 @@ LAB.real = {
    "stale_etag_claim_returned": [],
    "store": "BlobCheckpointStore"
   },
+  "eventhubs.keyspread": {
+   "by_key": {
+    "channel": {
+     "busiest_share": 0.4499,
+     "distinct": 3,
+     "empty": 1,
+     "partitions": [
+      90170,
+      269911,
+      0,
+      239919
+     ],
+     "skew": 1.8
+    },
+    "customer_id": {
+     "busiest_share": 0.257,
+     "distinct": 12000,
+     "empty": 0,
+     "partitions": [
+      147419,
+      149621,
+      154212,
+      148748
+     ],
+     "skew": 1.03
+    },
+    "order_id": {
+     "busiest_share": 0.2506,
+     "distinct": 600000,
+     "empty": 0,
+     "partitions": [
+      150381,
+      150103,
+      149562,
+      149954
+     ],
+     "skew": 1.0
+    },
+    "status": {
+     "busiest_share": 0.9605,
+     "distinct": 4,
+     "empty": 2,
+     "partitions": [
+      0,
+      0,
+      576308,
+      23692
+     ],
+     "skew": 3.84
+    },
+    "store_id": {
+     "busiest_share": 0.3337,
+     "distinct": 12,
+     "empty": 0,
+     "partitions": [
+      200225,
+      50091,
+      199373,
+      150311
+     ],
+     "skew": 1.33
+    }
+   },
+   "events": 600000,
+   "partitions": 4,
+   "stand_in_hash": "MD5 of the key as text, as an integer, modulo 4. Event Hubs does not publish how it hashes a partition key."
+  },
   "functions.run": {
    "first": {
     "blob": "orders/dt=2026-03-14/orders-0001.json",
