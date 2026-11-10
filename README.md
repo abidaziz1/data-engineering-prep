@@ -112,6 +112,7 @@ node dev/lint-content.js snowflake        # ids, tiers, code line ranges, diagra
 node dev/smoke.js snowflake --path all    # walks every frame: errors, overflow, text size, stray undefined
 node dev/e2e.js snowflake                 # clicks every interactive element and asserts the result
 node dev/stats.js snowflake               # minutes per mission and path, content counts
+node dev/analytics-test.js                # the optional visit counting, against a stub
                                           # the same commands work for dbt, databricks, aws and snowflake-dbt
 ```
 
@@ -127,6 +128,18 @@ python3 aws/verify/verify_aws.py          # AWS: snippets checked against the SD
 The AWS check also needs `npm install --prefix aws/verify`, which installs the Step Functions validator.
 
 `node dev/smoke.js snowflake --path all --width 390 --height 844` repeats the walk at phone width. `node dev/shot.js snowflake m2-lab:0 out.png --click "..."` saves a screenshot of one frame.
+
+## Visit statistics (optional)
+
+GitHub Pages shows no visitor numbers, and GitHub's repository traffic page counts only visits to the repository itself, for 14 days. This repository includes `shared/js/analytics.js`, which counts visits with [GoatCounter](https://www.goatcounter.com). It is off until you set a site code.
+
+1. Create a free site at goatcounter.com. Choose a site code, for example `dep-prep`. Your dashboard is then `https://dep-prep.goatcounter.com`.
+2. Open `shared/js/analytics.js`, set `var CODE = 'dep-prep';`, commit and publish. No other file changes.
+3. Open the live site yourself once with `?notrack=1` added to the address on each of your own devices, so your visits are not counted. `?notrack=0` turns counting back on.
+
+What it sends: a page view for the front page and for each tutorial, and three named events with no personal data: `<tutorial>/path-<id>` (the path a visitor chose), `<tutorial>/mission-<nn>` (the first time a visitor reaches a mission in a visit) and `<tutorial>/finished`. In the dashboard, the event list shows how many visits reached each mission, which is your drop-off curve. It never sends answers, scores, text or browser storage. It stays off on localhost and `file://` pages and when the browser sends Do Not Track. The front page tells visitors that visits are counted, and how to opt out.
+
+`node dev/analytics-test.js` checks all of this against a stub of the GoatCounter script, so nothing leaves your machine. The test does not prove that GoatCounter accepts the hits. Open your dashboard after the first real visit to confirm.
 
 ## Add a tutorial
 

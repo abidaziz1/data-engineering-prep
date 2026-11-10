@@ -27,7 +27,8 @@
     "smoke:aws": "node dev/smoke.js aws --path all",
     "e2e:aws": "node dev/e2e.js aws",
     "stats:aws": "node dev/stats.js aws",
-    "verify:aws": "python3 aws/verify/verify_aws.py"
+    "verify:aws": "python3 aws/verify/verify_aws.py",
+    "test:analytics": "node dev/analytics-test.js"
   },
   "devDependencies": {
     "playwright": "^1.63.0"

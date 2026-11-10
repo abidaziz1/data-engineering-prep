@@ -78,6 +78,7 @@
     setTrack: function (t) {
       var key = frames[idx] ? frames[idx].key : null;
       state.track = t; state.chosen = true; A.save();
+      if (LAB.analytics) LAB.analytics.path(t);
       buildFrames();
       var j = key ? findKey(key) : 0;
       idx = j >= 0 ? j : nearestAfter(key);
@@ -270,6 +271,7 @@
       if (!state.seen[f.key]) { state.seen[f.key] = 1; A.award('seen:' + f.key, 1); }
       A.save();
       lastScene = sc.id;
+      if (LAB.analytics) LAB.analytics.frame(ch, sc);
       try { history.replaceState(null, '', '#' + f.key); } catch (e) { /* file:// in some browsers */ }
       window.scrollTo(0, 0);
     }
@@ -294,7 +296,7 @@
   }
   function next() {
     if (idx < frames.length - 1) go(idx + 1);
-    else { A.celebrate(); openMenu(); }
+    else { if (LAB.analytics) LAB.analytics.finished(); A.celebrate(); openMenu(); }
   }
   function back() { if (idx > 0) go(idx - 1); }
 
