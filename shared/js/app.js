@@ -138,7 +138,7 @@
   R.welcome = {
     sec: 40,
     steps: function () { return 1; },
-    say: function () { return (CFG.welcome && CFG.welcome.say) || 'Hi, I am Coach Sam. I will walk you through this step by step. You only need the Next button. First, tell me which path fits you.'; },
+    say: function () { return (CFG.welcome && CFG.welcome.say) || 'Hi, I am Coach ' + ((CFG.coach && CFG.coach.name) || 'Sam') + '. I will walk you through this step by step. You only need the Next button. First, tell me which path fits you.'; },
     mood: function () { return 'cheer'; },
     hint: 'Pick a path. Then press Next.',
     render: function (box) {
