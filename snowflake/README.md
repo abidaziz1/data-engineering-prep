@@ -39,7 +39,7 @@ Missions 9 to 12 are mostly Senior material, so the Junior path only touches the
 - **Follow one order.** Order `O-5001` goes from a source file into `RAW`, becomes the latest row in `CORE`, and ends in a mart that a dashboard and a partner both read.
 - **11 animated diagrams and 1 terminal simulation.** Orange blocks move along numbered arrows: the whole platform on one page, the three layers, the life of a query, three ways to load, protection layers, a pipeline with a stream, a task graph, a query profile, role inheritance, sharing, the bill, and a delivery pipeline.
 - **8 labs.** Size a warehouse and watch credits against runtime. Replay a 9 AM rush on a multi-cluster warehouse. Compare auto-suspend settings. Rescue deleted rows with Time Travel. Watch a zero-copy clone share partitions. Prune partitions. Test what each role may do. Switch roles to see masking.
-- **23 SQL worksheets and 5 code walkthroughs.** A line-by-line highlight and a Run button that shows the result.
+- **23 SQL worksheets and 5 code walkthroughs.** A line-by-line explanation and a Run button that shows the result.
 - **3 coding problems** (top-N per group, sessions from clicks, a reconciliation), **33 quizzes, 9 bug hunts, 7 ordering games, 11 architecture decisions with a recommended answer, and 8 incident drills** with a first-move choice, a triage checklist, a way to tell the story and the prevention steps.
 - **22 interview questions**, each with a timer, a 60-second model answer (some with a 2-minute version), a key-point checklist, likely follow-ups and the mistake people make most often.
 

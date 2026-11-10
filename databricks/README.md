@@ -51,7 +51,7 @@ Mission 13 has a coding round, two incident drills that mix topics, a design dec
 - **7 animated diagrams.** The whole platform, the control plane and compute planes, how Spark turns a query into stages and tasks, a job with tasks and conditions, a declarative pipeline, the objects of Unity Catalog, and the network and identity of an Azure workspace.
 - **3 terminal replays of real output.** The first run of `spark-pipelines`, and two `pytest` runs, one green and one with a failing test.
 - **7 labs.** Replay the Delta log version by version. Run two writers at once and see which one fails. Move the watermark and watch a late event get dropped. Compare five plans for one join. Look at skew in the partitions. Count the files a filter reads before and after a Z-order. Work out what a job costs a month.
-- **58 code walkthroughs.** Line-by-line highlights of Spark, Delta Lake, Python, SQL, JSON, YAML and shell, with the real output beside the code where there is one.
+- **58 code walkthroughs.** Line-by-line explanations of Spark, Delta Lake, Python, SQL, JSON, YAML and shell, with the real output beside the code where there is one.
 - **3 coding rounds.** The newest row for each order, a cost round that brings a $1,154 monthly bill down to $414, and the top customer for each day. The verifier runs the first and the last on Spark, and the results match what the lessons show.
 - **21 quizzes, 13 bug hunts, 3 ordering games, 13 architecture decisions with a recommended answer, and 14 incident drills** with a first-move choice, a triage checklist, a way to tell the story and the prevention steps.
 - **42 interview questions**, each with a timer, a 60-second model answer, a key-point checklist, likely follow-ups and the mistake people make most often.
