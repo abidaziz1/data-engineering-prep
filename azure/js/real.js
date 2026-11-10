@@ -1579,6 +1579,137 @@ LAB.real = {
    },
    "summary_blob": "order_summaries/orders_dt=2026-03-14_orders-0001.json.json"
   },
+  "iac.checkov": {
+   "bicep_files": [
+    "examples/lake_open.bicep",
+    "examples/lake_secure.bicep",
+    "main.bicep",
+    "modules/budget.bicep",
+    "modules/factory.bicep",
+    "modules/lake.bicep"
+   ],
+   "by_file": {
+    "examples/lake_open.bicep": {
+     "failed": [
+      "CKV_AZURE_35"
+     ],
+     "passed": [
+      "CKV_AZURE_3",
+      "CKV_AZURE_36",
+      "CKV_AZURE_43",
+      "CKV_AZURE_44",
+      "CKV_AZURE_59"
+     ],
+     "skipped": [
+      "CKV_AZURE_206"
+     ]
+    },
+    "examples/lake_secure.bicep": {
+     "failed": [],
+     "passed": [
+      "CKV_AZURE_3",
+      "CKV_AZURE_35",
+      "CKV_AZURE_36",
+      "CKV_AZURE_43",
+      "CKV_AZURE_44",
+      "CKV_AZURE_59"
+     ],
+     "skipped": [
+      "CKV_AZURE_206"
+     ]
+    },
+    "modules/factory.bicep": {
+     "failed": [],
+     "passed": [
+      "CKV_AZURE_104"
+     ],
+     "skipped": [
+      "CKV_AZURE_103"
+     ]
+    },
+    "modules/lake.bicep": {
+     "failed": [],
+     "passed": [
+      "CKV_AZURE_3",
+      "CKV_AZURE_35",
+      "CKV_AZURE_36",
+      "CKV_AZURE_43",
+      "CKV_AZURE_44",
+      "CKV_AZURE_59",
+      "CKV_AZURE_34"
+     ],
+     "skipped": [
+      "CKV_AZURE_206"
+     ]
+    }
+   },
+   "failed": 1,
+   "failed_checks": [
+    {
+     "file": "examples/lake_open.bicep",
+     "id": "CKV_AZURE_35",
+     "name": "Ensure default network access rule for Storage Accounts is set to deny",
+     "resource": "Microsoft.Storage/storageAccounts.lake"
+    }
+   ],
+   "framework": "bicep",
+   "names": {
+    "CKV_AZURE_103": "Ensure that Azure Data Factory uses Git repository for source control",
+    "CKV_AZURE_104": "Ensure that Azure Data factory public network access is disabled",
+    "CKV_AZURE_206": "Ensure that Storage Accounts use replication",
+    "CKV_AZURE_3": "Ensure that 'supportsHttpsTrafficOnly' is set to 'true'",
+    "CKV_AZURE_34": "Ensure that 'Public access level' is set to Private for blob containers",
+    "CKV_AZURE_35": "Ensure default network access rule for Storage Accounts is set to deny",
+    "CKV_AZURE_36": "Ensure 'Trusted Microsoft Services' is enabled for Storage Account access",
+    "CKV_AZURE_43": "Ensure Storage Accounts adhere to the naming rules",
+    "CKV_AZURE_44": "Ensure Storage Account is using the latest version of TLS encryption",
+    "CKV_AZURE_59": "Ensure that Storage accounts disallow public access"
+   },
+   "note": "Static analysis with Checkov: it reads the Bicep files and applies its own rules. It does not compile a template and does not deploy one.",
+   "parsing_errors": 0,
+   "passed": 19,
+   "resource_count": 17,
+   "skipped": 4,
+   "skipped_checks": [
+    {
+     "file": "examples/lake_open.bicep",
+     "id": "CKV_AZURE_206",
+     "name": "Ensure that Storage Accounts use replication",
+     "reason": " ZRS is enough, because the lake can be rebuilt from the sources",
+     "resource": "Microsoft.Storage/storageAccounts.lake"
+    },
+    {
+     "file": "examples/lake_secure.bicep",
+     "id": "CKV_AZURE_206",
+     "name": "Ensure that Storage Accounts use replication",
+     "reason": " ZRS is enough, because the lake can be rebuilt from the sources",
+     "resource": "Microsoft.Storage/storageAccounts.lake"
+    },
+    {
+     "file": "modules/factory.bicep",
+     "id": "CKV_AZURE_103",
+     "name": "Ensure that Azure Data Factory uses Git repository for source control",
+     "reason": " only the dev factory is connected to Git. Prod is published by the pipeline.",
+     "resource": "Microsoft.DataFactory/factories.factory"
+    },
+    {
+     "file": "modules/lake.bicep",
+     "id": "CKV_AZURE_206",
+     "name": "Ensure that Storage Accounts use replication",
+     "reason": " ZRS is enough in prod, and dev uses LRS, because the lake can be rebuilt from the sources",
+     "resource": "Microsoft.Storage/storageAccounts.lake"
+    }
+   ],
+   "version": "3.4.3"
+  },
+  "iac.workflow": {
+   "broken_change": "the first job's runs-on is spelled run-on",
+   "broken_exit_code": 1,
+   "check_jsonschema": null,
+   "errors_reported": 1,
+   "ok_exit_code": 0,
+   "schema": "vendor.github-workflows (built into check-jsonschema)"
+  },
   "identity.chain": {
    "all_failed_without_a_login": true,
    "each_failure_first_words": {
@@ -1690,6 +1821,13 @@ LAB.real = {
     "ver",
     "xms_mirid"
    ]
+  },
+  "kql.cost": {
+   "checks": "syntax only, with the Kusto language service of Microsoft (no table schemas)",
+   "usage_by_table": {
+    "errors": [],
+    "valid": true
+   }
   },
   "kql.parse": {
    "broken": {
@@ -2447,6 +2585,13 @@ LAB.real = {
   "func/handler.py": "\"\"\"Brewline: when a raw order file lands in Blob Storage, write a small summary next to the curated data.\n\nRuns as an Event Grid triggered Azure Function. Two details matter in production:\n  1. The event names the blob in its subject, for example\n     /blobServices/default/containers/raw/blobs/orders/dt=2026-03-14/orders-0001.json\n     The blob name is everything after /blobs/, and it contains slashes.\n  2. Event Grid delivers each event at least once, so the write must be safe to repeat.\n\"\"\"\nimport json\nimport os\n\nimport azure.functions as func\nfrom azure.core.exceptions import ResourceExistsError\nfrom azure.identity import DefaultAzureCredential\nfrom azure.storage.blob import BlobServiceClient\n\nOUT_CONTAINER = os.environ.get(\"SUMMARY_CONTAINER\", \"curated\")\n\n\ndef lake():\n    \"\"\"One client for the lake. In Azure it signs in as the managed identity of the function app.\n    The tests set LAKE_CONNECTION and talk to the storage emulator instead.\"\"\"\n    conn = os.environ.get(\"LAKE_CONNECTION\")\n    if conn:\n        return BlobServiceClient.from_connection_string(conn)\n    return BlobServiceClient(os.environ[\"LAKE_URL\"], credential=DefaultAzureCredential())\n\n\ndef summarize(lines):\n    orders = [json.loads(line) for line in lines if line.strip()]\n    kept = [o for o in orders if o[\"status\"] != \"CANCELLED\"]\n    return {\"orders\": len(orders), \"revenue_eur\": round(sum(o[\"total_eur\"] for o in kept), 2)}\n\n\ndef split_subject(subject):\n    head, _, name = subject.partition(\"/blobs/\")\n    return head.rsplit(\"/\", 1)[-1], name\n\n\ndef process(event):\n    container, name = split_subject(event.subject)\n    svc = lake()\n    body = svc.get_blob_client(container, name).download_blob().readall().decode()\n    summary = summarize(body.splitlines())\n    out = svc.get_blob_client(OUT_CONTAINER, \"order_summaries/\" + name.replace(\"/\", \"_\") + \".json\")\n    try:\n        out.upload_blob(json.dumps(summary), overwrite=False)\n        status = \"written\"\n    except ResourceExistsError:\n        status = \"already done\"\n    return {\"blob\": name, \"status\": status, **summary}\n\n\napp = func.FunctionApp()\n\n\n@app.event_grid_trigger(arg_name=\"event\")\ndef on_raw_order_file(event: func.EventGridEvent):\n    process(event)\n",
   "func/handler_bug.py": "\"\"\"Brewline: when a raw order file lands in Blob Storage, write a small summary next to the curated data.\n\nRuns as an Event Grid triggered Azure Function. Two details matter in production:\n  1. The event names the blob in its subject, for example\n     /blobServices/default/containers/raw/blobs/orders/dt=2026-03-14/orders-0001.json\n     The blob name is everything after /blobs/, and it contains slashes.\n  2. Event Grid delivers each event at least once, so the write must be safe to repeat.\n\"\"\"\nimport json\nimport os\n\nimport azure.functions as func\nfrom azure.core.exceptions import ResourceExistsError\nfrom azure.identity import DefaultAzureCredential\nfrom azure.storage.blob import BlobServiceClient\n\nOUT_CONTAINER = os.environ.get(\"SUMMARY_CONTAINER\", \"curated\")\n\n\ndef lake():\n    \"\"\"One client for the lake. In Azure it signs in as the managed identity of the function app.\n    The tests set LAKE_CONNECTION and talk to the storage emulator instead.\"\"\"\n    conn = os.environ.get(\"LAKE_CONNECTION\")\n    if conn:\n        return BlobServiceClient.from_connection_string(conn)\n    return BlobServiceClient(os.environ[\"LAKE_URL\"], credential=DefaultAzureCredential())\n\n\ndef summarize(lines):\n    orders = [json.loads(line) for line in lines if line.strip()]\n    kept = [o for o in orders if o[\"status\"] != \"CANCELLED\"]\n    return {\"orders\": len(orders), \"revenue_eur\": round(sum(o[\"total_eur\"] for o in kept), 2)}\n\n\ndef split_subject(subject):\n    parts = subject.split(\"/\")\n    return parts[4], parts[-1]\n\n\ndef process(event):\n    container, name = split_subject(event.subject)\n    svc = lake()\n    body = svc.get_blob_client(container, name).download_blob().readall().decode()\n    summary = summarize(body.splitlines())\n    out = svc.get_blob_client(OUT_CONTAINER, \"order_summaries/\" + name.replace(\"/\", \"_\") + \".json\")\n    try:\n        out.upload_blob(json.dumps(summary), overwrite=False)\n        status = \"written\"\n    except ResourceExistsError:\n        status = \"already done\"\n    return {\"blob\": name, \"status\": status, **summary}\n\n\napp = func.FunctionApp()\n\n\n@app.event_grid_trigger(arg_name=\"event\")\ndef on_raw_order_file(event: func.EventGridEvent):\n    process(event)\n",
   "func/test_handler.py": "import datetime\nimport json\n\nimport azure.functions as func\n\nORDERS = [\n    {\"order_id\": \"O-5001\", \"status\": \"COMPLETED\", \"total_eur\": 11.5},\n    {\"order_id\": \"O-5002\", \"status\": \"COMPLETED\", \"total_eur\": 8.0},\n    {\"order_id\": \"O-5003\", \"status\": \"CANCELLED\", \"total_eur\": 30.0},\n]\n\n\ndef blob_created(container, name):\n    \"\"\"The part of an Event Grid BlobCreated event that the handler reads: the subject.\"\"\"\n    return func.EventGridEvent(\n        id=\"831e1650-001e-001b-66ab-eeb76e069631\",\n        data={\"api\": \"PutBlob\", \"contentType\": \"application/json\", \"blobType\": \"BlockBlob\"},\n        topic=\"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-brewline-data-prod/providers/Microsoft.Storage/storageAccounts/stbrewlinelakeprod\",\n        subject=\"/blobServices/default/containers/\" + container + \"/blobs/\" + name,\n        event_type=\"Microsoft.Storage.BlobCreated\",\n        event_time=datetime.datetime(2026, 3, 14, 9, 0, 5, tzinfo=datetime.timezone.utc),\n        data_version=\"\",\n    )\n\n\ndef put_orders(lake, name):\n    body = \"\\n\".join(json.dumps(o) for o in ORDERS)\n    lake.svc.get_blob_client(lake.RAW, name).upload_blob(body, overwrite=True)\n\n\ndef test_summary_skips_cancelled_orders(lake):\n    put_orders(lake, \"orders-0001.json\")\n    out = lake.process(blob_created(lake.RAW, \"orders-0001.json\"))\n    assert out[\"orders\"] == 3\n    assert out[\"revenue_eur\"] == 19.5\n\n\ndef test_a_repeated_event_writes_nothing_twice(lake):\n    put_orders(lake, \"orders-0001.json\")\n    event = blob_created(lake.RAW, \"orders-0001.json\")\n    first = lake.process(event)[\"status\"]\n    second = lake.process(event)[\"status\"]\n    assert (first, second) == (\"written\", \"already done\")\n\n\ndef test_the_blob_name_keeps_its_folders(lake):\n    put_orders(lake, \"orders/dt=2026-03-14/orders-0002.json\")\n    out = lake.process(blob_created(lake.RAW, \"orders/dt=2026-03-14/orders-0002.json\"))\n    assert out[\"blob\"] == \"orders/dt=2026-03-14/orders-0002.json\"\n",
+  "iac/.github/workflows/deploy.yml": "name: deploy-data-platform\n\non:\n  pull_request:\n    paths:\n      - 'infra/**'\n  push:\n    branches:\n      - main\n    paths:\n      - 'infra/**'\n\npermissions:\n  id-token: write\n  contents: read\n\njobs:\n  whatif:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: azure/login@v2\n        with:\n          client-id: ${{ vars.AZURE_CLIENT_ID }}\n          tenant-id: ${{ vars.AZURE_TENANT_ID }}\n          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}\n      - name: What-if against dev\n        run: >\n          az deployment group what-if\n          --resource-group rg-brewline-data-dev\n          --template-file infra/main.bicep\n          --parameters envName=dev alertEmail=${{ vars.ALERT_EMAIL }}\n\n  deploy-dev:\n    if: github.event_name == 'push'\n    runs-on: ubuntu-latest\n    environment: dev\n    steps:\n      - uses: actions/checkout@v4\n      - uses: azure/login@v2\n        with:\n          client-id: ${{ vars.AZURE_CLIENT_ID }}\n          tenant-id: ${{ vars.AZURE_TENANT_ID }}\n          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}\n      - name: Deploy to dev\n        run: >\n          az deployment group create\n          --resource-group rg-brewline-data-dev\n          --template-file infra/main.bicep\n          --parameters envName=dev alertEmail=${{ vars.ALERT_EMAIL }}\n\n  deploy-prod:\n    if: github.event_name == 'push'\n    needs: deploy-dev\n    runs-on: ubuntu-latest\n    environment: prod\n    steps:\n      - uses: actions/checkout@v4\n      - uses: azure/login@v2\n        with:\n          client-id: ${{ vars.AZURE_CLIENT_ID }}\n          tenant-id: ${{ vars.AZURE_TENANT_ID }}\n          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}\n      - name: Deploy to production\n        run: >\n          az deployment group create\n          --resource-group rg-brewline-data-prod\n          --template-file infra/main.bicep\n          --parameters envName=prod alertEmail=${{ vars.ALERT_EMAIL }}\n",
+  "iac/examples/lake_open.bicep": "resource lake 'Microsoft.Storage/storageAccounts@2023-01-01' = {\n  // checkov:skip=CKV_AZURE_206: ZRS is enough, because the lake can be rebuilt from the sources\n  name: 'stbrewlinelakeprod'\n  location: 'westeurope'\n  kind: 'StorageV2'\n  sku: { name: 'Standard_ZRS' }\n  properties: {\n    isHnsEnabled: true\n    minimumTlsVersion: 'TLS1_2'\n    networkAcls: {\n      defaultAction: 'Allow'\n    }\n  }\n}\n",
+  "iac/examples/lake_secure.bicep": "resource lake 'Microsoft.Storage/storageAccounts@2023-01-01' = {\n  // checkov:skip=CKV_AZURE_206: ZRS is enough, because the lake can be rebuilt from the sources\n  name: 'stbrewlinelakeprod'\n  location: 'westeurope'\n  kind: 'StorageV2'\n  sku: { name: 'Standard_ZRS' }\n  properties: {\n    isHnsEnabled: true\n    supportsHttpsTrafficOnly: true\n    minimumTlsVersion: 'TLS1_2'\n    allowBlobPublicAccess: false\n    allowSharedKeyAccess: false\n    publicNetworkAccess: 'Disabled'\n    networkAcls: {\n      defaultAction: 'Deny'\n      bypass: 'AzureServices'\n    }\n  }\n}\n",
+  "iac/main.bicep": "targetScope = 'resourceGroup'\n\n@allowed([\n  'dev'\n  'prod'\n])\nparam envName string\nparam location string = resourceGroup().location\nparam alertEmail string\nparam budgetStart string = '2026-04-01'\n\nmodule lake 'modules/lake.bicep' = {\n  name: 'lake'\n  params: {\n    name: 'stbrewlinelake${envName}'\n    location: location\n    zoneRedundant: envName == 'prod'\n  }\n}\n\nmodule factory 'modules/factory.bicep' = {\n  name: 'factory'\n  params: {\n    name: 'adf-brewline-${envName}'\n    location: location\n    lakeName: lake.outputs.name\n  }\n}\n\nmodule budget 'modules/budget.bicep' = {\n  name: 'budget'\n  params: {\n    amount: envName == 'prod' ? 8000 : 800\n    contactEmail: alertEmail\n    startDate: budgetStart\n  }\n}\n",
+  "iac/modules/budget.bicep": "param amount int\nparam contactEmail string\nparam startDate string\n\nresource budget 'Microsoft.Consumption/budgets@2023-05-01' = {\n  name: 'budget-data-platform'\n  properties: {\n    category: 'Cost'\n    amount: amount\n    timeGrain: 'Monthly'\n    timePeriod: {\n      startDate: startDate\n    }\n    notifications: {\n      forecast90: {\n        enabled: true\n        operator: 'GreaterThan'\n        threshold: 90\n        thresholdType: 'Forecasted'\n        contactEmails: [\n          contactEmail\n        ]\n      }\n      actual100: {\n        enabled: true\n        operator: 'GreaterThan'\n        threshold: 100\n        thresholdType: 'Actual'\n        contactEmails: [\n          contactEmail\n        ]\n      }\n    }\n  }\n}\n",
+  "iac/modules/factory.bicep": "param name string\nparam location string\nparam lakeName string\n\n// Storage Blob Data Contributor\nvar blobDataContributor = 'ba92f5b4-2d11-453d-a403-e96b0029c9fe'\n\nresource factory 'Microsoft.DataFactory/factories@2018-06-01' = {\n  // checkov:skip=CKV_AZURE_103: only the dev factory is connected to Git. Prod is published by the pipeline.\n  name: name\n  location: location\n  identity: {\n    type: 'SystemAssigned'\n  }\n  properties: {\n    publicNetworkAccess: 'Disabled'\n  }\n}\n\nresource lake 'Microsoft.Storage/storageAccounts@2023-01-01' existing = {\n  name: lakeName\n}\n\nresource grant 'Microsoft.Authorization/roleAssignments@2022-04-01' = {\n  name: guid(lake.id, factory.id, blobDataContributor)\n  scope: lake\n  properties: {\n    principalId: factory.identity.principalId\n    principalType: 'ServicePrincipal'\n    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', blobDataContributor)\n  }\n}\n",
+  "iac/modules/lake.bicep": "param name string\nparam location string\nparam zoneRedundant bool\n\nresource lake 'Microsoft.Storage/storageAccounts@2023-01-01' = {\n  // checkov:skip=CKV_AZURE_206: ZRS is enough in prod, and dev uses LRS, because the lake can be rebuilt from the sources\n  name: name\n  location: location\n  kind: 'StorageV2'\n  sku: {\n    name: zoneRedundant ? 'Standard_ZRS' : 'Standard_LRS'\n  }\n  properties: {\n    isHnsEnabled: true\n    supportsHttpsTrafficOnly: true\n    minimumTlsVersion: 'TLS1_2'\n    allowBlobPublicAccess: false\n    allowSharedKeyAccess: false\n    publicNetworkAccess: 'Disabled'\n    networkAcls: {\n      defaultAction: 'Deny'\n      bypass: 'AzureServices'\n    }\n  }\n}\n\nresource blobs 'Microsoft.Storage/storageAccounts/blobServices@2023-01-01' = {\n  parent: lake\n  name: 'default'\n  properties: {\n    deleteRetentionPolicy: {\n      enabled: true\n      days: 14\n    }\n    containerDeleteRetentionPolicy: {\n      enabled: true\n      days: 14\n    }\n  }\n}\n\nresource zones 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-01-01' = [for zone in [\n  'raw'\n  'clean'\n  'curated'\n]: {\n  parent: blobs\n  name: zone\n}]\n\noutput id string = lake.id\noutput name string = lake.name\n",
   "security/envelope.py": "import hashlib\n\nfrom cryptography.hazmat.primitives.ciphers.aead import AESGCM\nfrom cryptography.hazmat.primitives.keywrap import InvalidUnwrap, aes_key_unwrap, aes_key_wrap\n\n# fixed values, so that the run is repeatable. Never reuse a nonce with a real key.\ndata_key = bytes(range(32))                  # encrypts the data\nkek_2025 = bytes([1]) * 32                   # key encryption keys: in Azure they live in Key Vault\nkek_2026 = bytes([2]) * 32\nnonce = bytes(12)\nplaintext = b\"order_id,total_eur\\n\" * 55_000\n\nciphertext = AESGCM(data_key).encrypt(nonce, plaintext, None)\nwrapped = aes_key_wrap(kek_2025, data_key)\nprint(\"data:\", len(plaintext), \"bytes, encrypted:\", len(ciphertext), \"bytes, wrapped data key:\", len(wrapped), \"bytes\")\nprint(\"fingerprint of the encrypted data, before rotation:\", hashlib.sha256(ciphertext).hexdigest()[:16])\n\n# rotate the key encryption key: unwrap with the old one, wrap with the new one. The data is not touched.\nrotated = aes_key_wrap(kek_2026, aes_key_unwrap(kek_2025, wrapped))\nprint(\"wrapped data key changed:\", rotated != wrapped)\nprint(\"fingerprint of the encrypted data, after rotation: \", hashlib.sha256(ciphertext).hexdigest()[:16])\nprint(\"decrypts with the new key:\", AESGCM(aes_key_unwrap(kek_2026, rotated)).decrypt(nonce, ciphertext, None) == plaintext)\n\n# the old key no longer opens the new wrapper, and a destroyed key opens nothing\nfor name, key in ((\"old key\", kek_2025), (\"destroyed key\", bytes([9]) * 32)):\n    try:\n        aes_key_unwrap(key, rotated)\n        print(name, \"unwraps the data key\")\n    except InvalidUnwrap:\n        print(name, \"cannot unwrap the data key\")\n",
   "spark/bronze_orders_0600.csv": "order_id;status;total;placed_at;country\nO1;completed ;10,50;14/03/2026 08:30;NL\nO2;PENDING;12,00;14/03/2026 08:45;DE\nO3;Completed;8,25;14/03/2026 08:58;NL\nO4;COMPLETED;n/a;14/03/2026 09:10;FR\n",
   "spark/bronze_orders_1200.csv": "order_id;status;total;placed_at;country\nO2;COMPLETED;12,00;14/03/2026 08:45;DE\nO5;COMPLETED;20,00;15/03/2026 07:20;DE\nO6;COMPLETED;7,75;15/03/2026 07:40;NL\n",
@@ -2844,6 +2989,8 @@ LAB.real = {
   "delta.listing_v1": "silver/orders/\n    _delta_log/00000000000000000000.crc\n    _delta_log/00000000000000000000.json\n    _delta_log/00000000000000000001.crc\n    _delta_log/00000000000000000001.json\n    part-00000-<uuid1>-c000.snappy.parquet\n    part-00000-<uuid2>-c000.snappy.parquet\n    part-00001-<uuid3>-c000.snappy.parquet\n    part-00002-<uuid4>-c000.snappy.parquet\n    part-00003-<uuid5>-c000.snappy.parquet",
   "delta.schema_error": "[_LEGACY_ERROR_TEMP_DELTA_0007] A schema mismatch detected when writing to the Delta table (Table ID: <table-id>).\nTo enable schema migration using DataFrameWriter or DataStreamWriter, please set:\n'.option(\"mergeSchema\", \"true\")'.\nFor other operations, set the session configuration\nspark.databricks.delta.schema.autoMerge.enabled to \"true\". See the documentation\nspecific to the operation for details.\n\nTable schema:\nroot\n-- order_id: string (nullable = true)\n-- status: string (nullable = true)\n-- total_eur: decimal(10,2) (nullable = true)\n-- placed_at: timestamp (nullable = true)\n-- order_date: date (nullable = true)\n-- country: string (nullable = true)\n-- source_file: string (nullable = true)\n\n\nData schema:\nroot\n-- order_id: string (nullable = true)\n-- status: string (nullable = true)\n-- total_eur: decimal(10,2) (nullable = true)\n-- placed_at: timestamp (nullable = true)\n-- order_date: date (nullable = true)\n-- country: string (nullable = true)\n-- source_file: string (nullable = true)\n-- channel: string (nullable = true)",
   "delta.vacuum_error": "requirement failed: Are you sure you would like to vacuum files with such a low retention period? If you have\nwriters that are currently writing to this table, there is a risk that you may corrupt the\nstate of your Delta table.\n\nIf you are certain that there are no operations being performed on this table, such as\ninsert/upsert/delete/optimize, then you may turn off this check by setting:\nspark.databricks.delta.retentionDurationCheck.enabled = false\n\nIf you are not sure, please use a value not less than \"168 hours\".",
+  "iac.workflow_error": "$.jobs.whatif: 'runs-on' is a required property",
+  "iac.workflow_ok": "ok -- validation done",
   "identity.chain": "DefaultAzureCredential failed to retrieve a token from the included credentials.\nAttempted credentials:\n\tEnvironmentCredential: EnvironmentCredential authentication unavailable. Environment variables are not fully configured.\nVisit https://aka.ms/azsdk/python/identity/environmentcredential/troubleshoot to troubleshoot this issue.\n\tWorkloadIdentityCredential: WorkloadIdentityCredential authentication unavailable. The workload options are not fully configured. See the troubleshooting guide for more information: https://aka.ms/azsdk/python/identity/workloadidentitycredential/troubleshoot. Missing required arguments: 'tenant_id', 'client_id', 'token_file_path'.\n\tManagedIdentityCredential: ManagedIdentityCredential authentication unavailable.\n\tSharedTokenCacheCredential: SharedTokenCacheCredential authentication unavailable. No accounts were found in the cache.\n\tVisualStudioCodeCredential: VisualStudioCodeCredential requires the 'azure-identity-broker' package to be installed. You must also ensure you have the Azure Resources extension installed and have signed in to Azure via Visual Studio Code.\n\tAzureCliCredential: Azure CLI not found on path\n\tAzurePowerShellCredential: PowerShell is not installed\n\tAzureDeveloperCliCredential: Azure Developer CLI could not be found. Please visit https://aka.ms/azure-dev for installation instructions and then,once installed, authenticate to your Azure account using 'azd auth login'.\n\tBrokerCredential: InteractiveBrowserBrokerCredential unavailable. The 'azure-identity-broker' package is required to use brokered authentication.\nTo mitigate this issue, please refer to the troubleshooting guidelines here at https://aka.ms/azsdk/python/identity/defaultazurecredential/troubleshoot.",
   "sas.url": "https://stbrewlinelakeprod.blob.core.windows.net/raw/orders/dt=2026-03-14/orders-0001.json?st=2026-03-14T07%3A55%3A00Z&se=2026-03-14T08%3A55%3A00Z&sp=r&spr=https&sv=2026-10-06&sr=b&sig=Zf4B4iiVtwmLngqUx4nOCCCcIVLzbj0zkZzJpiTFCO8%3D",
   "security.envelope_output": "data: 1045000 bytes, encrypted: 1045016 bytes, wrapped data key: 40 bytes\nfingerprint of the encrypted data, before rotation: c0b2e2b736f8f346\nwrapped data key changed: True\nfingerprint of the encrypted data, after rotation:  c0b2e2b736f8f346\ndecrypts with the new key: True\nold key cannot unwrap the data key\ndestroyed key cannot unwrap the data key",

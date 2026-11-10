@@ -12,13 +12,16 @@ Nothing here runs on Azure. The recording comes from:
   Apache Spark 4 and Delta Lake (local)     the lakehouse steps of mission 6, run by spark_job.py in an environment that has pyspark and delta-spark
   pytest                                    runs the tests of an Event Grid triggered function against Azurite
   cryptography                              AES-GCM and AES key wrap, for the envelope encryption demo of the security mission
+  Checkov and check-jsonschema              static checks of the Bicep files and of the GitHub Actions workflow in azure/verify/iacproj (mission 13),
+                                            run in an environment that has them (the Bicep program itself was not run)
 The lessons use Azurite only for behavior that the Azure documentation describes the same way. The README lists what was not checked.
 
-Usage:   python3 azure/verify/capture_az.py [--out azure/js/real.js] [--only blob,sas,queue,identity,eventhubs,eventgrid,functions,adf,synapse,dedicated,kql,lakehouse,crypto]
-                                             [--json FILE] [--spark-python PATH]
+Usage:   python3 azure/verify/capture_az.py [--out azure/js/real.js] [--only blob,sas,queue,identity,eventhubs,eventgrid,functions,adf,synapse,dedicated,kql,lakehouse,crypto,iac]
+                                             [--json FILE] [--spark-python PATH] [--iac-python PATH]
 Needs:   pip install -r dev/requirements.txt  and  npm install --prefix azure/verify   (Azurite and the Kusto language service)
          for the lakehouse section: Java 17 or 21, and an environment with  pip install pyspark==4.0.1 delta-spark==4.0.1
          (point --spark-python or AZ_SPARK_PYTHON at its python; if you leave it out, this interpreter is tried)
+         for the iac section: an environment with  pip install checkov check-jsonschema   (--iac-python or AZ_IAC_PYTHON)
 """
 import argparse
 import atexit
@@ -48,9 +51,10 @@ sys.path.insert(0, str(HERE))
 
 ap = argparse.ArgumentParser()
 ap.add_argument('--out', default=str(HERE.parent / 'js' / 'real.js'))
-ap.add_argument('--only', default='blob,sas,queue,identity,eventhubs,eventgrid,functions,adf,synapse,dedicated,kql,lakehouse,crypto')
+ap.add_argument('--only', default='blob,sas,queue,identity,eventhubs,eventgrid,functions,adf,synapse,dedicated,kql,lakehouse,crypto,iac')
 ap.add_argument('--json')
 ap.add_argument('--spark-python', default=os.environ.get('AZ_SPARK_PYTHON'))
+ap.add_argument('--iac-python', default=os.environ.get('AZ_IAC_PYTHON'))
 args = ap.parse_args()
 ONLY = set(args.only.split(','))
 
@@ -938,7 +942,8 @@ def sec_kql():
     qs = ["ADFActivityRun\n| where TimeGenerated > ago(1d)\n| summarize runs = count() by Status\n| order by runs desc",
           "ADFActivityRun\n| where TimeGenerated > ago(1d\n| summarize runs = count() by Status",
           "StorageBlobLogs\n| where TimeGenerated > ago(1d) and StatusCode == 403\n| summarize attempts = count() by CallerIpAddress, AuthenticationType\n| top 10 by attempts desc",
-          "StorageBlobLogs\n| where StatusCode == 403\n| summarize attempts = count() by CallerIpAddress\n| top 3 by attempts desc"]
+          "StorageBlobLogs\n| where StatusCode == 403\n| summarize attempts = count() by CallerIpAddress\n| top 3 by attempts desc",
+          "Usage\n| where TimeGenerated > ago(30d) and IsBillable == true\n| summarize GB = sum(Quantity) / 1000 by DataType\n| top 10 by GB desc"]
     f = WORK / 'kql.json'
     f.write_text(json.dumps(qs))
     r = subprocess.run(['node', str(HERE / 'kql_check.js'), str(f)], capture_output=True, text=True, timeout=120, cwd=str(HERE))
@@ -947,6 +952,8 @@ def sec_kql():
     res = [json.loads(l) for l in r.stdout.strip().splitlines()]
     counts('kql.parse', {'good': {'valid': res[0]['valid'], 'errors': res[0]['errors']}, 'broken': {'valid': res[1]['valid'], 'errors': res[1]['errors']},
                          'checks': 'syntax only, with the Kusto language service of Microsoft (no table schemas)'})
+    counts('kql.cost', {'usage_by_table': {'valid': res[4]['valid'], 'errors': res[4]['errors']},
+                        'checks': 'syntax only, with the Kusto language service of Microsoft (no table schemas)'})
     counts('kql.security', {'storage_403': {'valid': res[2]['valid'], 'errors': res[2]['errors']}, 'challenge': {'valid': res[3]['valid'], 'errors': res[3]['errors']},
                             'checks': 'syntax only, with the Kusto language service of Microsoft (no table schemas)'})
 
@@ -1026,6 +1033,67 @@ def sec_crypto():
 
 
 # ---------------------------------------------------------------------------------------------------------------------------
+# Infrastructure as code: static checks of the Bicep files (Checkov) and of the GitHub Actions workflow (a JSON schema). The Bicep program
+# itself was not run, so nothing here compiled a template or deployed one.
+# ---------------------------------------------------------------------------------------------------------------------------
+def sec_iac():
+    py = args.iac_python or sys.executable
+    probe = subprocess.run([py, '-c', 'import checkov, check_jsonschema'], capture_output=True, text=True)
+    if probe.returncode:
+        sys.exit('the iac section needs an interpreter with checkov and check-jsonschema.\n'
+                 'Try:  python3 -m venv /tmp/iac-venv && /tmp/iac-venv/bin/pip install checkov check-jsonschema\n'
+                 'then: python3 azure/verify/capture_az.py --iac-python /tmp/iac-venv/bin/python\n' + probe.stderr[-400:])
+    proj = HERE / 'iacproj'
+    files_in = sorted(p for p in proj.rglob('*') if p.is_file())
+    for p in files_in:
+        file('iac/' + p.relative_to(proj).as_posix(), p.read_text())
+    env = dict(os.environ, BC_SKIP_MAPPING='TRUE', CKV_SKIP_DOWNLOAD='true')
+    r = subprocess.run([py, '-m', 'checkov.main', '-d', str(proj), '--framework', 'bicep', '--output', 'json', '--skip-download', '--soft-fail'],
+                       capture_output=True, text=True, env=env, timeout=600)
+    start = r.stdout.find('{')
+    if start < 0:
+        sys.exit('checkov printed no JSON:\n' + r.stderr[-1500:])
+    data = json.JSONDecoder().raw_decode(r.stdout[start:])[0]
+    if isinstance(data, list):
+        data = [d for d in data if d.get('check_type') == 'bicep'][0]
+    res, summ = data['results'], data['summary']
+
+    def pick(x):
+        return {'id': x['check_id'], 'name': x['check_name'], 'resource': x['resource'], 'file': x['file_path'].lstrip('/')}
+    passed = sorted((pick(x) for x in res.get('passed_checks', [])), key=lambda d: (d['file'], d['resource'], d['id']))
+    failed = sorted((pick(x) for x in res.get('failed_checks', [])), key=lambda d: (d['file'], d['resource'], d['id']))
+    skipped = sorted((dict(pick(x), reason=(x.get('check_result') or {}).get('suppress_comment', '')) for x in res.get('skipped_checks', [])), key=lambda d: (d['file'], d['resource'], d['id']))
+    by_file = {}
+    for kind, items in (('passed', passed), ('failed', failed), ('skipped', skipped)):
+        for d in items:
+            by_file.setdefault(d['file'], {'passed': [], 'failed': [], 'skipped': []})[kind].append(d['id'])
+    names = {d['id']: d['name'] for d in passed + failed + skipped}
+    counts('iac.checkov', {'version': summ.get('checkov_version'), 'framework': 'bicep', 'bicep_files': [p.relative_to(proj).as_posix() for p in files_in if p.suffix == '.bicep'],
+                           'passed': summ['passed'], 'failed': summ['failed'], 'skipped': summ['skipped'], 'parsing_errors': summ['parsing_errors'],
+                           'resource_count': summ['resource_count'], 'by_file': by_file, 'names': names, 'failed_checks': failed, 'skipped_checks': skipped,
+                           'note': 'Static analysis with Checkov: it reads the Bicep files and applies its own rules. It does not compile a template and does not deploy one.'})
+
+    def cj(path):
+        return subprocess.run([py, '-c', 'import sys; from check_jsonschema import main; main()', '--builtin-schema', 'vendor.github-workflows', str(path)],
+                              capture_output=True, text=True, timeout=120)
+    wf = proj / '.github' / 'workflows' / 'deploy.yml'
+    good = cj(wf)
+    broken_src = wf.read_text().replace('runs-on: ubuntu-latest', 'run-on: ubuntu-latest', 1)
+    bad_path = WORK / 'deploy_broken.yml'
+    bad_path.write_text(broken_src)
+    bad = cj(bad_path)
+    msgs = bad.stdout.replace(str(bad_path), 'deploy.yml').splitlines()
+    best = []
+    for i, ln in enumerate(msgs):
+        if ln.strip() == 'Best Match:' and i + 1 < len(msgs):
+            best.append(msgs[i + 1].strip())
+    text('iac.workflow_ok', good.stdout.strip())
+    text('iac.workflow_error', '\n'.join(best[:1]))
+    counts('iac.workflow', {'schema': 'vendor.github-workflows (built into check-jsonschema)', 'ok_exit_code': good.returncode, 'broken_exit_code': bad.returncode,
+                            'broken_change': "the first job's runs-on is spelled run-on", 'errors_reported': len(best), 'check_jsonschema': version('check-jsonschema')})
+
+
+# ---------------------------------------------------------------------------------------------------------------------------
 def finish():
     out = pathlib.Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -1037,7 +1105,7 @@ def finish():
 
 
 SECTIONS = [('blob', sec_blob), ('sas', sec_sas), ('queue', sec_queue), ('identity', sec_identity), ('eventhubs', sec_eventhubs), ('eventgrid', sec_eventgrid),
-            ('functions', sec_functions), ('adf', sec_adf), ('synapse', sec_synapse), ('dedicated', sec_dedicated), ('kql', sec_kql), ('lakehouse', sec_lakehouse), ('crypto', sec_crypto)]
+            ('functions', sec_functions), ('adf', sec_adf), ('synapse', sec_synapse), ('dedicated', sec_dedicated), ('kql', sec_kql), ('lakehouse', sec_lakehouse), ('crypto', sec_crypto), ('iac', sec_iac)]
 
 if __name__ == '__main__':
     for name, fn in SECTIONS:
