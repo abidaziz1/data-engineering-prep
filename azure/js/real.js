@@ -1582,6 +1582,7 @@ LAB.real = {
   "iac.checkov": {
    "bicep_files": [
     "examples/lake_open.bicep",
+    "examples/lake_public_off.bicep",
     "examples/lake_secure.bicep",
     "main.bicep",
     "modules/budget.bicep",
@@ -1590,6 +1591,21 @@ LAB.real = {
    ],
    "by_file": {
     "examples/lake_open.bicep": {
+     "failed": [
+      "CKV_AZURE_35"
+     ],
+     "passed": [
+      "CKV_AZURE_3",
+      "CKV_AZURE_36",
+      "CKV_AZURE_43",
+      "CKV_AZURE_44",
+      "CKV_AZURE_59"
+     ],
+     "skipped": [
+      "CKV_AZURE_206"
+     ]
+    },
+    "examples/lake_public_off.bicep": {
      "failed": [
       "CKV_AZURE_35"
      ],
@@ -1643,10 +1659,16 @@ LAB.real = {
      ]
     }
    },
-   "failed": 1,
+   "failed": 2,
    "failed_checks": [
     {
      "file": "examples/lake_open.bicep",
+     "id": "CKV_AZURE_35",
+     "name": "Ensure default network access rule for Storage Accounts is set to deny",
+     "resource": "Microsoft.Storage/storageAccounts.lake"
+    },
+    {
+     "file": "examples/lake_public_off.bicep",
      "id": "CKV_AZURE_35",
      "name": "Ensure default network access rule for Storage Accounts is set to deny",
      "resource": "Microsoft.Storage/storageAccounts.lake"
@@ -1667,12 +1689,19 @@ LAB.real = {
    },
    "note": "Static analysis with Checkov: it reads the Bicep files and applies its own rules. It does not compile a template and does not deploy one.",
    "parsing_errors": 0,
-   "passed": 19,
-   "resource_count": 17,
-   "skipped": 4,
+   "passed": 24,
+   "resource_count": 18,
+   "skipped": 5,
    "skipped_checks": [
     {
      "file": "examples/lake_open.bicep",
+     "id": "CKV_AZURE_206",
+     "name": "Ensure that Storage Accounts use replication",
+     "reason": " ZRS is enough, because the lake can be rebuilt from the sources",
+     "resource": "Microsoft.Storage/storageAccounts.lake"
+    },
+    {
+     "file": "examples/lake_public_off.bicep",
      "id": "CKV_AZURE_206",
      "name": "Ensure that Storage Accounts use replication",
      "reason": " ZRS is enough, because the lake can be rebuilt from the sources",
@@ -2587,6 +2616,7 @@ LAB.real = {
   "func/test_handler.py": "import datetime\nimport json\n\nimport azure.functions as func\n\nORDERS = [\n    {\"order_id\": \"O-5001\", \"status\": \"COMPLETED\", \"total_eur\": 11.5},\n    {\"order_id\": \"O-5002\", \"status\": \"COMPLETED\", \"total_eur\": 8.0},\n    {\"order_id\": \"O-5003\", \"status\": \"CANCELLED\", \"total_eur\": 30.0},\n]\n\n\ndef blob_created(container, name):\n    \"\"\"The part of an Event Grid BlobCreated event that the handler reads: the subject.\"\"\"\n    return func.EventGridEvent(\n        id=\"831e1650-001e-001b-66ab-eeb76e069631\",\n        data={\"api\": \"PutBlob\", \"contentType\": \"application/json\", \"blobType\": \"BlockBlob\"},\n        topic=\"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-brewline-data-prod/providers/Microsoft.Storage/storageAccounts/stbrewlinelakeprod\",\n        subject=\"/blobServices/default/containers/\" + container + \"/blobs/\" + name,\n        event_type=\"Microsoft.Storage.BlobCreated\",\n        event_time=datetime.datetime(2026, 3, 14, 9, 0, 5, tzinfo=datetime.timezone.utc),\n        data_version=\"\",\n    )\n\n\ndef put_orders(lake, name):\n    body = \"\\n\".join(json.dumps(o) for o in ORDERS)\n    lake.svc.get_blob_client(lake.RAW, name).upload_blob(body, overwrite=True)\n\n\ndef test_summary_skips_cancelled_orders(lake):\n    put_orders(lake, \"orders-0001.json\")\n    out = lake.process(blob_created(lake.RAW, \"orders-0001.json\"))\n    assert out[\"orders\"] == 3\n    assert out[\"revenue_eur\"] == 19.5\n\n\ndef test_a_repeated_event_writes_nothing_twice(lake):\n    put_orders(lake, \"orders-0001.json\")\n    event = blob_created(lake.RAW, \"orders-0001.json\")\n    first = lake.process(event)[\"status\"]\n    second = lake.process(event)[\"status\"]\n    assert (first, second) == (\"written\", \"already done\")\n\n\ndef test_the_blob_name_keeps_its_folders(lake):\n    put_orders(lake, \"orders/dt=2026-03-14/orders-0002.json\")\n    out = lake.process(blob_created(lake.RAW, \"orders/dt=2026-03-14/orders-0002.json\"))\n    assert out[\"blob\"] == \"orders/dt=2026-03-14/orders-0002.json\"\n",
   "iac/.github/workflows/deploy.yml": "name: deploy-data-platform\n\non:\n  pull_request:\n    paths:\n      - 'infra/**'\n  push:\n    branches:\n      - main\n    paths:\n      - 'infra/**'\n\npermissions:\n  id-token: write\n  contents: read\n\njobs:\n  whatif:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: azure/login@v2\n        with:\n          client-id: ${{ vars.AZURE_CLIENT_ID }}\n          tenant-id: ${{ vars.AZURE_TENANT_ID }}\n          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}\n      - name: What-if against dev\n        run: >\n          az deployment group what-if\n          --resource-group rg-brewline-data-dev\n          --template-file infra/main.bicep\n          --parameters envName=dev alertEmail=${{ vars.ALERT_EMAIL }}\n\n  deploy-dev:\n    if: github.event_name == 'push'\n    runs-on: ubuntu-latest\n    environment: dev\n    steps:\n      - uses: actions/checkout@v4\n      - uses: azure/login@v2\n        with:\n          client-id: ${{ vars.AZURE_CLIENT_ID }}\n          tenant-id: ${{ vars.AZURE_TENANT_ID }}\n          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}\n      - name: Deploy to dev\n        run: >\n          az deployment group create\n          --resource-group rg-brewline-data-dev\n          --template-file infra/main.bicep\n          --parameters envName=dev alertEmail=${{ vars.ALERT_EMAIL }}\n\n  deploy-prod:\n    if: github.event_name == 'push'\n    needs: deploy-dev\n    runs-on: ubuntu-latest\n    environment: prod\n    steps:\n      - uses: actions/checkout@v4\n      - uses: azure/login@v2\n        with:\n          client-id: ${{ vars.AZURE_CLIENT_ID }}\n          tenant-id: ${{ vars.AZURE_TENANT_ID }}\n          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}\n      - name: Deploy to production\n        run: >\n          az deployment group create\n          --resource-group rg-brewline-data-prod\n          --template-file infra/main.bicep\n          --parameters envName=prod alertEmail=${{ vars.ALERT_EMAIL }}\n",
   "iac/examples/lake_open.bicep": "resource lake 'Microsoft.Storage/storageAccounts@2023-01-01' = {\n  // checkov:skip=CKV_AZURE_206: ZRS is enough, because the lake can be rebuilt from the sources\n  name: 'stbrewlinelakeprod'\n  location: 'westeurope'\n  kind: 'StorageV2'\n  sku: { name: 'Standard_ZRS' }\n  properties: {\n    isHnsEnabled: true\n    minimumTlsVersion: 'TLS1_2'\n    networkAcls: {\n      defaultAction: 'Allow'\n    }\n  }\n}\n",
+  "iac/examples/lake_public_off.bicep": "resource lake 'Microsoft.Storage/storageAccounts@2023-01-01' = {\n  // checkov:skip=CKV_AZURE_206: ZRS is enough, because the lake can be rebuilt from the sources\n  name: 'stbrewlinelakeprod'\n  location: 'westeurope'\n  kind: 'StorageV2'\n  sku: { name: 'Standard_ZRS' }\n  properties: {\n    isHnsEnabled: true\n    supportsHttpsTrafficOnly: true\n    minimumTlsVersion: 'TLS1_2'\n    allowBlobPublicAccess: false\n    allowSharedKeyAccess: false\n    publicNetworkAccess: 'Disabled'\n  }\n}\n",
   "iac/examples/lake_secure.bicep": "resource lake 'Microsoft.Storage/storageAccounts@2023-01-01' = {\n  // checkov:skip=CKV_AZURE_206: ZRS is enough, because the lake can be rebuilt from the sources\n  name: 'stbrewlinelakeprod'\n  location: 'westeurope'\n  kind: 'StorageV2'\n  sku: { name: 'Standard_ZRS' }\n  properties: {\n    isHnsEnabled: true\n    supportsHttpsTrafficOnly: true\n    minimumTlsVersion: 'TLS1_2'\n    allowBlobPublicAccess: false\n    allowSharedKeyAccess: false\n    publicNetworkAccess: 'Disabled'\n    networkAcls: {\n      defaultAction: 'Deny'\n      bypass: 'AzureServices'\n    }\n  }\n}\n",
   "iac/main.bicep": "targetScope = 'resourceGroup'\n\n@allowed([\n  'dev'\n  'prod'\n])\nparam envName string\nparam location string = resourceGroup().location\nparam alertEmail string\nparam budgetStart string = '2026-04-01'\n\nmodule lake 'modules/lake.bicep' = {\n  name: 'lake'\n  params: {\n    name: 'stbrewlinelake${envName}'\n    location: location\n    zoneRedundant: envName == 'prod'\n  }\n}\n\nmodule factory 'modules/factory.bicep' = {\n  name: 'factory'\n  params: {\n    name: 'adf-brewline-${envName}'\n    location: location\n    lakeName: lake.outputs.name\n  }\n}\n\nmodule budget 'modules/budget.bicep' = {\n  name: 'budget'\n  params: {\n    amount: envName == 'prod' ? 8000 : 800\n    contactEmail: alertEmail\n    startDate: budgetStart\n  }\n}\n",
   "iac/modules/budget.bicep": "param amount int\nparam contactEmail string\nparam startDate string\n\nresource budget 'Microsoft.Consumption/budgets@2023-05-01' = {\n  name: 'budget-data-platform'\n  properties: {\n    category: 'Cost'\n    amount: amount\n    timeGrain: 'Monthly'\n    timePeriod: {\n      startDate: startDate\n    }\n    notifications: {\n      forecast90: {\n        enabled: true\n        operator: 'GreaterThan'\n        threshold: 90\n        thresholdType: 'Forecasted'\n        contactEmails: [\n          contactEmail\n        ]\n      }\n      actual100: {\n        enabled: true\n        operator: 'GreaterThan'\n        threshold: 100\n        thresholdType: 'Actual'\n        contactEmails: [\n          contactEmail\n        ]\n      }\n    }\n  }\n}\n",

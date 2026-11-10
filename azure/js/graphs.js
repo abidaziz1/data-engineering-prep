@@ -372,7 +372,7 @@
     w: 1100, h: 320, label: 'Delivery to Azure: a pull request runs lint, what-if and tests, a merge signs in to Entra with a federated credential and no stored secret, deploys to the development subscription, and after approval does the same in production',
     nodes: [
       { id: 'git', k: 'dag', x: 0, y: 40, w: 190, h: 70, t: 'Pull request', s: 'in GitHub', c: 'src' },
-      { id: 'ci', k: 'dag', x: 250, y: 40, w: 250, h: 70, t: 'Lint and what-if', s: 'bicep, pytest', c: 'qual' },
+      { id: 'ci', k: 'dag', x: 250, y: 40, w: 250, h: 70, t: 'Lint, scan, what-if', s: 'bicep, checkov', c: 'qual' },
       { id: 'oidc', k: 'dag', x: 560, y: 40, w: 250, h: 70, t: 'Sign in to Entra', s: 'federated, no secret', c: 'sf' },
       { id: 'dev', k: 'dag', x: 870, y: 40, w: 220, h: 70, t: 'Dev subscription', s: 'deploy', c: 'stg' },
       { id: 'tst', k: 'dag', x: 870, y: 200, w: 220, h: 70, t: 'Smoke test', s: 'one small run', c: 'snap' },

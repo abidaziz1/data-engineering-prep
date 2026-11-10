@@ -1073,6 +1073,10 @@ def sec_iac():
                            'resource_count': summ['resource_count'], 'by_file': by_file, 'names': names, 'failed_checks': failed, 'skipped_checks': skipped,
                            'note': 'Static analysis with Checkov: it reads the Bicep files and applies its own rules. It does not compile a template and does not deploy one.'})
 
+    def pkg_version(name):
+        r2 = subprocess.run([py, '-c', 'import importlib.metadata as m, sys; print(m.version(sys.argv[1]))', name], capture_output=True, text=True)
+        return r2.stdout.strip() or None
+
     def cj(path):
         return subprocess.run([py, '-c', 'import sys; from check_jsonschema import main; main()', '--builtin-schema', 'vendor.github-workflows', str(path)],
                               capture_output=True, text=True, timeout=120)
@@ -1090,7 +1094,7 @@ def sec_iac():
     text('iac.workflow_ok', good.stdout.strip())
     text('iac.workflow_error', '\n'.join(best[:1]))
     counts('iac.workflow', {'schema': 'vendor.github-workflows (built into check-jsonschema)', 'ok_exit_code': good.returncode, 'broken_exit_code': bad.returncode,
-                            'broken_change': "the first job's runs-on is spelled run-on", 'errors_reported': len(best), 'check_jsonschema': version('check-jsonschema')})
+                            'broken_change': "the first job's runs-on is spelled run-on", 'errors_reported': len(best), 'check_jsonschema': pkg_version('check-jsonschema')})
 
 
 # ---------------------------------------------------------------------------------------------------------------------------

@@ -27,22 +27,11 @@
     '# use it to connect. Never print it, never log it, never put it in a message.'
   ].join('\n');
 
-  var BICEP = [
-    "resource lake 'Microsoft.Storage/storageAccounts@2023-01-01' = {",
-    "  name: 'stbrewlinelakeprod'",
-    "  location: 'westeurope'",
-    "  kind: 'StorageV2'",
-    "  sku: { name: 'Standard_ZRS' }",
-    '  properties: {',
-    '    isHnsEnabled: true',
-    '    supportsHttpsTrafficOnly: true',
-    "    minimumTlsVersion: 'TLS1_2'",
-    '    allowBlobPublicAccess: false',
-    '    allowSharedKeyAccess: false',
-    "    publicNetworkAccess: 'Disabled'",
-    '  }',
-    '}'
-  ].join('\n');
+  /* the two Bicep files are the files that Checkov scanned (azure/verify/iacproj/examples). They were not compiled. */
+  var BICEP = G.file('iac/examples/lake_secure.bicep'), BUG_NET = G.file('iac/examples/lake_open.bicep');
+  var CK = G.counts('iac.checkov'), CKF = CK.by_file;
+  G.expect(CKF['examples/lake_secure.bicep'].failed.length === 0 && CKF['examples/lake_secure.bicep'].passed.length === 6 && CKF['examples/lake_secure.bicep'].skipped.join() === 'CKV_AZURE_206', 'Checkov passes six checks on the secure lake file and skips the replication check');
+  G.expect(CKF['examples/lake_open.bicep'].failed.join() === 'CKV_AZURE_35' && CK.names.CKV_AZURE_35 === 'Ensure default network access rule for Storage Accounts is set to deny', 'Checkov fails the open lake file on the default network access rule');
 
   var KQL = [
     'StorageBlobLogs',
@@ -58,21 +47,6 @@
   ].join('\n');
   var FIX_PRINT = BUG_PRINT.replace('print(f"connecting with password {password}")', 'print("connecting to the orders database")');
 
-  var BUG_NET = [
-    "resource lake 'Microsoft.Storage/storageAccounts@2023-01-01' = {",
-    "  name: 'stbrewlinelakeprod'",
-    "  location: 'westeurope'",
-    "  kind: 'StorageV2'",
-    "  sku: { name: 'Standard_ZRS' }",
-    '  properties: {',
-    '    isHnsEnabled: true',
-    "    minimumTlsVersion: 'TLS1_2'",
-    '    networkAcls: {',
-    "      defaultAction: 'Allow'",
-    '    }',
-    '  }',
-    '}'
-  ].join('\n');
   var FIX_NET = BUG_NET.replace("defaultAction: 'Allow'", "defaultAction: 'Deny'");
 
   var LOGS = [
@@ -239,16 +213,18 @@
       }),
 
       B.code({
-        id: 'm11-bicep', t: 2, src: 'docs', title: 'A storage account with its doors closed', file: 'lake.bicep', lang: 'bicep', code: BICEP,
+        id: 'm11-bicep', t: 2, src: 'rec', title: 'A storage account with its doors closed', file: 'lake_secure.bicep', lang: 'bicep', code: BICEP,
         steps: [
-          { say: 'This is the lake account with the security settings that this mission discussed, written in Bicep. Press Next. The Bicep was not compiled here, so check the property names against the current reference.', lines: null },
+          { say: 'This is the lake account with the security settings of this mission, written in Bicep. A static scanner read it, and mission 13 shows the scan. Press Next.', lines: null },
           { say: 'The hierarchical namespace makes it ADLS Gen2, and the redundancy is ZRS, as in mission 2.', lines: G.span(BICEP, /isHnsEnabled/) },
           { say: 'Secure transfer means HTTPS only, and the minimum TLS version is 1.2. Clients that cannot meet them are refused.', lines: G.span(BICEP, /supportsHttpsTrafficOnly/, /minimumTlsVersion/) },
           { say: 'No anonymous access to containers. The documentation shows different defaults in different places, so always set it explicitly.', lines: G.span(BICEP, /allowBlobPublicAccess/) },
           { say: 'Shared key access off means that every request must be authorized with Entra ID. A request that is signed with the account key is refused, and that includes account and service SAS tokens, which are signed with the key. A user delegation SAS, signed with an Entra identity, still works.', lines: G.span(BICEP, /allowSharedKeyAccess/) },
-          { say: 'Public network access disabled. The lake can now be reached only through private endpoints, which are separate resources in the same template.', lines: G.span(BICEP, /publicNetworkAccess/) }
+          { say: 'Public network access disabled. The lake can now be reached only through private endpoints, which are separate resources in the same template.', lines: G.span(BICEP, /publicNetworkAccess/) },
+          { say: 'The network rules say it a second time: traffic that no rule names is denied, and trusted Azure services may pass. This is belt and braces, and the scanner needs it: in the recording it flagged a copy of this file that had public access off and no default action.', lines: G.span(BICEP, /networkAcls: \{/, /^    \}/) },
+          { say: 'The first line of the resource is a comment that the scanner reads. It skips one check, replication, and records the reason, so a decision is written next to the code and not lost in a meeting.', lines: G.span(BICEP, /checkov:skip/) }
         ],
-        note: 'From the documentation, not compiled. The private endpoints, the DNS zones and the role assignments are separate resources. Mission 13 builds the whole set.'
+        note: 'Checkov ' + CK.version + ' read this file in the recording: ' + CKF['examples/lake_secure.bicep'].passed.length + ' checks passed, none failed, and 1 was skipped with the reason above. The file is `azure/verify/iacproj/examples/lake_secure.bicep`. It was not compiled and not deployed, because the Bicep program could not be run here. The private endpoints, the DNS zones and the role assignments are separate resources. Mission 13 builds the whole set.'
       }),
 
       B.cmp({
@@ -402,10 +378,10 @@
       }),
 
       B.bug({
-        id: 'm11-bug2', t: 2, src: 'docs', q: 'The lake has a private endpoint, and a scan still shows it reachable from the internet. Click the line that leaves the public door open.',
-        file: 'lake.bicep', lang: 'bicep', code: BUG_NET, bad: [10],
+        id: 'm11-bug2', t: 2, src: 'rec', q: 'The lake has a private endpoint, and a scan still shows it reachable from the internet. Click the line that leaves the public door open.',
+        file: 'lake_open.bicep', lang: 'bicep', code: BUG_NET, bad: [G.at(BUG_NET, /defaultAction/)],
         hint: 'What does the default action say about traffic that no rule names?',
-        why: 'The default action `Allow` says that traffic that matches no rule is let in, so the account is open to the internet, whatever private endpoints exist. Set it to `Deny`, or switch public network access off. The private endpoint is an extra door, and it does not close the first one. The Bicep was not compiled here.',
+        why: 'The default action `Allow` says that traffic that matches no rule is let in, so the account is open to the internet, whatever private endpoints exist. Checkov caught it in the recording: **' + CK.names.CKV_AZURE_35 + '** failed on this file, the only failure of the file. Set it to `Deny`, or switch public network access off. The private endpoint is an extra door, and it does not close the first one. The Bicep was not compiled here.',
         fix: FIX_NET,
         cheer: 'A new door does not close the old one.'
       }),
