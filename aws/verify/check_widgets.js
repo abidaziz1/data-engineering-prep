@@ -203,5 +203,56 @@ near(line(B.lines(today, { arm: true }), 'lambda'), 300000 * 0.0000166667 * 0.8 
 near(B.total(B.lines(today, { parquet: true, life: true, gateway: true, flex: true, arm: true })), 849.45, 'all five savings: $849.45', 0.01);
 near(B.total(B.lines(B.presets.grown.v)), 460 + (50000 * 0.005 + 500000 * 0.0004) + 1000 + 2640 + (730 * 0.04 + 3000 * 0.08 + 6000 * 0.04) + (3000000 * 0.0000166667 + 30 * 0.2) + (730 * 0.045 + 5000 * 0.045) + 2250 + 500, 'the grown bill, line by line: $8,123.05', 0.01);
 
+// ---- Redshift distribution and sort keys: a model, so the checks recompute it a second way -----------------------------------
+const D = W.distkeyInfo;
+// 400 customers, orders for customer k proportional to 1/k, scaled so that 8,000 is the target before rounding
+let hn = 0; for (let k = 1; k <= 400; k++) hn += 1 / k;
+near(hn, Math.log(400) + 0.5772156649 + 1 / 800, 'the harmonic number of 400', 1e-4);
+eq(D.customers[0].n, Math.round(8000 / hn), 'the biggest customer places 8,000 / H(400) orders, rounded');
+eq(D.customers[0].n, 1218, 'which is 1,218 orders by hand: 8,000 / 6.5699');
+eq(D.customers[399].n, 3, 'the smallest customer places 3 orders');
+eq(D.customers.reduce((a, x) => a + x.n, 0), D.total, 'the customers add up to the table size');
+eq(D.total, 7994, 'the table holds 7,994 orders after rounding');
+// FNV-1a 32 bit again, with BigInt, for the same strings
+function fnvBig(s) { let h = 0x811c9dc5n; for (const ch of Buffer.from(s, 'latin1')) { h ^= BigInt(ch); h = (h * 0x01000193n) & 0xffffffffn; } return Number(h); }
+['C-0001', 'C-0400', 'O-00001', 'O-07994'].forEach(s => eq(D.fnv(s), fnvBig(s), 'the hash of ' + s + ' matches a BigInt version'));
+eq(D.fnv('a'), 0xe40c292c, 'FNV-1a of "a" is the published test value e40c292c');
+// EVEN: round robin gives each of the 8 slices 7,994 / 8 = 999.25 rows, so 1,000 or 999
+const evenRows = D.place('even');
+eq(evenRows.reduce((a, x) => a + x, 0), 7994, 'EVEN keeps every row');
+eq(evenRows.filter(x => x === 1000).length, 2, 'EVEN: 7,994 = 8 x 999 + 2, so two slices hold 1,000');
+eq(evenRows.filter(x => x === 999).length, 6, 'EVEN: and six slices hold 999');
+// KEY (customer_id): rebuild the placement with the BigInt hash
+const keyRows = new Array(8).fill(0); D.customers.forEach(x => { keyRows[fnvBig(x.id) % 8] += x.n; });
+eq(D.place('key_customer'), keyRows, 'KEY (customer_id) places each customer on the slice of its hash');
+eq(keyRows.reduce((a, x) => a + x, 0), 7994, 'KEY (customer_id) keeps every row');
+near(Math.max(...keyRows) / (7994 / 8), 1.9, 'KEY (customer_id): the busiest slice is 1.9 times the average', 0.01);
+eq(keyRows[fnvBig('C-0001') % 8] >= 1218, true, 'the slice of the biggest customer holds at least his 1,218 orders');
+const orderRows = new Array(8).fill(0); for (let k = 1; k <= 7994; k++) orderRows[fnvBig('O-' + String(k).padStart(5, '0')) % 8]++;
+eq(D.place('key_order'), orderRows, 'KEY (order_id) places each order on the slice of its hash');
+eq(Math.max(...orderRows) / (7994 / 8) < 1.01, true, 'KEY (order_id) is within 1 percent of even');
+// the join step: labels worked out by hand from the documented rules, for 400 and for 40,000 customers
+const want = {
+  400: { even: { even: ['DS_BCAST_INNER', 1600], key_customer: ['DS_BCAST_INNER', 1600], all: ['DS_DIST_ALL_NONE', 0] },
+         key_customer: { even: ['DS_DIST_INNER', 400], key_customer: ['DS_DIST_NONE', 0], all: ['DS_DIST_ALL_NONE', 0] },
+         key_order: { even: ['DS_BCAST_INNER', 1600], key_customer: ['DS_BCAST_INNER', 1600], all: ['DS_DIST_ALL_NONE', 0] } },
+  40000: { even: { even: ['DS_DIST_BOTH', 7994 + 40000], key_customer: ['DS_DIST_OUTER', 7994], all: ['DS_DIST_ALL_NONE', 0] },
+           key_customer: { even: ['DS_DIST_INNER', 40000], key_customer: ['DS_DIST_NONE', 0], all: ['DS_DIST_ALL_NONE', 0] },
+           key_order: { even: ['DS_DIST_BOTH', 7994 + 40000], key_customer: ['DS_DIST_OUTER', 7994], all: ['DS_DIST_ALL_NONE', 0] } }
+};
+Object.keys(want).forEach(cn => Object.keys(want[cn]).forEach(o => Object.keys(want[cn][o]).forEach(cs => {
+  const p = D.plan(o, cs, +cn);
+  eq([p.label, p.moved], want[cn][o][cs], 'join of orders ' + o + ' with ' + cn + ' customers ' + cs);
+})));
+eq(D.plan('even', 'even', 400).other.label, 'DS_DIST_BOTH', 'the option that lost for two EVEN tables is a double redistribution');
+eq(D.plan('even', 'even', 400).other.moved, 7994 + 400, 'and it would move 8,394 rows');
+// the sort key: 100 blocks, 1 day of 90, 31 days of 90, 1 customer of 400
+const qq = k => D.queries.find(x => x.k === k);
+eq(D.blocks('order_date', qq('day')), Math.ceil(100 / 90), 'one day: 2 blocks');
+eq(D.blocks('order_date', qq('month')), Math.ceil(100 * 31 / 90), 'a month: 35 blocks');
+eq(D.blocks('customer_id', qq('customer')), 1, 'one customer sorted by customer: 1 block');
+eq(D.blocks('none', qq('day')), 100, 'no sort key: every block');
+eq(D.blocks('customer_id', qq('day')), 100, 'the wrong sort key: every block');
+
 console.log(checks + ' checks, ' + (fails ? fails + ' failed' : 'all passed'));
 process.exit(fails ? 1 : 0);

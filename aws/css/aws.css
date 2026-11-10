@@ -115,3 +115,8 @@
 .lane-wide{min-width:11.5rem}
 .gbar.sel{background:#F97316}
 .gbar.off{background:#CBD5E1}
+
+/* Redshift sort key lab: one cell for each block */
+.zmap{display:grid;grid-template-columns:repeat(20,1fr);gap:3px;margin:.4rem 0}
+.zmap i{display:block;height:1.1rem;border:2px solid var(--ink);border-radius:4px;background:#E2E8F0}
+.zmap i.on{background:#F97316}

@@ -546,4 +546,116 @@
     };
     W.billInfo = { lines: lines, total: total, presets: PRESETS, rates: RATES, levers: LEVERS };
   })();
+
+  /* ====================== Redshift: distribution and sort keys ======================
+     A model with made-up numbers: a small cluster of 4 nodes with 2 slices each, orders from 400 customers where a few big accounts place most of them.
+     Redshift's own hash function is not public, so a simple hash stands in for it. The join labels and the rules for choosing a move come from the
+     Redshift documentation. Nothing here ran on Redshift. */
+  (function () {
+    var NODES = 4, SPN = 2, SLICES = NODES * SPN, CUSTOMERS = 400, TARGET = 8000, BLOCKS = 100;
+    function pad(n, w) { var s = String(n); while (s.length < w) s = '0' + s; return s; }
+    function fnv(str) { var h = 0x811c9dc5; for (var i = 0; i < str.length; i++) h = Math.imul(h ^ str.charCodeAt(i), 0x01000193) >>> 0; return h; }
+    var harm = 0, cust = [], TOTAL = 0, c;
+    for (c = 1; c <= CUSTOMERS; c++) harm += 1 / c;
+    for (c = 1; c <= CUSTOMERS; c++) { var n = Math.max(1, Math.round(TARGET / (c * harm))); cust.push({ id: 'C-' + pad(c, 4), n: n }); TOTAL += n; }
+    var STYLES = { even: 'EVEN', key_customer: 'KEY (customer_id)', key_order: 'KEY (order_id)', all: 'ALL' };
+    var LABELS = {
+      DS_DIST_NONE: 'No rows move. Both tables are spread by the join column with the same rule, so matching rows sit on the same slice.',
+      DS_DIST_ALL_NONE: 'No rows move. The inner table has a full copy on every node.',
+      DS_DIST_INNER: 'The inner (smaller) table is sent to the slices that hold the matching orders.',
+      DS_DIST_OUTER: 'The outer (bigger) table is sent to the slices that hold the matching customers.',
+      DS_BCAST_INNER: 'A copy of the whole inner table is sent to every node.',
+      DS_DIST_BOTH: 'Both tables are re-spread by the join column.'
+    };
+    function place(style) {
+      var rows = [], i;
+      for (i = 0; i < SLICES; i++) rows.push(0);
+      if (style === 'even') { for (i = 0; i < TOTAL; i++) rows[i % SLICES]++; }
+      else if (style === 'key_customer') cust.forEach(function (x) { rows[fnv(x.id) % SLICES] += x.n; });
+      else if (style === 'key_order') { for (i = 1; i <= TOTAL; i++) rows[fnv('O-' + pad(i, 5)) % SLICES]++; }
+      return rows;
+    }
+    /* the possible moves for the join orders x customers on customer_id, and the cheapest one, counted in rows sent over the network */
+    function plan(o, cs, cn) {
+      if (cs === 'all') return { label: 'DS_DIST_ALL_NONE', moved: 0, other: null };
+      if (o === 'key_customer' && cs === 'key_customer') return { label: 'DS_DIST_NONE', moved: 0, other: null };
+      var bcast = { label: 'DS_BCAST_INNER', moved: cn * NODES }, own;
+      if (o === 'key_customer') own = { label: 'DS_DIST_INNER', moved: cn };
+      else if (cs === 'key_customer') own = { label: 'DS_DIST_OUTER', moved: TOTAL };
+      else own = { label: 'DS_DIST_BOTH', moved: TOTAL + cn };
+      return bcast.moved < own.moved ? { label: bcast.label, moved: bcast.moved, other: own } : { label: own.label, moved: own.moved, other: bcast };
+    }
+    var QUERIES = [
+      { k: 'day', name: 'one day of orders', col: 'order_date', frac: 1 / 90 },
+      { k: 'month', name: 'the 31 days of March', col: 'order_date', frac: 31 / 90 },
+      { k: 'customer', name: 'all orders of one small customer', col: 'customer_id', frac: 1 / CUSTOMERS }
+    ];
+    function blocks(sort, q) { return sort === q.col ? Math.max(1, Math.ceil(BLOCKS * q.frac)) : BLOCKS; }
+    function sliceBars(rows, mx, bad) {
+      return rows.map(function (v, k) {
+        return '<div class="lane"><span class="lane-n lane-wide">node ' + (Math.floor(k / SPN) + 1) + ', slice ' + (k % SPN + 1) + '</span><div class="lane-track"><div class="gbar ' + (bad && v === mx ? 'bad' : '') + '" style="left:0;width:' + Math.max(1, Math.round(v / mx * 100)) + '%"></div></div><span class="lane-v">' + fmtN(v) + '</span></div>';
+      }).join('');
+    }
+    W.distkey = {
+      steps: function () { return 3; },
+      hint: 'Pick a style, then a join, then a sort key.',
+      say: function (s, i) {
+        return [
+          'A Redshift cluster stores each table across its slices, and the distribution style decides which rows go to which slice. This is a model, not a measurement: a made-up cluster of ' + NODES + ' nodes with ' + SPN + ' slices each, and ' + fmtN(TOTAL) + ' orders from ' + CUSTOMERS + ' customers, where a few big accounts place most of the orders. Pick a style and watch the slices.',
+          'A join needs matching rows on the same slice. When they are not, Redshift moves rows over the network, and EXPLAIN names the move. Pick the style of each table. The model counts rows sent and chooses the cheaper of the moves that are possible, the way the planner weighs cost.',
+          'The sort key decides the order in which a table is stored. Redshift keeps the smallest and the largest value of every block, so a filter on the sort key skips blocks. Pick a sort key and a question, and see how many of the ' + BLOCKS + ' blocks are read.'
+        ][i];
+      },
+      mood: function (s, i) { return i === 2 ? 'happy' : 'think'; },
+      render: function (box, s, i, A) {
+        var st = A.local.dk || (A.local.dk = { style: 'key_customer', o: 'even', cs: 'even', cn: 400, sort: 'none', q: 'day' }), h = '<div class="lab">';
+        if (i === 0) {
+          var rows, mx, avg = TOTAL / SLICES, ratio;
+          h += '<div class="sel-chips">' + chips(Object.keys(STYLES), st.style, 'dk-s', function (k) { return STYLES[k]; }) + '</div>';
+          if (st.style === 'all') {
+            rows = []; for (var n2 = 0; n2 < NODES; n2++) rows.push(TOTAL);
+            h += '<div class="lab-out"><div class="big good"><b>' + NODES + 'x</b><span>storage: a full copy on each of the ' + NODES + ' nodes</span></div><div class="big good"><b>none</b><span>skew: every node has all ' + fmtN(TOTAL) + ' rows</span></div></div>' +
+              '<div class="gantt">' + rows.map(function (v, k) { return '<div class="lane"><span class="lane-n lane-wide">node ' + (k + 1) + '</span><div class="lane-track"><div class="gbar" style="left:0;width:100%"></div></div><span class="lane-v">' + fmtN(v) + '</span></div>'; }).join('') + '</div>' +
+              '<div class="callout tip">Every join with this table is local, because each node already holds all of it. The price is storage and writes: every insert or update goes to ' + NODES + ' copies. Use it for small tables that many queries join to.</div>';
+          } else {
+            rows = place(st.style); mx = Math.max.apply(null, rows); ratio = mx / avg;
+            h += '<div class="lab-out"><div class="big ' + (ratio > 1.5 ? 'bad' : 'good') + '"><b>' + fmtN(ratio, 2) + 'x</b><span>the busiest slice against the average of ' + fmtN(avg) + ' rows</span></div><div class="big"><b>' + fmtN(mx / TOTAL * 100, 1) + ' %</b><span>of the table on the busiest slice</span></div></div>' +
+              '<div class="gantt">' + sliceBars(rows, mx, ratio > 1.5) + '</div>' +
+              '<div class="callout ' + (ratio > 1.5 ? 'warn' : 'tip') + '">' + (st.style === 'even' ? 'Round robin gives every slice the same number of rows, so the data cannot skew a query. The price: the rows of one customer sit on different slices, so a join on the customer has to move rows.'
+                : st.style === 'key_order' ? 'Order ids are all different, so the hash spreads the rows almost evenly. It spreads well, and no join on the customer id benefits from it.'
+                : 'The biggest customer places ' + fmtN(cust[0].n / TOTAL * 100, 1) + ' % of the orders, and all of them go to one slice. That slice works the longest, and the query finishes only when it does. A distribution key needs many different values and no value that dominates.') + '</div>';
+          }
+        } else if (i === 1) {
+          var pl = plan(st.o, st.cs, st.cn);
+          h += '<div class="lab-row"><span class="lab-l">orders</span><div class="sel-chips">' + chips(['even', 'key_customer', 'key_order'], st.o, 'dk-o', function (k) { return STYLES[k]; }) + '</div></div>' +
+            '<div class="lab-row"><span class="lab-l">customers</span><div class="sel-chips">' + chips(['even', 'key_customer', 'all'], st.cs, 'dk-c', function (k) { return STYLES[k]; }) + '</div></div>' +
+            '<div class="lab-row"><span class="lab-l">size</span><div class="sel-chips">' + chips([400, 40000], st.cn, 'dk-n', function (k) { return fmtN(+k) + ' customers'; }) + '</div></div>' +
+            code('EXPLAIN', 'text', 'XN Hash Join ' + pl.label + '\n  Hash Cond: ("outer".customer_id = "inner".customer_id)') +
+            '<div class="lab-out"><div class="big ' + (pl.moved === 0 ? 'good' : 'warn') + '"><b>' + pl.label + '</b><span>the join step</span></div><div class="big ' + (pl.moved === 0 ? 'good' : 'warn') + '"><b>' + fmtN(pl.moved) + '</b><span>rows sent over the network</span></div></div>' +
+            '<div class="callout tip">' + esc(LABELS[pl.label]) + (pl.other ? ' The other option was <b>' + pl.other.label + '</b> with ' + fmtN(pl.other.moved) + ' rows, so this one is cheaper.' : '') + (st.cs === 'all' && st.cn > 1000 ? ' With ' + fmtN(st.cn) + ' customers the full copies take ' + fmtN(st.cn * NODES) + ' stored rows, and every change to the table is written ' + NODES + ' times.' : '') + '</div>';
+        } else {
+          var q = QUERIES.filter(function (x) { return x.k === st.q; })[0], nb = blocks(st.sort, q), off = Math.floor((BLOCKS - nb) * 0.4), cells = '';
+          for (var b = 0; b < BLOCKS; b++) cells += '<i class="' + (b >= off && b < off + nb ? 'on' : '') + '"></i>';
+          h += '<div class="lab-row"><span class="lab-l">Sort key</span><div class="sel-chips">' + chips(['none', 'order_date', 'customer_id'], st.sort, 'dk-k', function (k) { return k === 'none' ? 'none (arrival order)' : k; }) + '</div></div>' +
+            '<div class="lab-row"><span class="lab-l">Question</span><div class="sel-chips">' + chips(QUERIES.map(function (x) { return x.k; }), st.q, 'dk-q', function (k) { return QUERIES.filter(function (x) { return x.k === k; })[0].name; }) + '</div></div>' +
+            '<div class="lab-out"><div class="big ' + (nb < BLOCKS / 2 ? 'good' : 'warn') + '"><b>' + nb + ' of ' + BLOCKS + '</b><span>blocks read</span></div><div class="big"><b>' + q.col + '</b><span>the column this question filters on</span></div></div>' +
+            '<div class="zmap">' + cells + '</div>' +
+            '<div class="callout tip">' + (st.sort === q.col ? 'The table is stored in ' + st.sort + ' order, so the rows of this question sit side by side in a few blocks. The smallest and largest value of every other block say that it cannot match, and it is skipped.' : 'The sort key is ' + (st.sort === 'none' ? 'not set' : st.sort) + ', and this question filters on ' + q.col + '. Every block holds some matching values, so none can be skipped.') + '</div>';
+        }
+        box.innerHTML = h + '</div>';
+        bindCodes(box);
+        A.bindWidget = function (act, el) {
+          var v = el.getAttribute('data-v');
+          if (act === 'dk-s') st.style = v;
+          if (act === 'dk-o') st.o = v;
+          if (act === 'dk-c') st.cs = v;
+          if (act === 'dk-n') st.cn = +v;
+          if (act === 'dk-k') st.sort = v;
+          if (act === 'dk-q') st.q = v;
+          A.render(true);
+        };
+      }
+    };
+    W.distkeyInfo = { place: place, plan: plan, blocks: blocks, queries: QUERIES, total: TOTAL, customers: cust, slices: SLICES, nodes: NODES, blockCount: BLOCKS, fnv: fnv };
+  })();
 })();
