@@ -109,3 +109,11 @@ a.logo:hover{background:#0A4E9F}
 
 /* long identifiers such as AuthorizationPermissionMismatch must wrap on a phone */
 .qtext,.alertbox,.alertbox *,.prompt,.opt .ot,.callout,.clues li,.triage li,.lab-out .big b,.lab-out .big span{overflow-wrap:anywhere}
+
+/* things that must wrap on a phone: notes and cards with long names, layer names, and the scope tree */
+.lab-note,.lab-note *,.cheat-card,.cheat-card *,.lname,.layer-h,.callout code{overflow-wrap:anywhere}
+.lname{min-width:0}
+@media (max-width:640px){
+  .tn{flex-wrap:wrap;margin-left:calc(var(--d,0) * .8rem)}
+  .tn .ok{margin-left:0;flex-basis:100%}
+}
