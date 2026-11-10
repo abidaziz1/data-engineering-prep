@@ -658,4 +658,49 @@
     };
     W.distkeyInfo = { place: place, plan: plan, blocks: blocks, queries: QUERIES, total: TOTAL, customers: cust, slices: SLICES, nodes: NODES, blockCount: BLOCKS, fnv: fnv };
   })();
+
+  /* ====================== EventBridge: which events does a pattern match ======================
+     Six S3 events and six patterns. The emulator (moto) answered each of the 36 pairs through test_event_pattern, and the recorder checked
+     every answer against the documented matching rules. They agree. */
+  (function () {
+    var NOTES = {
+      p1: 'An exact bucket name and a key prefix. Event e6 matches too: it is a temporary file under raw/orders/, and a pipeline usually does not want it. Write temporary files to another prefix, or add a suffix filter.',
+      p2: 'A numeric filter. Only the Parquet file of 2,000,000 bytes is above 1,000,000. A number is compared as a number, not as text.',
+      p3: 'anything-but excludes the listed values. Only e3 is in the bucket other-lake, so it is the one event that does not match. Events of other types, such as a delete, still match.',
+      p4: 'A list inside a field is an OR, and separate fields are an AND. An event needs one of the two detail types, and the bucket, and a key that starts with one of the two prefixes.',
+      p5: 'A suffix match. Only the Parquet part file ends in .parquet.',
+      p6: 'exists: true matches an event that has the field at all, whatever its value. Every event has a size, so all six match.'
+    };
+    /* objects on separate lines, lists on one line, so a whole pattern fits above the table */
+    function pretty(v, ind) {
+      ind = ind || '';
+      if (Array.isArray(v)) return JSON.stringify(v).replace(/,/g, ', ').replace(/":/g, '": ');
+      if (v && typeof v === 'object') return '{\n' + Object.keys(v).map(function (k) { return ind + '  ' + JSON.stringify(k) + ': ' + pretty(v[k], ind + '  '); }).join(',\n') + '\n' + ind + '}';
+      return JSON.stringify(v);
+    }
+    W.patterns = {
+      steps: function () { return 1; },
+      hint: 'Pick a pattern. Read which of the six events it matches.',
+      say: function () {
+        return 'EventBridge compares each event with a pattern, and a rule runs its targets only for the events that match. Here are six S3 events and six patterns. Pick a pattern and see which events match. Each of the 36 answers was recorded from the emulator and checked against the documented rules, and both gave the same answer every time.';
+      },
+      mood: function () { return 'think'; },
+      render: function (box, s, i, A) {
+        var d = G.counts('events.patterns'), st = A.local.pt || (A.local.pt = { p: 'p1' });
+        var p = d.patterns.filter(function (x) { return x.id === st.p; })[0];
+        var h = '<div class="lab"><div class="sel-chips">' + chips(d.patterns.map(function (x) { return x.id; }), st.p, 'pt-p', function (k) { return k + ': ' + d.patterns.filter(function (x) { return x.id === k; })[0].label; }) + '</div>' +
+          code('pattern.json', 'json', pretty(p.pattern)) +
+          '<div class="lab-out"><div class="big ' + (p.matched.length ? 'good' : 'warn') + '"><b>' + p.matched.length + ' of ' + d.events.length + '</b><span>events match</span></div></div>' +
+          table(['Event', 'Detail type', 'Bucket', 'Key', 'Size', 'Result'], d.events.map(function (e) {
+            return [e.id, e.detail_type, e.bucket, '`' + e.key + '`', fmtN(e.size), p.matched.indexOf(e.id) >= 0 ? '**match**' : 'no match'];
+          }), function (r) { return p.matched.indexOf(r[0]) >= 0 ? 'new' : 'old'; }) +
+          '<div class="callout tip">' + esc(NOTES[p.id]) + '</div>' +
+          code('boto3', 'python', 'events.test_event_pattern(EventPattern=json.dumps(pattern), Event=json.dumps(event))  # one call for each pair') + '</div>';
+        box.innerHTML = h;
+        bindCodes(box);
+        A.bindWidget = function (act, el) { if (act === 'pt-p') { st.p = el.getAttribute('data-v'); A.render(true); } };
+      }
+    };
+    W.patternsInfo = { notes: NOTES };
+  })();
 })();

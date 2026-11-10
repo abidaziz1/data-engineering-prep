@@ -254,5 +254,44 @@ eq(D.blocks('customer_id', qq('customer')), 1, 'one customer sorted by customer:
 eq(D.blocks('none', qq('day')), 100, 'no sort key: every block');
 eq(D.blocks('customer_id', qq('day')), 100, 'the wrong sort key: every block');
 
+// ---- EventBridge patterns: a second matcher, written from the documented rules, against all 36 recorded answers ---------------
+function ebMatch(pattern, event) {
+  return Object.keys(pattern).every(k => {
+    const rule = pattern[k], val = event ? event[k] : undefined;
+    if (!Array.isArray(rule)) return val !== null && typeof val === 'object' && !Array.isArray(val) && ebMatch(rule, val);
+    return rule.some(r => {
+      if (r !== null && typeof r === 'object') {
+        if ('exists' in r) return r.exists === (val !== undefined);
+        if (val === undefined) return false;
+        if ('prefix' in r) return typeof val === 'string' && val.startsWith(r.prefix);
+        if ('suffix' in r) return typeof val === 'string' && val.endsWith(r.suffix);
+        if ('anything-but' in r) return ![].concat(r['anything-but']).includes(val);
+        if ('numeric' in r) { const n = r.numeric; for (let i = 0; i < n.length; i += 2) { const op = n[i], v = n[i + 1]; if (typeof val !== 'number') return false; if (op === '>' && !(val > v)) return false; if (op === '>=' && !(val >= v)) return false; if (op === '<' && !(val < v)) return false; if (op === '<=' && !(val <= v)) return false; if (op === '=' && !(val === v)) return false; } return true; }
+        return false;
+      }
+      return val === r;
+    });
+  });
+}
+const EP = G.counts('events.patterns');
+eq(EP.events.length, 6, 'six S3 events');
+eq(EP.patterns.length, 6, 'six patterns');
+let pairs = 0;
+EP.patterns.forEach(p => {
+  const mine = EP.events.filter(e => ebMatch(p.pattern, { 'detail-type': e.detail_type, detail: { bucket: { name: e.bucket }, object: { key: e.key, size: e.size } } })).map(e => e.id);
+  pairs += EP.events.length;
+  eq(mine, p.matched, 'pattern ' + p.id + ' (' + p.label + '): my matcher and the recorded answer agree');
+  eq(p.documented, p.matched, 'pattern ' + p.id + ': the recorder checked the documented rule too');
+});
+eq(pairs, 36, '6 patterns x 6 events = 36 pairs');
+// the answers worked out by hand from the six events
+const byId = {}; EP.patterns.forEach(p => { byId[p.id] = p.matched; });
+eq(byId.p1, ['e1', 'e6'], 'prefix raw/orders/ in brewline-lake on Object Created: e1 and the temporary file e6');
+eq(byId.p2, ['e4'], 'size above 1,000,000: only the 2 MB Parquet file');
+eq(byId.p3, ['e1', 'e2', 'e4', 'e5', 'e6'], 'anything but other-lake: all but e3');
+eq(byId.p5, ['e4'], 'suffix .parquet: only e4');
+eq(byId.p6, ['e1', 'e2', 'e3', 'e4', 'e5', 'e6'], 'size exists: every event');
+eq(Object.keys(W.patternsInfo.notes).sort(), EP.patterns.map(p => p.id).sort(), 'every pattern has a note');
+
 console.log(checks + ' checks, ' + (fails ? fails + ' failed' : 'all passed'));
 process.exit(fails ? 1 : 0);
