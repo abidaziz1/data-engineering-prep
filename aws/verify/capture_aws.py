@@ -608,7 +608,9 @@ if 'athena' in ONLY:
     counts('athena.scan', {'layouts': [{'k': 'csv', 'name': 'One CSV file'}, {'k': 'csv_gz', 'name': 'One gzip CSV file'}, {'k': 'csv_by_day', 'name': 'CSV, one folder for each day'},
                                        {'k': 'parquet', 'name': 'One Parquet file'}, {'k': 'parquet_by_day', 'name': 'Parquet, one folder for each day'}],
                            'queries': queries})
-    text('athena.layout_tree', '\n'.join(['orders.csv', 'orders.csv.gz', 'orders.parquet'] + ['parquet_by_day/dt=%s/%s' % (d, day_files_p[d].name) for d in all_days[:3]] + ['parquet_by_day/... (%d folders in all)' % ATHENA_DAYS]))
+    text('athena.layout_tree', '\n'.join(['orders.csv', 'orders.csv.gz', 'orders.parquet']
+                                         + ['csv_by_day/dt=%s/%s' % (d, day_files_c[d].name) for d in all_days[:2]] + ['csv_by_day/... (%d folders in all)' % ATHENA_DAYS]
+                                         + ['parquet_by_day/dt=%s/%s' % (d, day_files_p[d].name) for d in all_days[:2]] + ['parquet_by_day/... (%d folders in all)' % ATHENA_DAYS]))
     # the generated SQL of the lesson must parse as written: the lesson reads it from here
     for q in queries:
         file('athena/%s.sql' % q['id'], q['sql'])

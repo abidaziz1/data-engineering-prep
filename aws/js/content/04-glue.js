@@ -144,13 +144,13 @@
       B.code({
         id: 'm4-job', t: 1, src: 'docs', title: 'A Glue job script', file: 'orders_to_parquet.py', lang: 'python', code: JOBCODE,
         steps: [
-          { say: 'A Glue Spark job is a Python script with a standard frame. It gets its parameters, creates a Glue context on top of Spark, and starts a job object. The job object is what tracks bookmarks.', lines: [1, 12] },
+          { say: 'A Glue Spark job is a Python script with a standard frame. It gets its parameters, creates a Glue context on top of Spark, and starts a job object. The job object is what tracks bookmarks.', lines: G.span(JOBCODE, /^import sys/, /^job\.init/) },
           { say: 'Read the raw table from the catalog. `push_down_predicate` makes Glue list and read only the partitions of the run date, not the whole history. `transformation_ctx` is the name under which the bookmark state is stored.', lines: G.span(JOBCODE, /raw = glue.create_dynamic_frame/, /transformation_ctx='raw_orders'/) },
           { say: 'A DynamicFrame is the Glue record collection. It copes with columns whose type varies between records. Convert it to a Spark DataFrame with `toDF()` when you need the full Spark API: remove duplicates, cast the amount to a decimal.', lines: G.span(JOBCODE, /clean = /, /F.col\('total_usd'\)/) },
           { say: 'Write Parquet into the clean zone, partitioned by `dt`. `glueparquet` is the Glue optimized writer. The `transformation_ctx` again names the step for the bookmark.', lines: G.span(JOBCODE, /glue.write_dynamic_frame.from_options/, /transformation_ctx='clean_orders'/) },
           { say: '`job.commit()` saves the bookmark. Without it, the next run starts from the old position and processes the same files again.', lines: G.span(JOBCODE, /job.commit/) }
         ],
-        note: 'This script follows the Glue documentation. It cannot run outside Glue, because the `awsglue` library is not public, so I checked only that it parses as Python. The calls and argument names are the documented ones.'
+        note: 'This script follows the Glue documentation. No Glue job ran for this course, so I checked only that the file parses as Python. The calls and argument names are the documented ones.'
       }),
 
       B.cmp({
@@ -189,20 +189,20 @@
         cols: ['Setting', 'What it means', 'Example or default'],
         hl: 1,
         rows: [
-          ['DPU', 'The unit of billing. A DPU is documented as 4 vCPUs and 16 GB of memory.', 'About $0.44 for each DPU-hour, billed by the second with a one minute minimum.'],
-          ['Worker type', 'How much each worker has. G.1X is one DPU, G.2X is two, and so on. G.025X is a small worker for streaming.', 'G.1X for most jobs. Larger workers for memory-heavy joins.'],
+          ['DPU', 'The unit of billing. A DPU is documented as 4 vCPUs and 16 GB of memory.', 'About $0.44 for each DPU-hour in the US East price lists I found. Billed by the second with a one minute minimum.'],
+          ['Worker type', 'How much each worker has. G.1X is 1 DPU (4 vCPUs, 16 GB), G.2X is 2 DPUs, and the sizes go up to G.16X. R workers carry twice the memory for the same vCPUs. G.025X is a quarter DPU for light streaming jobs.', 'G.1X for most jobs. Larger or R workers for memory-heavy joins.'],
           ['Number of workers', 'How many workers the job gets. More workers means a faster job and the same total DPU-hours if the work scales evenly.', 'The recorded job definition used ' + JOB.workers + ' ' + JOB.worker_type + ' workers.'],
           ['Auto scaling', 'The job adds and removes workers during the run, up to a maximum, and you pay for what it uses.', 'Set a sensible maximum, because a runaway job still costs.'],
           ['Flex execution class', 'Runs on spare capacity, can start later and cost less. For jobs that nobody waits for.', 'About $0.29 for each DPU-hour in some sources. Check the current price.'],
-          ['Timeout and retries', 'A timeout stops a stuck job. Retries run it again after a failure.', 'The default timeout is long. Set your own.'],
-          ['Maximum concurrent runs', 'How many runs of one job may overlap. A new run beyond the limit fails with `ConcurrentRunsExceededException`.', 'The default is one.']
+          ['Timeout and retries', 'A timeout stops a stuck job, and a stuck job bills until it stops. Retries run it again after a failure.', 'Left blank, the API documents a timeout of 2,880 minutes (48 hours) up to Glue 4.0 and 480 minutes (8 hours) from Glue 5.0. Set your own.'],
+          ['Maximum concurrent runs', 'How many runs of one job may overlap. `StartJobRun` fails with `ConcurrentRunsExceededException` when the limit is reached.', 'The default is 1.']
         ],
         steps: [
           { upto: 3, say: 'Units and sizes. Think in DPU-hours: workers times hours.' },
           { upto: 5, say: 'Scaling and the cheaper execution class.' },
-          { upto: 7, say: 'Guard rails: a timeout, retries and the number of overlapping runs. The last one connects to the retry lab in mission 9.' }
+          { upto: 7, say: 'Guard rails: a timeout, retries and the number of overlapping runs. A hung job on 10 G.1X workers with the old 48 hour default bills 10 x 48 x $0.44 = **$211.20** before it stops.' }
         ],
-        pick: 'Start with **G.1X workers and auto scaling with a maximum**, set a **timeout**, keep **one concurrent run** for jobs that write the same table, and measure DPU-hours before you buy bigger workers.'
+        pick: 'Start with **G.1X workers and auto scaling with a maximum**, set a **timeout** of about 3 times the normal run time, keep **one concurrent run** for jobs that write the same table, and measure DPU-hours before you buy bigger workers.'
       }),
 
       B.cmp({
@@ -267,7 +267,7 @@
         id: 'm4-q2', t: 1,
         q: 'A Glue job runs on 10 G.1X workers for 24 minutes. At $0.44 for each DPU-hour, what does one run cost?',
         opts: [
-          { t: 'About $0.18', fb: 'That divides the 24 minutes by 60 and then by 10 instead of multiplying by the workers.' },
+          { t: 'About $0.18', fb: 'That is one DPU for 24 minutes. The job has 10 workers, so multiply by 10.' },
           { t: 'About $1.76', fb: '' },
           { t: 'About $4.40', fb: 'That is one hour of the 10 DPUs. The job ran for 24 minutes.' },
           { t: 'About $10.56', fb: 'That multiplies the minutes by the rate without converting to hours.' }
