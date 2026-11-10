@@ -77,12 +77,12 @@ a.logo:hover{background:#0A4E9F}
 /* a resource tree for the scope lab */
 .tree{border:3px solid var(--ink);border-radius:14px;background:#fff;padding:.4rem .7rem}
 .tn{display:flex;align-items:center;gap:.5rem;padding:.12rem .3rem;border-radius:8px;font:600 .92rem 'IBM Plex Mono',monospace;margin-left:calc(var(--d,0) * 1.4rem)}
-.tn .ty{font:800 .72rem Manrope,sans-serif;letter-spacing:.05em;text-transform:uppercase;background:#E2E8F0;border:2px solid var(--ink);border-radius:6px;padding:0 .4rem}
+.tn .ty{font:800 .78rem Manrope,sans-serif;letter-spacing:.05em;text-transform:uppercase;background:#E2E8F0;border:2px solid var(--ink);border-radius:6px;padding:0 .4rem}
 .tn button{background:none;border:0;font:inherit;text-align:left;padding:0;cursor:pointer;color:inherit}
 .tn.pick{background:#FEF3C7;outline:2px solid var(--ink)}
 .tn.in{background:#DBEAFE}
 .tn .ok{margin-left:auto;display:flex;gap:.35rem}
-.tn .tag{font:800 .72rem Manrope,sans-serif;border:2px solid var(--ink);border-radius:999px;padding:0 .5rem;background:#fff}
+.tn .tag{font:800 .78rem Manrope,sans-serif;border:2px solid var(--ink);border-radius:999px;padding:0 .5rem;background:#fff}
 .tn .tag.y{background:#BBF7D0}.tn .tag.n{background:#F1F5F9;color:#64748B;border-color:#94A3B8}
 
 /* credential chain */
