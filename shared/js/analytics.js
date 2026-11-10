@@ -11,7 +11,7 @@
    site once with ?notrack=1 (use that on your own devices; ?notrack=0 turns counting back on). */
 (function () {
   var LAB = (window.LAB = window.LAB || {});
-  var CODE = '';
+  var CODE = 'abidaziz';
 
   var cfg = window.LAB_ANALYTICS || {};          /* tests may pass { code: 'x', force: true } */
   var code = cfg.code || CODE;
