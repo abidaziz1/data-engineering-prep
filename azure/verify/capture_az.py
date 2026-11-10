@@ -11,9 +11,10 @@ Nothing here runs on Azure. The recording comes from:
   DuckDB and pyarrow                        real query and file engines, used for the watermark runs and the Parquet file sizes
   Apache Spark 4 and Delta Lake (local)     the lakehouse steps of mission 6, run by spark_job.py in an environment that has pyspark and delta-spark
   pytest                                    runs the tests of an Event Grid triggered function against Azurite
+  cryptography                              AES-GCM and AES key wrap, for the envelope encryption demo of the security mission
 The lessons use Azurite only for behavior that the Azure documentation describes the same way. The README lists what was not checked.
 
-Usage:   python3 azure/verify/capture_az.py [--out azure/js/real.js] [--only blob,sas,queue,identity,eventhubs,eventgrid,functions,adf,synapse,dedicated,kql,lakehouse]
+Usage:   python3 azure/verify/capture_az.py [--out azure/js/real.js] [--only blob,sas,queue,identity,eventhubs,eventgrid,functions,adf,synapse,dedicated,kql,lakehouse,crypto]
                                              [--json FILE] [--spark-python PATH]
 Needs:   pip install -r dev/requirements.txt  and  npm install --prefix azure/verify   (Azurite and the Kusto language service)
          for the lakehouse section: Java 17 or 21, and an environment with  pip install pyspark==4.0.1 delta-spark==4.0.1
@@ -47,7 +48,7 @@ sys.path.insert(0, str(HERE))
 
 ap = argparse.ArgumentParser()
 ap.add_argument('--out', default=str(HERE.parent / 'js' / 'real.js'))
-ap.add_argument('--only', default='blob,sas,queue,identity,eventhubs,eventgrid,functions,adf,synapse,dedicated,kql,lakehouse')
+ap.add_argument('--only', default='blob,sas,queue,identity,eventhubs,eventgrid,functions,adf,synapse,dedicated,kql,lakehouse,crypto')
 ap.add_argument('--json')
 ap.add_argument('--spark-python', default=os.environ.get('AZ_SPARK_PYTHON'))
 args = ap.parse_args()
@@ -111,7 +112,7 @@ def node_pkg_version(name):
 
 OUT['meta'].update({p: version(p) for p in ('azure-storage-blob', 'azure-storage-queue', 'azure-identity', 'azure-core', 'azure-eventhub',
                                              'azure-eventhub-checkpointstoreblob', 'azure-eventgrid', 'azure-functions', 'azure-mgmt-datafactory',
-                                             'duckdb', 'pyarrow', 'pytest', 'sqlglot')})
+                                             'duckdb', 'pyarrow', 'pytest', 'sqlglot', 'azure-keyvault-secrets', 'cryptography')})
 OUT['meta'].update({'azurite': node_pkg_version('azurite'), 'kusto_language_service': node_pkg_version('@kusto/language-service-next'),
                     'python': sys.version.split()[0], 'node': subprocess.run(['node', '--version'], capture_output=True, text=True).stdout.strip().lstrip('v'),
                     'account': 'stbrewlinelakeprod', 'region': 'westeurope',
@@ -935,7 +936,9 @@ def sec_dedicated():
 # ---------------------------------------------------------------------------------------------------------------------------
 def sec_kql():
     qs = ["ADFActivityRun\n| where TimeGenerated > ago(1d)\n| summarize runs = count() by Status\n| order by runs desc",
-          "ADFActivityRun\n| where TimeGenerated > ago(1d\n| summarize runs = count() by Status"]
+          "ADFActivityRun\n| where TimeGenerated > ago(1d\n| summarize runs = count() by Status",
+          "StorageBlobLogs\n| where TimeGenerated > ago(1d) and StatusCode == 403\n| summarize attempts = count() by CallerIpAddress, AuthenticationType\n| top 10 by attempts desc",
+          "StorageBlobLogs\n| where StatusCode == 403\n| summarize attempts = count() by CallerIpAddress\n| top 3 by attempts desc"]
     f = WORK / 'kql.json'
     f.write_text(json.dumps(qs))
     r = subprocess.run(['node', str(HERE / 'kql_check.js'), str(f)], capture_output=True, text=True, timeout=120, cwd=str(HERE))
@@ -944,6 +947,8 @@ def sec_kql():
     res = [json.loads(l) for l in r.stdout.strip().splitlines()]
     counts('kql.parse', {'good': {'valid': res[0]['valid'], 'errors': res[0]['errors']}, 'broken': {'valid': res[1]['valid'], 'errors': res[1]['errors']},
                          'checks': 'syntax only, with the Kusto language service of Microsoft (no table schemas)'})
+    counts('kql.security', {'storage_403': {'valid': res[2]['valid'], 'errors': res[2]['errors']}, 'challenge': {'valid': res[3]['valid'], 'errors': res[3]['errors']},
+                            'checks': 'syntax only, with the Kusto language service of Microsoft (no table schemas)'})
 
 
 # ---------------------------------------------------------------------------------------------------------------------------
@@ -969,6 +974,58 @@ def sec_lakehouse():
 
 
 # ---------------------------------------------------------------------------------------------------------------------------
+# Envelope encryption: what a customer-managed key does, with the cryptography library (AES-GCM, and the AES key wrap of RFC 3394)
+# ---------------------------------------------------------------------------------------------------------------------------
+ENVELOPE = """import hashlib
+
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+from cryptography.hazmat.primitives.keywrap import InvalidUnwrap, aes_key_unwrap, aes_key_wrap
+
+# fixed values, so that the run is repeatable. Never reuse a nonce with a real key.
+data_key = bytes(range(32))                  # encrypts the data
+kek_2025 = bytes([1]) * 32                   # key encryption keys: in Azure they live in Key Vault
+kek_2026 = bytes([2]) * 32
+nonce = bytes(12)
+plaintext = b"order_id,total_eur\\n" * 55_000
+
+ciphertext = AESGCM(data_key).encrypt(nonce, plaintext, None)
+wrapped = aes_key_wrap(kek_2025, data_key)
+print("data:", len(plaintext), "bytes, encrypted:", len(ciphertext), "bytes, wrapped data key:", len(wrapped), "bytes")
+print("fingerprint of the encrypted data, before rotation:", hashlib.sha256(ciphertext).hexdigest()[:16])
+
+# rotate the key encryption key: unwrap with the old one, wrap with the new one. The data is not touched.
+rotated = aes_key_wrap(kek_2026, aes_key_unwrap(kek_2025, wrapped))
+print("wrapped data key changed:", rotated != wrapped)
+print("fingerprint of the encrypted data, after rotation: ", hashlib.sha256(ciphertext).hexdigest()[:16])
+print("decrypts with the new key:", AESGCM(aes_key_unwrap(kek_2026, rotated)).decrypt(nonce, ciphertext, None) == plaintext)
+
+# the old key no longer opens the new wrapper, and a destroyed key opens nothing
+for name, key in (("old key", kek_2025), ("destroyed key", bytes([9]) * 32)):
+    try:
+        aes_key_unwrap(key, rotated)
+        print(name, "unwraps the data key")
+    except InvalidUnwrap:
+        print(name, "cannot unwrap the data key")
+"""
+
+
+def sec_crypto():
+    import io as _io
+    buf = _io.StringIO()
+    ns = {}
+    with contextlib.redirect_stdout(buf):
+        exec(ENVELOPE, ns)
+    out = buf.getvalue()
+    file('security/envelope.py', ENVELOPE)
+    text('security.envelope_output', out.rstrip('\n'))
+    counts('security.envelope', {'plaintext_bytes': len(ns['plaintext']), 'ciphertext_bytes': len(ns['ciphertext']), 'tag_bytes': len(ns['ciphertext']) - len(ns['plaintext']),
+                                 'data_key_bytes': len(ns['data_key']), 'wrapped_key_bytes': len(ns['wrapped']), 'wrapped_key_changed': ns['wrapped'] != ns['rotated'],
+                                 'old_key_cannot_unwrap': 'old key cannot unwrap the data key' in out, 'destroyed_key_cannot_unwrap': 'destroyed key cannot unwrap the data key' in out,
+                                 'decrypts_after_rotation': 'decrypts with the new key: True' in out,
+                                 'note': 'AES-256-GCM for the data and the AES key wrap of RFC 3394 for the data key, with fixed keys so that the run is repeatable.'})
+
+
+# ---------------------------------------------------------------------------------------------------------------------------
 def finish():
     out = pathlib.Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -980,7 +1037,7 @@ def finish():
 
 
 SECTIONS = [('blob', sec_blob), ('sas', sec_sas), ('queue', sec_queue), ('identity', sec_identity), ('eventhubs', sec_eventhubs), ('eventgrid', sec_eventgrid),
-            ('functions', sec_functions), ('adf', sec_adf), ('synapse', sec_synapse), ('dedicated', sec_dedicated), ('kql', sec_kql), ('lakehouse', sec_lakehouse)]
+            ('functions', sec_functions), ('adf', sec_adf), ('synapse', sec_synapse), ('dedicated', sec_dedicated), ('kql', sec_kql), ('lakehouse', sec_lakehouse), ('crypto', sec_crypto)]
 
 if __name__ == '__main__':
     for name, fn in SECTIONS:
