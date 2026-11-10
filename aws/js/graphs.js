@@ -260,7 +260,7 @@
     nodes: [
       { id: 'glue', k: 'dag', x: 0, y: 110, w: 230, h: 70, t: 'RunGlueJob', s: 'startJobRun.sync', c: 'dbt' },
       { id: 'chk', k: 'dag', x: 300, y: 110, w: 250, h: 70, t: 'CheckRowCount', s: 'Athena query', c: 'con' },
-      { id: 'ok', k: 'dag', x: 620, y: 110, w: 190, h: 70, t: 'Succeed', s: 'end', c: 'mart' },
+      { id: 'ok', k: 'dag', x: 620, y: 110, w: 190, h: 70, t: 'End', s: 'the run is done', c: 'mart' },
       { id: 'nt', k: 'dag', x: 150, y: 250, w: 250, h: 70, t: 'NotifyFailure', s: 'sns:publish', c: 'snap' },
       { id: 'fl', k: 'dag', x: 470, y: 250, w: 190, h: 70, t: 'Failed', s: 'Fail state', c: 'int' }
     ],
@@ -272,7 +272,7 @@
       { id: 'f5', a: 'nt', b: 'fl', d: 'M400 285 H470' }
     ],
     tags: [
-      { id: 'tg_retry', x: 700, y: 250, t: 'Retry: 30 s, 60 s, 120 s, 240 s, 480 s', c: 'mon' }
+      { id: 'tg_retry', x: 690, y: 250, t: 'Retry: 30, 60, 120, 240, 480 s', c: 'mon' }
     ]
   };
 
