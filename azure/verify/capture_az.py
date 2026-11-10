@@ -898,6 +898,19 @@ def sec_dedicated():
                     'avg': round(avg, 1), 'busiest_value_rows': max(n for _, n in vals)}
     cust = con.execute("SELECT count(DISTINCT customer_id) FROM orders").fetchone()[0]
     top = con.execute("SELECT customer_id, count(*) n FROM orders GROUP BY 1 ORDER BY n DESC LIMIT 3").fetchall()
+    # a join of the orders to their customers on customer_id: how many order rows sit on a different distribution than the one that holds
+    # their customer, so that they would have to move if the orders table had to be re-hashed on customer_id. Same stand-in hash.
+    import functools
+    hh = functools.lru_cache(maxsize=None)(lambda v: int(hashlib.md5(v.encode()).hexdigest(), 16) % D)
+    rows_ = con.execute("SELECT CAST(order_id AS VARCHAR), customer_id, store_id FROM orders ORDER BY order_id").fetchall()
+    place = {'HASH(customer_id)': lambda i, o, c, s_: hh(c), 'HASH(order_id)': lambda i, o, c, s_: hh(o), 'HASH(store_id)': lambda i, o, c, s_: hh(s_),
+             'ROUND_ROBIN': lambda i, o, c, s_: i % D}
+    mv = []
+    for how, fn in place.items():
+        moved = sum(1 for i, (o, c, s_) in enumerate(rows_) if fn(i, o, c, s_) != hh(c))
+        mv.append({'how': how, 'moved': moved, 'of': len(rows_), 'share': round(moved / len(rows_), 4)})
+    counts('dedicated.movement', {'join_column': 'customer_id', 'cases': mv, 'customers': cust,
+                                  'note': 'Rows of the orders table that are not on the distribution of their customer. ROUND_ROBIN is dealt out in turn by order number. Same stand-in hash as the distributions.'})
     counts('dedicated.distribution', {'distributions': D, 'rows': ORDERS_N, 'by_column': res, 'customers': cust, 'top_customers': [{'id': a, 'orders': b} for a, b in top],
                                       'stand_in_hash': 'MD5 of the value as text, as an integer, modulo 60. Synapse does not publish its hash function.'})
 

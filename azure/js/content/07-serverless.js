@@ -157,7 +157,7 @@
       'Choose a **file layout**, a **collation** and a **sign-in** for the pool.',
       'Build a small table with **CETAS** and know when Synapse is the wrong tool.'
     ],
-    say: 'Mission 7 is the cheapest way I know to put SQL on a lake, and the easiest to make expensive. I wrote 600,000 orders as real Parquet files in three layouts and counted what a query would open and read: which files each wildcard matches, how many bytes each column takes, what the statistics in the file say. Those numbers are recorded. The billing rules and the T-SQL come from the Azure documentation, and the screens say so, because Synapse was not available to me.',
+    say: 'Mission 7 is the cheapest way I know to put SQL on a lake, and the easiest to make expensive. I wrote 600,000 orders as real Parquet files in three layouts and counted what a query opens and reads: which files each wildcard matches, how many bytes each column takes, what the statistics say. Those numbers are recorded. The billing rules and the T-SQL come from the Azure documentation, and the screens say so.',
     scenes: [
       B.flow({
         id: 'm7-workspace', t: 1, src: 'docs', title: 'A Synapse workspace: three engines on one lake', g: 'synapse', legend: true,
@@ -220,7 +220,7 @@
         id: 'm7-columns', t: 1, src: 'rec', title: 'Bytes in each column of a Parquet file',
         steps: [
           {
-            say: 'This is one Parquet file of ' + n0(L.rows) + ' Brewline orders. Parquet stores each column on its own, so a query that names two columns reads two chunks of the file and skips the rest. The columns are very different: the timestamp takes ' + pct(BYC.order_ts, COLTOTAL) + ' of the file, and the date takes ' + n0(BYC.order_date) + ' bytes, because the file is sorted by date and the values repeat.',
+            say: 'This is one Parquet file of ' + n0(L.rows) + ' orders. Parquet stores each column on its own, so a query that names two columns reads two chunks and skips the rest. The timestamp takes ' + pct(BYC.order_ts, COLTOTAL) + ' of the file, and the date takes ' + n0(BYC.order_date) + ' bytes, because the file is sorted by date and the values repeat.',
             tabs: [{ layer: 'PARQUET FILE', name: 'orders_one/orders.parquet, compressed bytes of each column', c: 'mart', cols: ['column', 'bytes', 'share of the file'], rows: COLNAMES.map(function (k) { return [k, n0(BYC[k]), pct(BYC[k], COLTOTAL)]; }), chg: [[COLNAMES.indexOf('order_date'), 1], [COLNAMES.indexOf('total_eur'), 1]], trk: 0 }],
             notes: ['These are the compressed sizes of the column chunks, read with pyarrow. The whole file is ' + mb(L.one.bytes) + ' and has ' + L.one.row_groups + ' row groups.']
           },
@@ -264,7 +264,7 @@
         id: 'm7-rowgroups', t: 2, src: 'rec', title: 'Inside the sorted file: row groups and statistics',
         steps: [
           {
-            say: 'A Parquet file is cut into row groups, and each one records the smallest and largest value of every column. An engine can read those two numbers and skip a group that cannot hold what the query wants. Here the sorted file has ' + RG.groups.length + ' groups, and only ' + RG.groups_that_can_hold_the_day + ' of them can hold ' + RG.day + '.',
+            say: 'A Parquet file is cut into row groups, and each one records the smallest and largest value of every column. An engine can skip a group that cannot hold what the query wants. Here the sorted file has ' + RG.groups.length + ' groups, and only ' + RG.groups_that_can_hold_the_day + ' can hold ' + RG.day + '.',
             tabs: [{ layer: 'ROW GROUPS', name: 'orders_one/orders.parquet, statistics of ' + RG.column, c: 'int', cols: ['row group', 'rows', 'first ' + RG.column, 'last ' + RG.column, 'can hold ' + RG.day + '?'], rows: RG.groups.map(function (g, i) { return [String(i + 1), n0(g.rows), g.min, g.max, g.min <= RG.day && RG.day <= g.max ? 'yes' : 'no']; }), chg: RG.groups.map(function (g, i) { return g.min <= RG.day && RG.day <= g.max ? [i, 4] : null; }).filter(Boolean), trk: RG.groups.map(function (g) { return g.min <= RG.day && RG.day <= g.max; }).indexOf(true) }],
             notes: ['The file is sorted by ' + RG.sorted_by + ', so each group covers a short range of days. In an unsorted file every group would span all days, and none could be skipped. Whether and when an engine uses the statistics is in its documentation.']
           }

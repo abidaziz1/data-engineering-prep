@@ -732,7 +732,7 @@
       if (dim === 'REPLICATED') return { move: 'none', big: false, why: 'Every compute node already holds a full copy of the customer table, so each node joins its own part of the fact table. Nothing moves.' };
       if (fact === 'HASH(customer_id)' && dim === 'HASH(customer_id)') return { move: 'none', big: false, why: 'Both tables are hashed on the join column, so rows with the same customer sit on the same distribution. The join is local.' };
       if (fact === 'HASH(customer_id)' && dim !== 'HASH(customer_id)') return { move: 'the small table moves', big: false, why: 'The fact table is already placed by customer. The optimizer moves the customer table (a shuffle on customer_id or a broadcast), and it is the smaller side.' };
-      if (dim === 'HASH(customer_id)') return { move: 'the big table moves', big: true, why: 'The customer table is placed by customer, but the fact table is not. Its rows are shuffled across the nodes by customer_id, and the fact table is the large side. This is the expensive case.' };
+      if (dim === 'HASH(customer_id)') return { move: 'the big table may move', big: true, why: 'The customer table is placed by customer, but the fact table is not. The pool must line the two up. It can broadcast the small table, or shuffle the fact table on customer_id, and it picks by its estimate of the cost. With missing or old statistics it may shuffle the big side, and that is the expensive case. Check the plan.' };
       return { move: 'rows of one or both tables move', big: true, why: 'Neither side is placed by the join column, so the pool shuffles rows to line up the keys before it can join.' };
     }
     W.distribution = {

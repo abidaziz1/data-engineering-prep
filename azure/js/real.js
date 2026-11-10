@@ -1147,6 +1147,37 @@ LAB.real = {
     }
    ]
   },
+  "dedicated.movement": {
+   "cases": [
+    {
+     "how": "HASH(customer_id)",
+     "moved": 0,
+     "of": 600000,
+     "share": 0.0
+    },
+    {
+     "how": "HASH(order_id)",
+     "moved": 589930,
+     "of": 600000,
+     "share": 0.9832
+    },
+    {
+     "how": "HASH(store_id)",
+     "moved": 589926,
+     "of": 600000,
+     "share": 0.9832
+    },
+    {
+     "how": "ROUND_ROBIN",
+     "moved": 589961,
+     "of": 600000,
+     "share": 0.9833
+    }
+   ],
+   "customers": 12000,
+   "join_column": "customer_id",
+   "note": "Rows of the orders table that are not on the distribution of their customer. ROUND_ROBIN is dealt out in turn by order number. Same stand-in hash as the distributions."
+  },
   "delta.commit0": {
    "actions": [
     "commitInfo",

@@ -104,7 +104,7 @@
       'Reach ADLS Gen2 from Spark **without a secret in the code**.',
       'Say what a **catalog** adds, and how Unity Catalog, Purview and Fabric differ.'
     ],
-    say: 'Mission 6 is where the data gets cleaned at scale. I ran the real Apache Spark ' + META.spark + ' with open-source Delta Lake on my own machine and recorded what it did: the three layers, the log that Delta writes, a merge, time travel, a refused write, small files, a plan that skips folders. That is Spark, but it is not Databricks, Synapse or Fabric. Where those services differ, how they are billed and how they sign in to the lake, comes from documentation, and the screens say so. The Databricks tutorial in this repo goes much deeper on Spark internals and Delta.',
+    say: 'Mission 6 is where the data gets cleaned at scale. I ran real Apache Spark ' + META.spark + ' with open-source Delta Lake on my own machine and recorded what it did: the three layers, the Delta log, a merge, time travel, a refused write, small files and a plan that skips folders. That is Spark, but not Databricks, Synapse or Fabric. How those services differ, bill and sign in comes from documentation, and the screens say so. The Databricks tutorial goes deeper on Spark and Delta.',
     scenes: [
       B.cmp({
         id: 'm6-where', t: 1, src: 'docs', title: 'Where Spark runs on Azure',
@@ -357,7 +357,7 @@
         steps: [
           { say: 'Spark reads ADLS Gen2 through the ABFS driver, which is part of Hadoop. A path starts with `abfss://`, then the container, an at sign, the account name, `dfs.core.windows.net`, and the folder. The extra s means that it uses TLS.', lines: G.span(ABFS, /# Spark reaches/, /^path = /) },
           { say: 'From here the code is ordinary Spark. A Delta folder is read with the `delta` format, and the filter is the one from the plans.', lines: G.span(ABFS, /^df = /, /show\(\)/) },
-          { say: 'The lines below are the documented Hadoop settings for sign-in with a service principal: an app registration with a client id, a secret and a tenant. Use this only when the platform cannot give the cluster a managed identity. The secret is a value that expires, and someone has to rotate it.', lines: G.span(ABFS, /# a service principal/, /oauth2\/token/) },
+          { say: 'The lines below are the documented Hadoop settings for a sign-in with a service principal: a client id, a secret and a tenant. Use them only when the platform cannot give the cluster a managed identity. The secret expires, and someone must rotate it.', lines: G.span(ABFS, /# a service principal/, /oauth2\/token/) },
           { say: 'On Databricks, Synapse and Fabric you often do not set any of this. The platform signs in with an identity that holds a role on the storage account, as mission 3 explained, and the next screen compares the ways.', lines: null }
         ],
         note: 'These are the setting names from the Hadoop Azure documentation. They are shown as an example and were not run against a lake. The OAuth endpoint and the setting names can differ by Spark and Hadoop version, so check the page of your runtime.'
