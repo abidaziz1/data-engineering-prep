@@ -189,7 +189,7 @@
         cols: ['Setting', 'What it means', 'Example or default'],
         hl: 1,
         rows: [
-          ['DPU', 'The unit of billing. A DPU is documented as 4 vCPUs and 16 GB of memory.', 'About $0.44 for each DPU-hour in the US East price lists I found. Billed by the second with a one minute minimum.'],
+          ['DPU', 'The unit of billing. A DPU is documented as 4 vCPUs and 16 GB of memory.', 'About $0.44 for each DPU-hour in the US East price lists I found. AWS announced that jobs on Glue 6.0 cost 30 % less per DPU-hour than on Glue 5.1, about $0.308, so check the version of your job. The examples here use $0.44. Billed by the second with a one minute minimum.'],
           ['Worker type', 'How much each worker has. G.1X is 1 DPU (4 vCPUs, 16 GB), G.2X is 2 DPUs, and the sizes go up to G.16X. R workers carry twice the memory for the same vCPUs. G.025X is a quarter DPU for light streaming jobs.', 'G.1X for most jobs. Larger or R workers for memory-heavy joins.'],
           ['Number of workers', 'How many workers the job gets. More workers means a faster job and the same total DPU-hours if the work scales evenly.', 'The recorded job definition used ' + JOB.workers + ' ' + JOB.worker_type + ' workers.'],
           ['Auto scaling', 'The job adds and removes workers during the run, up to a maximum, and you pay for what it uses.', 'Set a sensible maximum, because a runaway job still costs.'],
