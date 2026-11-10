@@ -7,3 +7,5 @@ __pycache__/
 databricks/verify/.cache/
 aws/verify/node_modules/
 aws/verify/.cache/
+azure/verify/node_modules/
+azure/verify/.cache/

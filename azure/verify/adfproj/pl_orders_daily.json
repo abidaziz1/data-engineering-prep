@@ -1,0 +1,59 @@
+{
+  "name": "pl_orders_daily",
+  "properties": {
+    "description": "Copy the orders that changed since the last run from Azure SQL into the raw zone of the lake as Parquet, then move the watermark.",
+    "parameters": {
+      "run_date": { "type": "String", "defaultValue": "2026-03-14" }
+    },
+    "activities": [
+      {
+        "name": "GetWatermark",
+        "type": "Lookup",
+        "typeProperties": {
+          "source": {
+            "type": "AzureSqlSource",
+            "sqlReaderQuery": "SELECT last_value FROM etl.watermark WHERE table_name = 'orders'"
+          },
+          "dataset": { "referenceName": "ds_sql_meta", "type": "DatasetReference" },
+          "firstRowOnly": true
+        },
+        "policy": { "timeout": "0.00:10:00", "retry": 1, "retryIntervalInSeconds": 30 }
+      },
+      {
+        "name": "CopyOrders",
+        "type": "Copy",
+        "dependsOn": [ { "activity": "GetWatermark", "dependencyConditions": [ "Succeeded" ] } ],
+        "typeProperties": {
+          "source": {
+            "type": "AzureSqlSource",
+            "sqlReaderQuery": {
+              "value": "SELECT * FROM dbo.orders WHERE modified_at > '@{activity('GetWatermark').output.firstRow.last_value}' AND modified_at <= '@{pipeline().TriggerTime}'",
+              "type": "Expression"
+            }
+          },
+          "sink": {
+            "type": "ParquetSink",
+            "storeSettings": { "type": "AzureBlobFSWriteSettings" }
+          },
+          "dataIntegrationUnits": 4
+        },
+        "inputs": [ { "referenceName": "ds_sql_orders", "type": "DatasetReference" } ],
+        "outputs": [ { "referenceName": "ds_lake_raw_orders", "type": "DatasetReference", "parameters": { "run_date": "@pipeline().parameters.run_date" } } ],
+        "policy": { "timeout": "0.01:00:00", "retry": 2, "retryIntervalInSeconds": 60 }
+      },
+      {
+        "name": "AdvanceWatermark",
+        "type": "SqlServerStoredProcedure",
+        "dependsOn": [ { "activity": "CopyOrders", "dependencyConditions": [ "Succeeded" ] } ],
+        "typeProperties": {
+          "storedProcedureName": "etl.set_watermark",
+          "storedProcedureParameters": {
+            "table_name": { "value": "orders", "type": "String" },
+            "new_value": { "value": { "value": "@pipeline().TriggerTime", "type": "Expression" }, "type": "DateTime" }
+          }
+        },
+        "linkedServiceName": { "referenceName": "ls_sql_meta", "type": "LinkedServiceReference" }
+      }
+    ]
+  }
+}

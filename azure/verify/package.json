@@ -1,0 +1,9 @@
+{
+  "name": "azure-verify-tools",
+  "private": true,
+  "description": "Node tools used by azure/verify. Install with: npm install --prefix azure/verify",
+  "dependencies": {
+    "@kusto/language-service-next": "12.4.1",
+    "azurite": "3.37.0"
+  }
+}
