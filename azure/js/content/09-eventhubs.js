@@ -211,7 +211,7 @@
         steps: [
           {
             say: 'The store is only blobs. Ownership records say which reader owns which partition, and a checkpoint says where to restart. Here are the five blobs that my run left in the container, with their metadata.',
-            tabs: [{ layer: 'CONTAINER', name: 'checkpoints, after the run of the lab', c: 'raw', cols: ['blob', 'metadata'], rows: CK.blobs.map(function (b) { return [b.name.replace('<namespace>/orders/$default/', ''), Object.keys(b.metadata).map(function (k) { return k + ' = ' + b.metadata[k]; }).join(', ')]; }), chg: [[1, 1]], trk: 4 }],
+            tabs: [{ layer: 'CONTAINER', name: 'checkpoints, after the run of the lab', c: 'raw', cols: ['blob', 'metadata'], rows: CK.blobs.map(function (b) { return [b.name.replace('<namespace>/orders/$default/', ''), Object.keys(b.metadata).map(function (k) { return k + ' = ' + b.metadata[k]; }).join(', ')]; }), chg: [[2, 1]], trk: 2 }],
             notes: ['Under the namespace and the event hub, the group `$default` has an `ownership` folder and a `checkpoint` folder. Partition 1 is owned by worker-B, which took it from worker-A with the current ETag.']
           },
           {
