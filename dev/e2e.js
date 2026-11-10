@@ -539,6 +539,288 @@ const ok = (c, m) => { if (c) pass++; else { fail++; console.log('FAIL:', m); } 
     }
   }
 
+  // ---------- azure only: the labs must show what the Azure SDK, Azurite, DuckDB and pyarrow recorded, and the rules must be right ----------
+  // The expected values below were worked out by hand (see azure/verify/check_widgets.js) or derived from the recording here. They are not read from the widgets.
+  if (name === 'azure') {
+    const bigs = () => page.$$eval('.lab-out .big b', els => els.map(e => e.textContent));
+    const spans = () => page.$$eval('.lab-out .big span', els => els.map(e => e.textContent));
+    const bigCls = () => page.$$eval('.lab-out .big', els => els.map(e => e.className));
+    const tables = () => page.$$eval('.lab .tbl', ts => ts.map(t => [...t.querySelectorAll('tbody tr')].map(r => [...r.children].map(td => td.innerText.trim()))));
+    const rowCls = () => page.$$eval('.lab .tbl', ts => ts.map(t => [...t.querySelectorAll('tbody tr')].map(r => r.className)));
+    const pick = async (act, v) => { await page.click('[data-act="' + act + '"][data-v="' + v + '"]'); await page.waitForTimeout(15); };
+    const chipVals = act => page.$$eval('[data-act="' + act + '"]', els => els.map(e => e.getAttribute('data-v')));
+    const scene = kind => S.find(x => x.type === 'widget' && x.kind === kind);
+    const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+    const counts = k => page.evaluate(k => LAB.real.counts[k], k);
+    const n0 = x => x.toLocaleString('en-US');
+    const usd = x => '$' + (x >= 100 ? n0(Math.round(x)) : x >= 1 ? x.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : x >= 0.01 ? x.toFixed(3) : x === 0 ? '0' : x.toPrecision(2));
+    // the widgets keep their state while the page stays open, and the generic checks above have clicked their chips: start every lab from its default
+    const reset = (k, v) => page.evaluate(([k, v]) => { LAB.app.local[k] = v; LAB.app.render(true); }, [k, v === undefined ? null : v]).then(() => page.waitForTimeout(20));
+    let t;
+
+    // blob listing lab: the documented rule (prefix, then group by the delimiter) applied to the ten recorded blob names
+    const ls = scene('listing'), KEYS = (await counts('blob.keys')).keys.map(k => k.name);
+    ok(KEYS.length === 10, 'listing lab: the recorded container holds ten blobs');
+    await go(ls.id + ':0'); await reset('ls', { p: 'orders/', d: '/' });
+    const prefixes = await chipVals('ls-p');
+    ok(prefixes.length === 6, 'listing lab offers six prefixes');
+    for (const p of prefixes) for (const d of ['', '/']) {
+      await pick('ls-p', p); await pick('ls-d', d);
+      const under = KEYS.filter(k => k.startsWith(p)), cps = new Set(), keys = [];
+      for (const k of under) { const rest = k.slice(p.length), i = d ? rest.indexOf(d) : -1; if (i >= 0) cps.add(p + rest.slice(0, i + 1)); else keys.push(k); }
+      const b = await bigs();
+      ok(same(b, [String(keys.length), String(cps.size), String(keys.length + cps.size)]), 'listing lab, prefix "' + p + '" and delimiter "' + d + '": ' + keys.length + ' blobs, ' + cps.size + ' blob prefixes (got ' + b.join(' | ') + ')');
+      const cpShown = await page.$$eval('.keylist li.cp', xs => xs.map(x => x.textContent).sort());
+      const kShown = await page.$$eval('.keylist li:not(.cp)', xs => xs.map(x => x.textContent).sort());
+      ok(same(cpShown, [...cps].sort()) && same(kShown, keys.slice().sort()), 'listing lab, prefix "' + p + '" and delimiter "' + d + '": the lists on the page are the blobs and the blob prefixes');
+    }
+    await go(ls.id + ':1');
+    t = (await tables())[0];
+    ok(same(t.map(r => r[1].split(':')[0]), ['4', '4', '2']) && same(t.map(r => r[2].startsWith('yes')), [true, true, false]), 'listing lab: ten blobs come in pages of 4, 4 and 2, and only the last page has no marker');
+
+    // SAS lab: the seven fields, then 25 recorded answers. Allowed is the recorded status below 300.
+    const sa = scene('sas'), SF = await counts('sas.fields'), MX = await counts('sas.matrix');
+    await go(sa.id + ':0'); await reset('sa', { f: 'sp', c: 0, o: 0, guess: {} });
+    ok(same(await chipVals('sa-f'), ['st', 'se', 'sp', 'spr', 'sv', 'sr', 'sig']), 'SAS lab: the seven fields in the order that the signature covers them');
+    for (const f of SF.order) {
+      await pick('sa-f', f);
+      const v = SF.fields[f], head = await page.innerText('.lab .callout.tip b');
+      ok(head.startsWith(f + ' = ' + (v.length > 28 ? v.slice(0, 28) + '...' : v) + ', '), 'SAS lab, field ' + f + ': the explanation names the recorded value (got ' + head + ')');
+    }
+    await go(sa.id + ':1');
+    let allowedN = 0;
+    for (let c = 0; c < 5; c++) for (let o = 0; o < 5; o++) {
+      await pick('sa-c', c); await pick('sa-o', o); await pick('sa-g', 'allow');
+      const r = MX.cases[c].results[o], good = r.status < 300; if (good) allowedN++;
+      const fb = await page.innerText('.lab .callout.good, .lab .callout.warn');
+      ok(fb.startsWith(good ? 'Right.' : 'The answer was deny.') && fb.includes('HTTP ' + r.status) && (!r.code || fb.includes(r.code)), 'SAS lab, ' + MX.cases[c].sas + ' / ' + MX.ops[o] + ': ' + (good ? 'allowed' : 'denied') + ' with HTTP ' + r.status + (r.code ? ' ' + r.code : ''));
+      ok(await cnt('.lab .callout.good') === (good ? 1 : 0) && await cnt('.lab .callout.warn') === (good ? 0 : 1), 'SAS lab, ' + MX.cases[c].sas + ' / ' + MX.ops[o] + ': the answer allow is marked ' + (good ? 'right' : 'wrong'));
+    }
+    ok(allowedN === 6 && /Answered 25 of 25, right 6\./.test(await text()), 'SAS lab: six of the 25 requests are allowed, so answering allow every time is right six times (got ' + ((await text()).match(/Answered[^.]*\./) || [''])[0] + ')');
+    for (let c = 0; c < 5; c++) for (let o = 0; o < 5; o++) { await pick('sa-c', c); await pick('sa-o', o); await pick('sa-g', 'deny'); }
+    ok(/Answered 25 of 25, right 19\./.test(await text()), 'SAS lab: changing every answer to deny is right 19 times');
+    await go(sa.id + ':2');
+    ok(same([await cnt('.tbl td.wgood'), await cnt('.tbl td.wbad'), await cnt('.tbl tbody tr')], [6, 19, 5]), 'SAS lab: the table shows five tokens, six allowed answers and 19 refused ones');
+    t = (await tables())[0];
+    ok(t[3].slice(1).every(c => /^403 Auth\.\.\.Failure$/.test(c)) && t[4].slice(1).every(c => /^403 Auth\.\.\.Failure$/.test(c)), 'SAS lab: the expired token and the edited token are refused everywhere with 403');
+
+    // access lab: ten requests, then the order of the rules worked out by hand
+    const ac = scene('access'), WANT = [false, false, true, false, true, false, false, true, false, true];
+    await go(ac.id + ':0'); await reset('ac', null);
+    ok(await cnt('[data-act="ac-n"]') === 10, 'access lab: ten requests');
+    await pick('ac-n', 0); await pick('ac-g', 'allow');
+    ok(/The answer was deny\./.test(await text()) && /Decided by/.test(await text()) && await cnt('.lab .callout.warn') === 1 && await cnt('.lab .callout.good') === 0, 'access lab: a wrong answer shows what the answer was and which rule decided, and is marked wrong');
+    for (let n = 0; n < 10; n++) { await pick('ac-n', n); await pick('ac-g', WANT[n] ? 'allow' : 'deny'); if (n > 0) ok(await cnt('.lab .callout.good') === 1 && await cnt('.lab .callout.warn') === 0, 'access lab, request ' + (n + 1) + ': the right answer is marked right'); }
+    ok(/Answered 10 of 10, right 10\./.test(await text()), 'access lab: all ten requests answered right with the documented order (got ' + ((await text()).match(/Answered[^.]*\./) || [''])[0] + ')');
+    await go(ac.id + ':1');
+    const verdict = async () => ({ v: (await bigs())[0], by: ((await spans())[0] || '').replace('decided by: ', '') });
+    for (let k = 1; k <= 10; k++) { await pick('ac-card', k); ok((await verdict()).v === (WANT[k - 1] ? 'Allow' : 'Deny'), 'access lab, request ' + k + ': the rule says ' + (WANT[k - 1] ? 'allow' : 'deny')); }
+    await pick('ac-card', 3);
+    ok(same(await verdict(), { v: 'Allow', by: 'a role assignment' }), 'access lab: Storage Blob Data Reader on the container allows a read through a role assignment');
+    await pick('ac-op', 'write');
+    ok((await verdict()).v === 'Deny', 'access lab: the reader role holds no write action, and there is no ACL, so a write is refused');
+    await pick('ac-op', 'read'); await pick('ac-net', 'blocked');
+    ok(same(await verdict(), { v: 'Deny', by: 'network rules' }), 'access lab: a refused network ends the check before any identity');
+    await pick('ac-net', 'allowed'); await pick('ac-auth', 'key'); await pick('ac-key', 0);
+    ok(same(await verdict(), { v: 'Deny', by: 'Shared Key switched off' }), 'access lab: the account key is refused when Shared Key access is off');
+    await pick('ac-key', 1);
+    ok(same(await verdict(), { v: 'Allow', by: 'the account key' }), 'access lab: the account key is full access, and it skips roles and ACLs');
+    await pick('ac-auth', 'sas'); await pick('ac-sas', 0);
+    ok(same(await verdict(), { v: 'Deny', by: 'the SAS permissions' }), 'access lab: a SAS without the permission is refused');
+    await pick('ac-sas', 1);
+    ok(same(await verdict(), { v: 'Allow', by: 'the SAS' }), 'access lab: a SAS with the permission is allowed, with no role');
+    await pick('ac-auth', 'entra'); await pick('ac-role', 'owner');
+    ok((await verdict()).v === 'Deny', 'access lab: Owner holds no data action, so an Entra read is refused');
+    await pick('ac-role', 'none'); await pick('ac-acl', 'r'); await pick('ac-px', 1);
+    ok(same(await verdict(), { v: 'Allow', by: 'the ACL' }), 'access lab: with no role, r-- on the file and execute on every folder above allows a read');
+    await pick('ac-op', 'write');
+    ok((await verdict()).v === 'Deny', 'access lab: r-- does not allow a write');
+    await pick('ac-acl', 'rw');
+    ok((await verdict()).v === 'Allow', 'access lab: rw- allows a write');
+    await pick('ac-px', 0);
+    ok((await verdict()).v === 'Deny', 'access lab: one folder above the file without execute refuses it');
+    await go(ac.id + ':2');
+    t = (await tables())[0]; const rc = (await rowCls())[0];
+    ok(t.length === 10 && same(t.map(r => r[2]), WANT.map(w => w ? 'allow' : 'deny')) && rc.filter(c => c === 'new').length === 4 && same([t[2][3], t[4][3], t[7][3], t[9][3]], ['a role assignment', 'the ACL', 'the SAS', 'a role assignment']), 'access lab: the table gives the ten answers, and names the deciding rule of the four allowed requests');
+
+    // role scope lab: the tree below a scope, and what a role means on each resource type
+    const sc = scene('scopes');
+    await go(sc.id + ':0'); await reset('sp', { scope: 'rgd', role: 'blobreader' });
+    // [scope, role, items below the scope, tags marked yes, tags marked no]
+    for (const [scope, role, below, y, n] of [['sp', 'blobreader', 8, 3, 9], ['sa', 'blobcontrib', 2, 3, 3], ['craw', 'blobreader', 0, 1, 1], ['mg', 'owner', 13, 8, 8], ['kv', 'kvsecrets', 0, 1, 1], ['sp', 'kvsecrets', 8, 1, 11], ['sp', 'adfcontrib', 8, 1, 11], ['sd', 'contributor', 3, 2, 2], ['sd', 'blobreader', 3, 2, 2], ['rgn', 'blobreader', 1, 0, 2]]) {
+      await pick('sc-r', role); await pick('sc-n', scope);
+      const msg = await page.innerText('.lab .callout.tip');
+      ok(new RegExp('reaches the ' + below + ' items below it').test(msg) && await cnt('.tn.pick') === 1 && await cnt('.tn.in') === below, 'scope lab, ' + role + ' at ' + scope + ': ' + below + ' items below it are inherited (got: ' + (msg.match(/reaches the \d+/) || [''])[0] + ')');
+      ok(await cnt('.tn .tag.y') === y && await cnt('.tn .tag.n') === n, 'scope lab, ' + role + ' at ' + scope + ': ' + y + ' tags are yes and ' + n + ' are no (got ' + await cnt('.tn .tag.y') + ' and ' + await cnt('.tn .tag.n') + ')');
+    }
+    await go(sc.id + ':1');
+    ok(await cnt('.tbl tbody tr') === 7 && await cnt('.tbl td.wbad') === 4 && await cnt('.tbl td.wgood') === 3, 'scope lab: seven roles, and four of them touch no data');
+
+    // credential chain lab: the recorded error, then the first condition that holds
+    const cc = scene('credchain');
+    await go(cc.id + ':0');
+    ok(await cnt('.chain li') === 9, 'credential lab: the recorded chain has nine credentials');
+    await go(cc.id + ':1'); await reset('cc', null);
+    const usedNow = async () => ({ used: (await page.$$eval('.chain li.used b', xs => xs.map(x => x.textContent)))[0] || null, skipped: await cnt('.chain li.skip'), bad: await cnt('.callout.bad') });
+    const PRE = { 'my laptop, after az login': ['AzureCliCredential', 2], 'a function app with a managed identity': ['ManagedIdentityCredential', 5], 'a CI job with a client secret in its variables': ['EnvironmentCredential', 7], 'a Kubernetes pod with workload identity': ['WorkloadIdentityCredential', 6] };
+    for (const [pre, [cred, skipped]] of Object.entries(PRE)) { await pick('cc-p', pre); ok(same(await usedNow(), { used: cred, skipped, bad: 0 }), 'credential lab, "' + pre + '": ' + cred + ' signs in and ' + skipped + ' credentials are never asked'); }
+    await pick('cc-p', 'a container with no identity at all');
+    ok(same(await usedNow(), { used: null, skipped: 0, bad: 1 }), 'credential lab: with nothing set no credential signs in');
+    await pick('cc-t', 'cli'); await pick('cc-t', 'mi');
+    ok((await usedNow()).used === 'ManagedIdentityCredential', 'credential lab: a managed identity beats the CLI credential because it comes first');
+    await pick('cc-t', 'env');
+    ok((await usedNow()).used === 'EnvironmentCredential', 'credential lab: environment variables beat both');
+    await pick('cc-t', 'env'); await pick('cc-t', 'mi'); await pick('cc-t', 'cli');
+    ok((await usedNow()).used === null, 'credential lab: switching everything off leaves no credential');
+
+    // Data Factory expression lab: the model evaluated by hand for three trigger times
+    const ex = scene('adfexpr');
+    await go(ex.id + ':0'); await reset('ex', null);
+    ok(await page.evaluate(() => LAB.W.exprInfo.examples.length) === 17, 'expression lab: 17 examples');
+    const result = async () => ({ text: (await page.innerText('.expr.res, .expr.err')).trim(), err: await cnt('.expr.err') === 1 });
+    const EXP0 = ['raw/orders/dt=2026-03-14', '2026/03/14', '2026-03-13', '2026-00-14', '2026-03-14T06:00:00.0000000Z', 'MERGE', "SELECT * FROM dbo.orders WHERE modified_at > '2026-03-13T06:00:00Z'", "SELECT * FROM dbo.orders WHERE modified_at > '2026-03-13T06:00:00Z'", '2026-03', 's_07', '3', 'orders', '4', null, '@{pipeline().Pipeline}', 'pipeline().parameters.run_date', null];
+    await pick('ex-t', 0);
+    for (let k = 0; k < 17; k++) {
+      await pick('ex-e', k); const r = await result();
+      if (EXP0[k] === null) ok(r.err, 'expression lab, example ' + (k + 1) + ': the model reports an error');
+      else ok(!r.err && r.text === EXP0[k], 'expression lab, example ' + (k + 1) + ' at the first trigger time: ' + EXP0[k] + ' (got ' + r.text + ')');
+    }
+    await pick('ex-e', 13);
+    ok(/does not exist/.test((await result()).text), 'expression lab: a missing parameter fails before coalesce can help');
+    await pick('ex-e', 16);
+    ok(/\)/.test((await result()).text), 'expression lab: a missing bracket is reported');
+    for (const [k, tt, want] of [[2, 1, '2026-03-30'], [2, 2, '2025-12-31'], [3, 1, '2026-30-31'], [3, 2, '2026-15-01'], [1, 1, '2026/03/31'], [1, 2, '2026/01/01'], [4, 2, '2026-01-01T00:15:00.0000000Z']]) {
+      await pick('ex-e', k); await pick('ex-t', tt);
+      ok((await result()).text === want, 'expression lab, example ' + (k + 1) + ' at trigger time ' + (tt + 1) + ': ' + want);
+    }
+    await go(ex.id + ':1');
+    t = (await tables())[0];
+    ok(t.length === 6 && (await rowCls())[0].filter(c => c === 'dup').length === 3 && t[0][1] === '2026-00-14', 'expression lab: six lessons, and three of them are results that look wrong or fail');
+
+    // watermark lab: three strategies replayed from the recorded orders and run times
+    const wm = scene('watermark'), WM = await counts('adf.watermark'), ts = z => Date.parse(z.replace(' ', 'T') + 'Z');
+    const SRC = WM.source.map(o => ({ id: o.order_id, mod: ts(o.modified_at), com: ts(o.committed_at) })), RUNS = WM.runs.map(ts);
+    const replay = strategy => {
+      let w = -Infinity; const reads = [], seen = new Set();
+      for (const T of RUNS) {
+        const vis = SRC.filter(o => o.com <= T);
+        const rows = strategy === 'A' ? vis.filter(o => o.mod > w) : strategy === 'B' ? vis.filter(o => o.mod > w && o.mod <= T) : vis.filter(o => o.mod >= w - 15 * 60000 && o.mod <= T);
+        reads.push(rows.map(o => o.id).sort()); rows.forEach(o => seen.add(o.id));
+        if (strategy === 'A') { if (rows.length) w = Math.max(...rows.map(o => o.mod)); } else w = T;
+      }
+      return { reads, missing: SRC.map(o => o.id).filter(i => !seen.has(i)) };
+    };
+    await go(wm.id + ':0'); await reset('wm', { s: 'B', r: 3 });
+    for (const k of ['A', 'B', 'C']) {
+      const rp = replay(k);
+      for (let r = 1; r <= 3; r++) {
+        await pick('wm-s', k); await pick('wm-r', r);
+        const b = await bigs();
+        ok(same(b[0].split(', ').sort(), rp.reads[r - 1]), 'watermark lab, strategy ' + k + ', run ' + r + ': reads ' + rp.reads[r - 1].join(', ') + ' (got ' + b[0] + ')');
+        ok(b[2] === (r < 3 ? 'run 3 shows it' : (rp.missing.length ? rp.missing.join(', ') : 'none')), 'watermark lab, strategy ' + k + ', run ' + r + ': the missing rows are ' + (r < 3 ? 'shown after run 3' : rp.missing.join(', ') || 'none') + ' (got ' + b[2] + ')');
+      }
+      ok(await cnt('.tbl tbody tr.dup') === rp.missing.length, 'watermark lab, strategy ' + k + ': ' + rp.missing.length + ' rows are marked as never read');
+    }
+    await go(wm.id + ':1');
+    t = (await tables())[0];
+    ok(same(t.map(r => r[2]), ['5', '4', '9']) && same(t.map(r => r[3]), ['O5', 'O3, O5', 'none']), 'watermark lab: A reads five rows and loses O5, B reads four and loses O3 and O5, C reads nine rows for six orders and loses none');
+
+    // wildcard lab: the files that each pattern opens, and the example bill for one run
+    const pr = scene('prune'), PC = (await counts('synapse.prune')).cases;
+    await go(pr.id + ':0'); await reset('pr', null);
+    const FILES = { p1: 60, p2: 14, p3: 14, p4: 3, p5: 1, p6: 14, p7: 14, p8: 1 };
+    ok(same(await chipVals('pr-c'), Object.keys(FILES)), 'wildcard lab offers the eight recorded queries');
+    for (const [id, n] of Object.entries(FILES)) {
+      await pick('pr-c', id);
+      const tiles = id === 'p8' ? 1 : 60, b = await bigs();
+      ok(b[0] === n + ' of ' + tiles && await cnt('.skf.read') === n && await cnt('.skf') === tiles, 'wildcard lab, ' + id + ': ' + n + ' of ' + tiles + ' files are opened, and the tiles agree (got ' + b[0] + ')');
+    }
+    await go(pr.id + ':1'); await pick('pr-x', 1);
+    t = (await tables())[0];
+    ok(t.length === 8 && t.every(r => r[3] === '10 MB' && r[4] === '$0.000050'), 'wildcard lab: at this size every query pays the 10 MB minimum, $0.00005');
+    await pick('pr-x', 1000);
+    t = (await tables())[0];
+    const billedB = b => Math.max(1e7, Math.ceil(b / 1e6) * 1e6);
+    ok(same(t.map(r => r[4]), PC.map(c => usd(billedB(c.bytes_of_two_columns * 1000) / 1e12 * 5))), 'wildcard lab: at a thousand times the size, the cost of each query is the example rate times the billed bytes (got ' + t.map(r => r[4]).join(' ') + ')');
+    ok(t[0][4] !== t[4][4] && +t[0][4].slice(1) > +t[4][4].slice(1) * 40, 'wildcard lab: at that size a full scan costs more than 40 times one day');
+
+    // dedicated pool lab: the 60 bars, and what a join moves
+    const ds = scene('distribution'), DD = await counts('dedicated.distribution');
+    await go(ds.id + ':0'); await reset('ds', null);
+    const cols = ['order_id', 'customer_id', 'order_date', 'store_id', 'status', 'channel', 'product_id'];
+    for (const c of cols) {
+      await pick('ds-h', 'HASH(' + c + ')');
+      const bk = DD.by_column[c].buckets, mxv = Math.max(...bk), empty = bk.filter(x => x === 0).length, b = await bigs();
+      ok(bk.length === 60 && bk.reduce((a, x) => a + x, 0) === DD.rows && same([b[0], b[1], b[2]], [(mxv / (DD.rows / 60)).toFixed(2) + 'x', empty + ' of 60', n0(mxv)]) && await cnt('.dist i') === 60 && await cnt('.dist i.empty') === empty, 'distribution lab, HASH(' + c + '): the busiest of 60 holds ' + n0(mxv) + ' rows and ' + empty + ' stay empty (got ' + b.join(' | ') + ')');
+    }
+    await pick('ds-h', 'ROUND_ROBIN');
+    ok(same((await bigs()).slice(0, 2), ['1.00x', '0 of 60']), 'distribution lab: round robin is even by definition');
+    await pick('ds-h', 'REPLICATED');
+    ok(same(await bigs(), ['1 copy', 'none', 'small only']), 'distribution lab: a replicated table is one copy on each node');
+    await go(ds.id + ':1');
+    const MOVE = { 'HASH(customer_id)': { 'HASH(customer_id)': 'none', 'REPLICATED': 'none', 'ROUND_ROBIN': 'the small table moves' }, 'HASH(order_id)': { 'HASH(customer_id)': 'the big table may move', 'REPLICATED': 'none', 'ROUND_ROBIN': 'rows of one or both tables move' }, 'ROUND_ROBIN': { 'HASH(customer_id)': 'the big table may move', 'REPLICATED': 'none', 'ROUND_ROBIN': 'rows of one or both tables move' } };
+    for (const f of Object.keys(MOVE)) for (const d of Object.keys(MOVE[f])) { await pick('ds-f', f); await pick('ds-d', d); ok((await bigs())[0] === MOVE[f][d], 'distribution lab, orders ' + f + ' and customers ' + d + ': ' + MOVE[f][d]); }
+    await go(ds.id + ':2');
+    t = (await tables())[0];
+    const rank = cols.map(c => [c, Math.max(...DD.by_column[c].buckets) / (DD.rows / 60)]).sort((a, b) => a[1] - b[1]).map(r => r[0]);
+    ok(same(t.map(r => r[0]), rank) && same(rank.slice(0, 2), ['order_id', 'customer_id']) && t.map(r => r[4]).filter(v => v === 'spreads well').length === 2, 'distribution lab: the columns are ranked from the most even to the most skewed, and the two with many values spread well');
+
+    // Event Hubs lab: batch sizes from the recording, the checkpoint store, and the replay after a crash
+    const eh = scene('ehub'), EB = await counts('eventhubs.batch');
+    await go(eh.id + ':0'); await reset('eh', null);
+    for (const r of EB.rows) for (const key of [0, 1]) {
+      await pick('eh-l', r.limit_bytes); await pick('eh-p', r.payload_bytes); await pick('eh-k', key);
+      const n = key ? r.events_with_key : r.events_in_batch, b = await bigs();
+      ok(b[0] === n0(n) && b[1] === (n ? n0(Math.ceil(1e6 / n)) : 'never'), 'Event Hubs lab, limit ' + r.limit_bytes + ', body ' + r.payload_bytes + ', key ' + key + ': ' + n + ' events fit (got ' + b[0] + ')');
+    }
+    await pick('eh-l', 262144); await pick('eh-p', 300000);
+    ok(/does not fit a batch/.test(await text()) && /ValueError/.test(await text()), 'Event Hubs lab: an event bigger than the batch limit raises ValueError');
+    await go(eh.id + ':1'); await reset('eh', null);
+    const OWN = [['worker-A', 'worker-A', 'worker-A', 'worker-A'], ['worker-A', 'worker-A', 'worker-A', 'worker-A'], ['worker-A', 'worker-B', 'worker-A', 'worker-A'], ['worker-A', 'worker-B', 'worker-A', 'worker-A']];
+    for (let c = 0; c < 4; c++) {
+      await pick('eh-s', c); t = (await tables())[0];
+      ok(same(t.slice(0, 4).map(r => r[1].replace('ownerid = ', '')), OWN[c]) && t.length === (c === 3 ? 5 : 4), 'Event Hubs lab, call ' + (c + 1) + ': the ownership blobs name ' + OWN[c].join(', ') + (c === 3 ? ', and a checkpoint blob appears' : ''));
+    }
+    ok(/offset = 8192/.test(t[4][1]) && /sequencenumber = 83/.test(t[4][1]), 'Event Hubs lab: the checkpoint blob holds offset 8192 and sequence number 83, the second checkpoint');
+    await pick('eh-s', 1);
+    ok(/\[\]/.test(await page.innerText('.lab .callout.tip')), 'Event Hubs lab: a claim with a stale ETag returns an empty list');
+    await go(eh.id + ':2');
+    for (const [k, rep, writes] of [[1, 0, '1,000,000'], [10, 7, '100,000'], [100, 47, '10,000'], [1000, 547, '1,000']]) {
+      await pick('eh-c', k);
+      const b = await bigs();
+      ok(b[0] === n0(2547 - rep) && b[1] === String(rep) && b[2] === writes, 'Event Hubs lab, checkpoint every ' + k + ': a crash at 2,547 repeats ' + rep + ' events, and a million events write ' + writes + ' checkpoints (got ' + b.join(' | ') + ')');
+    }
+
+    // queue lab: one message that keeps failing
+    const qu = scene('queue');
+    await go(qu.id + ':0'); await reset('qu', null);
+    ok(await cnt('[data-act="qu-n"]') === 4, 'queue lab: four moments on the timeline');
+    for (let k = 0; k < 4; k++) {
+      await pick('qu-n', k); const b = await bigs(), tx = await page.innerText('.lab .callout.tip');
+      ok(b[2] === (k === 3 ? 'in the poison queue' : 'in the main queue') && new RegExp('dequeue count is ' + (k + 1) + '\\b').test(tx) && /nothing, because the message is hidden/.test(tx), 'queue lab, receive ' + (k + 1) + ': dequeue count ' + (k + 1) + (k === 3 ? ', and the client moved the message to the poison queue' : ''));
+    }
+    await go(qu.id + ':1');
+    t = (await tables())[0];
+    ok(t.length === 3 && t[0][1] === 'PopReceiptMismatch' && t[1][1] === 'RequestBodyTooLarge' && t[2][1] === 'QueueNotFound', 'queue lab: three errors of the emulator, an old pop receipt, a message over 64 KB, and a queue that does not exist');
+
+    // bill lab: the arithmetic of the example rates, worked out by hand in azure/verify/check_widgets.js
+    const bl = scene('bill');
+    await go(bl.id + ':0'); await reset('bl', null);
+    ok(await cnt('.gantt .lane') === 10 && same(await bigs(), ['$7,489', '58 %']), 'bill lab: ten lines add up to $7,488.64, and the dedicated pool is 58 percent of it (got ' + (await bigs()).join(' | ') + ')');
+    ok(await cnt('.gbar.bad') === 1, 'bill lab: one bar, the biggest line, is marked');
+    await go(bl.id + ':1');
+    const SAVED = { life: 280, pause: 2160, logs: 828, parquet: 100, batch: 162 };
+    ok(same(await chipVals('bl-s'), ['life', 'pause', 'logs', 'parquet', 'batch']), 'bill lab offers five savings');
+    for (const k of Object.keys(SAVED)) {
+      await pick('bl-s', k); const b = await bigs();
+      ok(b[0] === '$7,489' && b[1] === usd(7488.64 - SAVED[k]) && b[2] === usd(SAVED[k]), 'bill lab, saving "' + k + '": the month falls by ' + usd(SAVED[k]) + ' (got ' + b.join(' | ') + ')');
+      await pick('bl-s', k);
+    }
+    for (const k of Object.keys(SAVED)) await pick('bl-s', k);
+    ok(same(await bigs(), ['$7,489', '$3,959', '$3,530']), 'bill lab: the five savings together leave $3,958.64 and save $3,530 (got ' + (await bigs()).join(' | ') + ')');
+    for (const k of Object.keys(SAVED)) await pick('bl-s', k);
+  }
+
   // ---------- databricks only: the labs must show what Spark and Delta Lake recorded, and the arithmetic must be right ----------
   // The expected values below were worked out by hand from the recording (see databricks/verify/check_widgets.js) and are not read from the widgets.
   if (name === 'databricks') {

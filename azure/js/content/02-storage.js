@@ -73,7 +73,25 @@
   ].join('\n');
   var DEL_FIX = DEL_BUG.replace("'orders/dt=' + day", "'orders/dt=' + day + '/'");
 
-  var LIFE_BUG = LIFE.replace('"raw/orders/"', '"orders/"').split('\n').filter(function (l) { return !/tierToCold|tierToArchive|"delete": \{ "daysAfterModificationGreaterThan": 365|"snapshot"/.test(l); }).join('\n').replace('"daysAfterModificationGreaterThan": 30 },', '"daysAfterModificationGreaterThan": 30 }');
+  var LIFE_BUG = [
+    '{',
+    '  "rules": [',
+    '    {',
+    '      "enabled": true,',
+    '      "name": "raw-ages-out",',
+    '      "type": "Lifecycle",',
+    '      "definition": {',
+    '        "filters": { "blobTypes": ["blockBlob"], "prefixMatch": ["orders/"] },',
+    '        "actions": {',
+    '          "baseBlob": {',
+    '            "tierToCool": { "daysAfterModificationGreaterThan": 30 }',
+    '          }',
+    '        }',
+    '      }',
+    '    }',
+    '  ]',
+    '}'
+  ].join('\n');
   var LIFE_FIX = LIFE_BUG.replace('"orders/"', '"raw/orders/"');
 
   LAB.addChapter({

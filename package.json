@@ -3,7 +3,7 @@
   "private": true,
   "description": "Interactive data engineering tutorials. The site itself needs no build step. These scripts only check it.",
   "scripts": {
-    "lint": "node dev/lint-content.js snowflake && node dev/lint-content.js dbt && node dev/lint-content.js snowflake-dbt && node dev/lint-content.js databricks && node dev/lint-content.js aws",
+    "lint": "node dev/lint-content.js snowflake && node dev/lint-content.js dbt && node dev/lint-content.js snowflake-dbt && node dev/lint-content.js databricks && node dev/lint-content.js aws && node dev/lint-content.js azure",
     "lint:snowflake": "node dev/lint-content.js snowflake",
     "lint:dbt": "node dev/lint-content.js dbt",
     "smoke": "node dev/smoke.js snowflake --path all",
@@ -28,6 +28,11 @@
     "e2e:aws": "node dev/e2e.js aws",
     "stats:aws": "node dev/stats.js aws",
     "verify:aws": "python3 aws/verify/verify_aws.py",
+    "lint:azure": "node dev/lint-content.js azure",
+    "smoke:azure": "node dev/smoke.js azure --path all",
+    "e2e:azure": "node dev/e2e.js azure",
+    "stats:azure": "node dev/stats.js azure",
+    "verify:azure": "python3 azure/verify/verify_az.py",
     "test:analytics": "node dev/analytics-test.js"
   },
   "devDependencies": {
