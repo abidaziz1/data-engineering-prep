@@ -578,10 +578,11 @@ def sec_eventhubs():
     for limit in (256 * 1024, 1024 * 1024):
         for payload in (100, 1000, 10000, 100000, 240000, 300000):
             r = fill(limit, payload)
+            rk = fill(limit, payload, 'C-0001')
             n = r['events']
             over_first = (r['first_event_total'] - payload) if n else None
             over_next = round((r['size_in_bytes'] - r['first_event_total']) / (n - 1) - payload, 1) if n > 1 else None
-            rows.append({'limit_bytes': limit, 'payload_bytes': payload, 'events_in_batch': n, 'batch_bytes': r['size_in_bytes'],
+            rows.append({'limit_bytes': limit, 'payload_bytes': payload, 'events_in_batch': n, 'events_with_key': rk['events'], 'batch_bytes': r['size_in_bytes'],
                          'overhead_first_event_bytes': over_first, 'overhead_each_later_event_bytes': over_next, 'error': r['error']})
     with_key = fill(1024 * 1024, 100, 'C-0001')
     without = fill(1024 * 1024, 100)
