@@ -6,3 +6,4 @@ __pycache__/
 *.pyc
 databricks/verify/.cache/
 aws/verify/node_modules/
+aws/verify/.cache/

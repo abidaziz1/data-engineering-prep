@@ -20,3 +20,11 @@ grpcio-status
 googleapis-common-protos
 protobuf
 zstandard
+# aws/verify (the recorder, verify_aws.py and its --recapture). asl-validator comes from `npm install` in aws/verify (Node 20 or later):
+boto3
+moto[all,server]
+cfn-lint
+parliament
+setuptools<81
+awscli
+aws-lambda-powertools

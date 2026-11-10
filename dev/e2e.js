@@ -312,6 +312,233 @@ const ok = (c, m) => { if (c) pass++; else { fail++; console.log('FAIL:', m); } 
     ok(code.includes('BREWLINE.staging.stg_brewline__customers') && !code.includes('PR_123'), 'environment lab: with defer the parents come from production');
   }
 
+  // ---------- aws only: the labs must show what the recording and the documented rules say, and the arithmetic must be right ----------
+  // The expected values below were worked out by hand (see aws/verify/check_widgets.js) and are not read from the widgets. The rule for a listing and
+  // the shard of a key are applied here to the recorded keys, so a widget that disagrees with the recording fails.
+  if (name === 'aws') {
+    const bigs = () => page.$$eval('.lab-out .big b', els => els.map(e => e.textContent));
+    const spans = () => page.$$eval('.lab-out .big span', els => els.map(e => e.textContent));
+    const bigCls = () => page.$$eval('.lab-out .big', els => els.map(e => e.className));
+    const tables = () => page.$$eval('.lab .tbl', ts => ts.map(t => [...t.querySelectorAll('tbody tr')].map(r => [...r.children].map(td => td.innerText.trim()))));
+    const rowCls = () => page.$$eval('.lab .tbl', ts => ts.map(t => [...t.querySelectorAll('tbody tr')].map(r => r.className)));
+    const pick = async (act, v) => { await page.click('[data-act="' + act + '"][data-v="' + v + '"]'); await page.waitForTimeout(15); };
+    const chipVals = act => page.$$eval('[data-act="' + act + '"]', els => els.map(e => e.getAttribute('data-v')));
+    const scene = kind => S.find(x => x.type === 'widget' && x.kind === kind);
+    const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+    const counts = k => page.evaluate(k => LAB.real.counts[k], k);
+    // the widgets keep their state while the page stays open, and the generic checks above have clicked their chips: start every lab from its default
+    const reset = (k, v) => page.evaluate(([k, v]) => { LAB.app.local[k] = v; LAB.app.render(true); }, [k, v]).then(() => page.waitForTimeout(20));
+
+    // S3 listing lab: the documented rule (prefix, then group by the delimiter) applied to the ten recorded keys
+    const ls = scene('listing'), KEYS = (await counts('s3.keys')).keys;
+    ok(KEYS.length === 10, 'listing lab: the recorded bucket holds ten keys');
+    await go(ls.id + ':0'); await reset('ls', { p: 'raw/', d: '/' });
+    const prefixes = await chipVals('ls-p');
+    ok(prefixes.length === 7, 'listing lab offers seven prefixes');
+    for (const p of prefixes) for (const d of ['', '/']) {
+      await pick('ls-p', p); await pick('ls-d', d);
+      const under = KEYS.filter(k => k.startsWith(p)), cps = new Set(), keys = [];
+      for (const k of under) { const rest = k.slice(p.length), i = d ? rest.indexOf(d) : -1; if (i >= 0) cps.add(p + rest.slice(0, i + 1)); else keys.push(k); }
+      const b = await bigs();
+      ok(same(b, [String(keys.length), String(cps.size), String(keys.length + cps.size)]), 'listing lab, prefix "' + p + '" and delimiter "' + d + '": ' + keys.length + ' keys, ' + cps.size + ' common prefixes (got ' + b.join(' | ') + ')');
+    }
+    await go(ls.id + ':1');
+    ok(same((await tables())[0].map(r => r[1].split(':')[0] + r[2]), ['4true', '4true', '2false']), 'listing lab: ten keys come in pages of 4, 4 and 2, and only the last page is not truncated');
+
+    // versioning lab: a stack of versions and one delete marker. A plain GET works only when the top of the stack is a version.
+    const vr = scene('versions');
+    const STACK = [1, 2, 3, 2, 1, 0], OKGET = [true, true, false, false, true, false];
+    await go(vr.id + ':0'); await reset('vr', { n: 0 });
+    for (let n = 0; n < 6; n++) {
+      await pick('vr-n', n);
+      const boxes = await cnt('.vbox'), cls = (await bigCls())[0], b = (await bigs())[0];
+      ok(boxes === STACK[n], 'versioning lab, call ' + (n + 1) + ': ' + STACK[n] + ' entries in the stack (got ' + boxes + ')');
+      ok(/good/.test(cls) === OKGET[n] && (OKGET[n] || b === 'NoSuchKey'), 'versioning lab, call ' + (n + 1) + ': a plain GET ' + (OKGET[n] ? 'works' : 'answers NoSuchKey'));
+    }
+    ok(await cnt('.vbox.marker') === 0, 'versioning lab: after the last call no delete marker is left');
+    await pick('vr-n', 2);
+    ok(await cnt('.vbox.marker') === 1 && await cnt('.vbox.version') === 2, 'versioning lab, call 3: one delete marker on top of two versions');
+
+    // SigV4 lab: the example of the AWS documentation, and the recorded signature of the emulator run
+    const sg = scene('sigv4');
+    await go(sg.id + ':0');
+    let t = await text();
+    ok(t.includes('examplebucket.s3.amazonaws.com') && t.includes('host;range;x-amz-content-sha256;x-amz-date') && t.includes('e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'), 'signature lab: the canonical request of the documented example (the SHA-256 of an empty body)');
+    await go(sg.id + ':1');
+    t = await text();
+    ok(t.includes('AWS4-HMAC-SHA256') && t.includes('20130524T000000Z') && t.includes('20130524/us-east-1/s3/aws4_request') && t.includes('7344ae5b7ee6c3e7e6b0fe0640412a37625d1fbfff95c48bbb2dc43964946972'), 'signature lab: the string to sign names the algorithm, the time, the scope and the documented hash of the canonical request');
+    ok(t.includes('Signature=f0e8bdb87c964420e857bd35b5d6ed310bd44f0170aba48dd91039c6036bdb41') && (await bigs())[0] === 'f0e8bdb87c964420...' && same((await bigs()).slice(1), ['yes', 'yes']), 'signature lab: botocore produced the signature that the AWS documentation prints, and a second HMAC chain agrees');
+    await go(sg.id + ':2');
+    const VAR = await page.evaluate(() => LAB.real.tables['sigv4.variants'].rows.map(r => [r[0], r[2], r[3]]));
+    t = (await tables())[0];
+    ok(VAR.length === 6 && same(t.map(r => r[2]), ['yes', 'no', 'no', 'no', 'no', 'no']) && new Set(VAR.map(r => r[1])).size === 6, 'signature lab: one changed character, a late clock, another region, a changed header or an extra signed header each give a different signature');
+    for (let v = 1; v < 6; v++) {
+      await pick('sg-v', v);
+      const diff = [...VAR[0][1]].filter((c, k) => c !== VAR[v][1][k]).length;
+      ok((await bigs())[1] === diff + ' of 64', 'signature lab, variant ' + v + ': ' + diff + ' of 64 hex characters differ from the documented signature (got ' + (await bigs())[1] + ')');
+    }
+
+    // evaluator lab: ten requests answered with the recorded results, then the layers worked out from the AWS evaluation logic
+    const ev = scene('evaluator'), TRUTH = (await counts('iam.truth')).rows;
+    ok(TRUTH.length === 10 && TRUTH.filter(r => r.result === 'allow').length === 3, 'evaluator lab: ten recorded requests, three of them allowed');
+    await go(ev.id + ':0'); await reset('ev', { n: 0, guess: {}, x: { idAllow: true, idDeny: false, resAllow: false, resDeny: false, scp: 'none', bnd: 'none', same: true }, card: '' });
+    await pick('ev-n', 0); await pick('ev-g', TRUTH[0].result === 'allow' ? 'deny' : 'allow');
+    ok(/The answer was (allow|deny)/.test(await text()), 'evaluator lab: a wrong answer shows what the answer was');
+    for (let n = 1; n < 10; n++) { await pick('ev-n', n); await pick('ev-g', TRUTH[n].result); }
+    ok(/Answered 10 of 10, right 9\./.test(await text()), 'evaluator lab: nine of ten answers right (the first one was wrong on purpose) (got: ' + ((await text()).match(/Answered[^.]*\./) || [''])[0] + ')');
+    await pick('ev-n', 0); await pick('ev-g', TRUTH[0].result);
+    ok(/Answered 10 of 10, right 10\./.test(await text()), 'evaluator lab: after correcting the first one, ten of ten');
+    await go(ev.id + ':1');
+    const verdict = async () => (await page.$$eval('.lab-out .big', els => els.map(e => e.innerText.replace(/\s+/g, ' ').trim())))[0];
+    await pick('ev-card', await page.evaluate(() => LAB.W.evaluatorInfo.cards[0].k));
+    const cards = await page.evaluate(() => LAB.W.evaluatorInfo.cards.length);
+    ok(cards >= 5, 'evaluator lab offers at least five preset situations');
+    // by hand: an identity allow alone allows. A deny anywhere wins. An SCP that blocks denies. Across accounts both sides must allow.
+    await page.evaluate(() => { LAB.app.local.ev.x = { idAllow: true, idDeny: false, resAllow: false, resDeny: false, scp: 'none', bnd: 'none', same: true }; LAB.app.render(true); });
+    await page.waitForTimeout(20);
+    ok(/^Allow/.test(await verdict()) && /an allow/.test(await verdict()), 'evaluator lab: an identity allow alone allows in the same account');
+    await pick('ev-t', 'idDeny');
+    ok(/^Deny/.test(await verdict()) && /explicit deny/.test(await verdict()), 'evaluator lab: an explicit deny wins over the allow');
+    await pick('ev-t', 'idDeny'); await pick('ev-scp', 'blocks');
+    ok(/^Deny/.test(await verdict()) && /service control policy/.test(await verdict()), 'evaluator lab: a service control policy that blocks denies');
+    await pick('ev-scp', 'none'); await pick('ev-same', 0);
+    ok(/^Deny/.test(await verdict()) && /implicit deny/.test(await verdict()), 'evaluator lab: across accounts an identity allow alone is not enough');
+    await pick('ev-t', 'resAllow');
+    ok(/^Allow/.test(await verdict()), 'evaluator lab: across accounts, the identity allow and the bucket policy allow together allow');
+    await go(ev.id + ':2');
+    ok(same([await cnt('.lab .tbl tbody tr.new'), await cnt('.lab .tbl tbody tr.dup')], [10, 0]), 'evaluator lab: the rule and the emulator agree on all ten requests');
+
+    // Athena scan lab: bytes from the recording, the billing rule worked out by hand (10 MB minimum, rounded up to the next MB, $5 per TB)
+    const sc = scene('scan'), SCAN = await counts('athena.scan'), SIZES = await counts('athena.sizes');
+    const billed = b => Math.max(1e7, Math.ceil(b / 1e6) * 1e6), cost = (b, k) => billed(b * k) / 1e12 * 5;
+    const fmt = x => '$' + (x >= 100 ? Math.round(x).toLocaleString('en-US') : x >= 1 ? x.toFixed(2) : x >= 0.01 ? x.toFixed(3) : x === 0 ? '0' : x.toPrecision(2));
+    await go(sc.id + ':0'); await reset('sc', { q: 'q2', l: 'parquet_by_day', scale: 1, cols: ['total_usd', 'order_date'] });
+    for (const qq of SCAN.queries) for (const lay of SCAN.layouts) {
+      await pick('sc-q', qq.id); await pick('sc-l', lay.k);
+      const b = await bigs(), want = fmt(cost(qq.bytes[lay.k], 1));
+      ok(b[2] === want, 'scan lab, ' + qq.id + ' on ' + lay.k + ': one run costs ' + want + ' (got ' + b[2] + ')');
+    }
+    await pick('sc-q', 'q5'); await pick('sc-l', 'csv');
+    ok(same((await bigs()).slice(0, 2), ['166.7 MB', '167 MB']) && (await bigs())[3] === '517x', 'scan lab: the status count reads 166.7 MB of CSV, billed 167 MB, and is 517 times the cheapest layout (322,658 bytes of Parquet)');
+    await pick('sc-q', 'q2'); await pick('sc-l', 'parquet_by_day');
+    ok(same((await bigs()).slice(1, 3), ['10 MB', '$0.000050']) && /minimum/.test((await page.$$eval('.lab-out .big span', e => e.map(x => x.textContent)))[1]), 'scan lab: 21 KB is billed as the 10 MB minimum, $0.00005');
+    await go(sc.id + ':1');
+    await pick('sc-x', 1000);
+    t = (await tables())[0];
+    ok(t.length === 5 && t[1][5].startsWith('21.4 MB') && t[1][5].includes('$0.00011'), 'scan lab, 1,000 times the data: q2 on Parquet day folders is 21.4 MB, billed 22 MB, $0.00011 (got ' + (t[1] && t[1][5]) + ')');
+    ok(t[0][1].includes('166.66 GB') && t[0][1].includes('$0.833'), 'scan lab, 1,000 times the data: q1 on the single CSV is 166.66 GB and $0.833 (got ' + (t[0] && t[0][1]) + ')');
+    await go(sc.id + ':2');
+    await pick('sc-all', 'all');
+    const sb = await bigs();
+    ok(sb[0] === '11 of 11' && sb[2] === '100.0 %', 'scan lab: SELECT * reads all 11 columns, 100 % of the bytes (got ' + sb.join(' | ') + ')');
+    const bytesSel = (await page.evaluate(() => { const pc = LAB.real.counts['athena.parquet_columns'].bytes_by_column; return Object.keys(pc).reduce((a, k) => a + pc[k], 0) + LAB.real.counts['athena.sizes'].parquet_footer_bytes; }));
+    ok(sb[1] === (bytesSel / 1e6).toFixed(1) + ' MB', 'scan lab: the bytes of all columns plus the footer add up to ' + (bytesSel / 1e6).toFixed(1) + ' MB (got ' + sb[1] + ')');
+
+    // Kinesis lab: the hash picks the shard. The recorded mapping is applied to every key.
+    const kn = scene('kinesis'), MAP = (await counts('kinesis.mapping')).rows, SH = (await counts('kinesis.shards')).shards.map(s => s.id);
+    await go(kn.id + ':0'); await reset('kn', { key: 'C-0001', salt: false });
+    ok(same(await chipVals('kn-k'), MAP.map(r => r.key)), 'Kinesis lab offers the twelve recorded keys');
+    for (const r of MAP) {
+      await pick('kn-k', r.key);
+      const b = await bigs();
+      ok(b[0] === r.key && b[1] === r.md5.slice(0, 12) + '...' && b[3] === 'shard ' + SH.indexOf(r.shard), 'Kinesis lab, key ' + r.key + ': MD5 ' + r.md5.slice(0, 12) + ' and shard ' + SH.indexOf(r.shard) + ' (got ' + b.join(' | ') + ')');
+    }
+    ok(MAP.slice(0, 5).every(r => r.shard === SH[2]), 'Kinesis recording: the first five customers all land on shard 2');
+    await go(kn.id + ':1');
+    ok(same((await bigs()).slice(0, 2), ['1.88x', 'C-0001']), 'Kinesis lab: by key the busiest shard is 1.88 times the average and C-0001 is the busiest customer');
+    const lanes0 = await page.$$eval('.gantt .lane-v', xs => xs.map(x => +x.textContent.replace(/,/g, '')));
+    ok(lanes0.length === 4 && lanes0.reduce((a, b) => a + b, 0) === 20000 && Math.max(...lanes0) === 9390 && Math.min(...lanes0) === 2743, 'Kinesis lab: 20,000 events over four shards, 9,390 on the busiest and 2,743 on the quietest');
+    await pick('kn-s', 1);
+    const lanes1 = await page.$$eval('.gantt .lane-v', xs => xs.map(x => +x.textContent.replace(/,/g, '')));
+    ok((await bigs())[0] === '1.09x' && lanes1.reduce((a, b) => a + b, 0) === 20000 && Math.max(...lanes1) / 5000 < 1.1, 'Kinesis lab: with a salt of 8 the busiest shard is 1.09 times the average');
+    await go(kn.id + ':2');
+    t = (await tables()); const rc = await rowCls();
+    ok(t[0].length === 4 && t[1].length === 6 && t[1].filter(r => r[2] === 'closed').length === 1 && t[1].filter(r => r[3] === '12.5 %').length === 2 && rc[1].filter(c => c === 'new').length === 2, 'Kinesis lab: a split turns four shards into six: one closed, two new with 12.5 % of the range each');
+
+    // SQS lab: the timeline of one message, then FIFO and SNS
+    const sq = scene('sqs');
+    await go(sq.id + ':0'); await reset('sq', { n: 0 });
+    ok(await cnt('[data-act="sq-n"]') === 4, 'SQS lab: four moments on the timeline');
+    for (let n = 0; n < 4; n++) {
+      await pick('sq-n', n);
+      const b = await bigs();
+      ok(b[2] === (n === 3 ? 'in the DLQ' : 'in the main queue'), 'SQS lab, moment ' + (n + 1) + ': the message is ' + (n === 3 ? 'in the DLQ' : 'in the main queue'));
+    }
+    await go(sq.id + ':1');
+    t = (await tables())[0];
+    ok(t.length === 3 && /Delivered 2 messages in order: order 1, order 2/.test(t[0][2]) && /Received 2 messages/.test(t[1][2]) && /Received 1 message/.test(t[2][2]), 'SQS lab: FIFO delivered two messages in order, the unfiltered subscriber got 2 and the filtered one got 1');
+
+    // retry lab: 30 s x 2^(n-1). The totals are sums worked out by hand.
+    const rt = scene('retry');
+    await go(rt.id + ':0'); await reset('rt', { interval: 30, rate: 2, attempts: 5, maxDelay: 0, jitter: 'NONE' });
+    t = (await tables())[0];
+    ok(same(t.map(r => [r[1], r[2]]), [['30 s', '30 s'], ['60 s', '90 s'], ['2.0 min', '3.5 min'], ['4.0 min', '7.5 min'], ['8.0 min', '15.5 min']]) && (await bigs())[0] === '15.5 min', 'retry lab: 30, 60, 120, 240 and 480 seconds, 930 in all (15.5 minutes)');
+    for (const [i0, r0, a0, m0, tot] of [[5, 2, 3, 0, '35 s'], [60, 1, 8, 0, '8.0 min'], [30, 3, 8, 300, '31.5 min'], [5, 3, 5, 0, '10.1 min']]) {
+      await pick('rt-i', i0); await pick('rt-r', r0); await pick('rt-a', a0); await pick('rt-m', m0);
+      ok((await bigs())[0] === tot, 'retry lab: interval ' + i0 + ', rate ' + r0 + ', ' + a0 + ' attempts, cap ' + m0 + ' gives ' + tot + ' (got ' + (await bigs())[0] + ')');
+    }
+    await pick('rt-j', 'FULL');
+    ok(/longest total wait/.test(await text()) && /a random time from 0 to/.test(await text()), 'retry lab: full jitter shows a random wait up to the same maximum');
+    await go(rt.id + ':1');
+    t = (await tables())[0];
+    ok(same(t.map(r => r[2]), ['yes', 'no', 'no', 'yes']), 'retry lab: only the 30 s rate-2 schedule and the capped one cover a slot that takes 10 minutes to free');
+
+    // bill lab: the arithmetic of the example rates, worked out by hand in aws/verify/check_widgets.js
+    const bl = scene('bill');
+    await go(bl.id + ':0'); await reset('bl', { p: 'today', lv: {} });
+    t = (await tables())[0];
+    ok(same(t.map(r => r[2]), ['$46.00', '$45.00', '$100', '$264', '$77.20', '$5.60', '$55.35', '$375', '$50.00']) && (await bigs())[0] === '$1,018', 'bill lab: the nine lines add up to $1,018.15');
+    ok((await bigs())[1] === 'Redshift Serverless' && /37 percent/.test((await spans())[1]), 'bill lab: Redshift Serverless is the biggest line, 37 percent');
+    await go(bl.id + ':1');
+    const levers = await chipVals('bl-l');
+    ok(same(levers, ['parquet', 'life', 'gateway', 'flex', 'arm']), 'bill lab offers five savings');
+    const SAVED = { parquet: 90, life: 14.7, gateway: 18, flex: 45, arm: 1 };
+    for (const k of levers) {
+      await pick('bl-l', k);
+      const b = (await bigs());
+      ok(b[1] === '$' + Math.round(1018.15 - SAVED[k]).toLocaleString('en-US'), 'bill lab, saving "' + k + '": the bill falls by $' + SAVED[k] + ' (got ' + b[1] + ')');
+      await pick('bl-l', k);
+    }
+    for (const k of levers) await pick('bl-l', k);
+    ok((await bigs())[1] === '$849' && (await bigs())[2] === '17 %', 'bill lab: all five savings together leave $849.45, which saves 17 percent (got ' + (await bigs()).join(' | ') + ')');
+    for (const k of levers) await pick('bl-l', k);
+
+    // distribution lab: a model with made-up numbers, worked out by hand in aws/verify/check_widgets.js
+    const dk = scene('distkey');
+    await go(dk.id + ':0'); await reset('dk', { style: 'key_customer', o: 'even', cs: 'even', cn: 400, sort: 'none', q: 'day' });
+    const DIST = { even: '1.00x', key_customer: '1.90x', key_order: '1.00x' };
+    for (const k of Object.keys(DIST)) { await pick('dk-s', k); ok((await bigs())[0] === DIST[k], 'distribution lab, ' + k + ': the busiest slice is ' + DIST[k] + ' the average (got ' + (await bigs())[0] + ')'); }
+    await pick('dk-s', 'key_customer');
+    ok(await cnt('.gbar.bad') === 1 && (await bigs())[1] === '23.8 %', 'distribution lab: with KEY on the customer one slice is marked busy and holds 23.8 % of the table');
+    await pick('dk-s', 'all');
+    ok((await bigs())[0] === '4x' && await cnt('.gantt .lane') === 4, 'distribution lab: ALL stores a full copy on each of the four nodes');
+    await go(dk.id + ':1');
+    const PLAN = {
+      400: { even: { even: ['DS_BCAST_INNER', '1,600'], key_customer: ['DS_BCAST_INNER', '1,600'], all: ['DS_DIST_ALL_NONE', '0'] }, key_customer: { even: ['DS_DIST_INNER', '400'], key_customer: ['DS_DIST_NONE', '0'], all: ['DS_DIST_ALL_NONE', '0'] }, key_order: { even: ['DS_BCAST_INNER', '1,600'], key_customer: ['DS_BCAST_INNER', '1,600'], all: ['DS_DIST_ALL_NONE', '0'] } },
+      40000: { even: { even: ['DS_DIST_BOTH', '47,994'], key_customer: ['DS_DIST_OUTER', '7,994'], all: ['DS_DIST_ALL_NONE', '0'] }, key_customer: { even: ['DS_DIST_INNER', '40,000'], key_customer: ['DS_DIST_NONE', '0'], all: ['DS_DIST_ALL_NONE', '0'] }, key_order: { even: ['DS_DIST_BOTH', '47,994'], key_customer: ['DS_DIST_OUTER', '7,994'], all: ['DS_DIST_ALL_NONE', '0'] } }
+    };
+    for (const n of Object.keys(PLAN)) for (const o of Object.keys(PLAN[n])) for (const c of Object.keys(PLAN[n][o])) {
+      await pick('dk-n', n); await pick('dk-o', o); await pick('dk-c', c);
+      ok(same(await bigs(), PLAN[n][o][c]), 'distribution lab, orders ' + o + ' with ' + n + ' customers ' + c + ': ' + PLAN[n][o][c].join(', ') + ' (got ' + (await bigs()).join(', ') + ')');
+    }
+    await go(dk.id + ':2');
+    for (const [sort, q, want] of [['order_date', 'day', '2 of 100'], ['order_date', 'month', '35 of 100'], ['customer_id', 'customer', '1 of 100'], ['none', 'day', '100 of 100'], ['customer_id', 'day', '100 of 100']]) {
+      await pick('dk-k', sort); await pick('dk-q', q);
+      ok((await bigs())[0] === want && await cnt('.zmap i.on') === +want.split(' ')[0], 'distribution lab, sort key ' + sort + ', ' + q + ': ' + want + ' blocks, and the grid agrees');
+    }
+
+    // EventBridge pattern lab: 36 recorded answers, and the matched rows are highlighted
+    const pt = scene('patterns'), PAT = await counts('events.patterns');
+    await go(pt.id + ':0'); await reset('pt', { p: 'p1' });
+    ok(same(await chipVals('pt-p'), PAT.patterns.map(p => p.id)), 'pattern lab offers the six recorded patterns');
+    const WANT = { p1: ['e1', 'e6'], p2: ['e4'], p3: ['e1', 'e2', 'e4', 'e5', 'e6'], p4: ['e1', 'e2', 'e5'], p5: ['e4'], p6: ['e1', 'e2', 'e3', 'e4', 'e5', 'e6'] };
+    for (const id of Object.keys(WANT)) {
+      await pick('pt-p', id);
+      t = (await tables())[0]; const hit = t.filter(r => r[5] === 'match').map(r => r[0]);
+      ok(same(hit, WANT[id]) && (await bigs())[0] === WANT[id].length + ' of 6' && (await rowCls())[0].filter(c => c === 'new').length === WANT[id].length, 'pattern lab, ' + id + ': matches ' + WANT[id].join(', ') + ' (got ' + hit.join(', ') + ')');
+    }
+  }
+
   // ---------- databricks only: the labs must show what Spark and Delta Lake recorded, and the arithmetic must be right ----------
   // The expected values below were worked out by hand from the recording (see databricks/verify/check_widgets.js) and are not read from the widgets.
   if (name === 'databricks') {

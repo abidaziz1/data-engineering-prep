@@ -120,3 +120,6 @@
 .zmap{display:grid;grid-template-columns:repeat(20,1fr);gap:3px;margin:.4rem 0}
 .zmap i{display:block;height:1.1rem;border:2px solid var(--ink);border-radius:4px;background:#E2E8F0}
 .zmap i.on{background:#F97316}
+
+/* long identifiers such as HIVE_TOO_MANY_OPEN_PARTITIONS or ProvisionedThroughputExceededException, and long hex strings, must wrap on a phone */
+.qtext,.alertbox,.alertbox *,.prompt,.opt .ot,.callout,.clues li,.triage li,.lab-out .big b,.lab-out .big span{overflow-wrap:anywhere}

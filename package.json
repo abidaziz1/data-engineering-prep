@@ -3,7 +3,7 @@
   "private": true,
   "description": "Interactive data engineering tutorials. The site itself needs no build step. These scripts only check it.",
   "scripts": {
-    "lint": "node dev/lint-content.js snowflake && node dev/lint-content.js dbt && node dev/lint-content.js snowflake-dbt && node dev/lint-content.js databricks",
+    "lint": "node dev/lint-content.js snowflake && node dev/lint-content.js dbt && node dev/lint-content.js snowflake-dbt && node dev/lint-content.js databricks && node dev/lint-content.js aws",
     "lint:snowflake": "node dev/lint-content.js snowflake",
     "lint:dbt": "node dev/lint-content.js dbt",
     "smoke": "node dev/smoke.js snowflake --path all",
@@ -22,7 +22,12 @@
     "smoke:databricks": "node dev/smoke.js databricks --path all",
     "e2e:databricks": "node dev/e2e.js databricks",
     "stats:databricks": "node dev/stats.js databricks",
-    "verify:databricks": "python3 databricks/verify/verify_db.py"
+    "verify:databricks": "python3 databricks/verify/verify_db.py",
+    "lint:aws": "node dev/lint-content.js aws",
+    "smoke:aws": "node dev/smoke.js aws --path all",
+    "e2e:aws": "node dev/e2e.js aws",
+    "stats:aws": "node dev/stats.js aws",
+    "verify:aws": "python3 aws/verify/verify_aws.py"
   },
   "devDependencies": {
     "playwright": "^1.63.0"
