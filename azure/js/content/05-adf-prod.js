@@ -197,6 +197,18 @@
       }),
 
       B.talk({
+        id: 'm5-ci', t: 3, src: 'docs', title: 'Publish from a pipeline, not from a button',
+        say: 'In the studio, a person presses Publish. A build can do the same job with no person. Press Next for how.',
+        items: [
+          ['The publish button', 'In the Data Factory studio, Publish writes the ARM templates of the factory to a branch, usually called `adf_publish`. Someone has to press it, so a release is not fully automatic.', 'A manual step.'],
+          ['The npm package', 'Microsoft ships an npm package, `@microsoft/azure-data-factory-utilities`, with two commands: validate the factory files, and export the ARM template. A build pipeline runs them in place of the button.', 'Validate and export in a build.'],
+          ['The artifact', 'The export becomes a build artifact. The release pipeline deploys that artifact to each factory, with the parameters of its environment, instead of reading the publish branch.', 'Deploy the artifact.'],
+          ['What to check', 'The package needs a small configuration file in the repository and a current Node version, and the commands have changed over time. Read the current page for the form your version expects.', 'Read the current page.']
+        ],
+        cols: 1
+      }),
+
+      B.talk({
         id: 'm5-monitor', t: 1, src: 'docs', title: 'Monitoring a factory',
         say: 'You cannot fix what you do not see. Press Next for four places to look and one to look after.',
         items: [

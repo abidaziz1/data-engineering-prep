@@ -132,7 +132,7 @@
           ['Delete a folder', 'Delete every blob under the prefix.', 'One operation on the directory.'],
           ['Permissions', 'Azure roles at the account or the container, and SAS tokens.', 'Azure roles, and POSIX-style ACLs on every directory and file.'],
           ['Endpoints', 'The blob endpoint.', 'The blob endpoint and the dfs endpoint, and the abfss driver for Spark.'],
-          ['Features', 'The full set of blob features.', 'A few blob features are missing or behave differently. Check the feature support table before you rely on one.']
+          ['Features', 'The full set of blob features.', 'A few blob features are missing or behave differently. For example, versioning and point-in-time restore are not available, and soft delete covers deletes only. Check the feature support table before you rely on one.']
         ],
         steps: [
           { upto: 3, say: 'Folders and renames. Analytics engines commit their work by renaming a temporary folder, so an atomic rename makes them faster and safer.' },
@@ -168,7 +168,7 @@
 
       B.talk({
         id: 'm2-types', t: 1, src: 'rec', title: 'Blob types, copies, tags and snapshots',
-        say: 'A blob has a type, and it also has a few extras. I used each of them with the real SDK against the emulator. Press Next for each.',
+        say: 'A blob has a type, and it also has a few extras. I used each of them with the real SDK against the emulator, which is a plain blob account. Press Next for each.',
         items: [
           ['Block blobs, the default', 'A block blob is built from blocks and is what a lake holds. You write the whole blob in one call, or you stage blocks and commit them. The next screen shows blocks. The type was `' + TY.block_blob_type.replace('BlobType.', '') + '` for the file I copied.', 'Whole blobs, in blocks.'],
           ['Append blobs, for logs', 'An append blob accepts only new blocks at the end. I appended three lines to one, and the blob held ' + TY.append_blocks + ' blocks and ' + TY.append_blob_size + ' bytes. Use it for a log that many writers extend. You cannot edit the middle.', 'Add at the end, never edit.'],
@@ -177,6 +177,7 @@
           ['Blob index tags', 'Tags are key and value pairs that the service indexes, so you can search a whole account with a query. I tagged a blob with zone and pii, and `find_blobs_by_tags` returned ' + TS.find_blobs_by_tags.length + ' blob for a query on both. Metadata cannot be searched like this.', 'Tags can be searched. Metadata cannot.'],
           ['Snapshots', 'A snapshot is a read-only copy of a blob at one moment. I took one, and listing with snapshots showed the blob twice. Deleting the base blob while a snapshot exists failed with `' + TS.delete_with_snapshot.code + '` and HTTP ' + TS.delete_with_snapshot.status + '. You delete both, or you ask for snapshots to go too.', 'A snapshot blocks a plain delete.']
         ],
+        call: { k: 'warn', h: 'The emulator is a plain blob account.', t: 'An ADLS Gen2 account, with the hierarchical namespace, may not support some of these extras, tags and snapshots among them. Read the feature support table for your account type before you build on one.' },
         cols: 1
       }),
 
@@ -268,23 +269,36 @@
 
       B.cmp({
         id: 'm2-protect', t: 2, src: 'docs', title: 'Protecting data from mistakes',
-        say: 'Redundancy copies a mistake. Six features undo one. Press Next to read them. The emulator has no soft delete: its undelete answered ' + GAP.probes[0].undelete.code + '. So these come from documentation.',
+        say: 'Redundancy copies a mistake. Six features undo one, but not every one works on every account. The emulator has no soft delete: its undelete answered ' + GAP.probes[0].undelete.code + '. So these come from documentation.',
         cols: ['Feature', 'What it does', 'Recovers from', 'The catch'],
         hl: 1,
         rows: [
-          ['Blob soft delete', 'Keeps a deleted or overwritten blob for a number of days', 'a delete or an overwrite', 'The days are billed. A template starts with the service default, so set it on purpose.'],
+          ['Blob soft delete', 'Keeps a deleted blob or directory for a number of days', 'a delete (on a flat account also an overwrite)', 'The days are billed. With a hierarchical namespace it covers deletes only. Set it on purpose, because a template starts with the service default.'],
           ['Container soft delete', 'Keeps a deleted container', 'a deleted container', 'Same cost rule.'],
-          ['Versioning', 'Keeps every earlier version of a blob automatically', 'a bad overwrite', 'Versions pile up, so add a lifecycle rule for old versions.'],
-          ['Point-in-time restore', 'Restores block blobs in a container range to an earlier time', 'a bad batch job', 'Needs soft delete, versioning and the change feed all on.'],
-          ['Immutability policy', 'Makes blobs write-once for a period, or under a legal hold', 'deletion and change, even by an owner', 'You cannot shorten it. Use it where the law asks.'],
+          ['Versioning', 'Keeps every earlier version of a blob automatically', 'a bad overwrite', 'Not available on an account with a hierarchical namespace. On a flat account the versions pile up, so add a lifecycle rule.'],
+          ['Point-in-time restore', 'Restores block blobs in a container range to an earlier time', 'a bad batch job', 'Needs soft delete, versioning and the change feed all on, so it is not available with a hierarchical namespace either.'],
+          ['Immutability policy', 'Makes blobs write-once for a period, or under a legal hold', 'deletion and change, even by an owner', 'You cannot shorten it. Use it where the law asks, and check that your account type supports it.'],
           ['Resource lock', 'Stops the deletion of the account or its resource group in Azure Resource Manager', 'deleting the account', 'It does not stop deleting the blobs inside.']
         ],
         steps: [
-          { upto: 3, say: 'Soft delete and versioning are the everyday undo. Turn them on for every lake.' },
-          { upto: 5, say: 'Point-in-time restore and immutability are for bigger recoveries and for rules of law.' },
+          { upto: 2, say: 'Soft delete is the everyday undo, for blobs and for containers. Turn both on for every lake.' },
+          { upto: 4, say: 'Versioning and point-in-time restore are for flat accounts. Brewline\'s lake has a hierarchical namespace, so it does not get them, and soft delete, a lock and a way to rebuild carry the load.' },
+          { upto: 5, say: 'Immutability is for rules of law.' },
           { upto: 6, say: 'A lock protects the account, not the data in it. People forget that.' }
         ],
-        pick: 'Turn on **blob and container soft delete** for every lake, add **versioning** with a lifecycle rule for old versions on tables you overwrite, and put a **lock** on the account. Use **immutability** only where the law asks for it.'
+        pick: 'For the ADLS Gen2 lake, turn on **blob and container soft delete**, put a **lock** on the account, give cleanup jobs **narrow delete rights**, and keep a way to **rebuild raw**: the source, or a scheduled copy of the files you cannot rebuild into a second account. **Versioning** and **point-in-time restore** are for flat accounts. Use **immutability** only where the law asks for it.'
+      }),
+
+      B.talk({
+        id: 'm2-flat-only', t: 3, src: 'docs', title: 'Features that need versioning and the change feed',
+        say: 'Some recovery and copy features are built on versioning and the change feed. Press Next to see which ones, and why a lake with a hierarchical namespace does not get them.',
+        items: [
+          ['The change feed', 'A log of the changes to the blobs of an account. It is ordered, read-only and kept in the account. Point-in-time restore and object replication are built on it, and so is any job that wants to react to every change.', 'An ordered log of changes.'],
+          ['Object replication', 'It copies block blobs from one account to another, asynchronously, by reading the change feed of the source. The documentation lists blob versioning on both accounts and the change feed on the source as the requirements.', 'A copy to another account.'],
+          ['What it means for the lake', 'Versioning is not supported with a hierarchical namespace, so these features are for flat accounts. For the lake, copy what you cannot rebuild into a second account on a schedule, with a Data Factory copy, and keep the sources replayable.', 'For the lake: copy by pipeline.'],
+          ['Check before you promise', 'Support changes from one release to the next. Read the feature support table for your account type before you write a recovery plan on any of these.', 'Read the table first.']
+        ],
+        cols: 1
       }),
 
       B.widget({ id: 'm2-sas-lab', kind: 'sas', t: 1, src: 'rec', title: 'Lab: read a SAS and predict the answer' }),
@@ -485,25 +499,25 @@
 
       B.incident({
         id: 'm2-inc2', t: 2, src: 'docs', title: 'Incident: the wrong days were deleted', time: '09:40',
-        alert: '**A cleanup script deleted four days of `raw/orders/` that were still needed.** The account uses GRS. It was created from a template, and nobody set soft delete or versioning. The raw files are the only copy of those days, because the source database keeps only 30 days of changes.',
+        alert: '**A cleanup script deleted four days of `raw/orders/` that were still needed.** The account uses GRS. It was created from a template, and nobody set soft delete. The raw files are the only copy of those days, because the source database keeps only 30 days of changes.',
         clues: ['GRS copies a delete to the second region', 'The account came from a template with no data protection settings', 'The source keeps 30 days of changes'],
         opts: [
-          { t: 'Check whether soft delete or versioning was on. If not, rebuild the four days from the source and the Capture files that still exist, and then turn on protection', fb: '' },
+          { t: 'Check whether soft delete was on. If not, rebuild the four days from the source and the Capture files that still exist, and then turn on protection', fb: '' },
           { t: 'Fail over to the second region to get the old copy back', fb: 'GRS copied the delete too, so the second region has the same gap. A failover also moves every writer.' },
           { t: 'Tell the team the data is gone and carry on', fb: 'Some of it can be rebuilt from the source, and the gap should be closed while the source still has the changes.' },
           { t: 'Switch the account to Archive so nothing else can be read or deleted', fb: 'That does not protect anything, and it makes the data slow to read.' }
         ],
         best: 0,
-        why: 'Redundancy copies deletes, so the second region cannot help. Soft delete would have kept the files, and it was never turned on. With the source database holding only 30 days, the quick job is to rebuild the missing days from it before they age out, then fix the template so that soft delete, versioning and a lock exist from the first deployment.',
+        why: 'Redundancy copies deletes, so the second region cannot help. Soft delete would have kept the files, and it was never turned on. With the source database holding only 30 days, the quick job is to rebuild the missing days from it before they age out, then fix the template so that soft delete, a lock and a restricted delete role exist from the first deployment.',
         checks: [
           ['Stop the damage', 'Remove the delete role from the script identity until you know what it did.'],
           ['Look for an undo', 'List deleted blobs. If soft delete was on, undelete them.'],
           ['Look for another source', 'Capture files, the source database and the clean zone can rebuild raw.'],
           ['Rebuild what you can', 'Re-run the pipeline for the four days while the source still holds them.'],
-          ['Close the gap', 'Put soft delete, versioning, a lock and a restricted delete role into the template.']
+          ['Close the gap', 'Put soft delete, a lock and a restricted delete role into the template. Versioning is not available with a hierarchical namespace.']
         ],
-        tell: 'A cleanup script deleted four days of raw orders. The account was geo-redundant, but that copies deletes, and the template had no soft delete or versioning. Since the source only keeps 30 days of changes, I rebuilt the four days from the source and from the Capture files that still existed, and I checked the row counts against the clean zone. Then I changed the template so that every lake gets soft delete, versioning and a lock, and I took the delete role away from the cleanup identity.',
-        prevent: ['Turn on **soft delete and versioning** in the template', 'Put a **lock** on the account', 'Give cleanup scripts **narrow roles**, and a dry run that lists first', 'Remember that **redundancy is not backup**']
+        tell: 'A cleanup script deleted four days of raw orders. The account was geo-redundant, but that copies deletes, and the template had no soft delete. Since the source only keeps 30 days of changes, I rebuilt the four days from the source and from the Capture files that still existed, and I checked the row counts against the clean zone. Then I changed the template so that every lake gets soft delete and a lock, and I took the delete role away from the cleanup identity.',
+        prevent: ['Turn on **soft delete** for blobs and containers in the template', 'Put a **lock** on the account', 'Give cleanup scripts **narrow roles**, and a dry run that lists first', 'Remember that **redundancy is not backup**']
       }),
 
       B.qa({
@@ -574,14 +588,15 @@
       B.qa({
         id: 'qa-protect', t: 2, tag: 'Storage', secs: 60,
         q: 'What protects a data lake from a deleted or overwritten file, and what does not?',
-        pts: ['Soft delete for blobs and containers keeps deleted data for a number of days', 'Versioning keeps earlier versions of overwritten blobs', 'Point-in-time restore needs soft delete, versioning and the change feed', 'Immutability makes blobs write-once where the law asks', 'A resource lock stops deleting the account, not the blobs', 'Redundancy copies deletes, so it is not backup'],
-        short: 'Redundancy does not protect against a mistake, because a delete or a bad overwrite is copied to every copy. What protects the lake is soft delete for blobs and containers, which keeps deleted data for a number of days, and versioning, which keeps earlier versions of overwritten blobs. Point-in-time restore builds on both plus the change feed, and restores block blobs to an earlier time.\n\nFor data that must not change, an immutability policy makes blobs write-once for a period or under a legal hold, even against an owner. A resource lock stops the account being deleted in Resource Manager, but it does not stop blobs inside it being deleted.\n\nI turn these on in the template, because a template starts with the service defaults, and I pair versioning with a lifecycle rule so the old versions do not pile up. I also give cleanup jobs narrow roles and a dry run that lists first.',
+        pts: ['Soft delete for blobs and containers keeps deleted data for a number of days', 'On a flat account, versioning keeps earlier versions and point-in-time restore builds on it', 'An ADLS Gen2 account has soft delete but no versioning and no point-in-time restore', 'Immutability makes blobs write-once where the law asks', 'A resource lock stops deleting the account, not the blobs', 'Redundancy copies deletes, so it is not backup'],
+        short: 'Redundancy does not protect against a mistake, because a delete or a bad overwrite is copied to every copy. What protects a lake is soft delete for blobs and containers, which keeps deleted data for a number of days. On a flat account, versioning also keeps earlier versions of overwritten blobs, and point-in-time restore builds on versioning and the change feed to restore block blobs to an earlier time. The documentation says both are not available on an account with a hierarchical namespace, which is what an ADLS Gen2 lake has, so there I rely on soft delete, a lock, narrow delete rights and a way to rebuild the data.\n\nFor data that must not change, an immutability policy makes blobs write-once for a period or under a legal hold, even against an owner. A resource lock stops the account being deleted in Resource Manager, but it does not stop blobs inside it being deleted.\n\nI turn these on in the template, because a template starts with the service defaults. I also give cleanup jobs narrow roles and a dry run that lists first.',
         fu: [
           ['What does it cost to keep soft-deleted data?', 'The same as any data in that tier, for the days of the retention period.'],
-          ['Why is a lock not enough?', 'It guards the account in Azure Resource Manager. Data calls go to the storage service, which the lock does not see.']
+          ['Why is a lock not enough?', 'It guards the account in Azure Resource Manager. Data calls go to the storage service, which the lock does not see.'],
+          ['Why not versioning on the lake?', 'The documentation says versioning is not supported on an account with a hierarchical namespace, so the choice is made for you. Check the current page, because support changes.']
         ],
         trap: 'Believing that geo-redundant storage is a backup.',
-        real: 'Describe a time soft delete or versioning saved data, or would have.'
+        real: 'Describe a time soft delete saved data, or would have.'
       }),
 
       B.recap({
@@ -592,7 +607,7 @@
           'Lay out the lake in **containers for zones and date partitions**, with **Parquet files of 100 MB or more**.',
           'Write safely with **`overwrite=False`, ETags and leases**. The **ETag is a version token**, not a hash.',
           'Pick **redundancy** and a **tier** by what you can rebuild and how often you read, and read the **minimum days**.',
-          'Turn on **soft delete and versioning**. A **SAS** is a signed URL, and editing it breaks the signature.'
+          'Turn on **soft delete** for blobs and containers. A **SAS** is a signed URL, and editing it breaks the signature.'
         ],
         lines: [
           'A name is a string, and I page every listing.',

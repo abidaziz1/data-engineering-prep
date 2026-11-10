@@ -742,7 +742,7 @@
         return [
           'A dedicated SQL pool always stores a table in 60 distributions. HASH picks the distribution from one column, so the choice of column is the choice of how even the 60 are. I took the 600,000 Brewline orders and spread them with a stand-in hash, because Synapse does not publish its own. Pick a column and read the 60 bars.',
           'Now a join. The orders table joins to customers on customer_id. Pick how each table is spread, and see whether the pool must move rows before it can join. Movement is the thing that makes a warehouse query slow.',
-          'Why did customer_id come out lopsided? A few customers order far more than the rest, and every order of one customer lands on one distribution. This table ranks the columns from the real data.'
+          'Why is customer_id less even than order_id? A few customers order far more than the rest, and every order of one customer lands on one distribution. This table ranks the columns from the real data.'
         ][i];
       },
       mood: function (s, i) { return i === 2 ? 'oops' : 'think'; },

@@ -900,11 +900,13 @@ def sql_challenge(sid, sol):
 for sid in SQL_CHALLENGES:
     sql_challenge(sid, code_of(sid, 'sol'))
 
-# m7-ch: the OPENROWSET challenge cannot run in DuckDB as written. Its result is the recorded one (month totals of the real Parquet files).
-by_month = real['tables']['synapse.by_month']
-shown = RES['m7-ch']['res'][0]['rows']
-expect([[r[0], r[1].replace(',', ''), r[2]] for r in shown] == [[str(r[0]), str(r[1]), '%.2f' % float(r[2]) if '.' in str(r[2]) else str(r[2])] for r in by_month['rows']] or len(shown) == len(by_month['rows']),
-       'm7-ch: the months on screen are not the recorded ones', 'SQL solutions run in DuckDB')
+# m7: the OPENROWSET statements cannot run in DuckDB as written. Their results are the recorded month totals of the real Parquet files (DuckDB over pyarrow files).
+rec = real['tables']['synapse.by_month']['rows']
+money = lambda v: '%.2f' % v
+expect(RES['m7-openrowset']['result'][0]['rows'] == [[r[0], format(r[1], ','), money(r[2])] for r in rec], 'm7-openrowset: the months on screen are not the recorded totals', 'SQL solutions run in DuckDB')
+expect(RES['m7-ch']['res'][0]['rows'] == [[r[0][-2:], format(r[1], ','), money(r[2])] for r in rec], 'm7-ch: the months on screen are not the recorded totals', 'SQL solutions run in DuckDB')
+march = [r for r in rec if r[0] == '2026-03'][0]
+expect(RES['m7-filepath']['result'][0]['rows'] == [[format(march[1], ','), money(march[2])]], 'm7-filepath: the March totals on screen are not the recorded ones', 'SQL solutions run in DuckDB')
 
 # m11-ch: KQL, computed again in Python from the rows shown
 rows = RES['m11-ch']['data'][0]['rows']

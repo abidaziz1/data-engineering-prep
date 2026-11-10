@@ -305,6 +305,19 @@
         cols: 1
       }),
 
+      B.talk({
+        id: 'm13-stacks', t: 3, src: 'docs', title: 'Deployment stacks and template specs',
+        say: 'Complete mode is risky and Incremental leaves strays. Press Next for what a deployment stack adds.',
+        items: [
+          ['A set that is managed together', 'A deployment stack remembers the resources that a template created, and treats them as one set. You update the stack, and you choose what happens to a resource that is no longer in the template.', 'Manage the set.'],
+          ['The leftovers', 'On an update, resources that left the template can be detached, which leaves them alone, or deleted. The options in the command line are `detachAll`, `deleteResources` and `deleteAll`.', 'Detach or delete.'],
+          ['Deny settings', 'A stack can also put a deny assignment on its resources, `denyDelete` or `denyWriteAndDelete`, with a list of principals and actions that are left out. A hand-made change then fails at once, instead of becoming drift.', 'Block the hand-made change.'],
+          ['Template specs', 'A template spec stores a versioned template in Azure, so that teams deploy it by its resource id without copying files. A stack can be created from one.', 'A versioned template in Azure.'],
+          ['Where it fits', 'Microsoft names stacks and template specs as the replacements of Azure Blueprints, which is being retired. Stacks became generally available in 2024 according to the announcement. Check the current page for limits.', 'The Blueprints replacement.']
+        ],
+        cols: 1
+      }),
+
       B.decide({
         id: 'm13-dec', t: 2, src: 'docs', title: 'Decision: how should a change reach production?',
         scenario: 'Six engineers run the platform. Changes go to production from **laptops** with the Azure CLI, using a **shared account**. A change to the lake firewall is due this week, and last month a deployment removed a rule that someone had added by hand.',

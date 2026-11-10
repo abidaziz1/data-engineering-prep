@@ -295,6 +295,18 @@
         pick: 'Pause the pool **outside business hours**, and start it for the **nightly load**. Keep the schedule in a pipeline, with an alert if the pool is on when it should be paused.'
       }),
 
+      B.talk({
+        id: 'm8-bigpool', t: 3, src: 'docs', title: 'Four features for a big pool',
+        say: 'Four features pay off only at scale, and each one has a catch. Press Next for them.',
+        items: [
+          ['Partitions', 'A table can be cut by a range, usually a date, with `RANGE RIGHT`. It helps when you load or delete a whole range. But every partition is cut again into 60 distributions, and a columnstore wants about a million rows in each piece, which is tens of millions of rows for a partition. Too many partitions make small, poor rowgroups.', 'Fewer partitions than you think.'],
+          ['Ordered columnstore', 'A clustered columnstore index can be created with an order on some columns, so that rows with close values sit together and filters can skip rowgroups. A rebuild is offline and runs a partition at a time, and a reorganize does not sort again.', 'Sorted rowgroups can be skipped.'],
+          ['Materialized views', 'A materialized view stores the result of a query and keeps it up to date as the base tables change. The optimizer can use it for a query that does not name it. It costs storage and load time.', 'A stored answer the optimizer can use.'],
+          ['Result set caching', 'Switched on for a database with `ALTER DATABASE ... SET RESULT_SET_CACHING ON`, it returns the stored answer to an identical query while the data has not changed. Check the current rules for its size and for when it is cleared.', 'Same query, same data, same answer.']
+        ],
+        cols: 1
+      }),
+
       B.decide({
         id: 'm8-dec', t: 2, src: 'docs', title: 'Decision: where should the orders warehouse live?',
         scenario: 'Brewline has **600,000 orders** now and expects **8 million** by next year. Twelve analysts run dashboards in business hours. The team knows T-SQL and has two engineers. Finance wants a bill that is easy to predict.',

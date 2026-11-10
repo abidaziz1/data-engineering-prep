@@ -289,6 +289,18 @@
         cols: 1
       }),
 
+      B.talk({
+        id: 'm9-schema', t: 3, src: 'docs', title: 'Schema Registry: agree on the shape of an event',
+        say: 'A new field in an event can break a reader without a word. Press Next for the registry that Event Hubs offers.',
+        items: [
+          ['The problem', 'Producers and readers must agree on the shape of an event. When one team adds or renames a field and a reader is not told, the reader fails, or it reads wrong values and nobody notices.', 'Agree on the shape.'],
+          ['Schema groups', 'Event Hubs has a schema registry on the Standard tier and above. A namespace holds schema groups, each a separate place for a set of schemas, with a serialization type and a compatibility mode that is checked when a new version is added.', 'A place for schemas.'],
+          ['Formats and modes', 'Avro is the format that the documentation leads with, and JSON schema was described as in preview when this was written. The modes include Backward, Forward and None, and some pages list more. Read the current page.', 'Check the formats and modes.'],
+          ['How a client uses it', 'An encoder in the client library registers the schema and records its id with each event, and a reader looks the schema up by that id. The event stays small, and its shape stays checked.', 'The schema id travels with the event.']
+        ],
+        cols: 1
+      }),
+
       B.decide({
         id: 'm9-dec', t: 2, src: 'rec', title: 'Decision: which partition key for the order events?',
         scenario: 'The order events go to an event hub with **4 partitions**. A reader builds the state of each customer\'s orders, so the **events of one customer must be read in order**. Peak load is 2,000 events a second, and you want all four readers busy.',

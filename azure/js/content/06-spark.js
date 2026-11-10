@@ -214,6 +214,18 @@
         call: { k: 'tip', h: 'Other open table formats exist.', t: 'Apache Iceberg and Apache Hudi do similar work with their own metadata. On Azure, Delta is the format that Databricks, Synapse Spark and Fabric write by default. Check the format that your tools read before you choose.' }
       }),
 
+      B.talk({
+        id: 'm6-delta-extras', t: 3, src: 'docs', title: 'Three Delta features to know by name',
+        say: 'Three newer Delta features come up in interviews. Press Next for what each one does and what to check first.',
+        items: [
+          ['Change data feed', 'With the table property `delta.enableChangeDataFeed = true`, Delta records row-level changes from that moment on. A reader can ask for them, and each row says insert, update_preimage, update_postimage or delete. It is off by default, and VACUUM removes old change data as well.', 'A feed of row changes.'],
+          ['Deletion vectors', 'To delete or update one row, Delta can mark the row as deleted in a small side file and rewrite the data file later. Row-level changes get cheaper. A reader has to support the feature before it can read such a table.', 'Mark now, rewrite later.'],
+          ['Liquid clustering', 'An alternative to partitioning and Z-ordering. You name the clustering columns with `CLUSTER BY`, and you can change them later without rewriting the data. The writers have to support the table feature.', 'Clustering you can change.'],
+          ['Check your runtime', 'The lessons ran Delta Lake ' + META.delta + ' on a laptop. Synapse Spark, Fabric and Databricks ship their own versions, so read what the one you use supports before you rely on a feature.', 'The version decides.']
+        ],
+        cols: 1
+      }),
+
       B.term({
         id: 'm6-folder', t: 1, src: 'rec', title: 'What the silver folder looks like',
         say: 'Here is the silver table right after its first write. It is one data file and one log entry. Then I merged a late file into it, and you can see what the folder looks like after.',

@@ -259,6 +259,18 @@
         cols: 1
       }),
 
+      B.talk({
+        id: 'm12-export', t: 3, src: 'docs', title: 'Cost data as files in the lake',
+        say: 'The bill is data, so a data team can keep it in the lake. Press Next for how.',
+        items: [
+          ['Exports', 'Cost Management can write your cost data to a storage account on a schedule, daily, weekly or monthly, as CSV or Parquet files. The scope can be a subscription, a resource group, a management group or a billing account.', 'The bill as files.'],
+          ['Why a data team wants it', 'Files in the lake can be queried with the tools that you use for orders. A serverless query over the cost files tells you which service, tag or resource group grew, and a pipeline can join the cost with business numbers such as the cost for each order.', 'Query the bill like any data.'],
+          ['Freshness', 'Cost data can arrive a day or two late, so a daily file can miss the latest usage. Check how fresh the files are before you build an alert on them.', 'Late data, early alert.'],
+          ['Setup', 'The export has to be allowed to write to the account, past its firewall too. Read the current page for the exact setup, because the identity and the network rules are the usual reason an export fails.', 'Let the export in.']
+        ],
+        cols: 1
+      }),
+
       B.decide({
         id: 'm12-dec', t: 2, src: 'docs', title: 'Decision: the bill is twice what was planned',
         scenario: 'The Brewline month is **' + usd(T0, 0) + '**, double the plan. The dedicated pool is **' + usd(SORTED[0][1], 0) + '**, the log workspace **' + usd(SORTED[1][1], 0) + '** and the lake storage **' + usd(SORTED[2][1], 0) + '**. The pool runs 24 hours a day, and queries come only in business hours. Finance wants a **first step this week**.',
