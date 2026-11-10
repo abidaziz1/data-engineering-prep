@@ -390,4 +390,36 @@
       { id: 'd7', a: 'prd', b: 'drf', d: 'M250 235 H190' }
     ]
   };
+
+  /* ------------------------------------------------------------------ */
+  /* 14. A lakehouse: bronze, silver and gold, Spark, and a catalog       */
+  /* ------------------------------------------------------------------ */
+  S.lakehouse = {
+    w: 1100, h: 560, label: 'A lakehouse on Azure: sources land files in the bronze zone of the lake, Spark reads one zone and writes the next as Delta tables, first silver and then gold, SQL and Power BI read the gold tables, and a catalog names every table and controls who may read it',
+    groups: [
+      { id: 'g_lake', x: 195, y: 15, w: 680, h: 235, t: 'ADLS GEN2 LAKE  stbrewlinelakeprod', c: 'raw' }
+    ],
+    nodes: [
+      { id: 'src', x: 0, y: 90, w: 150, h: 110, t: 'Sources', ss: ['Data Factory', 'Event Hubs'], c: 'src' },
+      { id: 'br', x: 215, y: 70, w: 190, h: 150, t: 'Bronze', ss: ['files as they arrived', 'CSV, JSON, Avro'], c: 'raw' },
+      { id: 'sv', x: 435, y: 70, w: 190, h: 150, t: 'Silver', ss: ['clean and typed', 'Delta tables'], c: 'int' },
+      { id: 'gd', x: 655, y: 70, w: 190, h: 150, t: 'Gold', ss: ['tables for questions', 'Delta tables'], c: 'mart' },
+      { id: 'bi', x: 915, y: 90, w: 175, h: 110, t: 'SQL, Power BI', ss: ['read the gold tables'], c: 'con' },
+      { id: 'sp', x: 215, y: 320, w: 630, h: 110, t: 'Spark', ss: ['Databricks, Synapse Spark or Fabric', 'reads one zone, writes the next'], c: 'air' },
+      { id: 'ct', x: 215, y: 480, w: 875, h: 64, t: 'Catalog', s: 'names, owners, access and lineage for every table', c: 'qual', k: 'chip' }
+    ],
+    edges: [
+      { id: 'l1', a: 'src', b: 'br', d: 'M150 145 H215', n: 1, bx: 183, by: 117, pk: 1 },
+      { id: 'l2', a: 'br', b: 'sp', d: 'M300 220 V320', n: 2, bx: 330, by: 270, pk: 1 },
+      { id: 'l3', a: 'sp', b: 'sv', d: 'M500 320 V220', n: 3, bx: 530, by: 270, pk: 1 },
+      { id: 'l4', a: 'sv', b: 'sp', d: 'M565 220 V320', n: 4, bx: 595, by: 270, pk: 1 },
+      { id: 'l4b', a: 'sp', b: 'gd', d: 'M760 320 V220', n: 4, nb: true, pk: 1 },
+      { id: 'l5', a: 'gd', b: 'bi', d: 'M845 145 H915', n: 5, bx: 880, by: 117, pk: 1 },
+      { id: 'l6', a: 'sp', b: 'ct', d: 'M530 430 V480', n: 6, bx: 560, by: 455, pk: 1 }
+    ],
+    tags: [
+      { id: 'tg_run', x: 872, y: 336, t: 'paid while it runs', c: 'mon' },
+      { id: 'tg_log', x: 872, y: 380, t: 'a log in each table', c: 'snap' }
+    ]
+  };
 })();

@@ -1147,6 +1147,64 @@ LAB.real = {
     }
    ]
   },
+  "delta.commit0": {
+   "actions": [
+    "commitInfo",
+    "metaData",
+    "protocol",
+    "add"
+   ]
+  },
+  "delta.commit1": {
+   "actions": [
+    "commitInfo",
+    "add",
+    "add",
+    "add",
+    "add",
+    "remove"
+   ]
+  },
+  "delta.optimize": {
+   "added": 1,
+   "files_after": 1,
+   "files_before": 20,
+   "parquet_files_on_disk_after": 21,
+   "removed": 20,
+   "rows": 2000
+  },
+  "delta.schema": {
+   "after": [
+    "order_id",
+    "status",
+    "total_eur",
+    "placed_at",
+    "order_date",
+    "country",
+    "source_file",
+    "channel"
+   ],
+   "before": [
+    "order_id",
+    "status",
+    "total_eur",
+    "placed_at",
+    "order_date",
+    "country",
+    "source_file"
+   ],
+   "error_class": "_LEGACY_ERROR_TEMP_DELTA_0007"
+  },
+  "delta.time_travel": {
+   "o3_v0": "COMPLETED",
+   "o3_v1": "CANCELLED",
+   "v0_rows": 5,
+   "v1_rows": 6
+  },
+  "delta.vacuum": {
+   "default_retention_hours": 168,
+   "dry_run_files": 20
+  },
   "emulator.gaps": {
    "not_probed": [
     "versioning",
@@ -1832,6 +1890,51 @@ LAB.real = {
     "LIST the container"
    ]
   },
+  "spark.ansi": {
+   "cast_with_ansi_off": [
+    "10.50",
+    "NULL"
+   ],
+   "default_in_this_version": "true",
+   "try_cast": [
+    "10.50",
+    "NULL"
+   ]
+  },
+  "spark.join": {
+   "broadcast_default_bytes": 10485760
+  },
+  "spark.layers": {
+   "bronze_files": 2,
+   "bronze_rows": 7,
+   "gold_rows": 4,
+   "quarantine_rows": 1,
+   "silver_rows": 5
+  },
+  "spark.ops": {
+   "detail": "DESCRIBE DETAIL delta.`{path}`",
+   "history": "DESCRIBE HISTORY delta.`{path}`",
+   "optimize": "OPTIMIZE delta.`{path}`",
+   "vacuum_dry": "VACUUM delta.`{path}` RETAIN 0 HOURS DRY RUN",
+   "vacuum_short": "VACUUM delta.`{path}` RETAIN 0 HOURS"
+  },
+  "spark.prune": {
+   "partitions_in_table": 3,
+   "scan_with_filter": [
+    {
+     "numFiles": 2,
+     "numOutputRows": 2,
+     "numPartitions": 1
+    }
+   ],
+   "scan_without_filter": [
+    {
+     "numFiles": 5,
+     "numOutputRows": 7,
+     "numPartitions": 3
+    }
+   ]
+  },
   "synapse.columns": {
    "bytes_by_column": {
     "channel": 153138,
@@ -2175,15 +2278,23 @@ LAB.real = {
   "adf/pl_missing_sink.json": "{\n  \"name\": \"pl_missing_sink\",\n  \"properties\": {\n    \"description\": \"Copy the orders that changed since the last run from Azure SQL into the raw zone of the lake as Parquet, then move the watermark.\",\n    \"parameters\": {\n      \"run_date\": {\n        \"type\": \"String\",\n        \"defaultValue\": \"2026-03-14\"\n      }\n    },\n    \"activities\": [\n      {\n        \"name\": \"GetWatermark\",\n        \"type\": \"Lookup\",\n        \"typeProperties\": {\n          \"source\": {\n            \"type\": \"AzureSqlSource\",\n            \"sqlReaderQuery\": \"SELECT last_value FROM etl.watermark WHERE table_name = 'orders'\"\n          },\n          \"dataset\": {\n            \"referenceName\": \"ds_sql_meta\",\n            \"type\": \"DatasetReference\"\n          },\n          \"firstRowOnly\": true\n        },\n        \"policy\": {\n          \"timeout\": \"0.00:10:00\",\n          \"retry\": 1,\n          \"retryIntervalInSeconds\": 30\n        }\n      },\n      {\n        \"name\": \"CopyOrders\",\n        \"type\": \"Copy\",\n        \"dependsOn\": [\n          {\n            \"activity\": \"GetWatermark\",\n            \"dependencyConditions\": [\n              \"Succeeded\"\n            ]\n          }\n        ],\n        \"typeProperties\": {\n          \"source\": {\n            \"type\": \"AzureSqlSource\",\n            \"sqlReaderQuery\": {\n              \"value\": \"SELECT * FROM dbo.orders WHERE modified_at > '@{activity('GetWatermark').output.firstRow.last_value}' AND modified_at <= '@{pipeline().TriggerTime}'\",\n              \"type\": \"Expression\"\n            }\n          },\n          \"dataIntegrationUnits\": 4\n        },\n        \"inputs\": [\n          {\n            \"referenceName\": \"ds_sql_orders\",\n            \"type\": \"DatasetReference\"\n          }\n        ],\n        \"outputs\": [\n          {\n            \"referenceName\": \"ds_lake_raw_orders\",\n            \"type\": \"DatasetReference\",\n            \"parameters\": {\n              \"run_date\": \"@pipeline().parameters.run_date\"\n            }\n          }\n        ],\n        \"policy\": {\n          \"timeout\": \"0.01:00:00\",\n          \"retry\": 2,\n          \"retryIntervalInSeconds\": 60\n        }\n      },\n      {\n        \"name\": \"AdvanceWatermark\",\n        \"type\": \"SqlServerStoredProcedure\",\n        \"dependsOn\": [\n          {\n            \"activity\": \"CopyOrders\",\n            \"dependencyConditions\": [\n              \"Succeeded\"\n            ]\n          }\n        ],\n        \"typeProperties\": {\n          \"storedProcedureName\": \"etl.set_watermark\",\n          \"storedProcedureParameters\": {\n            \"table_name\": {\n              \"value\": \"orders\",\n              \"type\": \"String\"\n            },\n            \"new_value\": {\n              \"value\": {\n                \"value\": \"@pipeline().TriggerTime\",\n                \"type\": \"Expression\"\n              },\n              \"type\": \"DateTime\"\n            }\n          }\n        },\n        \"linkedServiceName\": {\n          \"referenceName\": \"ls_sql_meta\",\n          \"type\": \"LinkedServiceReference\"\n        }\n      }\n    ]\n  }\n}",
   "adf/pl_orders_daily.json": "{\n  \"name\": \"pl_orders_daily\",\n  \"properties\": {\n    \"description\": \"Copy the orders that changed since the last run from Azure SQL into the raw zone of the lake as Parquet, then move the watermark.\",\n    \"parameters\": {\n      \"run_date\": { \"type\": \"String\", \"defaultValue\": \"2026-03-14\" }\n    },\n    \"activities\": [\n      {\n        \"name\": \"GetWatermark\",\n        \"type\": \"Lookup\",\n        \"typeProperties\": {\n          \"source\": {\n            \"type\": \"AzureSqlSource\",\n            \"sqlReaderQuery\": \"SELECT last_value FROM etl.watermark WHERE table_name = 'orders'\"\n          },\n          \"dataset\": { \"referenceName\": \"ds_sql_meta\", \"type\": \"DatasetReference\" },\n          \"firstRowOnly\": true\n        },\n        \"policy\": { \"timeout\": \"0.00:10:00\", \"retry\": 1, \"retryIntervalInSeconds\": 30 }\n      },\n      {\n        \"name\": \"CopyOrders\",\n        \"type\": \"Copy\",\n        \"dependsOn\": [ { \"activity\": \"GetWatermark\", \"dependencyConditions\": [ \"Succeeded\" ] } ],\n        \"typeProperties\": {\n          \"source\": {\n            \"type\": \"AzureSqlSource\",\n            \"sqlReaderQuery\": {\n              \"value\": \"SELECT * FROM dbo.orders WHERE modified_at > '@{activity('GetWatermark').output.firstRow.last_value}' AND modified_at <= '@{pipeline().TriggerTime}'\",\n              \"type\": \"Expression\"\n            }\n          },\n          \"sink\": {\n            \"type\": \"ParquetSink\",\n            \"storeSettings\": { \"type\": \"AzureBlobFSWriteSettings\" }\n          },\n          \"dataIntegrationUnits\": 4\n        },\n        \"inputs\": [ { \"referenceName\": \"ds_sql_orders\", \"type\": \"DatasetReference\" } ],\n        \"outputs\": [ { \"referenceName\": \"ds_lake_raw_orders\", \"type\": \"DatasetReference\", \"parameters\": { \"run_date\": \"@pipeline().parameters.run_date\" } } ],\n        \"policy\": { \"timeout\": \"0.01:00:00\", \"retry\": 2, \"retryIntervalInSeconds\": 60 }\n      },\n      {\n        \"name\": \"AdvanceWatermark\",\n        \"type\": \"SqlServerStoredProcedure\",\n        \"dependsOn\": [ { \"activity\": \"CopyOrders\", \"dependencyConditions\": [ \"Succeeded\" ] } ],\n        \"typeProperties\": {\n          \"storedProcedureName\": \"etl.set_watermark\",\n          \"storedProcedureParameters\": {\n            \"table_name\": { \"value\": \"orders\", \"type\": \"String\" },\n            \"new_value\": { \"value\": { \"value\": \"@pipeline().TriggerTime\", \"type\": \"Expression\" }, \"type\": \"DateTime\" }\n          }\n        },\n        \"linkedServiceName\": { \"referenceName\": \"ls_sql_meta\", \"type\": \"LinkedServiceReference\" }\n      }\n    ]\n  }\n}",
   "adf/pl_unknown_activity.json": "{\n  \"name\": \"pl_unknown_activity\",\n  \"properties\": {\n    \"description\": \"Copy the orders that changed since the last run from Azure SQL into the raw zone of the lake as Parquet, then move the watermark.\",\n    \"parameters\": {\n      \"run_date\": {\n        \"type\": \"String\",\n        \"defaultValue\": \"2026-03-14\"\n      }\n    },\n    \"activities\": [\n      {\n        \"name\": \"GetWatermark\",\n        \"type\": \"Lookup\",\n        \"typeProperties\": {\n          \"source\": {\n            \"type\": \"AzureSqlSource\",\n            \"sqlReaderQuery\": \"SELECT last_value FROM etl.watermark WHERE table_name = 'orders'\"\n          },\n          \"dataset\": {\n            \"referenceName\": \"ds_sql_meta\",\n            \"type\": \"DatasetReference\"\n          },\n          \"firstRowOnly\": true\n        },\n        \"policy\": {\n          \"timeout\": \"0.00:10:00\",\n          \"retry\": 1,\n          \"retryIntervalInSeconds\": 30\n        }\n      },\n      {\n        \"name\": \"CopyOrders\",\n        \"type\": \"CopyData\",\n        \"dependsOn\": [\n          {\n            \"activity\": \"GetWatermark\",\n            \"dependencyConditions\": [\n              \"Succeeded\"\n            ]\n          }\n        ],\n        \"typeProperties\": {\n          \"source\": {\n            \"type\": \"AzureSqlSource\",\n            \"sqlReaderQuery\": {\n              \"value\": \"SELECT * FROM dbo.orders WHERE modified_at > '@{activity('GetWatermark').output.firstRow.last_value}' AND modified_at <= '@{pipeline().TriggerTime}'\",\n              \"type\": \"Expression\"\n            }\n          },\n          \"sink\": {\n            \"type\": \"ParquetSink\",\n            \"storeSettings\": {\n              \"type\": \"AzureBlobFSWriteSettings\"\n            }\n          },\n          \"dataIntegrationUnits\": 4\n        },\n        \"inputs\": [\n          {\n            \"referenceName\": \"ds_sql_orders\",\n            \"type\": \"DatasetReference\"\n          }\n        ],\n        \"outputs\": [\n          {\n            \"referenceName\": \"ds_lake_raw_orders\",\n            \"type\": \"DatasetReference\",\n            \"parameters\": {\n              \"run_date\": \"@pipeline().parameters.run_date\"\n            }\n          }\n        ],\n        \"policy\": {\n          \"timeout\": \"0.01:00:00\",\n          \"retry\": 2,\n          \"retryIntervalInSeconds\": 60\n        }\n      },\n      {\n        \"name\": \"AdvanceWatermark\",\n        \"type\": \"SqlServerStoredProcedure\",\n        \"dependsOn\": [\n          {\n            \"activity\": \"CopyOrders\",\n            \"dependencyConditions\": [\n              \"Succeeded\"\n            ]\n          }\n        ],\n        \"typeProperties\": {\n          \"storedProcedureName\": \"etl.set_watermark\",\n          \"storedProcedureParameters\": {\n            \"table_name\": {\n              \"value\": \"orders\",\n              \"type\": \"String\"\n            },\n            \"new_value\": {\n              \"value\": {\n                \"value\": \"@pipeline().TriggerTime\",\n                \"type\": \"Expression\"\n              },\n              \"type\": \"DateTime\"\n            }\n          }\n        },\n        \"linkedServiceName\": {\n          \"referenceName\": \"ls_sql_meta\",\n          \"type\": \"LinkedServiceReference\"\n        }\n      }\n    ]\n  }\n}",
+  "delta/00000000000000000000.json": "{\n  \"commitInfo\": {\n    \"timestamp\": 1773478200000,\n    \"operation\": \"WRITE\",\n    \"operationParameters\": {\n      \"mode\": \"ErrorIfExists\",\n      \"partitionBy\": \"[]\"\n    },\n    \"operationMetrics\": {\n      \"numFiles\": \"1\",\n      \"numOutputRows\": \"5\",\n      \"numOutputBytes\": \"2414\"\n    }\n  }\n}\n{\n  \"metaData\": {\n    \"id\": \"<table-id>\",\n    \"format\": {\n      \"provider\": \"parquet\",\n      \"options\": {}\n    },\n    \"schemaString\": \"order_id string, status string, total_eur decimal(10,2), placed_at timestamp, order_date date, country string, source_file string\",\n    \"partitionColumns\": [],\n    \"configuration\": {},\n    \"createdTime\": 1773478200000\n  }\n}\n{\n  \"protocol\": {\n    \"minReaderVersion\": 1,\n    \"minWriterVersion\": 2\n  }\n}\n{\n  \"add\": {\n    \"path\": \"part-00000-<uuid1>-c000.snappy.parquet\",\n    \"partitionValues\": {},\n    \"size\": 2414,\n    \"modificationTime\": 1773478200000,\n    \"dataChange\": true,\n    \"stats\": {\"numRecords\": 5, \"minValues\": {\"order_id\": \"O1\", \"total_eur\": 7.75}, \"maxValues\": {\"order_id\": \"O6\", \"total_eur\": 20.0}}\n  }\n}",
+  "delta/00000000000000000001.json": "{\n  \"commitInfo\": {\n    \"timestamp\": 1773478200000,\n    \"operation\": \"MERGE\",\n    \"operationParameters\": {\n      \"predicate\": \"[\\\"(order_id = order_id)\\\"]\",\n      \"matchedPredicates\": \"[{\\\"actionType\\\":\\\"update\\\"}]\",\n      \"notMatchedPredicates\": \"[{\\\"actionType\\\":\\\"insert\\\"}]\",\n      \"notMatchedBySourcePredicates\": \"[]\"\n    },\n    \"readVersion\": 0,\n    \"operationMetrics\": {\n      \"numTargetRowsCopied\": \"4\",\n      \"numTargetRowsDeleted\": \"0\",\n      \"numTargetRowsUpdated\": \"1\",\n      \"numTargetFilesAdded\": \"4\",\n      \"numTargetRowsInserted\": \"1\",\n      \"numOutputRows\": \"6\",\n      \"numSourceRows\": \"2\",\n      \"numTargetFilesRemoved\": \"1\"\n    }\n  }\n}\n{\n  \"add\": {\n    \"path\": \"part-00000-<uuid2>-c000.snappy.parquet\",\n    \"partitionValues\": {},\n    \"size\": 2303,\n    \"modificationTime\": 1773478200000,\n    \"dataChange\": true,\n    \"stats\": {\"numRecords\": 1, \"minValues\": {\"order_id\": \"O6\", \"total_eur\": 7.75}, \"maxValues\": {\"order_id\": \"O6\", \"total_eur\": 7.75}}\n  }\n}\n{\n  \"add\": {\n    \"path\": \"part-00001-<uuid3>-c000.snappy.parquet\",\n    \"partitionValues\": {},\n    \"size\": 2303,\n    \"modificationTime\": 1773478200000,\n    \"dataChange\": true,\n    \"stats\": {\"numRecords\": 1, \"minValues\": {\"order_id\": \"O5\", \"total_eur\": 20.0}, \"maxValues\": {\"order_id\": \"O5\", \"total_eur\": 20.0}}\n  }\n}\n{\n  \"add\": {\n    \"path\": \"part-00002-<uuid4>-c000.snappy.parquet\",\n    \"partitionValues\": {},\n    \"size\": 2348,\n    \"modificationTime\": 1773478200000,\n    \"dataChange\": true,\n    \"stats\": {\"numRecords\": 3, \"minValues\": {\"order_id\": \"O1\", \"total_eur\": 10.5}, \"maxValues\": {\"order_id\": \"O7\", \"total_eur\": 12.0}}\n  }\n}\n{\n  \"add\": {\n    \"path\": \"part-00003-<uuid5>-c000.snappy.parquet\",\n    \"partitionValues\": {},\n    \"size\": 2301,\n    \"modificationTime\": 1773478200000,\n    \"dataChange\": true,\n    \"stats\": {\"numRecords\": 1, \"minValues\": {\"order_id\": \"O3\", \"total_eur\": 8.25}, \"maxValues\": {\"order_id\": \"O3\", \"total_eur\": 8.25}}\n  }\n}\n{\n  \"remove\": {\n    \"path\": \"part-00000-<uuid1>-c000.snappy.parquet\",\n    \"deletionTimestamp\": 1773478200000,\n    \"dataChange\": true,\n    \"extendedFileMetadata\": true,\n    \"partitionValues\": {},\n    \"size\": 2414,\n    \"stats\": {\"numRecords\": 5}\n  }\n}",
   "eventgrid/blob_created.json": "{\n  \"topic\": \"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-brewline-data-prod/providers/Microsoft.Storage/storageAccounts/stbrewlinelakeprod\",\n  \"subject\": \"/blobServices/default/containers/raw/blobs/orders/dt=2026-03-14/orders-0001.json\",\n  \"eventType\": \"Microsoft.Storage.BlobCreated\",\n  \"id\": \"831e1650-001e-001b-66ab-eeb76e069631\",\n  \"data\": {\n    \"api\": \"PutBlob\",\n    \"clientRequestId\": \"6d79dbfb-0e37-4fc4-981f-442c9ca65760\",\n    \"requestId\": \"831e1650-001e-001b-66ab-eeb76e000000\",\n    \"eTag\": \"\\\"0x8DC4A1B2C3D4E5F\\\"\",\n    \"contentType\": \"application/json\",\n    \"contentLength\": 524288,\n    \"blobType\": \"BlockBlob\",\n    \"url\": \"https://stbrewlinelakeprod.blob.core.windows.net/raw/orders/dt=2026-03-14/orders-0001.json\",\n    \"sequencer\": \"00000000000004420000000000028963\",\n    \"storageDiagnostics\": {\n      \"batchId\": \"b68529f3-68cd-4744-baa4-3c0498ec19f0\"\n    }\n  },\n  \"dataVersion\": \"\",\n  \"metadataVersion\": \"1\",\n  \"eventTime\": \"2026-03-14T09:00:05.1234567Z\"\n}",
   "func/conftest.py": "import importlib\nimport os\nimport uuid\n\nimport pytest\nfrom azure.storage.blob import BlobServiceClient\n\nCONNECTION = os.environ[\"LAKE_CONNECTION\"]       # set by the recorder: the storage emulator\n\n\n@pytest.fixture()\ndef lake(monkeypatch):\n    \"\"\"Two fresh containers in the emulator, and the handler module pointed at them.\"\"\"\n    suffix = uuid.uuid4().hex[:8]\n    svc = BlobServiceClient.from_connection_string(CONNECTION)\n    raw, curated = \"raw\" + suffix, \"curated\" + suffix\n    svc.create_container(raw)\n    svc.create_container(curated)\n    monkeypatch.setenv(\"SUMMARY_CONTAINER\", curated)\n    import handler\n    importlib.reload(handler)\n    handler.svc, handler.RAW, handler.CURATED = svc, raw, curated\n    yield handler\n",
   "func/event.json": "[\n  {\n    \"topic\": \"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-brewline-data-prod/providers/Microsoft.Storage/storageAccounts/stbrewlinelakeprod\",\n    \"subject\": \"/blobServices/default/containers/raw/blobs/orders/dt=2026-03-14/orders-0001.json\",\n    \"eventType\": \"Microsoft.Storage.BlobCreated\",\n    \"id\": \"831e1650-001e-001b-66ab-eeb76e069631\",\n    \"data\": {\n      \"api\": \"PutBlob\",\n      \"clientRequestId\": \"6d79dbfb-0e37-4fc4-981f-442c9ca65760\",\n      \"requestId\": \"831e1650-001e-001b-66ab-eeb76e000000\",\n      \"eTag\": \"\\\"0x8DC4A1B2C3D4E5F\\\"\",\n      \"contentType\": \"application/json\",\n      \"contentLength\": 524288,\n      \"blobType\": \"BlockBlob\",\n      \"url\": \"https://stbrewlinelakeprod.blob.core.windows.net/raw/orders/dt=2026-03-14/orders-0001.json\",\n      \"sequencer\": \"00000000000004420000000000028963\",\n      \"storageDiagnostics\": { \"batchId\": \"b68529f3-68cd-4744-baa4-3c0498ec19f0\" }\n    },\n    \"dataVersion\": \"\",\n    \"metadataVersion\": \"1\",\n    \"eventTime\": \"2026-03-14T09:00:05.1234567Z\"\n  }\n]\n",
   "func/handler.py": "\"\"\"Brewline: when a raw order file lands in Blob Storage, write a small summary next to the curated data.\n\nRuns as an Event Grid triggered Azure Function. Two details matter in production:\n  1. The event names the blob in its subject, for example\n     /blobServices/default/containers/raw/blobs/orders/dt=2026-03-14/orders-0001.json\n     The blob name is everything after /blobs/, and it contains slashes.\n  2. Event Grid delivers each event at least once, so the write must be safe to repeat.\n\"\"\"\nimport json\nimport os\n\nimport azure.functions as func\nfrom azure.core.exceptions import ResourceExistsError\nfrom azure.identity import DefaultAzureCredential\nfrom azure.storage.blob import BlobServiceClient\n\nOUT_CONTAINER = os.environ.get(\"SUMMARY_CONTAINER\", \"curated\")\n\n\ndef lake():\n    \"\"\"One client for the lake. In Azure it signs in as the managed identity of the function app.\n    The tests set LAKE_CONNECTION and talk to the storage emulator instead.\"\"\"\n    conn = os.environ.get(\"LAKE_CONNECTION\")\n    if conn:\n        return BlobServiceClient.from_connection_string(conn)\n    return BlobServiceClient(os.environ[\"LAKE_URL\"], credential=DefaultAzureCredential())\n\n\ndef summarize(lines):\n    orders = [json.loads(line) for line in lines if line.strip()]\n    kept = [o for o in orders if o[\"status\"] != \"CANCELLED\"]\n    return {\"orders\": len(orders), \"revenue_eur\": round(sum(o[\"total_eur\"] for o in kept), 2)}\n\n\ndef split_subject(subject):\n    head, _, name = subject.partition(\"/blobs/\")\n    return head.rsplit(\"/\", 1)[-1], name\n\n\ndef process(event):\n    container, name = split_subject(event.subject)\n    svc = lake()\n    body = svc.get_blob_client(container, name).download_blob().readall().decode()\n    summary = summarize(body.splitlines())\n    out = svc.get_blob_client(OUT_CONTAINER, \"order_summaries/\" + name.replace(\"/\", \"_\") + \".json\")\n    try:\n        out.upload_blob(json.dumps(summary), overwrite=False)\n        status = \"written\"\n    except ResourceExistsError:\n        status = \"already done\"\n    return {\"blob\": name, \"status\": status, **summary}\n\n\napp = func.FunctionApp()\n\n\n@app.event_grid_trigger(arg_name=\"event\")\ndef on_raw_order_file(event: func.EventGridEvent):\n    process(event)\n",
   "func/handler_bug.py": "\"\"\"Brewline: when a raw order file lands in Blob Storage, write a small summary next to the curated data.\n\nRuns as an Event Grid triggered Azure Function. Two details matter in production:\n  1. The event names the blob in its subject, for example\n     /blobServices/default/containers/raw/blobs/orders/dt=2026-03-14/orders-0001.json\n     The blob name is everything after /blobs/, and it contains slashes.\n  2. Event Grid delivers each event at least once, so the write must be safe to repeat.\n\"\"\"\nimport json\nimport os\n\nimport azure.functions as func\nfrom azure.core.exceptions import ResourceExistsError\nfrom azure.identity import DefaultAzureCredential\nfrom azure.storage.blob import BlobServiceClient\n\nOUT_CONTAINER = os.environ.get(\"SUMMARY_CONTAINER\", \"curated\")\n\n\ndef lake():\n    \"\"\"One client for the lake. In Azure it signs in as the managed identity of the function app.\n    The tests set LAKE_CONNECTION and talk to the storage emulator instead.\"\"\"\n    conn = os.environ.get(\"LAKE_CONNECTION\")\n    if conn:\n        return BlobServiceClient.from_connection_string(conn)\n    return BlobServiceClient(os.environ[\"LAKE_URL\"], credential=DefaultAzureCredential())\n\n\ndef summarize(lines):\n    orders = [json.loads(line) for line in lines if line.strip()]\n    kept = [o for o in orders if o[\"status\"] != \"CANCELLED\"]\n    return {\"orders\": len(orders), \"revenue_eur\": round(sum(o[\"total_eur\"] for o in kept), 2)}\n\n\ndef split_subject(subject):\n    parts = subject.split(\"/\")\n    return parts[4], parts[-1]\n\n\ndef process(event):\n    container, name = split_subject(event.subject)\n    svc = lake()\n    body = svc.get_blob_client(container, name).download_blob().readall().decode()\n    summary = summarize(body.splitlines())\n    out = svc.get_blob_client(OUT_CONTAINER, \"order_summaries/\" + name.replace(\"/\", \"_\") + \".json\")\n    try:\n        out.upload_blob(json.dumps(summary), overwrite=False)\n        status = \"written\"\n    except ResourceExistsError:\n        status = \"already done\"\n    return {\"blob\": name, \"status\": status, **summary}\n\n\napp = func.FunctionApp()\n\n\n@app.event_grid_trigger(arg_name=\"event\")\ndef on_raw_order_file(event: func.EventGridEvent):\n    process(event)\n",
-  "func/test_handler.py": "import datetime\nimport json\n\nimport azure.functions as func\n\nORDERS = [\n    {\"order_id\": \"O-5001\", \"status\": \"COMPLETED\", \"total_eur\": 11.5},\n    {\"order_id\": \"O-5002\", \"status\": \"COMPLETED\", \"total_eur\": 8.0},\n    {\"order_id\": \"O-5003\", \"status\": \"CANCELLED\", \"total_eur\": 30.0},\n]\n\n\ndef blob_created(container, name):\n    \"\"\"The part of an Event Grid BlobCreated event that the handler reads: the subject.\"\"\"\n    return func.EventGridEvent(\n        id=\"831e1650-001e-001b-66ab-eeb76e069631\",\n        data={\"api\": \"PutBlob\", \"contentType\": \"application/json\", \"blobType\": \"BlockBlob\"},\n        topic=\"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-brewline-data-prod/providers/Microsoft.Storage/storageAccounts/stbrewlinelakeprod\",\n        subject=\"/blobServices/default/containers/\" + container + \"/blobs/\" + name,\n        event_type=\"Microsoft.Storage.BlobCreated\",\n        event_time=datetime.datetime(2026, 3, 14, 9, 0, 5, tzinfo=datetime.timezone.utc),\n        data_version=\"\",\n    )\n\n\ndef put_orders(lake, name):\n    body = \"\\n\".join(json.dumps(o) for o in ORDERS)\n    lake.svc.get_blob_client(lake.RAW, name).upload_blob(body, overwrite=True)\n\n\ndef test_summary_skips_cancelled_orders(lake):\n    put_orders(lake, \"orders-0001.json\")\n    out = lake.process(blob_created(lake.RAW, \"orders-0001.json\"))\n    assert out[\"orders\"] == 3\n    assert out[\"revenue_eur\"] == 19.5\n\n\ndef test_a_repeated_event_writes_nothing_twice(lake):\n    put_orders(lake, \"orders-0001.json\")\n    event = blob_created(lake.RAW, \"orders-0001.json\")\n    first = lake.process(event)[\"status\"]\n    second = lake.process(event)[\"status\"]\n    assert (first, second) == (\"written\", \"already done\")\n\n\ndef test_the_blob_name_keeps_its_folders(lake):\n    put_orders(lake, \"orders/dt=2026-03-14/orders-0002.json\")\n    out = lake.process(blob_created(lake.RAW, \"orders/dt=2026-03-14/orders-0002.json\"))\n    assert out[\"blob\"] == \"orders/dt=2026-03-14/orders-0002.json\"\n"
+  "func/test_handler.py": "import datetime\nimport json\n\nimport azure.functions as func\n\nORDERS = [\n    {\"order_id\": \"O-5001\", \"status\": \"COMPLETED\", \"total_eur\": 11.5},\n    {\"order_id\": \"O-5002\", \"status\": \"COMPLETED\", \"total_eur\": 8.0},\n    {\"order_id\": \"O-5003\", \"status\": \"CANCELLED\", \"total_eur\": 30.0},\n]\n\n\ndef blob_created(container, name):\n    \"\"\"The part of an Event Grid BlobCreated event that the handler reads: the subject.\"\"\"\n    return func.EventGridEvent(\n        id=\"831e1650-001e-001b-66ab-eeb76e069631\",\n        data={\"api\": \"PutBlob\", \"contentType\": \"application/json\", \"blobType\": \"BlockBlob\"},\n        topic=\"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-brewline-data-prod/providers/Microsoft.Storage/storageAccounts/stbrewlinelakeprod\",\n        subject=\"/blobServices/default/containers/\" + container + \"/blobs/\" + name,\n        event_type=\"Microsoft.Storage.BlobCreated\",\n        event_time=datetime.datetime(2026, 3, 14, 9, 0, 5, tzinfo=datetime.timezone.utc),\n        data_version=\"\",\n    )\n\n\ndef put_orders(lake, name):\n    body = \"\\n\".join(json.dumps(o) for o in ORDERS)\n    lake.svc.get_blob_client(lake.RAW, name).upload_blob(body, overwrite=True)\n\n\ndef test_summary_skips_cancelled_orders(lake):\n    put_orders(lake, \"orders-0001.json\")\n    out = lake.process(blob_created(lake.RAW, \"orders-0001.json\"))\n    assert out[\"orders\"] == 3\n    assert out[\"revenue_eur\"] == 19.5\n\n\ndef test_a_repeated_event_writes_nothing_twice(lake):\n    put_orders(lake, \"orders-0001.json\")\n    event = blob_created(lake.RAW, \"orders-0001.json\")\n    first = lake.process(event)[\"status\"]\n    second = lake.process(event)[\"status\"]\n    assert (first, second) == (\"written\", \"already done\")\n\n\ndef test_the_blob_name_keeps_its_folders(lake):\n    put_orders(lake, \"orders/dt=2026-03-14/orders-0002.json\")\n    out = lake.process(blob_created(lake.RAW, \"orders/dt=2026-03-14/orders-0002.json\"))\n    assert out[\"blob\"] == \"orders/dt=2026-03-14/orders-0002.json\"\n",
+  "spark/bronze_orders_0600.csv": "order_id;status;total;placed_at;country\nO1;completed ;10,50;14/03/2026 08:30;NL\nO2;PENDING;12,00;14/03/2026 08:45;DE\nO3;Completed;8,25;14/03/2026 08:58;NL\nO4;COMPLETED;n/a;14/03/2026 09:10;FR\n",
+  "spark/bronze_orders_1200.csv": "order_id;status;total;placed_at;country\nO2;COMPLETED;12,00;14/03/2026 08:45;DE\nO5;COMPLETED;20,00;15/03/2026 07:20;DE\nO6;COMPLETED;7,75;15/03/2026 07:40;NL\n",
+  "spark/bronze_orders_late.csv": "order_id;status;total;placed_at;country\nO3;CANCELLED;8,25;14/03/2026 08:58;NL\nO7;COMPLETED;11,00;16/03/2026 10:05;NL\n",
+  "spark/medallion.py": "from pyspark.sql import functions as F, Window\n\ndef to_bronze(spark, folder):\n    # keep every column as text, and remember which file each row came from\n    return (spark.read.option(\"header\", True).option(\"sep\", \";\").csv(folder)\n            .select(\"*\", F.col(\"_metadata.file_name\").alias(\"source_file\")))\n\ndef to_silver(bronze):\n    cleaned = (bronze\n        .withColumn(\"status\", F.upper(F.trim(\"status\")))\n        .withColumn(\"total_eur\", F.expr(\"try_cast(replace(total, ',', '.') as decimal(10,2))\"))\n        .withColumn(\"placed_at\", F.to_timestamp(\"placed_at\", \"dd/MM/yyyy HH:mm\"))\n        .withColumn(\"order_date\", F.to_date(\"placed_at\")))\n    newest_first = Window.partitionBy(\"order_id\").orderBy(F.col(\"source_file\").desc())\n    good = (cleaned.filter(\"total_eur IS NOT NULL\")\n            .withColumn(\"rn\", F.row_number().over(newest_first)).filter(\"rn = 1\")\n            .select(\"order_id\", \"status\", \"total_eur\", \"placed_at\", \"order_date\", \"country\", \"source_file\"))\n    bad = (cleaned.filter(\"total_eur IS NULL\").withColumn(\"reason\", F.lit(\"total is not a number\"))\n           .select(\"order_id\", \"total\", \"reason\", \"source_file\"))\n    return good, bad\n\ndef to_gold(silver):\n    return (silver.filter(\"status = 'COMPLETED'\")\n            .groupBy(\"order_date\", \"country\")\n            .agg(F.count(\"*\").alias(\"orders\"), F.sum(\"total_eur\").alias(\"revenue_eur\"))\n            .orderBy(\"order_date\", \"country\"))\n",
+  "spark/merge.py": "from delta.tables import DeltaTable\n\nsilver = DeltaTable.forPath(spark, \"silver/orders\")\n(silver.alias(\"t\")\n    .merge(new_rows.alias(\"s\"), \"t.order_id = s.order_id\")\n    .whenMatchedUpdateAll()\n    .whenNotMatchedInsertAll()\n    .execute())\n"
  },
  "meta": {
   "account": "stbrewlinelakeprod",
+  "ansi_default": "true",
   "azure-core": "1.41.0",
   "azure-eventgrid": "4.22.1",
   "azure-eventhub": "5.15.1",
@@ -2194,17 +2305,350 @@ LAB.real = {
   "azure-storage-blob": "12.31.1",
   "azure-storage-queue": "12.18.1",
   "azurite": "3.37.0",
+  "delta-spark": "4.0.1",
   "duckdb": "2.0.0",
+  "java": "21.0.12.1",
   "kusto_language_service": "12.4.1",
   "node": "22.23.4",
   "note": "Recorded by azure/verify/capture_az.py with the Azure SDK for Python against Azurite (a storage emulator), azure-identity, DuckDB, pyarrow and pytest on one machine. Nothing ran on Azure.",
   "pyarrow": "26.0.1",
+  "pyspark": "4.0.1",
   "pytest": "9.2.0",
   "python": "3.13.18",
   "region": "westeurope",
+  "spark": "4.0.1",
   "sqlglot": "30.30.0"
  },
  "tables": {
+  "delta.at_v0": {
+   "cols": [
+    "order_id",
+    "status",
+    "total_eur",
+    "placed_at",
+    "order_date",
+    "country",
+    "source_file"
+   ],
+   "rows": [
+    [
+     "O1",
+     "COMPLETED",
+     "10.50",
+     "2026-03-14 08:30",
+     "2026-03-14",
+     "NL",
+     "orders_20260314_0600.csv"
+    ],
+    [
+     "O2",
+     "COMPLETED",
+     "12.00",
+     "2026-03-14 08:45",
+     "2026-03-14",
+     "DE",
+     "orders_20260314_1200.csv"
+    ],
+    [
+     "O3",
+     "COMPLETED",
+     "8.25",
+     "2026-03-14 08:58",
+     "2026-03-14",
+     "NL",
+     "orders_20260314_0600.csv"
+    ],
+    [
+     "O5",
+     "COMPLETED",
+     "20.00",
+     "2026-03-15 07:20",
+     "2026-03-15",
+     "DE",
+     "orders_20260314_1200.csv"
+    ],
+    [
+     "O6",
+     "COMPLETED",
+     "7.75",
+     "2026-03-15 07:40",
+     "2026-03-15",
+     "NL",
+     "orders_20260314_1200.csv"
+    ]
+   ]
+  },
+  "delta.at_v1": {
+   "cols": [
+    "order_id",
+    "status",
+    "total_eur",
+    "placed_at",
+    "order_date",
+    "country",
+    "source_file"
+   ],
+   "rows": [
+    [
+     "O1",
+     "COMPLETED",
+     "10.50",
+     "2026-03-14 08:30",
+     "2026-03-14",
+     "NL",
+     "orders_20260314_0600.csv"
+    ],
+    [
+     "O2",
+     "COMPLETED",
+     "12.00",
+     "2026-03-14 08:45",
+     "2026-03-14",
+     "DE",
+     "orders_20260314_1200.csv"
+    ],
+    [
+     "O3",
+     "CANCELLED",
+     "8.25",
+     "2026-03-14 08:58",
+     "2026-03-14",
+     "NL",
+     "orders_20260315_0600.csv"
+    ],
+    [
+     "O5",
+     "COMPLETED",
+     "20.00",
+     "2026-03-15 07:20",
+     "2026-03-15",
+     "DE",
+     "orders_20260314_1200.csv"
+    ],
+    [
+     "O6",
+     "COMPLETED",
+     "7.75",
+     "2026-03-15 07:40",
+     "2026-03-15",
+     "NL",
+     "orders_20260314_1200.csv"
+    ],
+    [
+     "O7",
+     "COMPLETED",
+     "11.00",
+     "2026-03-16 10:05",
+     "2026-03-16",
+     "NL",
+     "orders_20260315_0600.csv"
+    ]
+   ]
+  },
+  "delta.history": {
+   "cols": [
+    "version",
+    "operation",
+    "mode",
+    "metrics"
+   ],
+   "rows": [
+    [
+     "0",
+     "WRITE",
+     "ErrorIfExists",
+     "numOutputRows 5, numFiles 1"
+    ],
+    [
+     "1",
+     "MERGE",
+     "",
+     "numOutputRows 6, numTargetRowsInserted 1, numTargetRowsUpdated 1, numTargetFilesAdded 4, numTargetFilesRemoved 1"
+    ],
+    [
+     "2",
+     "WRITE",
+     "Append",
+     "numOutputRows 1, numFiles 1"
+    ]
+   ]
+  },
+  "spark.bronze": {
+   "cols": [
+    "order_id",
+    "status",
+    "total",
+    "placed_at",
+    "country",
+    "source_file"
+   ],
+   "rows": [
+    [
+     "O1",
+     "completed ",
+     "10,50",
+     "14/03/2026 08:30",
+     "NL",
+     "orders_20260314_0600.csv"
+    ],
+    [
+     "O2",
+     "PENDING",
+     "12,00",
+     "14/03/2026 08:45",
+     "DE",
+     "orders_20260314_0600.csv"
+    ],
+    [
+     "O3",
+     "Completed",
+     "8,25",
+     "14/03/2026 08:58",
+     "NL",
+     "orders_20260314_0600.csv"
+    ],
+    [
+     "O4",
+     "COMPLETED",
+     "n/a",
+     "14/03/2026 09:10",
+     "FR",
+     "orders_20260314_0600.csv"
+    ],
+    [
+     "O2",
+     "COMPLETED",
+     "12,00",
+     "14/03/2026 08:45",
+     "DE",
+     "orders_20260314_1200.csv"
+    ],
+    [
+     "O5",
+     "COMPLETED",
+     "20,00",
+     "15/03/2026 07:20",
+     "DE",
+     "orders_20260314_1200.csv"
+    ],
+    [
+     "O6",
+     "COMPLETED",
+     "7,75",
+     "15/03/2026 07:40",
+     "NL",
+     "orders_20260314_1200.csv"
+    ]
+   ]
+  },
+  "spark.gold": {
+   "cols": [
+    "order_date",
+    "country",
+    "orders",
+    "revenue_eur"
+   ],
+   "rows": [
+    [
+     "2026-03-14",
+     "DE",
+     "1",
+     "12.00"
+    ],
+    [
+     "2026-03-14",
+     "NL",
+     "2",
+     "18.75"
+    ],
+    [
+     "2026-03-15",
+     "DE",
+     "1",
+     "20.00"
+    ],
+    [
+     "2026-03-15",
+     "NL",
+     "1",
+     "7.75"
+    ]
+   ]
+  },
+  "spark.quarantine": {
+   "cols": [
+    "order_id",
+    "total",
+    "reason",
+    "source_file"
+   ],
+   "rows": [
+    [
+     "O4",
+     "n/a",
+     "total is not a number",
+     "orders_20260314_0600.csv"
+    ]
+   ]
+  },
+  "spark.silver": {
+   "cols": [
+    "order_id",
+    "status",
+    "total_eur",
+    "placed_at",
+    "order_date",
+    "country",
+    "source_file"
+   ],
+   "rows": [
+    [
+     "O1",
+     "COMPLETED",
+     "10.50",
+     "2026-03-14 08:30",
+     "2026-03-14",
+     "NL",
+     "orders_20260314_0600.csv"
+    ],
+    [
+     "O2",
+     "COMPLETED",
+     "12.00",
+     "2026-03-14 08:45",
+     "2026-03-14",
+     "DE",
+     "orders_20260314_1200.csv"
+    ],
+    [
+     "O3",
+     "COMPLETED",
+     "8.25",
+     "2026-03-14 08:58",
+     "2026-03-14",
+     "NL",
+     "orders_20260314_0600.csv"
+    ],
+    [
+     "O5",
+     "COMPLETED",
+     "20.00",
+     "2026-03-15 07:20",
+     "2026-03-15",
+     "DE",
+     "orders_20260314_1200.csv"
+    ],
+    [
+     "O6",
+     "COMPLETED",
+     "7.75",
+     "2026-03-15 07:40",
+     "2026-03-15",
+     "NL",
+     "orders_20260314_1200.csv"
+    ]
+   ]
+  },
   "synapse.by_month": {
    "cols": [
     "month",
@@ -2231,8 +2675,17 @@ LAB.real = {
   }
  },
  "text": {
+  "delta.listing_by_day": "silver/orders_by_day/\n    _delta_log/00000000000000000000.crc\n    _delta_log/00000000000000000000.json\n    order_date=2026-03-14/part-00000-<uuid1>.c000.snappy.parquet\n    order_date=2026-03-14/part-00001-<uuid2>.c000.snappy.parquet\n    order_date=2026-03-15/part-00000-<uuid3>.c000.snappy.parquet\n    order_date=2026-03-15/part-00001-<uuid4>.c000.snappy.parquet\n    order_date=2026-03-16/part-00000-<uuid5>.c000.snappy.parquet",
+  "delta.listing_v0": "silver/orders/\n    _delta_log/00000000000000000000.crc\n    _delta_log/00000000000000000000.json\n    part-00000-<uuid1>-c000.snappy.parquet",
+  "delta.listing_v1": "silver/orders/\n    _delta_log/00000000000000000000.crc\n    _delta_log/00000000000000000000.json\n    _delta_log/00000000000000000001.crc\n    _delta_log/00000000000000000001.json\n    part-00000-<uuid1>-c000.snappy.parquet\n    part-00000-<uuid2>-c000.snappy.parquet\n    part-00001-<uuid3>-c000.snappy.parquet\n    part-00002-<uuid4>-c000.snappy.parquet\n    part-00003-<uuid5>-c000.snappy.parquet",
+  "delta.schema_error": "[_LEGACY_ERROR_TEMP_DELTA_0007] A schema mismatch detected when writing to the Delta table (Table ID: <table-id>).\nTo enable schema migration using DataFrameWriter or DataStreamWriter, please set:\n'.option(\"mergeSchema\", \"true\")'.\nFor other operations, set the session configuration\nspark.databricks.delta.schema.autoMerge.enabled to \"true\". See the documentation\nspecific to the operation for details.\n\nTable schema:\nroot\n-- order_id: string (nullable = true)\n-- status: string (nullable = true)\n-- total_eur: decimal(10,2) (nullable = true)\n-- placed_at: timestamp (nullable = true)\n-- order_date: date (nullable = true)\n-- country: string (nullable = true)\n-- source_file: string (nullable = true)\n\n\nData schema:\nroot\n-- order_id: string (nullable = true)\n-- status: string (nullable = true)\n-- total_eur: decimal(10,2) (nullable = true)\n-- placed_at: timestamp (nullable = true)\n-- order_date: date (nullable = true)\n-- country: string (nullable = true)\n-- source_file: string (nullable = true)\n-- channel: string (nullable = true)",
+  "delta.vacuum_error": "requirement failed: Are you sure you would like to vacuum files with such a low retention period? If you have\nwriters that are currently writing to this table, there is a risk that you may corrupt the\nstate of your Delta table.\n\nIf you are certain that there are no operations being performed on this table, such as\ninsert/upsert/delete/optimize, then you may turn off this check by setting:\nspark.databricks.delta.retentionDurationCheck.enabled = false\n\nIf you are not sure, please use a value not less than \"168 hours\".",
   "identity.chain": "DefaultAzureCredential failed to retrieve a token from the included credentials.\nAttempted credentials:\n\tEnvironmentCredential: EnvironmentCredential authentication unavailable. Environment variables are not fully configured.\nVisit https://aka.ms/azsdk/python/identity/environmentcredential/troubleshoot to troubleshoot this issue.\n\tWorkloadIdentityCredential: WorkloadIdentityCredential authentication unavailable. The workload options are not fully configured. See the troubleshooting guide for more information: https://aka.ms/azsdk/python/identity/workloadidentitycredential/troubleshoot. Missing required arguments: 'tenant_id', 'client_id', 'token_file_path'.\n\tManagedIdentityCredential: ManagedIdentityCredential authentication unavailable.\n\tSharedTokenCacheCredential: SharedTokenCacheCredential authentication unavailable. No accounts were found in the cache.\n\tVisualStudioCodeCredential: VisualStudioCodeCredential requires the 'azure-identity-broker' package to be installed. You must also ensure you have the Azure Resources extension installed and have signed in to Azure via Visual Studio Code.\n\tAzureCliCredential: Azure CLI not found on path\n\tAzurePowerShellCredential: PowerShell is not installed\n\tAzureDeveloperCliCredential: Azure Developer CLI could not be found. Please visit https://aka.ms/azure-dev for installation instructions and then,once installed, authenticate to your Azure account using 'azd auth login'.\n\tBrokerCredential: InteractiveBrowserBrokerCredential unavailable. The 'azure-identity-broker' package is required to use brokered authentication.\nTo mitigate this issue, please refer to the troubleshooting guidelines here at https://aka.ms/azsdk/python/identity/defaultazurecredential/troubleshoot.",
   "sas.url": "https://stbrewlinelakeprod.blob.core.windows.net/raw/orders/dt=2026-03-14/orders-0001.json?st=2026-03-14T07%3A55%3A00Z&se=2026-03-14T08%3A55%3A00Z&sp=r&spr=https&sv=2026-10-06&sr=b&sig=Zf4B4iiVtwmLngqUx4nOCCCcIVLzbj0zkZzJpiTFCO8%3D",
+  "spark.ansi_error": "[CAST_INVALID_INPUT] The value 'n/a' of the type \"STRING\" cannot be cast to \"DECIMAL(10,2)\" because it is malformed. Correct the value as per the syntax, or change its target type. Use `try_cast` to tolerate malformed input and return NULL instead. SQLSTATE: 22018",
+  "spark.plan_join_default": "== Physical Plan ==\n*(2) Project [order_id, country_name]\n+- *(2) BroadcastHashJoin [country], [country], Inner, BuildLeft, false\n   :- BroadcastExchange HashedRelationBroadcastMode(List(input[1, string, false]),false)\n   :  +- *(1) Filter isnotnull(country)\n   :     +- *(1) ColumnarToRow\n   :        +- FileScan parquet [order_id,country] ...\n   +- *(2) Filter isnotnull(country)\n      +- *(2) Scan ExistingRDD[country,country_name]",
+  "spark.plan_join_no_broadcast": "== Physical Plan ==\n*(5) Project [order_id, country_name]\n+- *(5) SortMergeJoin [country], [country], Inner\n   :- *(2) Sort [country ASC NULLS FIRST], false, 0\n   :  +- Exchange hashpartitioning(country, 4), ENSURE_REQUIREMENTS\n   :     +- *(1) Filter isnotnull(country)\n   :        +- *(1) ColumnarToRow\n   :           +- FileScan parquet [order_id,country] ...\n   +- *(4) Sort [country ASC NULLS FIRST], false, 0\n      +- Exchange hashpartitioning(country, 4), ENSURE_REQUIREMENTS\n         +- *(3) Filter isnotnull(country)\n            +- *(3) Scan ExistingRDD[country,country_name]",
+  "spark.plan_prune": "== Physical Plan ==\n* Project (3)\n+- * ColumnarToRow (2)\n   +- Scan parquet  (1)\n\n\n(1) Scan parquet\nOutput [3]: [order_id, total_eur, order_date]\nBatched: true\nLocation: PreparedDeltaFileIndex [<table folder>]\nPartitionFilters: [isnotnull(order_date), (order_date = 2026-03-15)]\nReadSchema: struct<order_id:string,total_eur:decimal(10,2)>\n\n(2) ColumnarToRow [codegen id : 1]\nInput [3]: [order_id, total_eur, order_date]\n\n(3) Project [codegen id : 1]\nOutput [2]: [order_id, total_eur]\nInput [3]: [order_id, total_eur, order_date]",
   "synapse.layout_tree": "orders_hive/year=2026/month=01/day=14/part-0.parquet\norders_hive/year=2026/month=01/day=15/part-0.parquet\norders_hive/year=2026/month=01/day=16/part-0.parquet\n...\norders_hive/year=2026/month=03/day=14/part-0.parquet",
   "test.fail": "..F                                                                      [100%]\n== FAILURES ==\n_____________________ test_the_blob_name_keeps_its_folders _____________________\n\nlake = <module 'handler' from 'funcproj/handler.py'>\n\n    def test_the_blob_name_keeps_its_folders(lake):\n        put_orders(lake, \"orders/dt=2026-03-14/orders-0002.json\")\n>       out = lake.process(blob_created(lake.RAW, \"orders/dt=2026-03-14/orders-0002.json\"))\n              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\ntests/test_handler.py:48: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \nhandler.py:43: in process\n    body = svc.get_blob_client(container, name).download_blob().readall().decode()\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    return func(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^\n    return StorageStreamDownloader(**options)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    self._response = self._initial_request()\n                     ^^^^^^^^^^^^^^^^^^^^^^^\n    process_storage_error(error)\n    raise error from None\n    self._clients.blob.download(\n    return func(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^\n    map_error(status_code=response.status_code, response=response, error_map=error_map)\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\nstatus_code = 404\nresponse = <HttpResponse: 404 The specified blob does not exist., Content-Type: application/xml>\nerror_map = {401: <class 'azure.core.exceptions.ClientAuthenticationError'>, 404: <class 'azure.core.exceptions.ResourceNotFoundEr...09: <class 'azure.core.exceptions.ResourceExistsError'>, 304: <class 'azure.core.exceptions.ResourceNotModifiedError'>}\n\n    def map_error(\n        status_code: int,\n        response: _HttpResponseCommonAPI,\n        error_map: Mapping[int, Type[HttpResponseError]],\n    ) -> None:\n        if not error_map:\n            return\n        error_type = error_map.get(status_code)\n        if not error_type:\n            return\n        error = error_type(response=response)\n>       raise error\nE       azure.core.exceptions.ResourceNotFoundError: The specified blob does not exist.\nE       RequestId:<id>\nE       Time:<time>\nE       ErrorCode:BlobNotFound\nE       Content: <?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\nE       <Error>\nE         <Code>BlobNotFound</Code>\nE         <Message>The specified blob does not exist.\nE       RequestId:<id>\nE       Time:<time></Message>\nE       </Error>\n\n== PASSES ==\n== short test summary info ==\nPASSED tests/test_handler.py::test_summary_skips_cancelled_orders\nPASSED tests/test_handler.py::test_a_repeated_event_writes_nothing_twice\nFAILED tests/test_handler.py::test_the_blob_name_keeps_its_folders - azure.co...\n1 failed, 2 passed",
   "test.pass": "...                                                                      [100%]\n== PASSES ==\n== short test summary info ==\nPASSED tests/test_handler.py::test_summary_skips_cancelled_orders\nPASSED tests/test_handler.py::test_a_repeated_event_writes_nothing_twice\nPASSED tests/test_handler.py::test_the_blob_name_keeps_its_folders\n3 passed"

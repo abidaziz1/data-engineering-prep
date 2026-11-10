@@ -9,12 +9,15 @@ Nothing here runs on Azure. The recording comes from:
   azure-eventgrid                           the real parser for Event Grid events
   azure-mgmt-datafactory (9.x)              the SDK models of the Data Factory API, used by adf_check.py to check pipeline files
   DuckDB and pyarrow                        real query and file engines, used for the watermark runs and the Parquet file sizes
+  Apache Spark 4 and Delta Lake (local)     the lakehouse steps of mission 6, run by spark_job.py in an environment that has pyspark and delta-spark
   pytest                                    runs the tests of an Event Grid triggered function against Azurite
 The lessons use Azurite only for behavior that the Azure documentation describes the same way. The README lists what was not checked.
 
-Usage:   python3 azure/verify/capture_az.py [--out azure/js/real.js] [--only blob,sas,queue,identity,eventhubs,eventgrid,functions,adf,synapse,dedicated,kql]
-                                             [--json FILE]
+Usage:   python3 azure/verify/capture_az.py [--out azure/js/real.js] [--only blob,sas,queue,identity,eventhubs,eventgrid,functions,adf,synapse,dedicated,kql,lakehouse]
+                                             [--json FILE] [--spark-python PATH]
 Needs:   pip install -r dev/requirements.txt  and  npm install --prefix azure/verify   (Azurite and the Kusto language service)
+         for the lakehouse section: Java 17 or 21, and an environment with  pip install pyspark==4.0.1 delta-spark==4.0.1
+         (point --spark-python or AZ_SPARK_PYTHON at its python; if you leave it out, this interpreter is tried)
 """
 import argparse
 import atexit
@@ -44,8 +47,9 @@ sys.path.insert(0, str(HERE))
 
 ap = argparse.ArgumentParser()
 ap.add_argument('--out', default=str(HERE.parent / 'js' / 'real.js'))
-ap.add_argument('--only', default='blob,sas,queue,identity,eventhubs,eventgrid,functions,adf,synapse,dedicated,kql')
+ap.add_argument('--only', default='blob,sas,queue,identity,eventhubs,eventgrid,functions,adf,synapse,dedicated,kql,lakehouse')
 ap.add_argument('--json')
+ap.add_argument('--spark-python', default=os.environ.get('AZ_SPARK_PYTHON'))
 args = ap.parse_args()
 ONLY = set(args.only.split(','))
 
@@ -112,7 +116,7 @@ OUT['meta'].update({'azurite': node_pkg_version('azurite'), 'kusto_language_serv
                     'python': sys.version.split()[0], 'node': subprocess.run(['node', '--version'], capture_output=True, text=True).stdout.strip().lstrip('v'),
                     'account': 'stbrewlinelakeprod', 'region': 'westeurope',
                     'note': 'Recorded by azure/verify/capture_az.py with the Azure SDK for Python against Azurite (a storage emulator), azure-identity, DuckDB, '
-                            'pyarrow and pytest on one machine. Nothing ran on Azure.'})
+                            'pyarrow, pytest and a local Apache Spark with Delta Lake on one machine. Nothing ran on Azure.'})
 
 
 def code_of(e):
@@ -904,6 +908,28 @@ def sec_kql():
 
 
 # ---------------------------------------------------------------------------------------------------------------------------
+# The lakehouse steps of mission 6, in a local Apache Spark 4 session with Delta Lake (not Databricks, Synapse or Fabric)
+# ---------------------------------------------------------------------------------------------------------------------------
+def sec_lakehouse():
+    py = args.spark_python or sys.executable
+    probe = subprocess.run([py, '-c', 'import pyspark, delta'], capture_output=True, text=True)
+    if probe.returncode:
+        sys.exit('the lakehouse section needs an interpreter with pyspark and delta-spark (and Java 17 or 21).\n'
+                 'Try:  python3 -m venv /tmp/spark-venv && /tmp/spark-venv/bin/pip install pyspark==4.0.1 delta-spark==4.0.1\n'
+                 'then: python3 azure/verify/capture_az.py --spark-python /tmp/spark-venv/bin/python\n' + probe.stderr[-400:])
+    work = WORK / 'spark'
+    r = subprocess.run([py, str(HERE / 'spark_job.py'), str(work)], capture_output=True, text=True, timeout=900)
+    lines = [l for l in r.stdout.splitlines() if l.startswith('{')]
+    if r.returncode or not lines:
+        sys.exit('spark_job.py failed:\n' + r.stderr[-2000:])
+    res = json.loads(lines[-1])
+    for sec in ('files', 'text', 'tables', 'counts'):
+        for k, v in res[sec].items():
+            put(sec, k, v)
+    OUT['meta'].update({k: v for k, v in res['meta'].items()})
+
+
+# ---------------------------------------------------------------------------------------------------------------------------
 def finish():
     out = pathlib.Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -915,7 +941,7 @@ def finish():
 
 
 SECTIONS = [('blob', sec_blob), ('sas', sec_sas), ('queue', sec_queue), ('identity', sec_identity), ('eventhubs', sec_eventhubs), ('eventgrid', sec_eventgrid),
-            ('functions', sec_functions), ('adf', sec_adf), ('synapse', sec_synapse), ('dedicated', sec_dedicated), ('kql', sec_kql)]
+            ('functions', sec_functions), ('adf', sec_adf), ('synapse', sec_synapse), ('dedicated', sec_dedicated), ('kql', sec_kql), ('lakehouse', sec_lakehouse)]
 
 if __name__ == '__main__':
     for name, fn in SECTIONS:
