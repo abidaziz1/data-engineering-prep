@@ -827,6 +827,17 @@ def sec_synapse():
         'avg_day_file_bytes': round(sum(size[rel(p)] for p in lay['hive']) / len(lay['hive'])),
         'rows_in_busiest_day': max(nrows[rel(p)] for p in lay['hive']), 'rows_in_quietest_day': min(nrows[rel(p)] for p in lay['hive'])})
     counts('synapse.columns', {'bytes_by_column': by_col, 'file': rel(lay['one']), 'row_groups': groups_one})
+    # inside the one sorted file: the statistics of each row group, which let an engine skip a group without reading it
+    md1 = lay['pq'].ParquetFile(lay['one']).metadata
+    di = [i for i in range(md1.num_columns) if md1.schema.column(i).path == 'order_date'][0]
+    rg = []
+    for g in range(md1.num_row_groups):
+        st = md1.row_group(g).column(di).statistics
+        rg.append({'rows': md1.row_group(g).num_rows, 'min': str(st.min), 'max': str(st.max)})
+    one_day = '2026-03-14'
+    hold = [g for g in rg if g['min'] <= one_day <= g['max']]
+    counts('synapse.rowgroups', {'file': rel(lay['one']), 'column': 'order_date', 'sorted_by': 'order_date, order_id', 'groups': rg, 'day': one_day,
+                                 'groups_that_can_hold_the_day': len(hold), 'rows_in_those_groups': sum(g['rows'] for g in hold)})
     tree = []
     for p in sorted(lay['hive'])[:3] + sorted(lay['hive'])[-1:]:
         tree.append(rel(p))

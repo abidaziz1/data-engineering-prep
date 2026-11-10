@@ -245,7 +245,7 @@
       { id: 'y4', a: 'sp', b: 'lk', d: H(770, 380, 850, 270), n: 4, bx: 810, by: 340, pk: 1 }
     ],
     tags: [
-      { id: 'tg_fab', x: 12, y: 330, t: 'Fabric is the successor', c: 'ci' }
+      { id: 'tg_fab', x: 12, y: 330, t: 'investment moves to Fabric', c: 'ci' }
     ]
   };
 

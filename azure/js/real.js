@@ -2256,6 +2256,46 @@ LAB.real = {
     }
    ]
   },
+  "synapse.rowgroups": {
+   "column": "order_date",
+   "day": "2026-03-14",
+   "file": "orders_one/orders.parquet",
+   "groups": [
+    {
+     "max": "2026-01-24",
+     "min": "2026-01-14",
+     "rows": 100352
+    },
+    {
+     "max": "2026-02-03",
+     "min": "2026-01-24",
+     "rows": 100352
+    },
+    {
+     "max": "2026-02-13",
+     "min": "2026-02-03",
+     "rows": 100352
+    },
+    {
+     "max": "2026-02-23",
+     "min": "2026-02-13",
+     "rows": 100352
+    },
+    {
+     "max": "2026-03-05",
+     "min": "2026-02-23",
+     "rows": 100352
+    },
+    {
+     "max": "2026-03-14",
+     "min": "2026-03-05",
+     "rows": 98240
+    }
+   ],
+   "groups_that_can_hold_the_day": 1,
+   "rows_in_those_groups": 98240,
+   "sorted_by": "order_date, order_id"
+  },
   "test.summary": {
    "bug": {
     "failed": 1,
@@ -2310,7 +2350,7 @@ LAB.real = {
   "java": "21.0.12.1",
   "kusto_language_service": "12.4.1",
   "node": "22.23.4",
-  "note": "Recorded by azure/verify/capture_az.py with the Azure SDK for Python against Azurite (a storage emulator), azure-identity, DuckDB, pyarrow and pytest on one machine. Nothing ran on Azure.",
+  "note": "Recorded by azure/verify/capture_az.py with the Azure SDK for Python against Azurite (a storage emulator), azure-identity, DuckDB, pyarrow, pytest and a local Apache Spark with Delta Lake on one machine. Nothing ran on Azure.",
   "pyarrow": "26.0.1",
   "pyspark": "4.0.1",
   "pytest": "9.2.0",
