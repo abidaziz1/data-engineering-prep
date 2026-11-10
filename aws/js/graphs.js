@@ -198,29 +198,30 @@
   /* 7. Streaming: Kinesis shards and consumers                          */
   /* ------------------------------------------------------------------ */
   S.stream = {
-    w: 1100, h: 520, label: 'A Kinesis data stream: producers send records with a partition key, the key picks a shard, and consumers read each shard in order: a Lambda function, Firehose delivering to S3, and a Flink application',
+    w: 1100, h: 540, label: 'A Kinesis data stream with 4 shards: producers send records with a partition key, the key picks the shard, and every consumer reads all shards, each shard in order: a Lambda function, Firehose delivering to S3, and a Flink application',
     groups: [
-      { id: 'g_ks', x: 330, y: 40, w: 360, h: 380, t: 'STREAM orders, 3 SHARDS', c: 'ing' }
+      { id: 'g_ks', x: 330, y: 30, w: 360, h: 420, t: 'STREAM orders, 4 SHARDS', c: 'ing' }
     ],
     nodes: [
-      { id: 'p1', x: 0, y: 40, w: 250, h: 80, t: 'Website', s: 'click events', c: 'src', k: 'chip' },
-      { id: 'p2', x: 0, y: 160, w: 250, h: 80, t: 'Mobile app', s: 'orders', c: 'src', k: 'chip' },
-      { id: 'p3', x: 0, y: 280, w: 250, h: 80, t: 'DMS', s: 'database changes', c: 'src', k: 'chip' },
-      { id: 'sh0', x: 350, y: 90, w: 320, h: 80, t: 'Shard 0', ss: ['hash keys 0 to a third'], c: 'ing' },
-      { id: 'sh1', x: 350, y: 205, w: 320, h: 80, t: 'Shard 1', ss: ['the middle third'], c: 'ing' },
-      { id: 'sh2', x: 350, y: 320, w: 320, h: 80, t: 'Shard 2', ss: ['the last third'], c: 'ing' },
+      { id: 'p1', x: 0, y: 60, w: 250, h: 80, t: 'Website', s: 'click events', c: 'src', k: 'chip' },
+      { id: 'p2', x: 0, y: 175, w: 250, h: 80, t: 'Mobile app', s: 'orders', c: 'src', k: 'chip' },
+      { id: 'p3', x: 0, y: 290, w: 250, h: 80, t: 'DMS', s: 'database changes', c: 'src', k: 'chip' },
+      { id: 'sh0', x: 350, y: 75, w: 320, h: 80, t: 'Shard 0', ss: ['the first quarter of the hash range'], c: 'ing' },
+      { id: 'sh1', x: 350, y: 170, w: 320, h: 80, t: 'Shard 1', ss: ['the second quarter'], c: 'ing' },
+      { id: 'sh2', x: 350, y: 265, w: 320, h: 80, t: 'Shard 2', ss: ['the third quarter'], c: 'ing' },
+      { id: 'sh3', x: 350, y: 360, w: 320, h: 80, t: 'Shard 3', ss: ['the last quarter'], c: 'ing' },
       { id: 'lam', x: 770, y: 60, w: 320, h: 80, t: 'Lambda', s: 'small, fast reactions', c: 'con', k: 'chip' },
       { id: 'fh', x: 770, y: 175, w: 320, h: 80, t: 'Firehose', s: 'batches into S3', c: 'mart', k: 'chip' },
       { id: 'fl', x: 770, y: 290, w: 320, h: 80, t: 'Managed Flink', s: 'windows and joins', c: 'dbt', k: 'chip' },
-      { id: 'key', x: 0, y: 440, w: 520, h: 56, t: 'MD5 of the partition key picks the shard', c: 'mon', k: 'chip' }
+      { id: 'key', x: 0, y: 474, w: 520, h: 56, t: 'MD5 of the partition key picks the shard', c: 'mon', k: 'chip' }
     ],
     edges: [
-      { id: 'k1', a: 'p1', b: 'sh0', d: H(250, 80, 350, 130), n: 1, bx: 300, by: 88, pk: 1 },
-      { id: 'k1b', a: 'p2', b: 'sh1', d: H(250, 200, 350, 245), n: 1, nb: true, pk: 1 },
-      { id: 'k1c', a: 'p3', b: 'sh2', d: H(250, 320, 350, 360), n: 1, nb: true, pk: 1 },
-      { id: 'k2', a: 'sh0', b: 'lam', d: H(670, 130, 770, 100), n: 2, bx: 720, by: 100, pk: 1 },
-      { id: 'k2b', a: 'sh1', b: 'fh', d: H(670, 245, 770, 215), n: 2, nb: true, pk: 1 },
-      { id: 'k2c', a: 'sh2', b: 'fl', d: H(670, 360, 770, 330), n: 2, nb: true, pk: 1 }
+      { id: 'k1', a: 'p1', b: 'sh0', d: H(250, 100, 350, 115), n: 1, bx: 300, by: 88, pk: 1 },
+      { id: 'k1b', a: 'p2', b: 'sh1', d: H(250, 215, 350, 210), n: 1, nb: true, pk: 1 },
+      { id: 'k1c', a: 'p3', b: 'sh3', d: H(250, 330, 350, 400), n: 1, nb: true, pk: 1 },
+      { id: 'k2', a: 'sh0', b: 'lam', d: 'M690 100 H770', n: 2, bx: 730, by: 78, pk: 1 },
+      { id: 'k2b', a: 'sh1', b: 'fh', d: 'M690 215 H770', n: 2, nb: true, pk: 1 },
+      { id: 'k2c', a: 'sh2', b: 'fl', d: 'M690 330 H770', n: 2, nb: true, pk: 1 }
     ]
   };
 
