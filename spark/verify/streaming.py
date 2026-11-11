@@ -34,8 +34,9 @@ def write_file(in_dir, n):
 def windowed(spark, in_dir, delay='10 minutes'):
     """Orders per store in 10-minute windows of event time, with a watermark that lets a window close."""
     events = spark.readStream.schema(SCHEMA).option('maxFilesPerTrigger', 1).json(in_dir)
-    return (events.withWatermark('event_time', delay).groupBy(F.window('event_time', '10 minutes').alias('w'), 'store_id')
-            .agg(F.count('*').alias('n'), F.sum('amount').alias('total')))
+    if delay is not None:                               # delay=None leaves the watermark out, to show what it is for
+        events = events.withWatermark('event_time', delay)
+    return events.groupBy(F.window('event_time', '10 minutes').alias('w'), 'store_id').agg(F.count('*').alias('n'), F.sum('amount').alias('total'))
 
 
 def rows_of(df):
@@ -84,3 +85,13 @@ def checkpoint_tree(ck_dir):
         else:
             tree[name] = None
     return tree
+
+
+def append_without_watermark(spark, in_dir, ck_dir):
+    """Append mode asks Spark to write a window once, when it is final. Without a watermark Spark cannot know when that is, and it refuses to start."""
+    df = windowed(spark, in_dir, delay=None)
+    try:
+        df.writeStream.outputMode('append').format('noop').option('checkpointLocation', ck_dir).trigger(availableNow=True).start()
+        return 'accepted'
+    except Exception as e:  # noqa: BLE001
+        return str(e).strip().split('\n')[0]

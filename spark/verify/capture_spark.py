@@ -404,6 +404,22 @@ def sec_streaming():
         by_batch[row[0]] = by_batch.get(row[0], 0) + 1
     counts('stream.restart', {'first_run_batches': [b['batch'] for b in o1], 'second_run_batches_that_finished': [b['batch'] for b in o2], 'second_run_failed': bool(e2), 'restart_batches': [b['batch'] for b in o3],
                               'rows_the_sink_got_for_each_batch': {str(k): v for k, v in sorted(by_batch.items())}, 'batch_written_twice': [k for k, v in by_batch.items() if v > 1 and k == 4]})
+    # the same query without a watermark: the state never shrinks, the late row is counted, and append mode is refused
+    d, ck = os.path.join(WORK, 'st-in-n'), os.path.join(WORK, 'st-ck-n')
+    for i in range(len(T.FILES)):
+        T.write_file(d, i)
+    out_n, prog_n, _ = T.run(sp, d, ck, 'update', delay=None)
+    d_u, ck_u = os.path.join(WORK, 'st-in-w'), os.path.join(WORK, 'st-ck-w')
+    for i in range(len(T.FILES)):
+        T.write_file(d_u, i)
+    _, prog_w, _ = T.run(sp, d_u, ck_u, 'update')
+    table('stream.state_growth', ['batch', 'rows in state with a watermark', 'rows in state without one'], [[a['batch'], a['state_rows'], b['state_rows']] for a, b in zip(prog_w, prog_n)])
+    late = [b for b in out_n if b['batch'] == 4]
+    d_a, ck_a = os.path.join(WORK, 'st-in-a'), os.path.join(WORK, 'st-ck-a')
+    for i in range(len(T.FILES)):
+        T.write_file(d_a, i)
+    counts('stream.no_watermark', {'append_mode_error': clean_err(T.append_without_watermark(sp, d_a, ck_a)),
+                                   'batch_4_rows_without_watermark': ['%s %s %d %d' % x for x in late[0]['rows']] if late else [], 'rows_dropped_as_late_without_watermark': sum(p_['dropped_by_watermark'] or 0 for p_ in prog_n)})
     r.stop()
 
 
