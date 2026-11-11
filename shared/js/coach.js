@@ -145,10 +145,152 @@
     '</svg>'
   ].join('');
 
+  /* Ada: a bob, round glasses, a violet jacket and a small badge of linked dots. Same canvas and face position as the others. */
+  var ADA_SVG = [
+    '<svg viewBox="0 0 240 250" class="coach-svg" role="img" aria-label="Coach Ada, your guide" data-mood="happy">',
+    '<defs>',
+    '<linearGradient id="abg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#EDE9FE"/><stop offset="1" stop-color="#FBCFE8"/></linearGradient>',
+    '<clipPath id="aclip"><circle cx="120" cy="125" r="116"/></clipPath>',
+    '</defs>',
+    '<circle cx="120" cy="125" r="116" fill="url(#abg)"/>',
+    '<g clip-path="url(#aclip)">',
+    /* body: a teal jacket over a white shirt */
+    '<path d="M4 252 C10 206 56 186 120 186 C184 186 230 206 236 252 Z" fill="#6D28D9" stroke="#0B1220" stroke-width="4"/>',
+    '<path d="M95 188 L120 230 L145 188 Z" fill="#FFFFFF" stroke="#0B1220" stroke-width="3"/>',
+    '<path d="M95 188 L80 196 L106 236 L120 230 Z" fill="#5B21B6" stroke="#0B1220" stroke-width="3"/>',
+    '<path d="M145 188 L160 196 L134 236 L120 230 Z" fill="#5B21B6" stroke="#0B1220" stroke-width="3"/>',
+    /* a small chart badge on the jacket: three orange bars, the same orange as the data blocks in the diagrams */
+    '<rect x="62" y="204" width="24" height="22" rx="5" fill="#FFFFFF" stroke="#0B1220" stroke-width="2.5"/>',
+    '<path d="M68 220 L80 212 M68 220 L80 222" stroke="#F97316" stroke-width="1.8" fill="none"/><circle cx="68" cy="220" r="2.8" fill="#F97316"/><circle cx="80" cy="212" r="2.8" fill="#F97316"/><circle cx="80" cy="222" r="2.8" fill="#F97316"/>',
+    '</g>',
+    '<g class="head">',
+    '<path d="M103 156 L103 192 Q120 204 137 192 L137 156 Z" fill="#DDAA80" stroke="#0B1220" stroke-width="3.5"/>',
+    /* a bob behind the face */
+    '<path d="M58 124 C46 68 84 34 120 34 C156 34 194 68 182 124 L182 152 C182 164 168 166 164 152 L76 152 C72 166 58 164 58 152 Z" fill="#4A2C2A" stroke="#0B1220" stroke-width="4" stroke-linejoin="round"/>',
+    '<circle cx="72" cy="120" r="9" fill="#F1C9A5" stroke="#0B1220" stroke-width="3.5"/>',
+    '<circle cx="168" cy="120" r="9" fill="#F1C9A5" stroke="#0B1220" stroke-width="3.5"/>',
+    '<ellipse cx="120" cy="114" rx="49" ry="57" fill="#F1C9A5" stroke="#0B1220" stroke-width="4"/>',
+    /* bangs, and a pink clip */
+    '<path d="M72 98 C72 66 98 54 120 54 C142 54 168 66 168 98 C152 84 136 78 120 78 C104 78 88 84 72 98 Z" fill="#4A2C2A" stroke="#0B1220" stroke-width="3.5" stroke-linejoin="round"/>',
+    '<rect x="150" y="60" width="18" height="8" rx="3.5" transform="rotate(-24 159 64)" fill="#EC4899" stroke="#0B1220" stroke-width="2.5"/>',
+    '<circle cx="86" cy="146" r="8" fill="#E8735A" opacity=".3"/><circle cx="154" cy="146" r="8" fill="#E8735A" opacity=".3"/>',
+    '<g class="eyes">',
+    '<ellipse cx="98" cy="118" rx="9" ry="10" fill="#fff" stroke="#0B1220" stroke-width="2.5"/><circle cx="100" cy="119" r="4.8" fill="#0B1220"/>',
+    '<ellipse cx="142" cy="118" rx="9" ry="10" fill="#fff" stroke="#0B1220" stroke-width="2.5"/><circle cx="144" cy="119" r="4.8" fill="#0B1220"/>',
+    '</g>',
+    '<path d="M120 124 Q126 136 118 140" fill="none" stroke="#C48A5E" stroke-width="3.2" stroke-linecap="round"/>',
+    /* round glasses */
+    '<circle cx="98" cy="118" r="16" fill="#fff" fill-opacity=".14" stroke="#0B1220" stroke-width="4.5"/><circle cx="142" cy="118" r="16" fill="#fff" fill-opacity=".14" stroke="#0B1220" stroke-width="4.5"/>',
+    '<path d="M114 117 Q120 112 126 117 M82 116 L70 113 M158 116 L170 113" fill="none" stroke="#0B1220" stroke-width="4.5" stroke-linecap="round"/>',
+    /* moods */
+    '<g class="mood mood-happy">',
+    '<path d="M85 100 Q98 93 112 98 M128 98 Q142 93 155 100" fill="none" stroke="#0B1220" stroke-width="5" stroke-linecap="round"/>',
+    '<path class="mouth-closed" d="M102 150 Q120 168 138 150" fill="none" stroke="#0B1220" stroke-width="4.5" stroke-linecap="round"/>',
+    '<g class="mouth-open"><path d="M100 148 Q120 180 140 148 Z" fill="#7F1D1D" stroke="#0B1220" stroke-width="4" stroke-linejoin="round"/><path d="M109 162 Q120 170 131 162 Q120 157 109 162 Z" fill="#F87171"/></g>',
+    '</g>',
+    '<g class="mood mood-think">',
+    '<path d="M85 94 Q98 85 112 93 M128 102 Q142 100 155 96" fill="none" stroke="#0B1220" stroke-width="5" stroke-linecap="round"/>',
+    '<path d="M106 154 Q120 152 138 148" fill="none" stroke="#0B1220" stroke-width="4.5" stroke-linecap="round"/>',
+    '</g>',
+    '<g class="mood mood-cheer">',
+    '<path d="M85 94 Q98 85 112 93 M128 93 Q142 85 155 94" fill="none" stroke="#0B1220" stroke-width="5" stroke-linecap="round"/>',
+    '<path d="M98 148 Q120 186 142 148 Z" fill="#7F1D1D" stroke="#0B1220" stroke-width="4" stroke-linejoin="round"/><path d="M108 164 Q120 174 132 164 Q120 158 108 164 Z" fill="#F87171"/>',
+    '</g>',
+    '<g class="mood mood-oops">',
+    '<path d="M85 104 Q98 100 112 91 M128 91 Q142 100 155 104" fill="none" stroke="#0B1220" stroke-width="5" stroke-linecap="round"/>',
+    '<path d="M106 158 Q120 146 134 158" fill="none" stroke="#0B1220" stroke-width="4.5" stroke-linecap="round"/>',
+    '</g>',
+    '<g class="mood mood-wow">',
+    '<path d="M85 91 Q98 83 112 91 M128 91 Q142 83 155 91" fill="none" stroke="#0B1220" stroke-width="5" stroke-linecap="round"/>',
+    '<ellipse cx="120" cy="156" rx="9" ry="12" fill="#7F1D1D" stroke="#0B1220" stroke-width="4"/>',
+    '</g>',
+    '</g>',
+    '<g class="extras">',
+    '<text class="q" x="184" y="62" font-size="46" font-weight="800" fill="#0B1220" stroke="#fff" stroke-width="5" paint-order="stroke">?</text>',
+    '<g class="spark"><path d="M200 70 l4 10 10 4 -10 4 -4 10 -4 -10 -10 -4 10 -4z" fill="#F59E0B" stroke="#0B1220" stroke-width="2.5"/><path d="M36 100 l3 8 8 3 -8 3 -3 8 -3 -8 -8 -3 8 -3z" fill="#EC4899" stroke="#0B1220" stroke-width="2.5"/><path d="M206 150 l3 7 7 3 -7 3 -3 7 -3 -7 -7 -3 7 -3z" fill="#22C55E" stroke="#0B1220" stroke-width="2.5"/></g>',
+    '</g>',
+    '<circle cx="120" cy="125" r="116" fill="none" stroke="#0B1220" stroke-width="6"/>',
+    '</svg>'
+  ].join('');
+
+
+  /* Ravi: a yellow cap, a little stubble, a green jacket with a cloud badge, wired earbuds. */
+  var RAVI_SVG = [
+    '<svg viewBox="0 0 240 250" class="coach-svg" role="img" aria-label="Coach Ravi, your guide" data-mood="happy">',
+    '<defs>',
+    '<linearGradient id="rbg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#DCFCE7"/><stop offset="1" stop-color="#FEF9C3"/></linearGradient>',
+    '<clipPath id="rclip"><circle cx="120" cy="125" r="116"/></clipPath>',
+    '</defs>',
+    '<circle cx="120" cy="125" r="116" fill="url(#rbg)"/>',
+    '<g clip-path="url(#rclip)">',
+    /* body: a teal jacket over a white shirt */
+    '<path d="M4 252 C10 206 56 186 120 186 C184 186 230 206 236 252 Z" fill="#15803D" stroke="#0B1220" stroke-width="4"/>',
+    '<path d="M95 188 L120 230 L145 188 Z" fill="#FFFFFF" stroke="#0B1220" stroke-width="3"/>',
+    '<path d="M95 188 L80 196 L106 236 L120 230 Z" fill="#166534" stroke="#0B1220" stroke-width="3"/>',
+    '<path d="M145 188 L160 196 L134 236 L120 230 Z" fill="#166534" stroke="#0B1220" stroke-width="3"/>',
+    /* a small chart badge on the jacket: three orange bars, the same orange as the data blocks in the diagrams */
+    '<rect x="62" y="204" width="24" height="22" rx="5" fill="#FFFFFF" stroke="#0B1220" stroke-width="2.5"/>',
+    '<path d="M66 224 Q62 217 69 215 Q70 208 77 210 Q83 206 85 213 Q89 216 85 224 Z" fill="#60A5FA" stroke="#0B1220" stroke-width="1.8"/>',
+    '</g>',
+    '<g class="head">',
+    '<path d="M103 156 L103 192 Q120 204 137 192 L137 156 Z" fill="#A56A40" stroke="#0B1220" stroke-width="3.5"/>',
+    /* short hair behind the face */
+    '<path d="M62 118 C56 64 90 38 120 38 C150 38 184 64 178 118 C170 96 156 84 120 84 C84 84 70 96 62 118 Z" fill="#1C1917" stroke="#0B1220" stroke-width="4" stroke-linejoin="round"/>',
+    '<circle cx="72" cy="120" r="9" fill="#C98B5F" stroke="#0B1220" stroke-width="3.5"/>',
+    '<circle cx="168" cy="120" r="9" fill="#C98B5F" stroke="#0B1220" stroke-width="3.5"/>',
+    '<ellipse cx="120" cy="114" rx="49" ry="57" fill="#C98B5F" stroke="#0B1220" stroke-width="4"/>',
+    /* a cap in yellow, with a brim, and a little stubble */
+    '<path d="M68 92 C66 54 96 42 120 42 C146 42 174 54 172 92 Z" fill="#FACC15" stroke="#0B1220" stroke-width="4" stroke-linejoin="round"/>',
+    '<path d="M62 94 C100 106 150 106 188 90 C176 98 142 98 120 96 C100 96 80 96 62 94 Z" fill="#EAB308" stroke="#0B1220" stroke-width="3.5" stroke-linejoin="round"/>',
+    '<circle cx="120" cy="68" r="6" fill="#4285F4" stroke="#0B1220" stroke-width="2.5"/>',
+    '<path d="M80 134 C86 168 154 168 160 134 C152 150 138 156 120 156 C102 156 88 150 80 134 Z" fill="#1C1917" opacity=".28"/>',
+    '<circle cx="86" cy="146" r="8" fill="#E8735A" opacity=".3"/><circle cx="154" cy="146" r="8" fill="#E8735A" opacity=".3"/>',
+    '<g class="eyes">',
+    '<ellipse cx="98" cy="118" rx="9" ry="10" fill="#fff" stroke="#0B1220" stroke-width="2.5"/><circle cx="100" cy="119" r="4.8" fill="#0B1220"/>',
+    '<ellipse cx="142" cy="118" rx="9" ry="10" fill="#fff" stroke="#0B1220" stroke-width="2.5"/><circle cx="144" cy="119" r="4.8" fill="#0B1220"/>',
+    '</g>',
+    '<path d="M120 124 Q126 136 118 140" fill="none" stroke="#8A5530" stroke-width="3.2" stroke-linecap="round"/>',
+    /* wired earbuds */
+    '<circle cx="73" cy="126" r="5" fill="#fff" stroke="#0B1220" stroke-width="2.5"/><circle cx="167" cy="126" r="5" fill="#fff" stroke="#0B1220" stroke-width="2.5"/>',
+    '<path d="M71 130 C60 150 70 168 90 172 M169 130 C180 150 170 168 150 172" fill="none" stroke="#0B1220" stroke-width="2.6" stroke-linecap="round"/>',
+    /* moods */
+    '<g class="mood mood-happy">',
+    '<path d="M85 100 Q98 93 112 98 M128 98 Q142 93 155 100" fill="none" stroke="#0B1220" stroke-width="5" stroke-linecap="round"/>',
+    '<path class="mouth-closed" d="M102 150 Q120 168 138 150" fill="none" stroke="#0B1220" stroke-width="4.5" stroke-linecap="round"/>',
+    '<g class="mouth-open"><path d="M100 148 Q120 180 140 148 Z" fill="#7F1D1D" stroke="#0B1220" stroke-width="4" stroke-linejoin="round"/><path d="M109 162 Q120 170 131 162 Q120 157 109 162 Z" fill="#F87171"/></g>',
+    '</g>',
+    '<g class="mood mood-think">',
+    '<path d="M85 94 Q98 85 112 93 M128 102 Q142 100 155 96" fill="none" stroke="#0B1220" stroke-width="5" stroke-linecap="round"/>',
+    '<path d="M106 154 Q120 152 138 148" fill="none" stroke="#0B1220" stroke-width="4.5" stroke-linecap="round"/>',
+    '</g>',
+    '<g class="mood mood-cheer">',
+    '<path d="M85 94 Q98 85 112 93 M128 93 Q142 85 155 94" fill="none" stroke="#0B1220" stroke-width="5" stroke-linecap="round"/>',
+    '<path d="M98 148 Q120 186 142 148 Z" fill="#7F1D1D" stroke="#0B1220" stroke-width="4" stroke-linejoin="round"/><path d="M108 164 Q120 174 132 164 Q120 158 108 164 Z" fill="#F87171"/>',
+    '</g>',
+    '<g class="mood mood-oops">',
+    '<path d="M85 104 Q98 100 112 91 M128 91 Q142 100 155 104" fill="none" stroke="#0B1220" stroke-width="5" stroke-linecap="round"/>',
+    '<path d="M106 158 Q120 146 134 158" fill="none" stroke="#0B1220" stroke-width="4.5" stroke-linecap="round"/>',
+    '</g>',
+    '<g class="mood mood-wow">',
+    '<path d="M85 91 Q98 83 112 91 M128 91 Q142 83 155 91" fill="none" stroke="#0B1220" stroke-width="5" stroke-linecap="round"/>',
+    '<ellipse cx="120" cy="156" rx="9" ry="12" fill="#7F1D1D" stroke="#0B1220" stroke-width="4"/>',
+    '</g>',
+    '</g>',
+    '<g class="extras">',
+    '<text class="q" x="184" y="62" font-size="46" font-weight="800" fill="#0B1220" stroke="#fff" stroke-width="5" paint-order="stroke">?</text>',
+    '<g class="spark"><path d="M200 70 l4 10 10 4 -10 4 -4 10 -4 -10 -10 -4 10 -4z" fill="#F59E0B" stroke="#0B1220" stroke-width="2.5"/><path d="M36 100 l3 8 8 3 -8 3 -3 8 -3 -8 -8 -3 8 -3z" fill="#EC4899" stroke="#0B1220" stroke-width="2.5"/><path d="M206 150 l3 7 7 3 -7 3 -3 7 -3 -7 -7 -3 7 -3z" fill="#22C55E" stroke="#0B1220" stroke-width="2.5"/></g>',
+    '</g>',
+    '<circle cx="120" cy="125" r="116" fill="none" stroke="#0B1220" stroke-width="6"/>',
+    '</svg>'
+  ].join('');
+
+
   /* the registry: add a coach here and pick it in a tutorial's config.js */
   LAB.coaches = {
     sam: { name: 'Sam', svg: SAM_SVG },
-    noor: { name: 'Noor', svg: NOOR_SVG }
+    noor: { name: 'Noor', svg: NOOR_SVG },
+    ada: { name: 'Ada', svg: ADA_SVG },
+    ravi: { name: 'Ravi', svg: RAVI_SVG }
   };
 
   var host, svgEl, timer;
