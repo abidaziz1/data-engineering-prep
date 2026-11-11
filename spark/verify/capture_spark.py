@@ -7,10 +7,11 @@ What is real:      plans, partition and task counts, shuffle sizes, spill, skew,
 What is not:       a cluster (everything runs in one JVM, so there is no network between executors), Spark's own web UI, Kafka, Iceberg, Hudi, YARN,
                    Kubernetes, EMR, Dataproc and Databricks. Those parts of the course are from documentation, and the screens say so.
 
-Usage:   python3 spark/verify/capture_spark.py [--out spark/js/real.js] [--only world,conf,plans,partitions,joins,skew,memory,layout,sqlfun,udfs,streaming,tables,tests,submit,errors] [--json FILE]
+Usage:   python3 spark/verify/capture_spark.py [--out spark/js/real.js] [--only world,conf,plans,partitions,joins,skew,memory,layout,sqlfun,udfs,streaming,tables,tests,submit,errors,eventlog] [--json FILE]
 Needs:   pyspark==4.0.1, delta-spark==4.0.1, pandas<3 (PySpark 4.0 does not import with pandas 3), numpy, pyarrow, pytest, Java 17 or 21. Delta Lake loads its jars with Ivy the first time.
 """
 import argparse
+import glob
 import importlib.metadata as md
 import json
 import os
@@ -27,7 +28,7 @@ sys.path.insert(0, str(HERE))
 
 ap = argparse.ArgumentParser()
 ap.add_argument('--out', default=str(HERE.parent / 'js' / 'real.js'))
-ap.add_argument('--only', default='world,conf,plans,partitions,joins,skew,memory,layout,sqlfun,udfs,streaming,tables,tests,submit,errors')
+ap.add_argument('--only', default='world,conf,plans,partitions,joins,skew,memory,layout,sqlfun,udfs,streaming,tables,tests,submit,errors,eventlog')
 ap.add_argument('--json')
 ap.add_argument('--child', help='run one section in this process and write its recording to --json (used by the parent, so that each section gets its own JVM)')
 args = ap.parse_args()
@@ -173,13 +174,14 @@ def sec_conf():
             ('spark.sql.files.openCostInBytes', 'cost of opening a file'), ('spark.sql.ansi.enabled', 'ANSI SQL rules'), ('spark.sql.parquet.compression.codec', 'Parquet codec'),
             ('spark.sql.sources.partitionOverwriteMode', 'overwrite of partitions'), ('spark.sql.execution.arrow.maxRecordsPerBatch', 'rows in a pandas UDF batch'),
             ('spark.sql.streaming.stateStore.providerClass', 'where streaming state lives')]
+    sp.conf.unset('spark.sql.shuffle.partitions')   # the recorder sets 8 so that small runs stay fast; the table shows what Spark itself ships with
     rows = []
     for k, what in keys:
         try:
             rows.append([k, sp.conf.get(k), what])
         except Exception:  # noqa: BLE001
             pass
-    table('conf.defaults', ['setting', 'value in Spark 4.0.1', 'what it controls'], rows)
+    table('conf.defaults', ['setting', 'default in Spark 4.0.1', 'what it controls'], rows)
     sc = sp.sparkContext
     counts('conf.session', {'version': sp.version, 'master': sc.master, 'default_parallelism_local4': sc.defaultParallelism, 'executors_in_local_mode': 1,
                             'unified_memory_fraction': 0.6, 'storage_fraction': 0.5, 'reserved_memory_mib': 300})
@@ -490,8 +492,49 @@ def sec_errors():
                             'task_attempts_with_local_2_4': [{'attempt': e['Task Info']['Attempt'], 'failed': e['Task Info']['Failed'], 'reason': e['Task End Reason']['Reason']} for e in ends]})
 
 
+def sec_eventlog():
+    """What the Spark UI is drawn from: the event log of one small query. Times and byte counts differ a little on every run, so those fields are shown as "varies"."""
+    from pyspark.sql import functions as F
+    from collections import Counter
+    ensure_world()
+    r = S.Run('eventlog', WORK, cores=2)
+    sp = r.spark
+    q = sp.read.parquet(PATHS['orders']).where(F.col('status') == 'PAID').groupBy('store_id').agg(F.sum('total_cents').alias('revenue'))
+    q.collect()
+    r.stop()
+    ev = r.events()
+    names = Counter(e['Event'].split('.')[-1] for e in ev)
+    what = [('SparkListenerApplicationStart', 'the application began'), ('SparkListenerEnvironmentUpdate', 'every setting the application ran with'),
+            ('SparkListenerSQLExecutionStart', 'a SQL or DataFrame query began, with its plan'), ('SparkListenerJobStart', 'an action started a job, and which stages it has'),
+            ('SparkListenerStageSubmitted', 'a stage was sent to the scheduler'), ('SparkListenerTaskStart', 'a task began on an executor'),
+            ('SparkListenerTaskEnd', 'a task finished, with its metrics'), ('SparkListenerStageCompleted', 'a stage finished, with its totals'),
+            ('SparkListenerJobEnd', 'a job finished'), ('SparkListenerSQLExecutionEnd', 'the query finished'), ('SparkListenerApplicationEnd', 'the application ended')]
+    table('eventlog.types', ['event', 'lines in the log', 'what it tells you'], [[k, names[k], w] for k, w in what if names.get(k)])
+    first = next(e for e in ev if e['Event'] == 'SparkListenerTaskEnd' and e['Task Type'] == 'ShuffleMapTask')
+
+    def mask(d):
+        out = {}
+        for k, v in d.items():
+            if isinstance(v, dict):
+                out[k] = mask(v)
+            elif any(w in k for w in ('Time', 'Bytes', 'Size')) and v != 0:      # a zero (nothing spilled) is the same on every run
+                out[k] = 'varies'
+            else:
+                out[k] = v
+        return out
+    m = first['Task Metrics']
+    keep = {'Event': 'SparkListenerTaskEnd', 'Task Type': first['Task Type'], 'Task End Reason': first['Task End Reason'],
+            'Task Info': {k: first['Task Info'][k] for k in ('Index', 'Attempt', 'Executor ID', 'Locality', 'Failed')},
+            'Task Metrics': mask({k: m[k] for k in ('Executor Run Time', 'JVM GC Time', 'Result Size', 'Memory Bytes Spilled', 'Disk Bytes Spilled')})}
+    keep['Task Metrics']['Input Metrics'] = mask(m['Input Metrics'])
+    keep['Task Metrics']['Shuffle Write Metrics'] = mask(m['Shuffle Write Metrics'])
+    text('eventlog.task_end', json.dumps(keep, indent=1))
+    files = sorted(os.path.relpath(f, r.logdir) for f in glob.glob(os.path.join(r.logdir, '**', '*'), recursive=True) if os.path.isfile(f))
+    counts('eventlog.layout', {'files': [re.sub(r'application_\d+_\d+|local-\d+', 'APP', f) for f in files], 'spark_conf_to_turn_it_on': ['spark.eventLog.enabled=true', 'spark.eventLog.dir=<a folder>']})
+
+
 SECTIONS = [('world', sec_world), ('conf', sec_conf), ('plans', sec_plans), ('partitions', sec_partitions), ('joins', sec_joins), ('skew', sec_skew), ('memory', sec_memory), ('layout', sec_layout),
-            ('sqlfun', sec_sqlfun), ('udfs', sec_udfs), ('streaming', sec_streaming), ('tables', sec_tables), ('tests', sec_tests), ('submit', sec_submit), ('errors', sec_errors)]
+            ('sqlfun', sec_sqlfun), ('udfs', sec_udfs), ('streaming', sec_streaming), ('tables', sec_tables), ('tests', sec_tests), ('submit', sec_submit), ('errors', sec_errors), ('eventlog', sec_eventlog)]
 
 CODE_FILES = ['session.py', 'plans.py', 'partitions.py', 'joins.py', 'skew.py', 'memory.py', 'layout.py', 'sqlfun.py', 'udfs.py', 'streaming.py', 'tables.py', 'errors.py',
               'app/transforms.py', 'app/transforms_bug.py', 'app/test_transforms.py', 'app/app_conf.py']

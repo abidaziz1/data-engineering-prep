@@ -118,3 +118,9 @@ a.logo:hover{background:#115E59}
   .tn{flex-wrap:wrap;margin-left:calc(var(--d,0) * .8rem)}
   .tn .ok{margin-left:0;flex-basis:100%}
 }
+
+/* one small square for every task, a new colour for every wave */
+.sqs{display:flex;flex-wrap:wrap;gap:3px;margin:.2rem 0}
+.sq{display:inline-block;width:13px;height:13px;border:2px solid var(--ink);border-radius:3px;background:#FB923C}
+.sq.w1{background:#60A5FA}.sq.w2{background:#4ADE80}.sq.w3{background:#FACC15}
+.sq-more{font:700 .8rem 'IBM Plex Mono',monospace;margin-left:.3rem;align-self:center}

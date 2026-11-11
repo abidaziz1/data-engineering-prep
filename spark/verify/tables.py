@@ -2,6 +2,7 @@
 import glob
 import json
 import os
+import re
 
 from pyspark.sql import functions as F
 
@@ -81,7 +82,7 @@ def small_files(spark, base):
         spark.sql('VACUUM delta.`%s` RETAIN 0 HOURS' % table)
         out['vacuum_zero_hours'] = 'accepted'
     except Exception as e:  # noqa: BLE001
-        out['vacuum_zero_hours'] = [l.strip() for l in str(e).split('\n') if 'Are you sure' in l][0][:150]
+        out['vacuum_zero_hours'] = [l.strip() for l in str(e).split('\n') if 'Are you sure' in l][0].split('?')[0] + '?'
     spark.conf.set('spark.databricks.delta.retentionDurationCheck.enabled', 'false')
     spark.sql('VACUUM delta.`%s` RETAIN 0 HOURS' % table)
     spark.conf.set('spark.databricks.delta.retentionDurationCheck.enabled', 'true')
@@ -92,7 +93,8 @@ def small_files(spark, base):
         out['old_version_after_vacuum'] = 'still readable'
     except Exception as e:  # noqa: BLE001
         lines = [l.strip() for l in str(e).split('\n') if l.strip()]
-        out['old_version_after_vacuum'] = [l for l in lines if 'FileNotFound' in l or 'does not exist' in l or 'DELTA_' in l or 'No such file' in l][0][:200]
+        line = [l for l in lines if 'FileNotFound' in l or 'does not exist' in l or 'DELTA_' in l or 'No such file' in l][0]
+        out['old_version_after_vacuum'] = re.sub(r'\S+\.parquet', '<file>.parquet', line).lstrip(': ').replace('org.apache.spark.', '')[:260]      # no random file name in the lesson
     return out
 
 
