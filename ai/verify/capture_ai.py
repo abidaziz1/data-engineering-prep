@@ -102,7 +102,7 @@ OUT['meta'].update({'python': sys.version.split()[0], 'company': 'Brewline',
 
 
 # The source of the modules that the lessons show, kept in the recording so that a lesson shows exactly the code that ran.
-for _name in ('parsekit', 'ragkit', 'evalkit', 'ingest', 'sqlguard', 'finetune', 'llm_calls'):
+for _name in ('parsekit', 'ragkit', 'evalkit', 'ingest', 'sqlguard', 'finetune', 'llm_calls', 'agent_runs'):
     OUT['files']['code/%s.py' % _name] = (HERE / ('%s.py' % _name)).read_text().rstrip('\n')
 
 
@@ -1183,6 +1183,7 @@ def summarize(update):
 
 def sec_agent():
     import agent_graph as ag
+    import agent_runs as ar
     from langgraph.checkpoint.memory import InMemorySaver
     from langgraph.checkpoint.sqlite import SqliteSaver
     from langgraph.errors import GraphRecursionError
@@ -1228,63 +1229,73 @@ def sec_agent():
         rec_err = 'no error'
     except GraphRecursionError as e:
         rec_err = str(e).splitlines()[0]
+    # a state field without a reducer: the second node replaces the list instead of adding to it
+    import operator
+    from typing import Annotated, TypedDict
+    from langgraph.graph import END, START, StateGraph
+
+    class Plain(TypedDict):
+        messages: list
+
+    class Adding(TypedDict):
+        messages: Annotated[list, operator.add]
+
+    def two_nodes(state_type):
+        gr = StateGraph(state_type)
+        gr.add_node('a', lambda s: {'messages': ['from a']})
+        gr.add_node('b', lambda s: {'messages': ['from b']})
+        gr.add_edge(START, 'a')
+        gr.add_edge('a', 'b')
+        gr.add_edge('b', END)
+        return gr.compile()
+    counts('agent.reducer', {'start': ['question'], 'without_reducer': two_nodes(Plain).invoke({'messages': ['question']})['messages'], 'with_reducer': two_nodes(Adding).invoke({'messages': ['question']})['messages']})
     # D: a write that needs a person
     scriptD = [call('issue_refund', order_id='ORD-2026-0412', amount=12.5), lambda msgs: {'final': 'Done: %s' % last_tool(msgs)['content']}]
+    flat = lambda updates: [e for upd in updates for e in summarize(upd)]
     refunds.clear()
-    saver = InMemorySaver()
-    gD = ag.make_graph(ag.ScriptedModel(scriptD), tools, checkpointer=saver)
-    cD = {'configurable': {'thread_id': 'D'}}
-    evD = []
-    for upd in gD.stream(start, cD, stream_mode='updates'):
-        evD += summarize(upd)
-    paused = gD.get_state(cD)
+    gD = ag.make_graph(ag.ScriptedModel(scriptD), tools, checkpointer=InMemorySaver())
+    cD = ar.thread('D')
+    evD = flat(ar.run(gD, start, cD))
+    waiting_for, payload = ar.paused(gD, cD)
     before = len(refunds)
-    for upd in gD.stream(Command(resume='approve'), cD, stream_mode='updates'):
-        evD += summarize(upd)
+    evD += flat(ar.decide(gD, cD, 'approve'))
     after_approve = len(refunds)
     refunds.clear()
     gD2 = ag.make_graph(ag.ScriptedModel(scriptD), tools, checkpointer=InMemorySaver())
-    cD2 = {'configurable': {'thread_id': 'D2'}}
-    evD2 = []
-    for upd in gD2.stream(start, cD2, stream_mode='updates'):
-        evD2 += summarize(upd)
-    for upd in gD2.stream(Command(resume='deny'), cD2, stream_mode='updates'):
-        evD2 += summarize(upd)
+    cD2 = ar.thread('D2')
+    evD2 = flat(ar.run(gD2, start, cD2)) + flat(ar.decide(gD2, cD2, 'deny'))
     traces['D'] = evD
     traces['D_denied'] = evD2
     scen_rows.append(['D. a refund waits for a person (approve)', 2, 1, 'refunds written: %d before, %d after approval' % (before, after_approve)])
     scen_rows.append(['D. the same refund (deny)', 2, 1, 'refunds written: %d, the model was told: %s' % (len(refunds), evD2[-2][1][:60])])
-    counts('agent.interrupt', {'next_node_while_paused': list(paused.next), 'refunds_before_resume': before, 'refunds_after_approve': after_approve, 'refunds_after_deny': len(refunds),
-                               'payload': [i.value for i in paused.tasks[0].interrupts] if paused.tasks else None})
+    counts('agent.interrupt', {'next_node_while_paused': waiting_for, 'refunds_before_resume': before, 'refunds_after_approve': after_approve, 'refunds_after_deny': len(refunds), 'payload': payload or None})
     # E: what resume does to the lines before the interrupt
     scriptE = [{'tool_calls': [{'name': 'search_policies', 'args': {'query': 'refund'}}, {'name': 'issue_refund', 'args': {'order_id': 'ORD-1', 'amount': 5.0}}]}, {'final': 'ok'}]
     cnt = collections.Counter()
     gE = ag.make_graph(ag.ScriptedModel(scriptE), tools, checkpointer=InMemorySaver(), on_tool=lambda n, a: cnt.update([n]))
-    cE = {'configurable': {'thread_id': 'E'}}
-    list(gE.stream(start, cE, stream_mode='updates'))
+    cE = ar.thread('E')
+    ar.run(gE, start, cE)
     first = dict(cnt)
-    list(gE.stream(Command(resume='approve'), cE, stream_mode='updates'))
+    ar.decide(gE, cE, 'approve')
     counts('agent.resume_runs_again', {'tool_calls_before_resume': first, 'tool_calls_after_resume': dict(cnt), 'explanation': 'on resume the node starts again from its first line. The read tool before the interrupt ran a second time.'})
     # F: the checkpoints of run A, and a replay from one of them
     gA = ag.make_graph(ag.ScriptedModel(happy), tools, checkpointer=InMemorySaver())
-    cA = {'configurable': {'thread_id': 'F'}}
-    for _ in gA.stream(start, cA, stream_mode='updates'):
-        pass
-    hist = list(gA.get_state_history(cA))[::-1]
+    cA = ar.thread('F')
+    ar.run(gA, start, cA)
+    hist = ar.checkpoints(gA, cA)
     hrows = [[i, ' or '.join(s.next) or 'done', s.values.get('steps', 0), len(s.values.get('messages', []))] for i, s in enumerate(hist)]
     table('agent.history', ['checkpoint', 'next node', 'model calls so far', 'messages so far'], hrows)
     snap = next(s for s in hist if s.next == ('tools',))
     cntR = collections.Counter()
     gR = ag.make_graph(ag.ScriptedModel(happy), tools, checkpointer=gA.checkpointer, on_tool=lambda n, a: cntR.update([n]))
-    ScriptedBefore = gR
-    res = gR.invoke(None, snap.config)
+    res = ar.replay_from(gR, snap)
     counts('agent.replay', {'checkpoints': len(hist), 'replayed_from': {'next': list(snap.next), 'model_calls': snap.values['steps']}, 'tools_run_again': dict(cntR), 'final_messages': len(res['messages'])})
     # G: a run that survives the process
     path = WORK / 'agent.sqlite'
     refunds.clear()
     with SqliteSaver.from_conn_string(str(path)) as s1:
         g1 = ag.make_graph(ag.ScriptedModel(scriptD), tools, checkpointer=s1)
-        list(g1.stream(start, {'configurable': {'thread_id': 'G'}}, stream_mode='updates'))
+        ar.run(g1, start, ar.thread('G'))
     import sqlite3
     c1 = sqlite3.connect(str(path))
     tabs = [r[0] for r in c1.execute("select name from sqlite_master where type = 'table' order by name")]
@@ -1292,8 +1303,7 @@ def sec_agent():
     c1.close()
     with SqliteSaver.from_conn_string(str(path)) as s2:
         g2_ = ag.make_graph(ag.ScriptedModel(scriptD), tools, checkpointer=s2)
-        for _ in g2_.stream(Command(resume='approve'), {'configurable': {'thread_id': 'G'}}, stream_mode='updates'):
-            pass
+        ar.decide(g2_, ar.thread('G'), 'approve')
     counts('agent.durable', {'tables': tabs, 'checkpoints_for_the_thread_while_paused': n_ck, 'refunds_after_resume_in_a_new_graph_object': len(refunds), 'store': 'SQLite file through langgraph-checkpoint-sqlite'})
     # H: a fixed workflow against an agent, for the same job
     wf_calls = collections.Counter()
@@ -1450,6 +1460,7 @@ def sec_otel():
 # =======================================================================================================================================
 def sec_inject():
     import agent_graph as ag
+    import agent_runs as ar
     from langgraph.checkpoint.memory import InMemorySaver
     from langgraph.types import Command
     s = course_searcher()

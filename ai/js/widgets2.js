@@ -282,6 +282,57 @@
     };
   })();
 
+  /* ====================== Checkpoint, pause and replay lab ====================== */
+  (function () {
+    function toolsOf(trace) { return trace.filter(function (x) { return x[0] === 'model' && /^call /.test(x[1]); }).map(function (x) { return x[1].replace(/^call /, '').replace(/\(.*/, ''); }); }
+    W.ckpt = {
+      steps: function () { return 4; },
+      hint: 'Pick a checkpoint. Then a decision.',
+      say: function (s, i) {
+        return [
+          'Every step of the graph saves a checkpoint: the state and the node that runs next. This is the list of the checkpoints of one real run, from the start to the end. Pick one. A replay from a checkpoint runs every node after it again, and a tool node is a node.',
+          'A write tool asks for approval, and the graph stops. The state is saved, and nothing is written. Pick the decision of the person and read what happened to the refund, and what the model is told.',
+          'There is a catch in how a paused run continues. When it resumes, the node that asked starts again from its first line. Anything in that node before the question runs a second time. Read the counts of the two runs.',
+          'The checkpoints went to a SQLite file. A new graph object, as in a new process, picked up the paused thread from that file and finished it. That is what durable means here: the run does not live in memory.'
+        ][i];
+      },
+      mood: function (s, i) { return i === 2 ? 'oops' : 'think'; },
+      render: function (box, s, i, A) {
+        var st = A.local.ck2 || (A.local.ck2 = { c: 2, d: 'approve' }), h = '<div class="lab">', HI = G.table('agent.history'), RP = G.counts('agent.replay'), IN = G.counts('agent.interrupt'), TR = G.counts('agent.traces');
+        if (i === 0) {
+          var r = HI.rows[st.c], names = toolsOf(TR.A), again = [];
+          HI.rows.forEach(function (x, n) { if (x[1] === 'tools' && n >= st.c) again.push(names[HI.rows.slice(0, n).filter(function (y) { return y[1] === 'tools'; }).length]); });
+          h += row('Checkpoint', chips(HI.rows.map(function (x, n) { return n; }), st.c, 'ck-c')) +
+            '<div class="lab-out">' + big(r[1], 'node that runs next') + big(r[2], 'model calls so far') + big(r[3], 'messages so far') + big(again.length, 'tool calls that run again', again.length ? 'warn' : 'good') + '</div>' +
+            '<p class="lab-note">Tools that run again from here: ' + (again.length ? again.map(esc).join(', ') : 'none') + '. Counted from the recorded run.</p>' +
+            callout('tip', 'The recording replayed from the first checkpoint whose next node was `tools`, with ' + RP.replayed_from.model_calls + ' model call behind it. The nodes after it ran again, and the tools that ran again were **' + Object.keys(RP.tools_run_again).map(function (k) { return k + ' ' + RP.tools_run_again[k] + ' time'; }).join(', ') + '**. The run ended with ' + RP.final_messages + ' messages, the same as the first time, because the model is a script. A real model may choose differently on a replay, which is what makes it useful for debugging and risky for actions.') +
+            '<p class="lab-note">The run has ' + RP.checkpoints + ' checkpoints. A replay of a read is cheap. A replay of a write is a second write unless the write is idempotent.</p>';
+        } else if (i === 1) {
+          var denied = st.d === 'deny', ev = TR[denied ? 'D_denied' : 'D'], last = ev[ev.length - 2][1];
+          h += row('The person says', chips(['approve', 'deny'], st.d, 'ck-d')) +
+            '<div class="lab-out">' + big(IN.refunds_before_resume, 'refunds written while it waited', 'good') + big(denied ? IN.refunds_after_deny : IN.refunds_after_approve, 'refunds written after the decision', denied ? 'good' : 'warn') + big(IN.next_node_while_paused.join(', '), 'node that was waiting') + '</div>' +
+            code('what the person was asked', 'json', JSON.stringify(IN.payload[0], null, 2)) +
+            callout(denied ? 'tip' : 'warn', denied ? 'The tool did not run, and the model was told: `' + esc(last) + '`. Read the final message of the trace: it still says "Done". The script writes it, and a real model has to be told to report a refusal truthfully, and an evaluation has to check that it does.' : 'The tool ran once, after the decision. Before it, nothing was written, although the model had already asked. The question shows the person the tool, the order and the amount, which is what they need to decide.') +
+            '<p class="lab-note">The pause is a feature of the graph: the state is saved and the process may end. The decision arrives later, from a person, through the application.</p>';
+        } else if (i === 2) {
+          var R = G.counts('agent.resume_runs_again'), before = R.tool_calls_before_resume, after = R.tool_calls_after_resume;
+          h += table(['Tool', 'Calls before the pause', 'Calls after the resume'], Object.keys(after).sort().map(function (k) { return [k, String(before[k] || 0), String(after[k])]; }), null, function (r, ri, ci) { return ci === 2 && +r[2] > +r[1] && r[0] !== 'issue_refund' ? 'wbad' : ''; }) +
+            callout('warn', esc(R.explanation.charAt(0).toUpperCase() + R.explanation.slice(1)) + ' `search_policies` ran **once** before the pause and **twice** in total after the resume. It is a read, so it only cost a call. If it had been a write, it would have written twice.') +
+            callout('tip', 'Three habits. Put the `interrupt` as early as you can in a node. Keep the work before it idempotent. Or split the node in two, so that everything before the question is one node and runs once. Test it: count the tool calls before and after a resume, as the recording did.');
+        } else {
+          var D = G.counts('agent.durable');
+          h += '<div class="lab-out">' + big(D.checkpoints_for_the_thread_while_paused, 'checkpoints in the file while it waited') + big(D.refunds_after_resume_in_a_new_graph_object, 'refund written by a new graph object after the resume', 'good') + '</div>' +
+            table(['The store', 'Its tables'], [[D.store, D.tables.join(', ')]]) +
+            callout('tip', 'The first graph object ran until the pause and was thrown away. A second one, created from nothing but the file and the thread id, resumed the run and wrote the refund. In production the store is a database, and a worker that crashes, a deploy, or three days of waiting for a person do not lose the run.') +
+            callout('warn', 'A saved state is data, and it may hold personal data and the whole conversation. Give the store access control and a retention period, and delete old threads. State that is kept for ever is a privacy problem and a cost.');
+        }
+        box.innerHTML = h + '</div>';
+        bindCodes(box);
+        A.bindWidget = function (act, el) { var v = el.getAttribute('data-v'); if (act === 'ck-c') st.c = +v; if (act === 'ck-d') st.d = v; A.render(true); };
+      }
+    };
+  })();
+
   /* A scene can show only some steps of a lab: {kind: 'tokens', parts: [0]} or {kind: 'tokens', parts: [1, 2]}. The lab then sees its own step numbers. */
   Object.keys(W).forEach(function (kind) {
     var w = W[kind];
