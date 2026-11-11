@@ -1406,6 +1406,193 @@ const ok = (c, m) => { if (c) pass++; else { fail++; console.log('FAIL:', m); } 
     ok(combos === 32 && CK.all_fixed.failed_count === 0 && CK.all_fixed.passed === 15, 'Terraform lab: all 32 sets were tried, and the scan of the fully fixed file says 0 failing and 15 passing');
   }
 
+  if (name === 'spark') {
+    const bigs = () => page.$$eval('.lab-out .big b', els => els.map(e => e.textContent));
+    const tables = () => page.$$eval('.lab .tbl', ts => ts.map(t => [...t.querySelectorAll('tbody tr')].map(r => [...r.children].map(td => td.innerText.trim()))));
+    const pick = async (act, v) => { await page.click('[data-act="' + act + '"][data-v="' + v + '"]'); await page.waitForTimeout(12); };
+    const press = async act => { await page.click('[data-act="' + act + '"]'); await page.waitForTimeout(12); };
+    const chipVals = act => page.$$eval('[data-act="' + act + '"]', els => els.map(e => e.getAttribute('data-v')));
+    const scene = kind => S.find(x => x.type === 'widget' && x.kind === kind);
+    const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+    const counts = k => page.evaluate(k => LAB.real.counts[k], k);
+    const table = k => page.evaluate(k => LAB.real.tables[k], k);
+    const reset = (k, v) => page.evaluate(([k, v]) => { LAB.app.local[k] = v; LAB.app.render(true); }, [k, v === undefined ? null : v]).then(() => page.waitForTimeout(20));
+    const fmtN = (x, d) => (Math.round(x * Math.pow(10, d || 0)) / Math.pow(10, d || 0)).toLocaleString('en-US', { minimumFractionDigits: d || 0, maximumFractionDigits: d || 0 });
+    const GIB = 1073741824, MIB = 1048576;
+    const mb = n => n >= GIB ? fmtN(n / GIB, 2) + ' GiB' : n >= MIB ? fmtN(n / MIB, 1) + ' MiB' : n >= 1024 ? fmtN(n / 1024, 1) + ' KiB' : fmtN(n) + ' B';
+    const bodyText = () => page.evaluate(() => document.querySelector('#stage-body').innerText);
+    const widgetSteps = kind => scene(kind).n;
+    let t;
+
+    // every lab is there, with the number of steps that the lessons assume
+    const KINDS = { exchange: 2, tasks: 2, joinpick: 2, skewlab: 2, memlab: 3, layoutlab: 2, ansilab: 1, udflab: 2, streamlab: 3, deltalab: 2, submitlab: 2, diagnose: 1 };
+    for (const k of Object.keys(KINDS)) ok(scene(k) && widgetSteps(k) === KINDS[k], 'lab "' + k + '" exists with ' + KINDS[k] + ' step(s)');
+    ok(await page.evaluate(() => LAB.config.coach.name === 'Kai' && LAB.chapters.length === 16 && LAB.config.levels.length === 16), 'the course has coach Kai, 16 missions and 16 levels');
+
+    // shuffle counting lab: six operations, four guesses each
+    const OPS = await table('parts.operations'), ex = scene('exchange');
+    await go(ex.id + ':0'); await reset('ex', { op: 0, g: {} });
+    ok(same(await chipVals('ex-op'), OPS.rows.map((r, n) => String(n))), 'exchange lab: one chip for each recorded operation');
+    for (let n = 0; n < OPS.rows.length; n++) for (const g of [0, 1, 2, 3]) {
+      await pick('ex-op', n); await pick('ex-g', g);
+      const r = OPS.rows[n], b = await bigs();
+      ok(same(b, [String(r[1]), String(r[2]), r[1] === g ? 'right' : 'not quite']), 'exchange lab, ' + r[0] + ', guess ' + g + ': ' + r[1] + ' exchanges, ' + r[2] + ' sorts, ' + (r[1] === g ? 'right' : 'not quite') + ' (got ' + b.join(' | ') + ')');
+    }
+    await go(ex.id + ':1');
+    t = (await tables())[0];
+    ok(same(t.map(r => r[0]), OPS.rows.map(r => r[0])) && same(t.map(r => [r[1], r[2]]), OPS.rows.map(r => [String(r[1]), String(r[2])])) && same(t.map(r => r[3]), OPS.rows.map(() => 'said 3')), 'exchange lab, the table: the six operations with the recorded exchanges and sorts, and the guesses of the last pass');
+    await reset('ex', { op: 0, g: { 0: 0, 1: 1, 2: 0, 3: 1, 4: 2 } });
+    t = (await tables())[0]; const b1 = await bigs();
+    ok(same(t.map(r => r[3]), ['right', 'right', 'said 0', 'right', 'right', '-']) && same(b1, ['4 of 5']), 'exchange lab: the table marks right, wrong and missing guesses, and counts 4 of 5 (got ' + t.map(r => r[3]).join(', ') + ' | ' + b1.join(' | ') + ')');
+
+    // tasks lab: input partitions, cores and waves, then the tasks after a shuffle
+    const RD = await table('parts.read'), SH = await table('parts.shuffle'), tk = scene('tasks');
+    await go(tk.id + ':0'); await reset('tk', { r: 0, c: 4, sh: 0 });
+    for (let n = 0; n < RD.rows.length; n++) for (const c of [2, 4, 8, 16]) {
+      await pick('tk-r', n); await pick('tk-c', c);
+      const p = RD.rows[n][1], b = await bigs(), sq = (await page.$$('.sq')).length;
+      ok(same(b, [String(p), String(Math.ceil(p / c))]) && sq === Math.min(p, 220), 'tasks lab, ' + RD.rows[n][0] + ' on ' + c + ' cores: ' + p + ' partitions, ' + Math.ceil(p / c) + ' waves, one square for each task (got ' + b.join(' | ') + ', ' + sq + ' squares)');
+    }
+    await go(tk.id + ':1');
+    for (let n = 0; n < SH.rows.length; n++) for (const c of [2, 4, 8, 16]) {
+      await pick('tk-s', n); await pick('tk-c', c);
+      const r = SH.rows[n], b = await bigs();
+      ok(same(b, [String(r[1]), String(r[5]), String(r[3]), String(r[4]), String(Math.ceil(r[1] / c))]), 'tasks lab, ' + r[0] + ' on ' + c + ' cores: ' + r[1] + ' tasks, ' + r[5] + ' records in all (got ' + b.join(' | ') + ')');
+    }
+
+    // join lab: every recorded situation, with the plan lines, then the adaptive plans
+    const JS = await table('joins.strategies'), jp = scene('joinpick');
+    await go(jp.id + ':0'); await reset('jp', { k: 0 });
+    for (let n = 0; n < JS.rows.length; n++) {
+      await pick('jp-k', n);
+      const r = JS.rows[n], b = await bigs(), code = await page.$eval('.code-body', e => e.innerText), plan = await page.evaluate(k => LAB.real.text['joins.plan.' + k], r[0]);
+      ok(same(b, [r[1], String(r[2]), String(r[3])]) && plan.split('\n').filter(l => l.trim()).every(l => code.includes(l.trim().slice(0, 40))), 'join lab, ' + r[0] + ': ' + r[1] + ', ' + r[2] + ' exchanges, ' + r[3] + ' broadcasts, with the recorded plan lines (got ' + b.join(' | ') + ')');
+    }
+    await go(jp.id + ':1');
+    const bodyJ = await page.$$eval('.code-body', xs => xs.map(x => x.innerText)), bef = await page.evaluate(() => LAB.real.text['joins.aqe_before']), aft = await page.evaluate(() => LAB.real.text['joins.aqe_after']);
+    ok(bodyJ.length === 2 && /SortMergeJoin/.test(bodyJ[0]) && /isFinalPlan=false/.test(bodyJ[0]) && /BroadcastHashJoin/.test(bodyJ[1]) && /isFinalPlan=true/.test(bodyJ[1]) && /SortMergeJoin/.test(bef) && /BroadcastHashJoin/.test(aft), 'join lab: the plan before is a sort-merge join and the final plan is a broadcast join');
+
+    // skew lab: the numbers of both screens are on the page
+    const AG = await table('skew.aggregations'), JN = await table('skew.joins'), sk = scene('skewlab');
+    await go(sk.id + ':0'); let txt = await bodyText();
+    ok(AG.rows.every(r => txt.includes(r[0]) && txt.includes(fmtN(+r[3])) && txt.includes(fmtN(+r[4]))), 'skew lab, aggregations: both queries with their median and busiest task');
+    const bars = await page.$$eval('.gbar', xs => xs.map(x => parseFloat(x.style.width)));
+    const mx = Math.max(...AG.rows.map(r => +r[4]));
+    ok(bars.length === 4 && same(bars.map(x => Math.round(x * 10) / 10), [AG.rows[0][3], AG.rows[0][4], AG.rows[1][3], AG.rows[1][4]].map(v => Math.round(+v / mx * 1000) / 10)), 'skew lab: each bar is its records over the largest (got ' + bars.join(', ') + ')');
+    await go(sk.id + ':1'); txt = await bodyText();
+    ok(JN.rows.every(r => txt.includes(r[0]) && txt.toLowerCase().includes(r[1] + ' tasks') && txt.includes(fmtN(+r[4]))), 'skew lab, joins: the three joins with their tasks and busiest task');
+
+    // memory lab: the formula for six heap sizes, the three storage levels, the spill
+    const FM = await table('mem.formula'), LV = await table('mem.levels'), SP = await counts('mem.spill'), ml = scene('memlab');
+    await go(ml.id + ':0'); await reset('ml', { h: 1, lv: 0 });
+    const heaps = FM.rows.map(r => [r[1], r[2]]).concat([[4 * GIB, null], [8 * GIB, null], [16 * GIB, null]]);
+    ok((await chipVals('ml-h')).length === 6, 'memory lab: three recorded and three calculated heap sizes');
+    for (let n = 0; n < heaps.length; n++) {
+      await pick('ml-h', n);
+      const heap = heaps[n][0], un = (heap - 300 * MIB) * 0.6, us = (heap - 300 * MIB) * 0.4, b = await bigs();
+      ok(same(b, [mb(heap), '300 MiB', mb(un), mb(us)]), 'memory lab, heap ' + mb(heap) + ': ' + mb(un) + ' unified and ' + mb(us) + ' user memory (got ' + b.join(' | ') + ')');
+      if (heaps[n][1] !== null) ok((await bodyText()).includes(fmtN(heaps[n][1])) && Math.abs(heaps[n][1] - Math.floor(un)) <= 1, 'memory lab, heap ' + mb(heap) + ': Spark reported ' + heaps[n][1] + ' bytes, equal to the formula');
+    }
+    await go(ml.id + ':1');
+    for (let n = 0; n < LV.rows.length; n++) {
+      await pick('ml-l', n); const b = await bigs();
+      ok(same(b, [mb(+LV.rows[n][1]), mb(+LV.rows[n][2])]), 'memory lab, ' + LV.rows[n][0] + ': ' + mb(+LV.rows[n][1]) + ' in memory, ' + mb(+LV.rows[n][2]) + ' on disk (got ' + b.join(' | ') + ')');
+    }
+    await go(ml.id + ':2');
+    ok(same(await bigs(), [fmtN(SP.rows_sorted), mb(SP.memory_bytes_spilled), mb(SP.disk_bytes_spilled), fmtN(SP.memory_bytes_spilled / SP.disk_bytes_spilled, 1) + ' x']), 'memory lab, spill: the recorded bytes and the ratio');
+
+    // file layout lab: seven ways of writing, four reads
+    const VA = await table('files.variants'), RG = await table('files.rowgroups'), TO = await table('files.touched'), lo = scene('layoutlab');
+    await go(lo.id + ':0'); await reset('lo', { v: 0, g: 0 });
+    for (let n = 0; n < VA.rows.length; n++) {
+      await pick('lo-v', n); const r = VA.rows[n], b = await bigs();
+      ok(same(b, [fmtN(r[1]), fmtN(r[2]) + ' KB', fmtN(r[3], 1) + ' KB']), 'layout lab, ' + r[0] + ': ' + r[1] + ' files of ' + r[3] + ' KB (got ' + b.join(' | ') + ')');
+    }
+    await go(lo.id + ':1');
+    for (let n = 0; n < RG.rows.length; n++) {
+      await pick('lo-g', n); const r = RG.rows[n], b = await bigs();
+      ok(same(b, [mb(+r[2]), fmtN(+r[3])]), 'layout lab, ' + r[0] + ', pushdown ' + r[1] + ': ' + mb(+r[2]) + ' and ' + r[3] + ' records (got ' + b.join(' | ') + ')');
+    }
+    t = (await tables())[0]; ok(same(t, TO.rows.map(r => r.map(String))), 'layout lab: the table of files opened by three filters is the recorded one');
+
+    // ANSI lab: eight expressions, both modes
+    const AN = await table('sql.ansi'), an = scene('ansilab');
+    await go(an.id + ':0'); await reset('an', { e: 0, on: true });
+    for (let n = 0; n < AN.rows.length; n++) for (const on of [true, false]) {
+      await pick('an-e', n); await pick('an-m', on ? 'true' : 'false');
+      const v = String(on ? AN.rows[n][1] : AN.rows[n][2]), want = /^error:/.test(v) ? 'error' : v, b = await bigs();
+      ok(b[0] === want, 'ANSI lab, ' + AN.rows[n][0] + ' with ANSI ' + (on ? 'on' : 'off') + ': ' + want + ' (got ' + b[0] + ')');
+      if (/^error:/.test(v)) ok((await page.$eval('.code-body', e => e.innerText)).includes(v.replace(/^error:\s*/, '').slice(0, 40)), 'ANSI lab, ' + AN.rows[n][0] + ': the message is shown');
+    }
+
+    // UDF lab: the operator of each version, the call counts of each case
+    const UC = await counts('udf.calls'), ud = scene('udflab'), KS = ['Python UDF', 'Python UDF with Arrow', 'pandas UDF', 'built-in functions'];
+    await go(ud.id + ':0'); await reset('ud', { k: 0, c: 0 });
+    for (let n = 0; n < KS.length; n++) {
+      await pick('ud-k', n); const plan = await page.evaluate(k => LAB.real.text['udf.plan.' + k], KS[n]), op = (plan.match(/BatchEvalPython|ArrowEvalPython/) || ['no Python'])[0], b = await bigs();
+      ok(b[0] === op && b[1] === 'same result', 'UDF lab, ' + KS[n] + ': ' + op + ' (got ' + b.join(' | ') + ')');
+    }
+    await go(ud.id + ':1'); const keys = Object.keys(UC).filter(k => k !== 'rows');
+    for (let n = 0; n < keys.length; n++) {
+      await pick('ud-c', n); const b = await bigs();
+      ok(same(b, [fmtN(UC[keys[n]]), fmtN(UC.rows), fmtN(UC[keys[n]] / UC.rows, 1) + ' x']), 'UDF lab, ' + keys[n] + ': ' + UC[keys[n]] + ' calls for ' + UC.rows + ' rows (got ' + b.join(' | ') + ')');
+    }
+
+    // streaming lab: seven batches, three modes, the restart
+    const PR = await table('stream.progress'), sm = scene('streamlab'), MODES = ['update', 'append', 'complete'], RS = await counts('stream.restart');
+    await go(sm.id + ':0'); await reset('sm', { b: 0, m: 0 });
+    for (let n = 0; n < PR.rows.length; n++) {
+      await pick('sm-b', n); const r = PR.rows[n], b = await bigs();
+      ok(same(b, [String(r[1]), String(r[2]), String(r[3]), String(r[4]), String(r[5])]), 'streaming lab, batch ' + n + ': ' + r.slice(1).join(', ') + ' (got ' + b.join(' | ') + ')');
+    }
+    t = (await tables())[0]; ok(same(t, PR.rows.map(r => r.map(String))), 'streaming lab: the progress table is the recorded one');
+    await go(sm.id + ':1');
+    for (let n = 0; n < MODES.length; n++) {
+      await pick('sm-m', n); const rec = await table('stream.' + MODES[n]); t = (await tables())[0];
+      ok(same(t, rec.rows.map(r => r.map(String))), 'streaming lab, ' + MODES[n] + ' mode: the table of what each batch wrote is the recorded one');
+    }
+    await go(sm.id + ':2'); t = (await tables())[0];
+    ok(same(t.map(r => r[1]), [RS.first_run_batches.join(', '), 'failed in batch 4', RS.restart_batches.join(', '), RS.batch_written_twice.join(', ')]), 'streaming lab, restart: the runs and the batch that was written twice (got ' + t.map(r => r[1]).join(' | ') + ')');
+
+    // Delta lab: the four steps of the story, then OPTIMIZE and VACUUM
+    const DB = await counts('delta.build'), DM = await counts('delta.merge'), DT = await counts('delta.time_travel'), DS = await counts('delta.small_files'), dl = scene('deltalab');
+    await go(dl.id + ':0'); await reset('dt', { e: 0, f: 0, old: false, zero: false });
+    await pick('dt-e', 0); ok(same(await bigs(), [fmtN(DB.rows), String(DB.parquet_files), String(DB.log_files.length)]), 'Delta lab, step 1: the rows, the Parquet files and the one commit');
+    await pick('dt-e', 1); ok(same(await bigs(), [fmtN(DM.numSourceRows), fmtN(DM.numTargetRowsUpdated), fmtN(DM.numTargetRowsDeleted), fmtN(DM.numTargetRowsInserted), fmtN(DM.numOutputRows)]), 'Delta lab, step 2: the MERGE numbers');
+    await pick('dt-e', 2); ok(same(await bigs(), [fmtN(DT['version 0']), fmtN(DT.latest)]), 'Delta lab, step 3: the rows of version 0 and of the latest version');
+    await pick('dt-e', 3); ok(/mergeSchema/.test(await page.$eval('.code-body', e => e.innerText)), 'Delta lab, step 4: the schema message names mergeSchema');
+    await go(dl.id + ':1'); await reset('dt', { e: 0, f: 0, old: false, zero: false });
+    ok(same(await bigs(), [String(DS.files_in_the_version_before), String(DS.files_on_disk_before), fmtN(DS.rows_now)]), 'Delta lab: twenty appends, twenty files');
+    await press('dt-vac'); ok(same(await bigs(), [String(DS.files_in_the_version_before), String(DS.files_on_disk_before), fmtN(DS.rows_now)]) && /delete \*\*nothing\*\*|delete nothing/.test(await bodyText()), 'Delta lab: a VACUUM before OPTIMIZE deletes nothing');
+    await press('dt-opt'); ok(same(await bigs(), [String(DS.files_in_the_version_after_optimize), String(DS.files_on_disk_after_optimize), fmtN(DS.rows_now)]), 'Delta lab: after OPTIMIZE, one file in the version and 21 on disk');
+    await press('dt-old'); ok(/Works/.test(await page.$eval('.code-box .code-body', e => e.innerText)), 'Delta lab: before VACUUM the old version can be read');
+    await press('dt-vac'); ok(same(await bigs(), [String(DS.files_in_the_version_after_vacuum), String(DS.files_on_disk_after_vacuum), fmtN(DS.rows_now)]), 'Delta lab: after VACUUM, one file on disk');
+    ok((await page.$$eval('.code-box .code-body', xs => xs.map(x => x.innerText))).some(x => /FILE_NOT_EXIST/.test(x)), 'Delta lab: after VACUUM the old version cannot be read');
+    await press('dt-zero'); ok((await bodyText()).includes('Are you sure'), 'Delta lab: a retention of zero hours is refused');
+    await press('dt-reset'); ok(same(await bigs(), [String(DS.files_in_the_version_before), String(DS.files_on_disk_before), fmtN(DS.rows_now)]), 'Delta lab: start again');
+
+    // spark-submit lab: five ways to set a value, then the arithmetic of a size
+    const PRE = await table('submit.precedence'), su = scene('submitlab');
+    await go(su.id + ':0'); await reset('su', { p: 0, d: 100, e: 8, c: 4, m: 16 });
+    for (let n = 0; n < PRE.rows.length; n++) { await pick('su-p', n); ok(same(await bigs(), [String(PRE.rows[n][1])]), 'submit lab, ' + PRE.rows[n][0] + ': the program saw ' + PRE.rows[n][1]); }
+    await go(su.id + ':1'); let sizes = 0;
+    for (const d of [10, 100, 1000]) for (const e of [2, 8, 32]) for (const c of [2, 5]) for (const m of [8, 32]) {
+      await reset('su', { p: 0, d, e, c, m });
+      const parts = Math.ceil(d * GIB / (128 * MIB)), cores = e * c, waves = Math.ceil(parts / cores), mem = m * GIB, over = Math.max(384 * MIB, 0.1 * mem), perCore = (mem - 300 * MIB) * 0.6 / c, b = await bigs(); sizes++;
+      ok(same(b, [fmtN(parts), fmtN(cores), fmtN(waves), mb(perCore), mb(mem + over)]), 'submit lab, ' + d + ' GiB, ' + e + ' executors of ' + c + ' cores and ' + m + ' GiB: ' + parts + ' partitions, ' + waves + ' waves (got ' + b.join(' | ') + ')');
+    }
+    ok(sizes === 36, 'submit lab: 36 sizes were tried');
+
+    // diagnosis lab: six runs, each with its one right answer
+    const dg = scene('diagnose'), CAUSES = ['skew', 'too many tiny tasks', 'spill', 'small files', 'no pruning', 'the cache works'];
+    await go(dg.id + ':0'); await reset('dg', { c: 0, g: {} });
+    ok(same(await chipVals('dg-g'), CAUSES.map((x, n) => String(n))) && same(await chipVals('dg-c'), ['0', '1', '2', '3', '4', '5']), 'diagnosis lab: six runs and six causes');
+    for (let n = 0; n < 6; n++) {
+      await pick('dg-c', n); await pick('dg-g', (n + 1) % 6); ok(/^Not /.test(await page.$eval('.callout', e => e.innerText)), 'diagnosis lab, run ' + (n + 1) + ': a wrong answer says not that cause');
+      await pick('dg-g', n); ok(/^Right: /.test(await page.$eval('.callout', e => e.innerText)) && same(await bigs(), [(n + 1) + ' of 6']), 'diagnosis lab, run ' + (n + 1) + ': the right answer is ' + CAUSES[n] + ' and the count is ' + (n + 1) + ' of 6');
+    }
+  }
+
   // score screen counts every mock question on the path
   await go('mock-score:0');
   ok(await cnt('.ring') === 1 && await cnt('.srow') === S.filter(x => x.type === 'mock').length, 'scorecard lists every boss question');
