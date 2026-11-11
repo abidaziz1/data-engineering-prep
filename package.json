@@ -46,6 +46,8 @@
     "lint:spark": "node dev/lint-content.js spark",
     "smoke:spark": "node dev/smoke.js spark --path all",
     "e2e:spark": "node dev/e2e.js spark",
+    "stats:spark": "node dev/stats.js spark",
+    "verify:spark": "python3 spark/verify/verify_spark.py",
     "test:analytics": "node dev/analytics-test.js"
   },
   "devDependencies": {

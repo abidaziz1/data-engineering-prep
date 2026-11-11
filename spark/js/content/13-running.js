@@ -2,7 +2,7 @@
    deploy modes, cluster managers, dynamic allocation and sizing. The recorded parts ran spark-submit in local mode. YARN, Kubernetes, EMR and Dataproc were not run: they are from documentation. */
 (function () {
   var B = LAB.b, G = LAB.get;
-  var FL = G.table('submit.flags'), VER = G.counts('submit.version'), PRE = G.table('submit.precedence'), RETRY = G.counts('errors.retry');
+  var FL = G.table('submit.flags'), VER = G.counts('submit.version'), PRE = G.table('submit.precedence'), RETRY = G.counts('errors.retry'), SC = G.table('submit.flag_scope');
   var APP = G.file('code/app/app_conf.py');
   var n0 = function (x) { return Number(x).toLocaleString('en-US'); };
   var missing = FL.rows.filter(function (r) { return r[1] !== 'yes'; });
@@ -10,6 +10,8 @@
   G.expect(missing.length === 0 && FL.rows.length >= 20, 'every flag that the course names is in spark-submit --help');
   G.expect(pre('nothing set') === '200' && pre('--conf spark.sql.shuffle.partitions=50') === '50' && pre('a properties file') === '100' && pre('the properties file') === '50' && pre('--conf (50) and the program') === '20', 'the order of settings: program, flag, file, default');
   G.expect(RETRY.maxFailures_default_on_a_cluster === 4 && RETRY.maxFailures_default_in_local_mode === 1, 'task retries in local mode and on a cluster');
+  var scope = function (f) { var r = SC.rows.filter(function (x) { return x[0] === f; })[0]; if (!r) throw new Error('no scope for ' + f); return r[1]; };
+  G.expect(scope('--master') === 'every cluster manager' && scope('--queue') === 'Spark on YARN only' && scope('--supervise') === 'Spark standalone with cluster deploy mode only' && scope('--total-executor-cores') === 'Spark standalone only' && scope('--num-executors') === 'Spark on YARN and Kubernetes only', 'the groups of flags in spark-submit --help');
   var flagNames = FL.rows.map(function (r) { return r[0]; });
   var SUBMIT = [
     'spark-submit \\',
@@ -80,7 +82,12 @@
           {
             say: 'All **' + FL.rows.length + '** flags are there: the ones for the cluster (`--master`, `--deploy-mode`, `--queue`), for the resources (`--driver-memory`, `--executor-memory`, `--executor-cores`, `--num-executors`), for settings (`--conf`, `--properties-file`) and for code and files (`--py-files`, `--files`, `--archives`, `--packages`, `--jars`).',
             tabs: [{ layer: 'RECORDED', name: 'Flags found in spark-submit --help', c: 'raw', cols: FL.cols, rows: FL.rows, trk: 8, chg: FL.rows.map(function (r, i) { return [i, 1]; }) }],
-            notes: ['A flag that exists for one cluster manager only is documented as such: `--queue` is for YARN, and `--supervise` is for standalone and Mesos-style cluster mode.']
+            notes: ['The next screen step shows that the help also says where each flag works.']
+          },
+          {
+            say: 'The same help groups the flags by **where they work**. `--queue` is for **' + scope('--queue').replace('Spark on ', '').replace(' only', '') + '** only. `--supervise` is for **Spark standalone in cluster mode** only. `--total-executor-cores` is **standalone** only. `--num-executors` is for **YARN and Kubernetes**, and its default is 2. `--master`, `--conf` and the memory flags work everywhere. A flag copied from a YARN command into a Kubernetes job may do nothing.',
+            tabs: [{ layer: 'RECORDED', name: 'Where the help lists each flag', c: 'raw', cols: SC.cols, rows: SC.rows, trk: 0, chg: SC.rows.map(function (r, i) { return r[1] === 'every cluster manager' ? null : [i, 1]; }).filter(Boolean) }],
+            notes: ['Recorded: the heading above each flag in the output of `spark-submit --help` of Spark ' + VER.spark + '. The help of this release names Spark standalone, YARN, Kubernetes and Spark Connect, and no other cluster manager.']
           }
         ]
       }),

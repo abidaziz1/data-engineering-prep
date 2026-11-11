@@ -1664,6 +1664,102 @@ LAB.real = {
     ]
    ]
   },
+  "submit.flag_scope": {
+   "cols": [
+    "flag",
+    "where spark-submit --help lists it"
+   ],
+   "rows": [
+    [
+     "--master",
+     "every cluster manager"
+    ],
+    [
+     "--deploy-mode",
+     "every cluster manager"
+    ],
+    [
+     "--name",
+     "every cluster manager"
+    ],
+    [
+     "--conf",
+     "every cluster manager"
+    ],
+    [
+     "--properties-file",
+     "every cluster manager"
+    ],
+    [
+     "--driver-memory",
+     "every cluster manager"
+    ],
+    [
+     "--driver-cores",
+     "Cluster deploy mode only"
+    ],
+    [
+     "--executor-memory",
+     "every cluster manager"
+    ],
+    [
+     "--executor-cores",
+     "Spark standalone, YARN and Kubernetes only"
+    ],
+    [
+     "--num-executors",
+     "Spark on YARN and Kubernetes only"
+    ],
+    [
+     "--total-executor-cores",
+     "Spark standalone only"
+    ],
+    [
+     "--packages",
+     "every cluster manager"
+    ],
+    [
+     "--jars",
+     "every cluster manager"
+    ],
+    [
+     "--py-files",
+     "every cluster manager"
+    ],
+    [
+     "--files",
+     "every cluster manager"
+    ],
+    [
+     "--archives",
+     "every cluster manager"
+    ],
+    [
+     "--queue",
+     "Spark on YARN only"
+    ],
+    [
+     "--supervise",
+     "Spark standalone with cluster deploy mode only"
+    ],
+    [
+     "--verbose",
+     "every cluster manager"
+    ],
+    [
+     "--class",
+     "every cluster manager"
+    ],
+    [
+     "--repositories",
+     "every cluster manager"
+    ],
+    [
+     "--exclude-packages",
+     "every cluster manager"
+    ]
+   ]
+  },
   "submit.flags": {
    "cols": [
     "flag",

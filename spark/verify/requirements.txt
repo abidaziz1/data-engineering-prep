@@ -1,0 +1,12 @@
+# The environment of the Apache Spark tutorial: the recorder (capture_spark.py) and the checks (verify_spark.py). Java 17 or 21 must be installed.
+# PySpark 4.0.1 imports with pandas 2 and not with pandas 3: the testing helper that the tests use did not import with pandas 3.1.1, so pandas is pinned below 3.
+# Delta Lake loads its jar with Ivy the first time that a session starts, so the first run needs the network.
+#   python3 -m venv spark-env && spark-env/bin/pip install -r spark/verify/requirements.txt
+#   spark-env/bin/python spark/verify/verify_spark.py
+pyspark==4.0.1
+delta-spark==4.0.1
+pandas<3
+numpy
+pyarrow
+pytest
+sqlglot

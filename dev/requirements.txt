@@ -82,3 +82,5 @@ gcp-storage-emulator
 functions-framework
 python-hcl2
 fastavro
+# spark/verify has its own requirements file, because it needs pyspark==4.0.1 and delta-spark==4.0.1 and this file pins other releases for the Databricks tutorial:
+#   python3 -m venv spark-env && spark-env/bin/pip install -r spark/verify/requirements.txt && spark-env/bin/python spark/verify/verify_spark.py
