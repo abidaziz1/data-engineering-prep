@@ -3,7 +3,7 @@
   "private": true,
   "description": "Interactive data engineering tutorials. The site itself needs no build step. These scripts only check it.",
   "scripts": {
-    "lint": "node dev/lint-content.js snowflake && node dev/lint-content.js dbt && node dev/lint-content.js snowflake-dbt && node dev/lint-content.js databricks && node dev/lint-content.js aws && node dev/lint-content.js azure && node dev/lint-content.js ai && node dev/lint-content.js gcp",
+    "lint": "node dev/lint-content.js snowflake && node dev/lint-content.js dbt && node dev/lint-content.js snowflake-dbt && node dev/lint-content.js databricks && node dev/lint-content.js aws && node dev/lint-content.js azure && node dev/lint-content.js ai && node dev/lint-content.js gcp && node dev/lint-content.js spark",
     "lint:snowflake": "node dev/lint-content.js snowflake",
     "lint:dbt": "node dev/lint-content.js dbt",
     "smoke": "node dev/smoke.js snowflake --path all",
@@ -43,6 +43,9 @@
     "e2e:gcp": "node dev/e2e.js gcp",
     "stats:gcp": "node dev/stats.js gcp",
     "verify:gcp": "python3 gcp/verify/verify_gcp.py",
+    "lint:spark": "node dev/lint-content.js spark",
+    "smoke:spark": "node dev/smoke.js spark --path all",
+    "e2e:spark": "node dev/e2e.js spark",
     "test:analytics": "node dev/analytics-test.js"
   },
   "devDependencies": {

@@ -16,7 +16,8 @@ No install. No account. No server. Open `index.html` in a browser and press **Ne
 | **Azure for data engineers**: from the first storage account to production | Ready. 14 missions, 3 paths, SDK output recorded against an open-source storage emulator, Spark and Delta Lake output recorded locally | [`azure/`](azure/README.md) |
 | **AI data engineering and agentic AI**: from a PDF to a production agent | Ready. 15 missions, 3 paths, parsers, vector indexes, SDK retries, agent graphs, an MCP server and a SQL guard recorded from open-source tools. No language model was used, and the screens say what is a stand-in | [`ai/`](ai/README.md) |
 | **Google Cloud for data engineers**: from a bucket to a model | Ready. 15 missions, 3 paths, client output, SQL results, Beam panes, Spark plans, DAG runs and Terraform scans recorded offline with open-source tools. Nothing ran on Google Cloud, and the screens say so | [`gcp/`](gcp/README.md) |
-| Planned, one tutorial each | Microsoft Fabric, Spark, Hadoop, Kafka, Flink, Airflow, Python, SQL, Scala, Java, Docker, Kubernetes, Terraform, Git, PostgreSQL, Oracle, MongoDB, Power BI, Tableau | |
+| **Apache Spark** | 15 missions on query plans, shuffles, joins, skew, caching, streaming, Delta Lake, and debugging | [`spark/`](spark/index.html) |
+| Planned, one tutorial each | Microsoft Fabric, Hadoop, Kafka, Flink, Airflow, Python, SQL, Scala, Java, Docker, Kubernetes, Terraform, Git, PostgreSQL, Oracle, MongoDB, Power BI, Tableau | |
 
 Combined stacks come after the single tools. Snowflake with dbt is the first of them and is ready.
 
@@ -49,17 +50,17 @@ A small tag on a screen shows whether it belongs only to Senior or Extra. Times 
 ## Open it
 
 1. Download or clone this repository.
-2. Double-click **`index.html`**, or open **`snowflake/index.html`**, **`dbt/index.html`**, **`databricks/index.html`**, **`aws/index.html`**, **`azure/index.html`**, **`ai/index.html`** or **`snowflake-dbt/index.html`** directly.
+2. Double-click **`index.html`** and select a tutorial, or open a tutorial's own `index.html` directly.
 
 It works from `file://` and from any web server, because every path is relative and there are no modules.
 
 ## Publish on GitHub Pages
 
-1. Push this repository to GitHub and merge to `main`.
+1. Merge updates into `claude/snowflake-tutorial`, this repository's default branch.
 2. Open **Settings, Pages**. Under **Build and deployment**, choose one of:
-   - **Source: GitHub Actions.** The included `.github/workflows/pages.yml` publishes everything except the check tools. Run it once from the **Actions** tab if you want it right away.
-   - **Source: Deploy from a branch**, branch `main`, folder `/ (root)`. This also works, because `.nojekyll` is present.
-3. The library is at `https://<your-user>.github.io/<repository-name>/`, Snowflake is under `/snowflake/`, dbt is under `/dbt/`, Databricks is under `/databricks/`, AWS is under `/aws/`, Azure is under `/azure/`, AI data engineering is under `/ai/` and Snowflake with dbt is under `/snowflake-dbt/`.
+   - **Source: GitHub Actions.** The included `.github/workflows/pages.yml` publishes the site when the default branch changes. You can also run it from the **Actions** tab.
+   - **Source: Deploy from a branch**, select `claude/snowflake-tutorial` and `/ (root)`. The `.nojekyll` file allows direct static publishing.
+3. Open the [tutorial library](https://abidaziz1.github.io/data-engineering-prep/) to reach all nine courses.
 
 Progress, XP and answers are stored in each visitor's own browser (`localStorage`), one key per tutorial.
 
