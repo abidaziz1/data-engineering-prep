@@ -383,6 +383,19 @@
         real: 'Describe what you stored about users and how it expired.'
       }),
 
+      B.qa({
+        id: 'qa-multieval', t: 3, tag: 'Orchestration', secs: 60,
+        q: 'How do you evaluate a multi-agent system?',
+        pts: ['End-to-end task success on a set of tasks', 'The single-agent baseline: is the split worth it?', 'Per-agent traces, with hops and handoffs counted', 'Cost and delay per task, not per call', 'Failure attribution: which agent, which step', 'Safety cases for each agent with write rights'],
+        short: 'I start from the outcome: a set of tasks with a definition of success, run end to end, many times, because runs differ. I always compare with a single agent that has the same tools, since splitting is a cost and has to earn its place on the scores.\n\nI trace the whole system as one tree, with a span for every agent and every tool call, and I count the hops and the handoffs, because a loop between agents is a failure that no single answer shows. I measure cost and delay per task, since every hop is another call.\n\nWhen a task fails, I want to know which agent and which step failed, so I read the traces of the failures and group them. And each agent that has write rights gets its own safety cases: an injected instruction, a request outside its job, an unapproved write.',
+        fu: [
+          ['What do you do about variance?', 'Run each task several times and report the rate and the spread, not one run.'],
+          ['What would make you merge the agents?', 'The same scores at a lower cost with one agent, or a high rate of hops and handoffs that add nothing.']
+        ],
+        trap: 'Scoring only the final answer of the whole system.',
+        real: 'Describe an ablation where you compared a multi-agent design with a single agent.'
+      }),
+
       B.recap({
         id: 'm10-recap', n: 10, badge: 'Orchestrator', color: '#C4B5FD',
         pts: [

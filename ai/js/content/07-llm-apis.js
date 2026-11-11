@@ -401,6 +401,19 @@
         real: 'Describe how your system behaved when a provider was down.'
       }),
 
+      B.qa({
+        id: 'qa-constrained', t: 3, tag: 'Model APIs', secs: 60,
+        q: 'What is constrained decoding, and does it replace validation?',
+        pts: ['The model may only produce tokens that fit a grammar or a schema', 'It guarantees syntax, not truth', 'Fewer retries for malformed output', 'Some providers offer it, as a structured output feature', 'The values can still be wrong or out of range', 'Validate meaning and ranges in code anyway'],
+        short: 'Constrained decoding limits which tokens a model may produce at each step, so that the output fits a grammar or a JSON schema. Some providers offer it as a structured-output feature, and some open-model servers support grammars. It guarantees the syntax, so malformed JSON and polite words around it disappear, and fewer retries are needed.\n\nIt does not guarantee that the content is true or in range. A valid JSON can still hold an amount of a million, an order id that does not exist, or a wrong decision. So I validate meaning in code: ranges, ids against the database, rules such as the maximum refund, and then an approval for a write.\n\nI use it for the shape and my own checks for the substance. The features differ by provider and model, so I read the documentation, and I keep my validation in place so that I can change provider.',
+        fu: [
+          ['What is the cost?', 'Some added delay, and limits on which schema features are supported. Check the documentation.'],
+          ['Does a refusal fit a schema?', 'Add a field or a variant for it. A schema with no way to say "I cannot" invites a made-up value.']
+        ],
+        trap: 'Believing that a schema-valid answer is a correct answer.',
+        real: 'Describe how you combined structured output with your own checks.'
+      }),
+
       B.recap({
         id: 'm7-recap', n: 7, badge: 'API Handler', color: '#C7D2FE',
         pts: [

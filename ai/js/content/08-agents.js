@@ -404,6 +404,19 @@
         real: 'Describe a tool you rewrote because the model used it badly.'
       }),
 
+      B.qa({
+        id: 'qa-longrun', t: 3, tag: 'Agents', secs: 60,
+        q: 'How do you run an agent that works for hours?',
+        pts: ['Durable state: checkpoints in a database', 'Steps that are idempotent, so a restart is safe', 'Budgets: tokens, money and time, with a hard stop', 'Progress that a person can see', 'Human checkpoints before risky steps', 'Failure handling: resume, park, alert'],
+        short: 'A long run must survive a restart, so the state is saved after every step in a database, as with checkpoints, and every step is idempotent, so that a resume does not repeat a write. In my recording a new graph object finished a paused run from a file, and a read before an interrupt ran twice, which is why I keep early steps safe to repeat.\n\nI give it budgets for tokens, money and time, with a hard stop that ends in a clear message, because a long run multiplies any loop. I report progress to a place that a person can read, so that nobody has to guess whether it is stuck, and I add human checkpoints before steps that change something.\n\nFailures are expected: a step that fails is retried with a limit and then parked with a reason, the run can resume from the last good checkpoint, and an alert fires when a run is older or more expensive than a percentile of normal.',
+        fu: [
+          ['How do you stop it from drifting off the task?', 'A clear goal in the state, a check at each step against it, a step limit, and a summary that the agent must write before it goes on.'],
+          ['What do you log?', 'Each step: the tool, the arguments, the tokens, the time and the decision, in a trace.']
+        ],
+        trap: 'Letting a long run live in the memory of one process.',
+        real: 'Describe a long-running job that survived a restart.'
+      }),
+
       B.recap({
         id: 'm8-recap', n: 8, badge: 'Loop Builder', color: '#BAE6FD',
         pts: [

@@ -40,7 +40,7 @@ sys.path.insert(0, str(HERE))
 
 ap = argparse.ArgumentParser()
 ap.add_argument('--out', default=str(HERE.parent / 'js' / 'real.js'))
-ap.add_argument('--only', default='docs,chunk,embed,search,eval,ann,pgvector,pipeline,llm,agent,mcp,sqlguard,otel,tests,inject,finetune,tokens')
+ap.add_argument('--only', default='docs,chunk,embed,search,eval,ann,pgvector,pipeline,llm,agent,mcp,sqlguard,otel,tests,ci,inject,finetune,tokens')
 ap.add_argument('--json')
 args = ap.parse_args()
 ONLY = set(args.only.split(','))
@@ -1506,7 +1506,38 @@ def sec_tests():
     counts('test.summary', summary)
 
 
-SECTIONS = [('docs', sec_docs), ('chunk', sec_chunk), ('embed', sec_embed), ('search', sec_search), ('eval', sec_eval), ('ann', sec_ann), ('pgvector', sec_pgvector), ('pipeline', sec_pipeline), ('sqlguard', sec_sqlguard), ('finetune', sec_finetune), ('tokens', sec_tokens), ('llm', sec_llm), ('agent', sec_agent), ('mcp', sec_mcp), ('otel', sec_otel), ('tests', sec_tests), ('inject', sec_inject)]
+# =======================================================================================================================================
+# The release checks as a workflow file, validated against the schema of GitHub Actions (the workflow was not run)
+# =======================================================================================================================================
+def sec_ci():
+    import subprocess
+    ci = HERE / 'ci'
+    good = (ci / 'example-release.yml').read_text()
+    file('ci/example-release.yml', good.rstrip('\n'))
+    bad_dir = WORK / 'ci-bad'
+    bad_dir.mkdir(exist_ok=True)
+    (bad_dir / 'example-release.yml').write_text(good.replace('runs-on: ubuntu-latest', 'run-on: ubuntu-latest'))
+    res = {}
+
+    def check(cwd, label):
+        r = subprocess.run([sys.executable, '-m', 'check_jsonschema', '--builtin-schema', 'vendor.github-workflows', 'example-release.yml'], cwd=str(cwd), capture_output=True, text=True)
+        lines = []
+        for ln in (r.stdout + r.stderr).splitlines():
+            if len(ln) > 150 and '{' in ln:
+                ln = ln[:ln.index('{')] + '{...} is not valid under any of the given schemas'
+            lines.append(ln.rstrip())
+        text = '\n'.join(l for l in lines if l.strip())
+        file('ci/validate_%s.txt' % label, text + '\nexit code: %d' % r.returncode)
+        res[label] = {'exit_code': r.returncode}
+    check(ci, 'ok')
+    check(bad_dir, 'bad')
+    import yaml
+    doc = yaml.safe_load(good)
+    res['workflow'] = {'jobs': sorted(doc['jobs']), 'steps_in_each_job': {k: len(v['steps']) for k, v in doc['jobs'].items()}, 'needs': doc['jobs']['evaluation']['needs']}
+    counts('ci.summary', res)
+
+
+SECTIONS = [('docs', sec_docs), ('chunk', sec_chunk), ('embed', sec_embed), ('search', sec_search), ('eval', sec_eval), ('ann', sec_ann), ('pgvector', sec_pgvector), ('pipeline', sec_pipeline), ('sqlguard', sec_sqlguard), ('finetune', sec_finetune), ('tokens', sec_tokens), ('llm', sec_llm), ('agent', sec_agent), ('mcp', sec_mcp), ('otel', sec_otel), ('tests', sec_tests), ('ci', sec_ci), ('inject', sec_inject)]
 
 if __name__ == '__main__':
     for name, fn in SECTIONS:

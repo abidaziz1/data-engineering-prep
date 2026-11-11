@@ -378,6 +378,19 @@
         real: 'Describe how you checked that a model-written query returned the right rows.'
       }),
 
+      B.qa({
+        id: 'qa-mcpmore', t: 3, tag: 'MCP', secs: 60,
+        q: 'What does MCP offer besides tools, and what risks come with it?',
+        pts: ['Resources and prompts, as in the recorded server', 'Features that let a server ask the client: model sampling, user input, roots', 'Each feature adds a way for text to cause an action', 'Consent and visible approval for every one', 'Authorization for remote servers', 'Check the version of the specification that you target'],
+        short: 'Besides tools, the protocol has resources, which are data that an application attaches, and prompts, which are templates that a user picks. I ran both in the recorded server. The specification also describes features in which the server asks the client for something, such as asking the model of the host to complete a text, asking the user for input, or learning which folders the client exposes. They change from version to version, so I check the version that I target.\n\nEach of them adds trust surface. A server that can ask the host\'s model to complete text can try to steer it, and a server that can ask the user a question can phrase it to get something it should not. So the host must show the user what is asked and by which server, and ask for consent, and the server runs with least privilege.\n\nFor a remote server I also need authorization that acts as the user, with a token that is scoped to that server and never passed on.',
+        fu: [
+          ['How did the version change the wire?', 'In my recording, the newest version starts with a discovery request and repeats the version in each request. The older one opens with an initialize handshake and a notification.'],
+          ['What would you not expose?', 'Anything that lets text trigger an irreversible action without a person who sees the details.']
+        ],
+        trap: 'Treating a protocol feature as safe because it is in a specification.',
+        real: 'Describe how you decided which capabilities of a server to expose.'
+      }),
+
       B.recap({
         id: 'm9-recap', n: 9, badge: 'Tool Smith', color: '#FBCFE8',
         pts: [

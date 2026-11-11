@@ -333,6 +333,61 @@
     };
   })();
 
+  /* ====================== Release gate lab ====================== */
+  (function () {
+    var STAGES = ['Unit tests of the loop (scripted model)', 'Offline evaluation on the golden set', 'Attack set', 'Canary on a share of traffic', 'Promote'];
+    function changes() {
+      var GD = G.counts('eval.gate_detail'), TS = G.counts('test.summary'), out = [];
+      Object.keys(GD.candidates).forEach(function (k) { out.push({ n: k, kind: 'eval', g: GD.candidates[k] }); });
+      out.push({ n: 'the step limit removed from the agent', kind: 'test', t: TS.no_limit, file: 'test/pytest_no_limit.txt' });
+      out.push({ n: 'the approval removed from the agent', kind: 'test', t: TS.no_approval, file: 'test/pytest_no_approval.txt' });
+      return out;
+    }
+    W.release = {
+      steps: function () { return 2; },
+      hint: 'Pick a change. See where it stops.',
+      say: function (s, i) {
+        return [
+          'A release pipeline is a series of gates, cheapest first. Pick a change and follow it. Seven changes are here: five changes to retrieval, scored by the gate of mission 6, and two changes that break the agent, caught by the tests of mission 11. All seven results are recorded. The canary and the promotion are not, because nothing ran in production.',
+          'Even after the gates, a release goes out to a small share of traffic first. The alias of mission 5 makes the way back one write. Press the button to roll back, and read what it takes.'
+        ][i];
+      },
+      mood: function (s, i) { return 'think'; },
+      render: function (box, s, i, A) {
+        var st = A.local.rl || (A.local.rl = { c: 0, live: 'index-v2.db' }), h = '<div class="lab">', C = changes();
+        if (i === 0) {
+          var c = C[st.c], stage = [], note;
+          if (c.kind === 'test') {
+            var failed = c.t.failed, name = G.file(c.file).split('\n').filter(function (l) { return /^FAILED/.test(l); })[0].replace(/^FAILED test_agent\.py::/, '').replace(/ - .*/, '');
+            stage = [['fail', failed + ' of ' + (c.t.passed + c.t.failed) + ' tests failed: ' + name], ['skip', 'not reached'], ['skip', 'not reached'], ['skip', 'not reached'], ['skip', 'not reached']];
+            note = 'The change was stopped at the first gate, in a fraction of a second, with a test that names the rule that it broke. Nothing was evaluated and nothing went near a user.';
+          } else {
+            var g = c.g;
+            stage = [['pass', 'the loop is unchanged, and its tests pass'], [g.verdict, 'hit@3 ' + g.base + ' to ' + g.cand + ', ' + g.worse.length + ' worse, ' + g.better.length + ' better' + (g.reasons.length ? '. ' + g.reasons[0] : '')]];
+            if (g.verdict === 'pass') stage = stage.concat([['next', 'would run next: not recorded here'], ['next', 'would run next: not recorded here'], ['next', 'after the gates']]);
+            else stage = stage.concat([['skip', 'not reached'], ['skip', 'not reached'], ['skip', 'not reached']]);
+            note = g.verdict === 'pass' ? 'It passes the offline gate with no question better or worse. It still goes to the attack set and then to a canary. A pass of one gate is permission to meet the next gate.' : 'The gate stopped it, with a reason and the list of questions that got worse: ' + (g.worse.join(', ') || 'none') + '. ' + (g.better.length ? 'Questions that got better: ' + g.better.join(', ') + '. A trade like this needs a decision, not a pass.' : 'No question got better.');
+          }
+          h += row('Change', chips(C.map(function (x, n) { return n; }), st.c, 'rl-c', function (n) { return C[n].n; })) +
+            '<ol class="chain">' + STAGES.map(function (t, n) { var x = stage[n] || ['skip', '']; return '<li class="' + (x[0] === 'pass' ? 'used' : x[0] === 'skip' || x[0] === 'next' ? 'skip' : '') + '"><div><b>' + esc(t) + '</b> <span class="pill ' + (x[0] === 'pass' ? 'good' : x[0] === 'fail' ? 'bad' : '') + '">' + (x[0] === 'pass' ? 'pass' : x[0] === 'fail' ? 'fail' : x[0] === 'next' ? 'next' : 'not reached') + '</span><br><span>' + esc(x[1]) + '</span></div></li>'; }).join('') + '</ol>' +
+            callout(c.kind === 'test' || c.g.verdict === 'fail' ? 'warn' : 'tip', note) +
+            '<p class="lab-note">Gates cheapest first: tests take a second, an evaluation takes minutes and costs tokens, a canary takes hours and reaches real users.</p>';
+        } else {
+          var AL = JSON.parse(G.file('pipeline/alias.json')), live = st.live, back = live === AL.previous;
+          h += '<div class="lab-out">' + big(live, 'the alias points here', back ? 'warn' : 'good') + big(AL.model_id, 'embedding model of the new index') + big('one write', 'to switch, either way') + '</div>' +
+            '<div class="sel-chips"><button type="button" class="sel-chip" data-act="rl-live" data-v="' + (back ? AL.live : AL.previous) + '">' + (back ? 'Switch to ' + AL.live + ' again' : 'Roll back to ' + AL.previous) + '</button></div>' +
+            code('alias.json', 'json', JSON.stringify({ live: live, previous: back ? AL.live : AL.previous, model_id: AL.model_id }, null, 2)) +
+            callout('tip', back ? 'Rolled back. Every query is served by the old index again, and the new one is still there for analysis. Nothing was rebuilt.' : 'The new index is live. The old one is kept as `previous`, so that going back is the same one write.') +
+            table(['What to watch on a canary', 'An example rule to abort'], [['Tokens per request and cost per answer', 'more than 30 percent above the current release'], ['Tool error rate and steps per run', 'above the 99th percentile of the current release'], ['Failures of the cheap answer checks, and refusals', 'any rise that the gate did not predict'], ['Thumbs down and escalations to a person', 'a rise over a day, on enough traffic to mean something'], ['Latency at the 95th percentile', 'a rise that breaks the promise to the user']]) +
+            '<p class="lab-note">The rules in the table are examples that a team writes for itself. The mechanism is the lesson: a small share first, rules written in advance, and a way back that costs one write.</p>';
+        }
+        box.innerHTML = h + '</div>';
+        bindCodes(box);
+        A.bindWidget = function (act, el) { var v = el.getAttribute('data-v'); if (act === 'rl-c') st.c = +v; if (act === 'rl-live') st.live = v; A.render(true); };
+      }
+    };
+  })();
+
   /* A scene can show only some steps of a lab: {kind: 'tokens', parts: [0]} or {kind: 'tokens', parts: [1, 2]}. The lab then sees its own step numbers. */
   Object.keys(W).forEach(function (kind) {
     var w = W[kind];

@@ -400,6 +400,19 @@
         real: 'Describe a regression that your gate caught, or one that it missed.'
       }),
 
+      B.qa({
+        id: 'qa-pairwise', t: 3, tag: 'Evaluation', secs: 60,
+        q: 'How do you evaluate answers when there is no single right answer?',
+        pts: ['Compare two answers instead of scoring one', 'A judge picks the better, with the order swapped to cancel position bias', 'A win rate over many questions, with an interval', 'A human sample to calibrate the judge', 'Rubrics for the dimensions: faithful, complete, clear', 'Keep deterministic checks for what can be checked'],
+        short: 'When the answer is open, I compare two answers on the same question, the current release and the candidate, and ask which is better. A judge model can pick, with a rubric, and I run each pair twice with the order swapped, to cancel the habit of preferring the first or the longer one. I report a win rate over many questions with an interval, and I treat a small difference as noise, as with the retrieval scores.\n\nI calibrate the judge against a sample that people compared, by kind of question, and I re-check the agreement when the judge changes. I split the rubric into dimensions, such as faithful to the sources, complete, and clear, because one overall score hides the trade between them.\n\nAnd I keep deterministic checks wherever they work: the citations, the permissions, the numbers. A judge should only decide what code cannot.',
+        fu: [
+          ['What is a bias to watch?', 'Length: judges often prefer longer answers. Add a rule or compare at equal length.'],
+          ['How many questions?', 'Enough for the interval to separate the two. Small sets only show large differences.']
+        ],
+        trap: 'Trusting the first pick of a judge. Swap the order and look at the agreement with people.',
+        real: 'Describe how you compared two versions of an assistant without a ground truth.'
+      }),
+
       B.recap({
         id: 'm6-recap', n: 6, badge: 'Retrieval Judge', color: '#FECACA',
         pts: [

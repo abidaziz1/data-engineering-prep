@@ -421,6 +421,19 @@
         real: 'Describe an attack case you added after an incident.'
       }),
 
+      B.qa({
+        id: 'qa-guardrails', t: 3, tag: 'Safety', secs: 60,
+        q: 'Where do guardrail models and filters fit, and what do they not solve?',
+        pts: ['Input and output checks: moderation, personal data, topics, schema', 'Classifiers are probabilistic: false positives and misses', 'They can be bypassed by rephrasing or encoding', 'They add delay and cost to every request', 'They are one layer. Least privilege and code checks come first', 'Measure them on your attack set'],
+        short: 'Guardrails are checks on the input and the output of the model: a classifier that flags unsafe or off-topic requests, a detector of personal data, a schema check, a list of allowed links. They are useful, and they are one layer.\n\nThey are probabilistic. A classifier misses some attacks and flags some good requests, it can be bypassed by rephrasing or encoding the text, and each check adds delay and cost to every request. So I do not depend on them for the things that must not happen. For those I use the controls that do not depend on the model behaving: no write tool where it is not needed, an approval that shows the real arguments, checks in the tool, and permission filters in the search.\n\nI measure the guardrails on my attack set and on real traffic: the share of attacks that they stop, and the share of normal requests that they block, and I tune them with both numbers in view.',
+        fu: [
+          ['Where would you put an output filter first?', 'On what can leave: links, images, e-mail text, and anything that renders as active content.'],
+          ['What would you log?', 'What was flagged, why, and what the user saw, so that a false positive can be fixed.']
+        ],
+        trap: 'Adding a moderation model and calling the system safe.',
+        real: 'Describe a guardrail you added, and its false positives.'
+      }),
+
       B.recap({
         id: 'm12-recap', n: 12, badge: 'Guardian', color: '#FECDD3',
         pts: [

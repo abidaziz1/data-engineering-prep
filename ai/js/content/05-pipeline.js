@@ -375,6 +375,19 @@
         real: 'Describe how you measured freshness, and what lag you promised.'
       }),
 
+      B.qa({
+        id: 'qa-cdc', t: 3, tag: 'Pipelines', secs: 60,
+        q: 'How do you keep the index in sync with a database table, not with files?',
+        pts: ['Turn a row into a document: choose the fields, write the text', 'Hash the text, so that unchanged rows cost nothing', 'Capture changes: a change feed, a timestamp or a log', 'Deletes arrive as tombstones, and need a run too', 'Idempotent upserts keyed by the row id and the hash', 'Backfill with the same code path'],
+        short: 'I treat a row as a small document. I decide which fields make the text and which become labels, such as the owner and the audience, and I write a stable template for the text, so that the same row always gives the same text. Then the ideas of my file pipeline apply: a hash of the text, and an id from the row key and the hash, so that an unchanged row costs nothing.\n\nTo find what changed, I use a change feed from the database or a log of changes if there is one, otherwise a modified timestamp with a safety margin, plus a periodic full comparison, because a timestamp can miss a row. A delete shows up as a tombstone, or as a row that is gone from a comparison, and it removes the chunks and the vectors.\n\nWrites are idempotent upserts, and ordering is handled by comparing the version of the row, not the arrival time. A backfill uses the same code with a wider window.',
+        fu: [
+          ['What about rows that change every minute?', 'Batch the changes, embed on a delay, and decide how fresh the index must be. Most use cases accept minutes.'],
+          ['What about a row with personal data?', 'Mask or leave it out of the text, and keep labels for access, exactly as with files.']
+        ],
+        trap: 'Re-embedding the whole table every night.',
+        real: 'Describe how you synced an index with a table that changed often.'
+      }),
+
       B.recap({
         id: 'm5-recap', n: 5, badge: 'Pipeline Keeper', color: '#FED7AA',
         pts: [

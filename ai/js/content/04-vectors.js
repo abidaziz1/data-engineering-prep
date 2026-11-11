@@ -388,6 +388,19 @@
         real: 'Describe how you found and fixed a filter that returned too few rows.'
       }),
 
+      B.qa({
+        id: 'qa-quant', t: 3, tag: 'Vectors', secs: 60,
+        q: 'What is quantisation of embeddings, and when would you use it?',
+        pts: ['Store each number in fewer bits: 8-bit integers, or one bit', 'Memory and speed gain, recall loss', 'Search the compact vectors, then rerank the best with full precision', 'Some models allow cutting the number of dimensions', 'Measure recall on your own questions', 'Recorded stand-in: recall held on 24 questions, which proves little'],
+        short: 'Quantisation stores each number of a vector in fewer bits: 32-bit floats become 8-bit integers, or a single bit. The memory and the speed improve a lot, and the recall can fall, so I measure it on my own questions before I accept it. In my recording, with the stand-in vectors, the hit at 5 stayed the same at 8, 16 and 32 bits, and I treat that as weak evidence, since 24 questions and a stand-in prove little.\n\nThe usual pattern is two stages: search the compact vectors to get a larger set of candidates, for example fifty, and rerank those with the full-precision vectors, which restores most of the recall. Some embedding models are trained so that their vectors can be cut to fewer dimensions with a small loss, which is documented for those models and must be tested.\n\nI use it when memory or cost is the limit, as with tens of millions of vectors, and I keep the full vectors in cheaper storage for the rerank.',
+        fu: [
+          ['What is product quantisation?', 'A different method that codes parts of a vector with a small codebook. In my recording it cut the bytes sharply and the recall at 8 bytes fell to 0.129.'],
+          ['How do you pick the number of candidates?', 'Raise it until the recall after the rerank meets the target, and look at the latency that it costs.']
+        ],
+        trap: 'Quantising to save memory without measuring recall.',
+        real: 'Describe a memory saving that you measured against recall.'
+      }),
+
       B.recap({
         id: 'm4-recap', n: 4, badge: 'Vector Navigator', color: '#A7F3D0',
         pts: [
