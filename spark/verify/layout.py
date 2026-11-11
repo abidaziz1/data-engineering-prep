@@ -95,3 +95,18 @@ def bucketing(spark, paths):
     spark.conf.unset('spark.sql.autoBroadcastJoinThreshold')
     spark.conf.unset('spark.sql.adaptive.enabled')
     return out
+
+
+def overwrite_modes(spark, out):
+    """A daily job rewrites one day of a table that holds three days. With the default static mode the whole table is replaced by that one day. With dynamic mode only the day in the data is replaced."""
+    result = {'default_mode': spark.conf.get('spark.sql.sources.partitionOverwriteMode')}
+    for mode in ('static', 'dynamic'):
+        target = os.path.join(out, 'overwrite-' + mode)
+        spark.range(30).select('id', (F.col('id') % 3).alias('day')).write.partitionBy('day').mode('overwrite').parquet(target)
+        before = sorted(d for d in os.listdir(target) if d.startswith('day='))
+        spark.conf.set('spark.sql.sources.partitionOverwriteMode', mode)
+        spark.range(100, 105).select('id', F.lit(1).alias('day')).write.partitionBy('day').mode('overwrite').parquet(target)
+        after = sorted(d for d in os.listdir(target) if d.startswith('day='))
+        result[mode] = {'folders_before': before, 'folders_after': after, 'rows_after': spark.read.parquet(target).count()}
+        spark.conf.unset('spark.sql.sources.partitionOverwriteMode')
+    return result

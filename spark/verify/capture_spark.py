@@ -324,6 +324,7 @@ def sec_layout():
     b = L.bucketing(sp, PATHS)
     counts('files.bucketing', {'shuffles_without_buckets': b['without buckets'], 'shuffles_when_bucketed': b['bucketed on customer_id']})
     text('files.bucketing_plan', n(b['bucketed plan']))
+    counts('files.overwrite', L.overwrite_modes(sp, os.path.join(OUT_DIR, 'overwrite')))
     r.stop()
     gs = S.group_stages(r.events())
     rows = []
