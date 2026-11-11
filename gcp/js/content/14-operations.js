@@ -315,7 +315,7 @@
           },
           {
             say: 'Two fixes show up. The **dashboard** can read a small summary table, or a materialized view, and not the big table. The **analysts** need a rule: a label on every job, a limit of bytes billed for each query, and the habit of filtering on the partition. The nightly job is not the problem.',
-            tabs: [{ layer: 'RULE', name: 'What to do about each', c: 'raw', cols: ['what the log shows', 'what to do'], rows: [['dashboard_refresh', 'point it at a summary table or a materialized view, and refresh less often if the business agrees'], ['(no label)', 'require labels, set `maximum_bytes_billed` for the group, and teach the partition filter'], ['daily_orders', 'leave it alone: it reads one day, which is the point of the partition filter']], trk: 0 }],
+            tabs: [{ layer: 'RULE', name: 'What to do about each', c: 'raw', cols: ['what the log shows', 'what to do'], rows: [['dashboard_refresh', 'point it at a summary table or a materialized view, and refresh less often if the business agrees'], ['(no label)', 'require labels, set a cap on the bytes billed for the group, and teach the partition filter'], ['daily_orders', 'leave it alone: it reads one day, which is the point of the partition filter']], trk: 0 }],
             notes: ['A finding without an owner is gossip. The label is what lets you send this table to the right person.']
           }
         ]

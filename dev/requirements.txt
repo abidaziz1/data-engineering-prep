@@ -71,3 +71,14 @@ pixeltable-pgserver
 pytest
 pyyaml
 check-jsonschema
+# gcp/verify (the recorder, verify_gcp.py and its --recapture). The Dataform compiler comes from `npm install --prefix gcp/verify` (Node 20 or later).
+# Airflow 3.4.0 with the Google provider (and the constraints file of that release) lives in its own environment, named by GCP_AIRFLOW_PYTHON.
+# PySpark 4.0.1 with Java 17 or 21 is named by GCP_SPARK_PYTHON, and Checkov with check-jsonschema by GCP_IAC_PYTHON. A check whose tool is missing says so and is skipped.
+apache-beam
+google-cloud-storage
+google-cloud-bigquery
+google-cloud-pubsub
+gcp-storage-emulator
+functions-framework
+python-hcl2
+fastavro

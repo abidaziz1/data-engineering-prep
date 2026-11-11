@@ -787,7 +787,8 @@ def sec_spark():
     OUT['meta']['pyspark'] = d['spark_version']
     counts('spark.pruning', d['pruning'])
     counts('spark.shuffle', d['shuffle'])
-    table('spark.small_files', ['write', 'files', 'total KB', 'KB per file'], [[x['write'], x['files'], round(x['bytes'] / 1024), round(x['bytes_per_file'] / 1024, 1)] for x in d['small_files']])
+    # a file size varies by about 1 KB between runs, so the totals are rounded to 10 KB
+    table('spark.small_files', ['write', 'files', 'total KB', 'KB per file'], [[x['write'], x['files'], int(round(x['bytes'] / 1024, -1)), round(int(round(x['bytes'] / 1024, -1)) / x['files'], 1)] for x in d['small_files']])
     counts('spark.skew', d['skew'])
     counts('spark.join', d['join'])
     counts('spark.written', {'files': d['files_written'], 'partitions': d['partitions_written']})
@@ -797,7 +798,7 @@ def sec_spark():
 # The command line tools: do the flags that the lessons name exist?
 # =======================================================================================================================================
 GCLOUD_FLAGS = [
-    ('pubsub subscriptions create', ['--ack-deadline', '--dead-letter-topic', '--max-delivery-attempts', '--enable-exactly-once-delivery', '--enable-message-ordering', '--message-retention-duration',
+    ('pubsub subscriptions create', ['--topic', '--ack-deadline', '--dead-letter-topic', '--max-delivery-attempts', '--enable-exactly-once-delivery', '--enable-message-ordering', '--message-retention-duration',
                                      '--min-retry-delay', '--max-retry-delay', '--bigquery-table', '--use-table-schema', '--cloud-storage-bucket', '--push-endpoint', '--expiration-period', '--message-filter']),
     ('pubsub topics create', ['--message-retention-duration', '--schema', '--message-encoding', '--topic-encryption-key']),
     ('storage buckets create', ['--location', '--uniform-bucket-level-access', '--public-access-prevention', '--soft-delete-duration', '--enable-hierarchical-namespace', '--default-storage-class', '--retention-period']),
@@ -810,6 +811,7 @@ GCLOUD_FLAGS = [
                                    '--bigquery-destination-config', '--gcs-destination-config']),
     ('transfer jobs create', ['--source-agent-pool', '--include-prefixes', '--overwrite-when', '--delete-from', '--schedule-repeats-every']),
     ('dataplex datascans create data-quality', ['--data-quality-spec-file', '--data-source-resource', '--location']),
+    ('iam workload-identity-pools create', ['--location', '--display-name']),
     ('iam workload-identity-pools providers create-oidc', ['--issuer-uri', '--attribute-mapping', '--attribute-condition', '--workload-identity-pool', '--location']),
     ('iam service-accounts add-iam-policy-binding', ['--member', '--role']),
     ('projects add-iam-policy-binding', ['--member', '--role', '--condition']),
@@ -820,8 +822,11 @@ GCLOUD_FLAGS = [
     ('logging metrics create', ['--log-filter', '--description']),
     ('billing budgets create', ['--billing-account', '--display-name', '--budget-amount', '--threshold-rule', '--filter-projects', '--notifications-rule-pubsub-topic']),
     ('monitoring policies create', ['--policy-from-file', '--notification-channels']),
+    ('config list', []),
 ]
 BQ_FLAGS = [
+    ('ls', ['--project_id']),
+    ('rm', []),
     ('mk', ['--time_partitioning_field', '--time_partitioning_type', '--time_partitioning_expiration', '--clustering_fields', '--require_partition_filter', '--range_partitioning', '--dataset', '--table',
             '--location', '--default_table_expiration', '--description', '--label', '--external_table_definition', '--view', '--materialized_view']),
     ('load', ['--source_format', '--autodetect', '--schema_update_option', '--replace', '--time_partitioning_field', '--hive_partitioning_mode', '--hive_partitioning_source_uri_prefix',

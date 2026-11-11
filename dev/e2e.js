@@ -1153,6 +1153,259 @@ const ok = (c, m) => { if (c) pass++; else { fail++; console.log('FAIL:', m); } 
     await go(chS.id + ':0'); ok((await text()).length > 500, 'coding round opens');
   }
 
+  // ---------- gcp only: the labs must show what the recordings say, and the rules and the arithmetic must come out right ----------
+  // Every expected value below is worked out here, in code that shares nothing with the widgets: from the recorded tables, from simple rules (what a role holds,
+  // how sessions merge, how a retry ends), or from arithmetic on the recorded numbers.
+  if (name === 'gcp') {
+    const bigs = () => page.$$eval('.lab-out .big b', els => els.map(e => e.textContent));
+    const bigCls = () => page.$$eval('.lab-out .big', els => els.map(e => e.className));
+    const tables = () => page.$$eval('.lab .tbl', ts => ts.map(t => [...t.querySelectorAll('tbody tr')].map(r => [...r.children].map(td => td.innerText.trim()))));
+    const pick = async (act, v) => { await page.click('[data-act="' + act + '"][data-v="' + v + '"]'); await page.waitForTimeout(12); };
+    const chipVals = act => page.$$eval('[data-act="' + act + '"]', els => els.map(e => e.getAttribute('data-v')));
+    const scene = kind => S.find(x => x.type === 'widget' && x.kind === kind);
+    const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+    const counts = k => page.evaluate(k => LAB.real.counts[k], k);
+    const table = k => page.evaluate(k => LAB.real.tables[k], k);
+    const reset = (k, v) => page.evaluate(([k, v]) => { LAB.app.local[k] = v; LAB.app.render(true); }, [k, v === undefined ? null : v]).then(() => page.waitForTimeout(20));
+    const num = s => parseFloat(String(s).replace(/[$,]/g, ''));
+    const bytesOf = s => { const m = /([\d.,]+)\s*(KiB|MiB|GiB|TiB)/.exec(s); return m ? num(m[1]) * { KiB: 1024, MiB: 1024 ** 2, GiB: 1024 ** 3, TiB: 1024 ** 4 }[m[2]] : NaN; };
+    const close = (a, b, rel, abs) => Math.abs(a - b) <= (abs || 0) + Math.abs(b) * (rel || 0);
+    let t;
+
+    // IAM lab: allow roles add up along the hierarchy, a deny wins, and creating a query job is checked in the project (so a role on a dataset cannot give it)
+    const HOLDS = { viewer: ['getData'], editor: ['getData', 'updateData'], jobuser: ['jobs'], admin: ['getData', 'updateData', 'jobs'] };
+    const LEVELS = ['organization', 'folder', 'project', 'dataset', 'table'];
+    const iamWant = b => {
+      const out = { getData: null, updateData: null, jobs: null };
+      LEVELS.forEach((l, n) => (HOLDS[b[l]] || []).forEach(p => { if (p === 'jobs') { if (n <= 2) out.jobs = l; } else out[p] = l; }));
+      return out;
+    };
+    const iam = scene('iam');
+    await go(iam.id + ':0');
+    const iamCases = [
+      {}, { dataset: 'viewer' }, { folder: 'viewer' }, { project: 'admin' }, { organization: 'editor', table: 'viewer' }, { dataset: 'admin' }, { project: 'editor', dataset: 'viewer' }, { organization: 'admin', table: 'viewer' }
+    ];
+    for (const c of iamCases) {
+      await reset('iam', null);
+      const b = { organization: 'none', folder: 'none', project: 'none', dataset: 'none', table: 'none' };
+      for (const l of LEVELS) if (c[l]) { await pick('iam-' + l, c[l]); b[l] = c[l]; }
+      const want = iamWant(b), rows = (await tables())[0], got = rows.map(r => r[1]);
+      const show = w => (w ? 'allowed, from the ' + w : 'not granted');
+      ok(same(got, [show(want.getData), show(want.updateData), show(want.jobs)]), 'IAM lab ' + JSON.stringify(c) + ': what reaches the table (got ' + got.join(' | ') + ')');
+      const verdict = want.getData && want.jobs ? 'the query runs' : want.getData ? 'refused: no permission to create a job' : want.jobs ? 'refused: no permission to read the table' : 'refused';
+      ok((await bigs())[0] === verdict, 'IAM lab ' + JSON.stringify(c) + ': the verdict is "' + verdict + '" (got ' + (await bigs())[0] + ')');
+    }
+    await go(iam.id + ':1');
+    for (const [tb, pj, deny] of [['none', 'none', 'off'], ['viewer', 'none', 'off'], ['none', 'jobuser', 'off'], ['viewer', 'jobuser', 'off'], ['viewer', 'jobuser', 'on'], ['none', 'none', 'on']]) {
+      await reset('iam', null);
+      await pick('iam-table', tb); await pick('iam-project', pj); await pick('iam-deny', deny);
+      const verdict = deny === 'on' ? 'refused by the deny policy' : tb === 'viewer' && pj === 'jobuser' ? 'the query runs' : tb === 'viewer' ? 'refused: no permission to create a job' : pj === 'jobuser' ? 'refused: no permission to read the table' : 'refused';
+      ok((await bigs())[0] === verdict, 'IAM lab, read ' + tb + ', job ' + pj + ', deny ' + deny + ': "' + verdict + '" (got ' + (await bigs())[0] + ')');
+    }
+
+    // listing lab: the objects and the prefixes that were recorded for each call are counted again from the names
+    const LS = await table('gcs.listing'), ls = scene('listing');
+    await go(ls.id + ':0'); await reset('ls', { c: 1 });
+    ok(same(await chipVals('ls-c'), LS.rows.map((r, n) => String(n))), 'listing lab: one chip for each recorded call');
+    for (let n = 0; n < LS.rows.length; n++) {
+      await pick('ls-c', n);
+      const r = LS.rows[n], objs = r[3] === '-' ? [] : r[3].split(', '), pfx = r[4] === '-' ? [] : r[4].split(', '), b = await bigs();
+      ok(r[2] === objs.length, 'recorded listing ' + n + ': the object count is the number of names');
+      ok(same(b, [String(objs.length), pfx.length ? String(pfx.length) : 'none']), 'listing lab, call ' + n + ' (prefix ' + r[0] + ', delimiter ' + r[1] + '): ' + objs.length + ' objects, ' + pfx.length + ' prefixes (got ' + b.join(' | ') + ')');
+      const pfxShown = await page.$$eval('.keylist li.cp', xs => xs.map(x => x.textContent)), objShown = await page.$$eval('.keylist li:not(.cp)', xs => xs.map(x => x.textContent));
+      ok(same(objShown, objs) && same(pfxShown, pfx), 'listing lab, call ' + n + ': the lists on the page are the recorded names');
+    }
+
+    // signed URL lab: the four things you can do to a URL, and the recorded answers
+    const SG = await counts('gcs.signed'), sg = scene('signed');
+    await go(sg.id + ':0');
+    ok(same(await bigs(), [SG.expires_seconds + ' s', String(SG.signature_hex_chars), 'no']) && SG.expires_seconds === 900 && SG.signature_hex_chars === 512 && SG.network_used === false, 'signed URL lab: 900 s, 512 hex characters, made with no network');
+    await go(sg.id + ':1'); await reset('sg', { c: 'nothing' });
+    for (const [c, want] of [['nothing', 'valid'], ['name', 'refused'], ['expiry', 'refused'], ['late', 'refused']]) {
+      await pick('sg-c', c);
+      ok((await bigs())[0] === want, 'signed URL lab, "' + c + '": ' + want + ' (got ' + (await bigs())[0] + ')');
+    }
+    ok(SG.verified_with_public_key === true && SG.other_object_name_verifies === false && SG.longer_expiry_verifies === false, 'signed URL lab: the recorded facts behind the answers');
+
+    // format lab: sizes next to the CSV, then the share of a Parquet file that two columns need
+    const FS = await table('formats.sizes'), FC = await counts('formats.column_read'), fm = scene('format');
+    await go(fm.id + ':0'); await reset('fm', { f: 'Parquet (snappy)', cols: { store_id: true, total_cents: true } });
+    const csv = FS.rows.find(r => r[0] === 'CSV')[1];
+    const pageText = await text();
+    for (const r of FS.rows) {
+      ok(close(r[1] / csv, r[2], 0, 0.0006), 'recorded format sizes: ' + r[0] + ' is ' + r[2] + ' of the CSV (' + (r[1] / csv).toFixed(4) + ')');
+      ok(pageText.includes(r[0]) && pageText.includes((r[1] / 1e6).toFixed(2) + ' MB, ' + Math.round(r[1] / csv * 100) + '% of CSV'), 'format lab: the bar of ' + r[0] + ' says ' + (r[1] / 1e6).toFixed(2) + ' MB and ' + Math.round(r[1] / csv * 100) + '% of CSV');
+    }
+    await go(fm.id + ':1');
+    const cols = Object.keys(FC.column_chunk_bytes), tot = cols.reduce((a, c) => a + FC.column_chunk_bytes[c], 0);
+    ok(FC.file_bytes >= tot && FC.rows === 100000, 'recorded Parquet file: the column chunks fit inside the file');
+    for (const subset of [['store_id', 'total_cents'], ['order_ts'], cols, ['order_id', 'customer_id', 'order_ts'], []]) {
+      await reset('fm', { f: 'Parquet (snappy)', cols: Object.fromEntries(subset.map(c => [c, true])) });
+      const got = subset.reduce((a, c) => a + FC.column_chunk_bytes[c], 0), b = await bigs();
+      ok(num(b[0]) === Math.round(got / 1000) && Math.abs(num(b[1]) - got / tot * 100) <= 0.051, 'format lab, columns ' + (subset.join(', ') || 'none') + ': ' + Math.round(got / 1000) + ' KB, ' + (got / tot * 100).toFixed(1) + '% (got ' + b.join(' | ') + ')');
+    }
+    ok(FC.two_columns_share === Math.round((FC.column_chunk_bytes.store_id + FC.column_chunk_bytes.total_cents) / tot * 1000) / 1000, 'recorded Parquet file: the share of two columns is their bytes over the sum of the column chunks');
+
+    // bytes lab: partitions, columns, bytes and dollars of eleven queries, then a month at three schedules
+    const ES = await table('sql.estimates'), EN = await counts('sql.estimate_rules'), by = scene('bytes');
+    await go(by.id + ':0'); await reset('by', { q: 0, f: 24 });
+    for (let n = 0; n < ES.rows.length; n++) {
+      await pick('by-q', n);
+      const r = ES.rows[n], b = await bigs(), cc = /^\d+ of \d+ columns$/.test(r[1]) ? +r[1].split(' ')[0] : r[1].split(', ').length;
+      ok(r[4] >= r[3] && r[4] - r[3] < 1048576 && close(r[5], r[4] / 1024 ** 4 * EN.example_price_per_tib_usd, 0, 0.00006), 'recorded estimate ' + n + ' (' + r[0] + '): billed bytes are the logical bytes rounded up, and the dollars are the bytes at 6.25 for each TiB');
+      ok(b[0] === r[2] && b[1] === cc + ' of 10' && close(bytesOf(b[2]), r[4], 0.006) && close(num(b[3]), r[5], 0.003, 0.0006), 'bytes lab, query ' + n + ' (' + r[0] + '): ' + r[2] + ' partitions, ' + cc + ' columns, ' + r[4] + ' bytes (got ' + b.join(' | ') + ')');
+    }
+    await go(by.id + ':1');
+    for (const q of [0, 1, 9]) for (const f of [1, 24, 288]) {
+      await reset('by', { q, f }); const b = await bigs(), cost = ES.rows[q][5] * f * 30, narrow = ES.rows[5][5] * f * 30;
+      ok(close(num(b[0]), cost, 0.006, 0.006) && close(num(b[1]), narrow, 0.006, 0.006) && Math.abs(num(b[2]) - cost / narrow) <= 0.06, 'bytes lab, query ' + q + ' at ' + f + ' runs a day: a month costs ' + cost.toFixed(2) + ' against ' + narrow.toFixed(2) + ' (got ' + b.join(' | ') + ')');
+    }
+
+    // slots lab: pure arithmetic with two example rates, all 36 settings
+    const sl = scene('slots');
+    await go(sl.id + ':0'); await reset('sl', { t: 100, p: 500, h: 8 });
+    ok(same(await chipVals('sl-t'), ['20', '100', '400', '1500']) && same(await chipVals('sl-p'), ['100', '500', '2000']) && same(await chipVals('sl-h'), ['2', '8', '24']), 'slots lab offers 4 volumes, 3 slot counts and 3 busy-hour settings');
+    for (const tb of [20, 100, 400, 1500]) for (const p of [100, 500, 2000]) for (const h of [2, 8, 24]) {
+      await pick('sl-t', tb); await pick('sl-p', p); await pick('sl-h', h);
+      const od = tb * 6.25, cap = p * h * 30 * 0.06, b = await bigs(), cls = await bigCls();
+      ok(close(num(b[0]), od, 0.006, 0.006) && close(num(b[1]), cap, 0.006, 0.006) && num(b[2]) === Math.round(cap / 6.25) && /TiB$/.test(b[2]), 'slots lab, ' + tb + ' TiB, ' + p + ' slots, ' + h + ' hours: on demand ' + od + ', capacity ' + cap + ', equal at ' + Math.round(cap / 6.25) + ' TiB (got ' + b.join(' | ') + ')');
+      ok(cls[0].includes('good') === (od < cap) && cls[1].includes('good') === (cap < od), 'slots lab, ' + tb + ' TiB, ' + p + ' slots, ' + h + ' hours: the cheaper side is marked');
+    }
+
+    // load methods lab: the wrong rows follow from what each method does with a batch that is repeated and then corrected
+    const IW = await counts('idem.world'), IR = await table('idem.runs'), im = scene('idem');
+    await go(im.id + ':0'); await reset('im', { m: 'merge' });
+    const want = { append: [0, IW.batch_rows, IW.batch_rows], merge: [0, 0, IW.vanished], merge_and_delete: [0, 0, 0], overwrite_partition: [0, 0, 0], reload_all: [0, 0, 0] };
+    ok(same(await chipVals('im-m'), Object.keys(want)), 'load methods lab offers the five methods');
+    for (const m of Object.keys(want)) {
+      await pick('im-m', m);
+      t = (await tables())[0]; const b = await bigs();
+      ok(same(t.map(r => +r[3]), want[m]), 'load methods lab, ' + m + ': wrong rows ' + want[m].join(', ') + ' (got ' + t.map(r => r[3]).join(', ') + ')');
+      ok(b[0] === (want[m][1] === 0 ? 'safe' : 'not safe') && b[1] === (want[m][2] === 0 ? 'right' : String(want[m][2])), 'load methods lab, ' + m + ': the verdicts (got ' + b.join(' | ') + ')');
+      ok(same(IR.rows.filter(r => r[0] === m).map(r => r[4]), want[m]), 'recorded load runs, ' + m + ': the table of the recording says the same');
+    }
+
+    // Pub/Sub lab: the recorded model, and the rules that follow from the settings
+    const PM = await table('pubsub.model'), ps = scene('pubsub'), situations = [...new Set(PM.rows.map(r => r[0]))];
+    await go(ps.id + ':0'); await reset('ps', null);
+    ok(same(await chipVals('ps-s'), situations) && situations.length === 7, 'Pub/Sub lab offers the seven situations');
+    for (const sit of situations) {
+      await pick('ps-s', sit);
+      t = (await tables())[0];
+      ok(same(t, PM.rows.filter(r => r[0] === sit).map(r => [r[1], r[2], String(r[3]), String(r[4]), r[5]])), 'Pub/Sub lab, "' + sit + '": the rows are the recorded ones');
+    }
+    const pm = (sit, msg) => PM.rows.find(r => r[0] === sit && r[1] === msg);
+    ok(pm('slow handler', 'm1')[3] === Math.ceil(35 / 10) && pm('slow handler', 'm1')[4] === 4 && pm('deadline long enough', 'm1')[3] === 1, 'Pub/Sub model: 35 seconds of work with a 10 second deadline is 4 deliveries, and with 60 it is 1');
+    ok(pm('poison, dead letter after 5', 'm1')[3] === 5 && pm('poison, dead letter after 5', 'm1')[5] === 'dead' && pm('poison, no dead letter', 'm1')[3] === 61, 'Pub/Sub model: a dead letter after 5 stops a poison message at 5, and with none it is delivered 61 times in 60 seconds');
+    ok(pm('ordering key blocks', 'a2')[3] === 0 && pm('ordering key blocks', 'a3')[3] === 0 && pm('ordering key blocks', 'b1')[5] === 'acked' && pm('ordering key, dead letter after 5', 'a3')[5] === 'acked', 'Pub/Sub model: the messages behind a poison message with the same key are held back, and the other key is not');
+
+    // windows lab: panes against the events that were sent, and sessions merged again here
+    const WL = await counts('beam.late'), wn = scene('windows');
+    await go(wn.id + ':0'); await reset('wn', { c: 'late_discarding', g: 60 });
+    for (const c of ['no_lateness', 'late_discarding', 'late_accumulating', 'early_late_accumulating']) {
+      await pick('wn-c', c);
+      const P = await table('beam.panes.' + c), L = WL[c], b = await bigs(); t = (await tables())[0];
+      const acc = /accumulating/.test(c), last = {};
+      P.rows.forEach(r => { last[r[0] + '|' + r[1]] = r[4]; });
+      const counted = acc ? Object.values(last).reduce((a, x) => a + x, 0) : P.rows.reduce((a, r) => a + r[4], 0);
+      ok(same(t.map(r => [r[0], r[1], +r[2], r[3], +r[4]]), P.rows), 'windows lab, ' + c + ': the panes on the page are the recorded panes');
+      ok(counted === L.events_in_the_output && L.events_in_the_output + L.dropped === L.events_sent && L.events_sent === 6, 'recorded panes, ' + c + ': ' + (acc ? 'the last pane of each window' : 'all panes') + ' add up to the ' + L.events_in_the_output + ' events counted, and counted plus dropped is the 6 sent');
+      ok(same(b, [String(L.events_sent), String(L.events_in_the_output), String(L.dropped)]) && L.dropped === (c === 'no_lateness' ? 2 : 1), 'windows lab, ' + c + ': sent, counted and dropped (got ' + b.join(' | ') + ')');
+    }
+    await go(wn.id + ':1');
+    const merge = (times, gap) => { const out = []; times.slice().sort((a, b) => a - b).forEach(x => { const last = out[out.length - 1]; if (last && x < last.end) { last.end = x + gap; last.n++; } else out.push({ start: x, end: x + gap, n: 1 }); }); return out; };
+    for (const g of [60, 10]) {
+      await pick('wn-g', g);
+      const want = merge([0, 20, 45, 200, 215], g), b = await bigs(); t = (await tables())[0];
+      ok(b[0] === String(want.length) && same(t.map(r => [r[1], +r[2]]), want.map(x => [x.start + ' to ' + x.end, x.n])), 'windows lab, gap ' + g + ': ' + want.length + ' sessions ' + want.map(x => x.start + ' to ' + x.end + ' (' + x.n + ')').join(', ') + ' (got ' + b[0] + '; ' + t.map(r => r[1] + ' (' + r[2] + ')').join(', ') + ')');
+    }
+
+    // Spark lab: what the plan reads, the tasks of a shuffle, the files of a write, and the skew
+    const SPK = await counts('spark.pruning'), SW = await counts('spark.written'), SS = await counts('spark.shuffle'), SF = await table('spark.small_files'), SK = await counts('spark.skew'), sp = scene('spark');
+    await go(sp.id + ':0'); await reset('sp', { d: 'one_day', a: 'off', k: 'by_store' });
+    for (const [d, folders] of [['all_days', SW.partitions], ['one_day', 1]]) {
+      await pick('sp-d', d); const b = await bigs();
+      ok(same(b, [String(folders), '2 of 4']) && (SPK[d].PartitionFilters === 'none') === (d === 'all_days') && SPK[d].ReadSchema === 'struct<store_id:string,total_cents:int>', 'Spark lab, ' + d + ': ' + folders + ' day folders and 2 of 4 columns (got ' + b.join(' | ') + ')');
+    }
+    await go(sp.id + ':1');
+    for (const [a, tasks] of [['off', [200, 2]], ['on', [2, 2, 1]]]) {
+      await pick('sp-a', a); const b = await bigs();
+      ok(b[0] === tasks.join(', ') && b[1] === '200' && same(a === 'on' ? SS.tasks_per_stage_with_aqe : SS.tasks_per_stage_without_aqe, tasks), 'Spark lab, adaptive execution ' + a + ': tasks ' + tasks.join(', ') + ' of the 200 shuffle partitions (got ' + b.join(' | ') + ')');
+    }
+    t = (await tables())[0];
+    ok(same(t.map(r => [r[0], +r[1]]), SF.rows.map(r => [r[0], r[1]])) && t.every(r => close(+r[1] * +r[3], +r[2], 0.02, 1)), 'Spark lab: files for each write, and files times the size of a file is the total');
+    await go(sp.id + ':2');
+    for (const [k, key] of [['by_store', 'by_store'], ['salt', 'by_store_and_salt']]) {
+      await pick('sp-k', k); const b = await bigs(), d = SK[key];
+      ok(num(b[0]) === d.largest && num(b[1]) === d.median && Math.abs(num(b[2]) - d.largest / d.median) <= 0.006 && d.largest >= d.median, 'Spark lab, ' + k + ': biggest ' + d.largest + ', median ' + d.median + ', ratio ' + (d.largest / d.median).toFixed(2) + ' (got ' + b.join(' | ') + ')');
+    }
+    ok(SK.by_store.largest_over_median > 3 && SK.by_store_and_salt.largest_over_median < 2, 'recorded skew: the biggest store partition is over 3 times the median, and a salt brings it under 2');
+
+    // retries lab: every setting, with a retry loop written again here
+    const dg = scene('dag');
+    await go(dg.id + ':0'); await reset('dg', { r: 2, f: 2 });
+    for (const r of [0, 1, 2, 3]) for (const f of [0, 1, 2, 3]) {
+      await pick('dg-r', r); await pick('dg-f', f);
+      let tries = 0, success = false;
+      while (true) { tries++; if (tries > f) { success = true; break; } if (tries > r) break; }
+      const b = await bigs(); t = (await tables())[0];
+      ok(same(b, [String(tries), success ? 'success' : 'failed', success ? 'runs' : 'upstream_failed']) && same(t.map(x => x[1].startsWith('success')), Array.from({ length: tries }, (_, n) => n + 1 > f)), 'retries lab, ' + r + ' retries and ' + f + ' failures: ' + tries + ' attempts, ' + (success ? 'success' : 'failed') + ' (got ' + b.join(' | ') + ')');
+    }
+    const AF = await counts('af.flaky');
+    ok(AF.tasks.find(x => x.task === 'extract').tries === 3 && AF.state === 'success', 'recorded Airflow run: 2 failures and 2 retries end in success on the third try');
+
+    // change data capture lab: six changes in arrival order, applied three ways
+    const cd = scene('cdc'), EV = [[1, 'o1', 'INSERT', 'NEW'], [2, 'o2', 'INSERT', 'NEW'], [4, 'o1', 'UPDATE', 'PAID'], [3, 'o1', 'UPDATE', 'PACKED'], [5, 'o2', 'DELETE', '-'], [6, 'o3', 'INSERT', 'NEW']];
+    const applyAll = (ev, skipDeletes) => { const m = {}; ev.forEach(e => { if (e[2] === 'DELETE') { if (!skipDeletes) delete m[e[1]]; } else m[e[1]] = e[3]; }); return Object.keys(m).sort().map(k => [k, m[k]]); };
+    const bySeq = EV.slice().sort((a, b) => a[0] - b[0]);
+    await go(cd.id + ':0'); await reset('cd', { m: 'arrival' });
+    const truth = applyAll(bySeq, false);
+    ok(same(truth, [['o1', 'PAID'], ['o3', 'NEW']]), 'change data capture: in sequence order the source holds o1 PAID and o3 NEW');
+    for (const [m, got] of [['arrival', applyAll(EV, false)], ['sequence', truth], ['nodelete', applyAll(bySeq, true)]]) {
+      await pick('cd-m', m); t = await tables();
+      ok(same(t[1], got) && (await bigs())[0] === (same(got, truth) ? 'matches the source' : 'wrong'), 'change data capture lab, ' + m + ': ' + JSON.stringify(got) + ' (got ' + JSON.stringify(t[1]) + ')');
+    }
+    ok(same(t[0].map(r => +r[1]), EV.map(e => e[0])) && same(applyAll(EV, false), [['o1', 'PACKED'], ['o3', 'NEW']]), 'change data capture lab: the arrival order puts sequence 3 after sequence 4, so o1 ends as PACKED');
+
+    // masking lab: what each reader gets, and how many rows a row policy leaves
+    const mk = scene('mask'), RP = await counts('sql.row_policy');
+    await go(mk.id + ':0'); await reset('mk', { r: 'masked', p: 'off' });
+    const RAW = [['order_id', '7001'], ['customer_id', 'c0042'], ['email', 'user0042@example.com'], ['phone', '+65 5550 0042'], ['birth_year', '1984']], MASKED = { email: '(a 64-character hash)', phone: 'NULL', birth_year: '0' };
+    for (const r of ['fine', 'masked', 'none']) for (const p of ['off', 'on']) {
+      await pick('mk-r', r); await pick('mk-p', p); t = (await tables())[0]; const b = await bigs();
+      const want = RAW.map(([c, v]) => [c, MASKED[c] ? (r === 'fine' ? v : r === 'masked' ? MASKED[c] : 'access denied') : v]);
+      ok(same(t.map(x => [x[0], x[2]]), want), 'masking lab, ' + r + ' reader, row policy ' + p + ': the columns (got ' + t.map(x => x[2]).join(' | ') + ')');
+      ok(b[0] === (r === 'none' ? 'SELECT * fails' : 'SELECT * works') && b[1] === (p === 'on' ? RP.orders_visible_to_a_manager_of_s01 : RP.orders).toLocaleString('en-US') + ' rows', 'masking lab, ' + r + ' reader, row policy ' + p + ': ' + b.join(' | '));
+    }
+    ok(RP.orders === 20000 && RP.orders_visible_to_a_manager_of_s01 === 6825 && RP.stores_in_the_table === 12, 'recorded row policy: store s01 of 12 sees 6,825 of 20,000 orders');
+
+    // split lab: the identity that links the customers on both sides to the customers in each part
+    const SPL = await counts('sql.split'), WD = await counts('sql.world'), sp2 = scene('split');
+    await go(sp2.id + ':0'); await reset('sp2', { k: 'order' });
+    for (const [k, d, both] of [['order', SPL.by_order, SPL.customers_in_both_when_split_by_order], ['customer', SPL.by_customer, SPL.customers_in_both_when_split_by_customer]]) {
+      await pick('sp2-k', k); t = (await tables())[0]; const b = await bigs();
+      ok(same(t.map(r => [r[0], num(r[1]), num(r[2])]), [['train', d.train.orders, d.train.customers], ['test', d.test.orders, d.test.customers]]) && num(b[0]) === both, 'split lab, by ' + k + ': the parts and ' + both + ' customers on both sides (got ' + b.join(' | ') + ')');
+      ok(d.train.customers + d.test.customers - WD.customers === both, 'recorded split, by ' + k + ': customers in train plus customers in test minus all ' + WD.customers + ' customers is the ' + both + ' on both sides');
+    }
+    ok(SPL.by_order.train.orders + SPL.by_order.test.orders === SPL.by_customer.train.orders + SPL.by_customer.test.orders && Math.abs(SPL.by_customer.test.customers / WD.customers - 0.2) < 0.02, 'recorded split: both splits cover the same orders, and the customer split sends about a fifth of the customers to test');
+
+    // Terraform lab: every one of the 32 sets of fixes, against the recorded scans
+    const CK = await counts('tf.checkov'), ic = scene('iac'), FIX = ['bucket', 'dataset', 'table', 'iam', 'topic'];
+    await go(ic.id + ':0'); await reset('ic', { on: {} });
+    ok(same(await chipVals('ic-f'), FIX) && CK.baseline.failed_count === 11 && CK.baseline.passed === 3, 'Terraform lab offers five fixes and starts from 11 failing and 3 passing');
+    const clears = f => CK.baseline.failed.filter(x => !CK['fix_' + f].failed.includes(x));
+    ok(FIX.reduce((a, f) => a + clears(f).length, 0) === 11 && new Set(FIX.flatMap(clears)).size === 11, 'recorded scans: the five fixes clear 11 different checks between them');
+    let combos = 0;
+    for (let mask = 0; mask < 32; mask++) {
+      await reset('ic', { on: {} });
+      const on = FIX.filter((f, n) => mask & (1 << n));
+      for (const f of on) await pick('ic-f', f);
+      const cleared = new Set(on.flatMap(clears)), b = await bigs(); combos++;
+      ok(same(b, [String(11 - cleared.size), String(3 + cleared.size)]), 'Terraform lab, fixes {' + on.join(', ') + '}: ' + (11 - cleared.size) + ' failing, ' + (3 + cleared.size) + ' passing (got ' + b.join(' | ') + ')');
+    }
+    ok(combos === 32 && CK.all_fixed.failed_count === 0 && CK.all_fixed.passed === 15, 'Terraform lab: all 32 sets were tried, and the scan of the fully fixed file says 0 failing and 15 passing');
+  }
+
   // score screen counts every mock question on the path
   await go('mock-score:0');
   ok(await cnt('.ring') === 1 && await cnt('.srow') === S.filter(x => x.type === 'mock').length, 'scorecard lists every boss question');

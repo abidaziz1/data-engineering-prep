@@ -16,6 +16,7 @@ a.logo:hover{background:#1557B0}
 .lab-out .big.bad{background:#FEE2E2}
 .lab-out .big.good{background:#DCFCE7}
 .lab-h{font:800 1.05rem Manrope,sans-serif;margin:.3rem 0 .1rem}
+.tbl td code{font-size:.96em}
 .tbl td.wbad{background:#FEE2E2;font-weight:800}
 .tbl td.wgood{background:#DCFCE7;font-weight:800}
 .tbl tr.dup td{background:#FEE2E2}

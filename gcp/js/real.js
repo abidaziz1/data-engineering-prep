@@ -274,7 +274,7 @@ LAB.real = {
    }
   },
   "cli.summary": {
-   "commands_checked": 24,
+   "commands_checked": 28,
    "flags_not_found": []
   },
   "df.bigquery_options": {
@@ -1272,7 +1272,7 @@ LAB.real = {
    "rows": [
     [
      "gcloud pubsub subscriptions create",
-     "--ack-deadline --dead-letter-topic --max-delivery-attempts --enable-exactly-once-delivery --enable-message-ordering --message-retention-duration --min-retry-delay --max-retry-delay --bigquery-table --use-table-schema --cloud-storage-bucket --push-endpoint --expiration-period --message-filter",
+     "--topic --ack-deadline --dead-letter-topic --max-delivery-attempts --enable-exactly-once-delivery --enable-message-ordering --message-retention-duration --min-retry-delay --max-retry-delay --bigquery-table --use-table-schema --cloud-storage-bucket --push-endpoint --expiration-period --message-filter",
      "-"
     ],
     [
@@ -1326,6 +1326,11 @@ LAB.real = {
      "-"
     ],
     [
+     "gcloud iam workload-identity-pools create",
+     "--location --display-name",
+     "-"
+    ],
+    [
      "gcloud iam workload-identity-pools providers create-oidc",
      "--issuer-uri --attribute-mapping --attribute-condition --workload-identity-pool --location",
      "-"
@@ -1373,6 +1378,21 @@ LAB.real = {
     [
      "gcloud monitoring policies create",
      "--policy-from-file --notification-channels",
+     "-"
+    ],
+    [
+     "gcloud config list",
+     "",
+     "-"
+    ],
+    [
+     "bq ls",
+     "--project_id",
+     "-"
+    ],
+    [
+     "bq rm",
+     "",
      "-"
     ],
     [
@@ -1855,20 +1875,20 @@ LAB.real = {
     [
      "repartition(200)",
      200,
-     849,
+     850,
      4.2
     ],
     [
      "repartition(4)",
      4,
-     448,
-     112.0
+     450,
+     112.5
     ],
     [
      "coalesce(1)",
      1,
-     299,
-     298.5
+     300,
+     300.0
     ]
    ]
   },

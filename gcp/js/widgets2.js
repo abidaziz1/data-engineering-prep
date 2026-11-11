@@ -193,13 +193,13 @@
       say: function () { return 'A policy tag marks a column. What a reader gets depends on a role on the tag. A fine-grained reader sees the value. A masked reader sees a masked value. A reader with neither gets an error if the query touches the column. A row access policy works on rows, not columns. The rules are from the documentation and the values are made up.'; },
       mood: function () { return 'think'; },
       render: function (box, s, i, A) {
-        var st = A.local.mk || (A.local.mk = { r: 'masked', p: 'off' }), W0 = G.counts('sql.world');
+        var st = A.local.mk || (A.local.mk = { r: 'masked', p: 'off' }), RP = G.counts('sql.row_policy');
         var rows = COLS.map(function (c) {
           var v = c[1] === 'none' ? c[2] : st.r === 'fine' ? c[2] : st.r === 'masked' ? c[3] : 'access denied';
           return [c[0], c[1] === 'none' ? 'no tag' : c[1], v];
         });
         var denied = st.r === 'none';
-        var n = st.p === 'on' ? Math.round(W0.orders * W0.s01_share) : W0.orders;
+        var n = st.p === 'on' ? RP.orders_visible_to_a_manager_of_s01 : RP.orders;
         var h = '<div class="lab">' + row('Reader', chips(Object.keys(READERS), st.r, 'mk-r', function (k) { return READERS[k]; })) + row('Row access policy "own store only" (store s01)', chips(['off', 'on'], st.p, 'mk-p')) +
           table(['Column', 'Policy tag and masking rule', 'What this reader gets'], rows, null, function (r, ri, ci) { return ci === 2 ? (r[2] === 'access denied' ? 'wbad' : r[2] === COLS[ri][2] || COLS[ri][1] === 'none' ? '' : 'wgood') : ''; }) +
           '<div class="lab-out">' + big(denied ? 'SELECT * fails' : 'SELECT * works', 'a query that names the tagged columns', denied ? 'bad' : 'good') + big(fmtN(n) + ' rows', st.p === 'on' ? 'rows visible with the row policy' : 'rows visible', st.p === 'on' ? 'warn' : '') + '</div>' +

@@ -106,7 +106,8 @@
         var T = G.table('gcs.listing'), st = A.local.ls || (A.local.ls = { c: 1 }), r = T.rows[st.c];
         var h = '<div class="lab">' + row('Listing call', chips(T.rows.map(function (x, n) { return n; }), st.c, 'ls-c', function (n) { return 'prefix ' + T.rows[n][0] + ', delimiter ' + T.rows[n][1]; })) +
           '<div class="lab-out">' + big(r[2], 'objects returned') + big(r[4] === '-' ? 'none' : r[4].split(', ').length, '"folders" returned (prefixes)') + '</div>' +
-          table(['Objects returned', 'Prefixes returned'], [[r[3].split(', ').join('<br>'), r[4].split(', ').join('<br>')]]) +
+          '<div class="pair"><div><div class="compiled-h">Prefixes returned ("folders")</div>' + (r[4] === '-' ? '<p class="lab-note">none</p>' : '<ul class="keylist">' + r[4].split(', ').map(function (k) { return '<li class="cp">' + esc(k) + '</li>'; }).join('') + '</ul>') + '</div>' +
+          '<div><div class="compiled-h">Objects returned</div>' + (r[3] === '-' ? '<p class="lab-note">none</p>' : '<ul class="keylist">' + r[3].split(', ').map(function (k) { return '<li>' + esc(k) + '</li>'; }).join('') + '</ul>') + '</div></div>' +
           callout('tip', r[1] === '(none)' ? 'With **no delimiter** the listing is flat: every object under the prefix, however deep. On a bucket with millions of objects this is the expensive call.' :
             r[2] > 0 ? 'The names under this prefix have no further slash, so they come back as **objects**. Nothing is a folder: the console draws them as one.' : 'Names that go on after the next slash are not listed one by one. Their common start is returned once, as a **prefix**, and that is what the console shows as a folder.') +
           '<p class="lab-note">Recorded with google-cloud-storage ' + esc(G.meta('google-cloud-storage')) + ' on the emulator gcp-storage-emulator ' + esc(G.meta('gcp-storage-emulator')) + '. The emulator is not Cloud Storage.</p></div>';
