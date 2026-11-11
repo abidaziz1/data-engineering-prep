@@ -350,13 +350,81 @@
   ].join('');
 
 
+  var MARA_SVG = [
+    '<svg viewBox="0 0 240 250" class="coach-svg" role="img" aria-label="Coach Mara, your guide" data-mood="happy">',
+    '<defs>',
+    '<linearGradient id="mbg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#EDE9FE"/><stop offset="1" stop-color="#D1FAE5"/></linearGradient>',
+    '<clipPath id="mclip"><circle cx="120" cy="125" r="116"/></clipPath>',
+    '</defs>',
+    '<circle cx="120" cy="125" r="116" fill="url(#mbg)"/>',
+    '<g clip-path="url(#mclip)">',
+    /* body: an indigo jacket over a white shirt */
+    '<path d="M4 252 C10 206 56 186 120 186 C184 186 230 206 236 252 Z" fill="#4338CA" stroke="#0B1220" stroke-width="4"/>',
+    '<path d="M95 188 L120 230 L145 188 Z" fill="#FFFFFF" stroke="#0B1220" stroke-width="3"/>',
+    '<path d="M95 188 L80 196 L106 236 L120 230 Z" fill="#3730A3" stroke="#0B1220" stroke-width="3"/>',
+    '<path d="M145 188 L160 196 L134 236 L120 230 Z" fill="#3730A3" stroke="#0B1220" stroke-width="3"/>',
+    /* a small badge on the jacket: a log, three records in a row, in the orange of the data blocks */
+    '<circle cx="74" cy="214" r="14" fill="#FFFFFF" stroke="#0B1220" stroke-width="2.5"/>',
+    '<rect x="62" y="206" width="24" height="5" rx="2" fill="#F59E0B" stroke="#0B1220" stroke-width="1.6"/><rect x="62" y="213" width="24" height="5" rx="2" fill="#F59E0B" stroke="#0B1220" stroke-width="1.6"/><rect x="62" y="220" width="24" height="5" rx="2" fill="#F59E0B" stroke="#0B1220" stroke-width="1.6"/>',
+    '</g>',
+    '<g class="head">',
+    '<path d="M103 156 L103 192 Q120 204 137 192 L137 156 Z" fill="#B97A50" stroke="#0B1220" stroke-width="3.5"/>',
+    /* short hair behind the face */
+    '<path d="M62 118 C52 60 88 32 120 32 C152 32 188 60 178 118 C172 92 150 78 120 78 C90 78 68 92 62 118 Z" fill="#1F2937" stroke="#0B1220" stroke-width="4" stroke-linejoin="round"/>',
+    '<circle cx="72" cy="120" r="9" fill="#C98E62" stroke="#0B1220" stroke-width="3.5"/>',
+    '<circle cx="168" cy="120" r="9" fill="#C98E62" stroke="#0B1220" stroke-width="3.5"/>',
+    '<ellipse cx="120" cy="114" rx="49" ry="57" fill="#C98E62" stroke="#0B1220" stroke-width="4"/>',
+    '<circle cx="86" cy="146" r="8" fill="#E8735A" opacity=".3"/><circle cx="154" cy="146" r="8" fill="#E8735A" opacity=".3"/>',
+    '<g class="eyes">',
+    '<ellipse cx="98" cy="118" rx="9" ry="10" fill="#fff" stroke="#0B1220" stroke-width="2.5"/><circle cx="100" cy="119" r="4.8" fill="#0B1220"/>',
+    '<ellipse cx="142" cy="118" rx="9" ry="10" fill="#fff" stroke="#0B1220" stroke-width="2.5"/><circle cx="144" cy="119" r="4.8" fill="#0B1220"/>',
+    '</g>',
+    /* headphones */
+    '<path d="M70 116 C66 36 174 36 170 116" fill="none" stroke="#4338CA" stroke-width="7" stroke-linecap="round"/>',
+    '<rect x="60" y="106" width="16" height="32" rx="7" fill="#4338CA" stroke="#0B1220" stroke-width="3"/><rect x="164" y="106" width="16" height="32" rx="7" fill="#4338CA" stroke="#0B1220" stroke-width="3"/>',
+    '<path d="M96 56 C100 40 116 34 126 44 C134 36 150 42 150 56" fill="#1F2937" stroke="#0B1220" stroke-width="3.5" stroke-linejoin="round"/>',
+    '<path d="M120 124 Q126 136 118 140" fill="none" stroke="#8F5A3A" stroke-width="3.2" stroke-linecap="round"/>',
+    /* moods */
+    '<g class="mood mood-happy">',
+    '<path d="M85 100 Q98 93 112 98 M128 98 Q142 93 155 100" fill="none" stroke="#0B1220" stroke-width="5" stroke-linecap="round"/>',
+    '<path class="mouth-closed" d="M102 150 Q120 168 138 150" fill="none" stroke="#0B1220" stroke-width="4.5" stroke-linecap="round"/>',
+    '<g class="mouth-open"><path d="M100 148 Q120 180 140 148 Z" fill="#7F1D1D" stroke="#0B1220" stroke-width="4" stroke-linejoin="round"/><path d="M109 162 Q120 170 131 162 Q120 157 109 162 Z" fill="#F87171"/></g>',
+    '</g>',
+    '<g class="mood mood-think">',
+    '<path d="M85 94 Q98 85 112 93 M128 102 Q142 100 155 96" fill="none" stroke="#0B1220" stroke-width="5" stroke-linecap="round"/>',
+    '<path d="M106 154 Q120 152 138 148" fill="none" stroke="#0B1220" stroke-width="4.5" stroke-linecap="round"/>',
+    '</g>',
+    '<g class="mood mood-cheer">',
+    '<path d="M85 94 Q98 85 112 93 M128 93 Q142 85 155 94" fill="none" stroke="#0B1220" stroke-width="5" stroke-linecap="round"/>',
+    '<path d="M98 148 Q120 186 142 148 Z" fill="#7F1D1D" stroke="#0B1220" stroke-width="4" stroke-linejoin="round"/><path d="M108 164 Q120 174 132 164 Q120 158 108 164 Z" fill="#F87171"/>',
+    '</g>',
+    '<g class="mood mood-oops">',
+    '<path d="M85 104 Q98 100 112 91 M128 91 Q142 100 155 104" fill="none" stroke="#0B1220" stroke-width="5" stroke-linecap="round"/>',
+    '<path d="M106 158 Q120 146 134 158" fill="none" stroke="#0B1220" stroke-width="4.5" stroke-linecap="round"/>',
+    '</g>',
+    '<g class="mood mood-wow">',
+    '<path d="M85 91 Q98 83 112 91 M128 91 Q142 83 155 91" fill="none" stroke="#0B1220" stroke-width="5" stroke-linecap="round"/>',
+    '<ellipse cx="120" cy="156" rx="9" ry="12" fill="#7F1D1D" stroke="#0B1220" stroke-width="4"/>',
+    '</g>',
+    '</g>',
+    '<g class="extras">',
+    '<text class="q" x="184" y="62" font-size="46" font-weight="800" fill="#0B1220" stroke="#fff" stroke-width="5" paint-order="stroke">?</text>',
+    '<g class="spark"><path d="M200 70 l4 10 10 4 -10 4 -4 10 -4 -10 -10 -4 10 -4z" fill="#F59E0B" stroke="#0B1220" stroke-width="2.5"/><path d="M36 100 l3 8 8 3 -8 3 -3 8 -3 -8 -8 -3 8 -3z" fill="#EC4899" stroke="#0B1220" stroke-width="2.5"/><path d="M206 150 l3 7 7 3 -7 3 -3 7 -3 -7 -7 -3 7 -3z" fill="#22C55E" stroke="#0B1220" stroke-width="2.5"/></g>',
+    '</g>',
+    '<circle cx="120" cy="125" r="116" fill="none" stroke="#0B1220" stroke-width="6"/>',
+    '</svg>'
+  ].join('');
+
+
+
   /* the registry: add a coach here and pick it in a tutorial's config.js */
   LAB.coaches = {
     sam: { name: 'Sam', svg: SAM_SVG },
     noor: { name: 'Noor', svg: NOOR_SVG },
     ada: { name: 'Ada', svg: ADA_SVG },
     ravi: { name: 'Ravi', svg: RAVI_SVG },
-    kai: { name: 'Kai', svg: KAI_SVG }
+    kai: { name: 'Kai', svg: KAI_SVG },
+    mara: { name: 'Mara', svg: MARA_SVG }
   };
 
   var host, svgEl, timer;

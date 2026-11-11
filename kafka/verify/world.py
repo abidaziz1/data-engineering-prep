@@ -189,7 +189,8 @@ def record_log(c, rec):
     idx = C.run_tool('kafka-dump-log', '--files', str(d / '00000000000000000000.index'))[1].splitlines()
     ent = [tuple(int(x) for x in re.findall(r'\d+', l)) for l in idx if l.startswith('offset:')]
     rec.counts('log.index', {'entries': len(ent), 'bytes_per_entry': 8, 'first_entries': ent[:6], 'last_entry': ent[-1], 'index_interval_bytes': 4096,
-                             'batches': len(batches), 'first_batch_has_an_entry': ent[0][0] < batches[0]['lastOffset'] + 1 and ent[0][0] == batches[0]['lastOffset']})
+                             'batches': len(batches), 'first_batch_has_an_entry': ent[0][0] < batches[0]['lastOffset'] + 1 and ent[0][0] == batches[0]['lastOffset'],
+                             'all_entries': ent, 'batch_sizes': [b['size'] for b in batches], 'batch_last_offsets': [b['lastOffset'] for b in batches]})
     tix = C.run_tool('kafka-dump-log', '--files', str(d / '00000000000000000000.timeindex'))[1].splitlines()
     tent = [tuple(int(x) for x in re.findall(r'\d+', l)) for l in tix if l.startswith('timestamp:')]
     rec.counts('log.timeindex', {'entries': len(tent), 'first_entries': tent[:3], 'bytes_per_entry': 12})

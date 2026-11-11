@@ -1,0 +1,17 @@
+Configuration:
+  Appenders:
+    Console:
+      name: STDOUT
+      target: SYSTEM_OUT
+      PatternLayout:
+        pattern: "LOG %p %c{1}: %m%n"
+  Loggers:
+    Root:
+      level: warn
+      AppenderRef:
+        - ref: STDOUT
+    Logger:
+      - name: org.apache.kafka.streams.processor.internals.StoreChangelogReader
+        level: info
+      - name: org.apache.kafka.streams.KafkaStreams
+        level: info

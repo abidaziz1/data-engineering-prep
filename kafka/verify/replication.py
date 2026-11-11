@@ -49,6 +49,11 @@ def summarize(outcomes):
     return d
 
 
+def say(outcomes):
+    """The outcomes of a send as a short phrase: 'delivered x5' or 'NOT_ENOUGH_REPLICAS x5'."""
+    return ', '.join('%s x%d' % (k, v) for k, v in sorted(summarize(outcomes).items()))
+
+
 def file_facts(c, nid, topic, part):
     d = c.data_dir(nid) / ('%s-%d' % (topic, part))
     files = sorted(d.glob('*.log'))
@@ -134,8 +139,8 @@ def run(c, rec):
     wait_layout(c, 'repl', lambda l: all(len(x[3]) == 3 for x in l))
     healed = try_send(c, 'repl', 5, partition=0, start=1510, acks='all', retries=0)
     rec.table('replication.acks_when_short', ['situation', 'acks', 'records sent', 'outcome'],
-              [['one replica in sync, topic needs 2', 'all', 5, summarize(all_ack)], ['one replica in sync, topic needs 2', '1', 5, summarize(one_ack)],
-               ['all three back in sync', 'all', 5, summarize(healed)]])
+              [['one replica in sync, topic needs 2', 'all', 5, say(all_ack)], ['one replica in sync, topic needs 2', '1', 5, say(one_ack)],
+               ['all three back in sync', 'all', 5, say(healed)]])
 
     # ---- R5: the leader dies with records that no other replica has ----
     for name, unclean in (('safe', 'false'), ('lossy', 'true')):

@@ -16,6 +16,8 @@ import tempfile
 import time
 
 KAFKA_HOME = pathlib.Path(os.environ.get('KAFKA_HOME', '')).expanduser()
+COMMAND_CONFIG_TOOLS = {'kafka-topics', 'kafka-configs', 'kafka-acls', 'kafka-consumer-groups', 'kafka-get-offsets', 'kafka-log-dirs', 'kafka-features', 'kafka-leader-election',
+                       'kafka-reassign-partitions', 'kafka-transactions', 'kafka-delete-records', 'kafka-broker-api-versions', 'kafka-groups', 'kafka-cluster'}
 NOISE = re.compile(r'^(Picked up JAVA_TOOL_OPTIONS|WARNING: Using incubator|OpenJDK 64-Bit Server VM warning)')
 
 
@@ -74,11 +76,14 @@ class Node:
 class Cluster:
     """Three combined KRaft nodes by default. Use as a context manager: the data lives in a temporary folder that is deleted at the end."""
 
-    def __init__(self, nodes=3, props=None, node_props=None, heap='512m', base_port=9092, step=100, work=None, keep=False, listener_extra=None, isolated=False):
+    def __init__(self, nodes=3, props=None, node_props=None, heap='512m', base_port=9092, step=100, work=None, keep=False, listener_extra=None, isolated=False, format_args=None, admin_config=None, node_env=None):
         """nodes is the number of brokers. By default each one is also a controller ("combined" mode). With isolated=True there is one controller of its own (node 100)
         and the brokers are brokers only, so that a broker can be stopped without the cluster losing the quorum of its controllers."""
         self.n = nodes
         self.isolated = isolated
+        self.format_args = list(format_args or [])            # more arguments for kafka-storage format, for instance --add-scram
+        self.admin_config = admin_config                       # a client properties file for the tools, when the brokers need a login
+        self.node_env = node_env or {}                         # environment variables of single nodes, for instance JMX_PORT
         base_port = int(os.environ.get('KAFKA_BASE_PORT', base_port))      # lets a second cluster run next to the development one
         self.props = dict(props or {})
         self.node_props = node_props or {}
@@ -149,6 +154,7 @@ class Cluster:
             args = ['format', '--cluster-id', self.cluster_id, '--config', str(n.props)]
             if n.controller_port:
                 args += ['--standalone'] if len(voters) == 1 else ['--initial-controllers', ','.join(ids)]
+            args += self.format_args
             rc, out, err = run_tool('kafka-storage', *args)
             if rc != 0:
                 raise RuntimeError('format failed on node %d: %s %s' % (n.id, out, err))
@@ -158,6 +164,7 @@ class Cluster:
         e = dict(os.environ)
         e.update({'KAFKA_HEAP_OPTS': '-Xmx%s -Xms%s' % (self.heap, self.heap), 'LOG_DIR': str(n.dir / 'logs'),
                   'KAFKA_LOG4J_OPTS': '-Dlog4j2.configurationFile=' + str(check_home() / 'config' / 'log4j2.yaml')})
+        e.update({k: str(v) for k, v in self.node_env.get(nid, {}).items()})
         n.proc = subprocess.Popen([str(check_home() / 'bin' / 'kafka-server-start.sh'), str(n.props)], stdout=open(n.log, 'ab'), stderr=subprocess.STDOUT, env=e,
                                   start_new_session=True)
         (n.dir / 'pid').write_text(str(n.proc.pid))
@@ -170,7 +177,8 @@ class Cluster:
             while True:
                 if not n.running():
                     raise RuntimeError('node %d stopped while starting:\n%s' % (n.id, n.log.read_text()[-3000:]))
-                rc, out, _ = run_tool('kafka-broker-api-versions', '--bootstrap-server', n.addr, timeout=60)
+                extra = ['--command-config', str(self.admin_config)] if self.admin_config else []
+                rc, out, _ = run_tool('kafka-broker-api-versions', '--bootstrap-server', n.addr, *extra, timeout=60)
                 if rc == 0 and 'id:' in out:
                     break
                 if time.time() - t0 > timeout:
@@ -183,6 +191,18 @@ class Cluster:
             self.start_node(n.id)
         self.wait_ready()
         return self
+
+    def add_broker(self, nid, broker_port):
+        """Add a broker to a cluster that is running: a new node that is only a broker. Its data folder is formatted without a controller quorum."""
+        n = Node(self, nid, broker_port, None, 'broker')
+        self.nodes.append(n)
+        self._write_props(n)
+        rc, out, err = run_tool('kafka-storage', 'format', '--cluster-id', self.cluster_id, '--config', str(n.props))
+        if rc != 0:
+            raise RuntimeError('format failed on node %d: %s %s' % (nid, out, err))
+        self.start_node(nid)
+        self.wait_ready([n])
+        return n
 
     def stop_node(self, nid, kill=False, timeout=60):
         n = self.node(nid)
@@ -224,6 +244,8 @@ class Cluster:
         a = list(args)
         if not any(x.startswith('--bootstrap') for x in a) and name not in ('kafka-dump-log', 'kafka-storage'):
             a = ['--bootstrap-server', bootstrap or self.bootstrap] + a
+        if self.admin_config and '--command-config' not in a and name in COMMAND_CONFIG_TOOLS:
+            a = ['--command-config', str(self.admin_config)] + a
         return run_tool(name, *a, **kw)
 
     def topics(self, *args):

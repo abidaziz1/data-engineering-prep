@@ -1,0 +1,10 @@
+# The environment of the Apache Kafka tutorial: the recorder (capture_kafka.py) and the checks (verify_kafka.py). Java 17 or 21 must be installed.
+# Apache Kafka itself is not a Python package: unpack the binary distribution (kafka_2.13-4.4.0.tgz from downloads.apache.org/kafka/) and set KAFKA_HOME to the folder that holds bin/ and libs/.
+# The change data capture section also needs the Debezium PostgreSQL connector (debezium-connector-postgres-3.7.1.Final-plugin.tar.gz from Maven Central, unpacked; set DEBEZIUM_PLUGINS to the
+# folder that holds debezium-connector-postgres/) and the PostgreSQL 16 server binaries.
+#   python3 -m venv kafka-env && kafka-env/bin/pip install -r kafka/verify/requirements.txt
+#   KAFKA_HOME=... DEBEZIUM_PLUGINS=... kafka-env/bin/python kafka/verify/verify_kafka.py
+confluent-kafka
+fastavro
+pytest
+sqlglot

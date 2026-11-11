@@ -159,7 +159,7 @@ def consumer(bootstrap, group, **conf):
     return Consumer(c)
 
 
-def read_all(bootstrap, topic, partitions=None, isolation='read_uncommitted', timeout=30, group='reader'):
+def read_all(bootstrap, topic, partitions=None, isolation='read_uncommitted', timeout=30, group='reader', raw=False):
     """Read a topic from the beginning to the end of every partition. Returns the messages as (partition, offset, key, value, timestamp)."""
     c = consumer(bootstrap, group + '-' + str(time.time()), **{'isolation.level': isolation})
     md = c.list_topics(topic, timeout=10).topics[topic]
@@ -175,7 +175,11 @@ def read_all(bootstrap, topic, partitions=None, isolation='read_uncommitted', ti
                 done.add(m.partition())
                 continue
             raise KafkaException(m.error())
-        out.append((m.partition(), m.offset(), m.key().decode() if m.key() else None, m.value().decode() if m.value() is not None else None, m.timestamp()[1]))
+        key, val = m.key(), m.value()
+        if not raw:
+            key = key.decode(errors='replace') if key else None
+            val = val.decode(errors='replace') if val is not None else None
+        out.append((m.partition(), m.offset(), key, val, m.timestamp()[1]))
     c.close()
     return out
 
