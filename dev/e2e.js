@@ -957,6 +957,202 @@ const ok = (c, m) => { if (c) pass++; else { fail++; console.log('FAIL:', m); } 
     ok(t[0][0] === '10 minutes' && t[0][2] === '$144' && await cnt('.callout.good') >= 1, 'cost lab: with 10 idle minutes the two rows agree');
   }
 
+  if (name === 'ai') {
+    // The expected values below are worked out by hand from the recording (ai/js/real.js) or from arithmetic, and are not read from the widgets.
+    // The keys under pg.* vary a little between recordings, so the pgvector lab reads them from the recording.
+    const bigs = () => page.$$eval('.lab-out .big b', els => els.map(e => e.textContent));
+    const tables = () => page.$$eval('.lab .tbl', ts => ts.map(t => [...t.querySelectorAll('tbody tr')].map(r => [...r.children].map(td => td.innerText.trim()))));
+    const pills = () => page.$$eval('.lab .chain li .pill', ps => ps.map(p => p.textContent));
+    const pick = async (act, v) => { await page.click('[data-act="' + act + '"][data-v="' + v + '"]'); await page.waitForTimeout(15); };
+    const scene = kind => S.find(x => x.type === 'widget' && x.kind === kind);
+    const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+    const real = (sec, k) => page.evaluate(([sec, k]) => LAB.real[sec][k], [sec, k]);
+    const n0 = x => x.toLocaleString('en-US');
+    const usd = x => '$' + (x >= 100 ? n0(Math.round(x)) : x >= 1 ? x.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : x >= 0.01 ? x.toFixed(3) : x === 0 ? '0' : x.toPrecision(2));
+    // the widgets keep their state while the page stays open, and the generic checks above have clicked their chips: start every lab from its default
+    const reset = (k, v) => page.evaluate(([k, v]) => { LAB.app.local[k] = v; LAB.app.render(true); }, [k, v === undefined ? null : v]).then(() => page.waitForTimeout(20));
+    const text = () => page.evaluate(() => document.querySelector('#stage-body').innerText);
+    let t;
+
+    // every lab is used by at least one scene, and every scene of a lab opens without an error
+    const kinds = ['dedup', 'chunker', 'vectors', 'ann', 'pgv', 'rank', 'acl', 'pipeline', 'tokens', 'retry', 'agent', 'sqlguard', 'mcpwire', 'spans', 'defence', 'finetune', 'ckpt', 'release'];
+    for (const k of kinds) ok(!!scene(k), 'the ' + k + ' lab is used by a scene');
+    ok(S.filter(x => x.type === 'widget').length >= 19, 'the course has at least 19 lab scenes');
+
+    // near-copies: the two handbook versions are 0.809 alike, the estimate is 0.75; the LSH threshold decides which pairs are grouped
+    await go(scene('dedup').id + ':0'); await reset('dd', { p: 0, t: 0.5 });
+    ok(same(await bigs(), ['0.809', '0.75', '0.059']), 'dedup lab: exact 0.809, MinHash 0.75, a difference of 0.059');
+    await go(scene('dedup').id + ':1');
+    for (const [th, n] of [[0.3, '2'], [0.5, '1'], [0.7, '1'], [0.9, '0']]) { await pick('dd-t', th); ok(same(await bigs(), [n]), 'dedup lab: at threshold ' + th + ' ' + n + ' pair(s) are grouped'); }
+
+    // chunking: the recorded rows for five strategies and five sizes
+    const ckS = scene('chunker');
+    await go(ckS.id + ':1'); await reset('ck', { s: 'recursive 500', z: 500 });
+    for (const [name, want] of [['fixed 500, no overlap', ['81', '425', '28 %', '26 of 27']], ['fixed 500, overlap 100', ['129', '307', '19 %', '27 of 27']], ['whole sentences up to 500', ['82', '414', '0 %', '27 of 27']], ['recursive 500', ['87', '395', '9 %', '27 of 27']], ['by heading, up to 500', ['181', '177', '2 %', '27 of 27']]]) {
+      await pick('ck-s', name); ok(same(await bigs(), want), 'chunking lab, ' + name + ': ' + want.join(', '));
+    }
+    await go(ckS.id + ':2');
+    for (const [z, want] of [[150, ['314', '108', '27 of 27']], [500, ['87', '395', '27 of 27']], [1500, ['62', '555', '27 of 27']]]) { await pick('ck-z', z); ok(same(await bigs(), want), 'chunking lab, size ' + z + ': ' + want.join(', ')); }
+    await pick('ck-z', 500); ok((await text()).includes('1,975 characters'), 'chunking lab: size 500 sends 1,975 characters for the top five');
+
+    // vectors: cosine, dot and distance by hand, then the memory bill
+    const vcS = scene('vectors');
+    await go(vcS.id + ':1'); await reset('vc', { g: {}, p: 0, u: false, n: 1e6, d: 1536, b: 32 });
+    ok(same((await bigs()).slice(1), ['50.000', '1.000', '5.000']), 'vector lab: (3,4) and (6,8) have dot 50, cosine 1, distance 5');
+    await pick('vc-p', 1); ok(same((await bigs()).slice(1), ['24.000', '0.960', '1.414']), 'vector lab: (3,4) and (4,3) have dot 24, cosine 0.96, distance 1.414');
+    await pick('vc-u', 'unit length'); ok(same((await bigs()).slice(1), ['0.960', '0.960', '0.283']), 'vector lab: with unit length the dot product equals the cosine, 0.96, and the distance is 0.283');
+    await pick('vc-p', 2); ok(same((await bigs()).slice(1), ['0.000', '0.000', '1.414']), 'vector lab: a right angle gives dot 0 and cosine 0');
+    await go(vcS.id + ':2');
+    ok(same(await bigs(), ['6.14 GB', '6,144 bytes']), 'vector lab: a million vectors of 1536 numbers at 32 bits take 6.14 GB');
+    await pick('vc-b', 8); ok(same(await bigs(), ['1.54 GB', '1,536 bytes']), 'vector lab: at 8 bits they take 1.54 GB');
+    await pick('vc-n', 1e8); await pick('vc-d', 3072); await pick('vc-b', 32); ok((await bigs())[0] === '1.23 TB', 'vector lab: 100 million vectors of 3072 numbers at 32 bits take 1.23 TB');
+    await go(vcS.id + ':0'); await reset('vc', { g: {}, p: 0, u: false, n: 1e6, d: 1536, b: 32 });
+    for (let n = 0; n < 8; n++) await pick('vc-g', n + ':close');
+    ok(/Answered 8 of 8, right 3\./.test(await text()), 'vector lab: answering "close" for all eight pairs is right for the three pairs with a cosine of 0.5 or more');
+
+    // indexes: recall and work from the recording
+    const anS = scene('ann');
+    await go(anS.id + ':0'); await reset('an', { m: 16, ef: 32, np: 4, ix: 0 });
+    ok(same(await bigs(), ['0.967', '500', '1.7 %']), 'ann lab: M 16 with efSearch 32 gives recall 0.967 with 500 distances (1.7 percent)');
+    await pick('an-m', 8); await pick('an-e', 8); ok(same(await bigs(), ['0.589', '175', '0.6 %']), 'ann lab: M 8 with efSearch 8 gives recall 0.589');
+    await pick('an-m', 32); await pick('an-e', 256); ok(same(await bigs(), ['1', '934', '3.1 %']), 'ann lab: M 32 with efSearch 256 gives recall 1 at 934 distances');
+    await go(anS.id + ':1');
+    for (const [np, want] of [[1, ['0.35', '165', '0.6 %']], [8, ['0.988', '1,042', '3.5 %']], [64, ['1', '7,683', '25.6 %']]]) { await pick('an-n', np); ok(same(await bigs(), want), 'ann lab, nprobe ' + np + ': ' + want.join(', ')); }
+    await go(anS.id + ':2');
+    for (const [ix, want] of [[0, ['256 bytes', '256 bytes', '1']], [3, ['8 bytes', '20 bytes', '0.129']]]) { await pick('an-i', ix); ok(same(await bigs(), want), 'ann lab, index ' + ix + ': ' + want.join(', ')); }
+
+    // pgvector: the rows that a filter leaves, from the recording
+    const pgS = scene('pgv'), PF = await real('tables', 'pg.filter');
+    await go(pgS.id + ':0'); await reset('pg', { t: 1, ef: 40, pr: 1 });
+    for (const row of PF.rows) { await pick('pg-t', row[0]); const b = await bigs(); ok(same(b, [row[1], row[2].toFixed(1), String(row[3]), String(row[4])]), 'pgvector lab, tenant ' + row[0] + ': ' + row[2] + ' rows of 10 with the default, ' + row[3] + ' with iterative scan'); }
+    await go(pgS.id + ':1'); const HR = await real('tables', 'pg.hnsw_recall'), IV2 = await real('tables', 'pg.ivfflat');
+    await pick('pg-e', 40); await pick('pg-p', 1); ok(same(await bigs(), [String(HR.rows.find(r => r[0] === 40)[1]), String(IV2.rows.find(r => r[0] === 1)[1])]), 'pgvector lab: the recall at ef_search 40 and at one probe');
+    await go(pgS.id + ':2'); ok(same((await bigs()).slice(0, 2), ['40', '100']), 'pgvector lab: LIMIT 100 returns 40 rows with ef_search 40 and 100 rows with 200');
+
+    // scoring: hit at k and MRR from the 24 ranks, nDCG for a list that is clicked
+    const rkS = scene('rank');
+    await go(rkS.id + ':0'); await reset('rk', { m: 0, mt: 'hit@3', k: 'all', rel: [0, 1, 0, 0, 1, 0, 0, 0, 0, 0], q: 8, rk: 60 });
+    for (const [m, mt, kd, want] of [[0, 'hit@3', 'all', ['0.875', '21 of 24']], [1, 'hit@3', 'all', ['0.792', '19 of 24']], [2, 'hit@3', 'all', ['0.875', '21 of 24']], [0, 'hit@1', 'all', ['0.667', '16 of 24']], [0, 'hit@5', 'all', ['0.917', '22 of 24']], [2, 'MRR@10', 'all', ['0.754']], [1, 'hit@3', 'table', ['0.000', '0 of 1']], [0, 'hit@3', 'meaning', ['0.625', '5 of 8']]]) {
+      await pick('rk-m', m); await pick('rk-t', mt); await pick('rk-k', kd);
+      ok(same(await bigs(), want), 'scoring lab, method ' + m + ', ' + mt + ', ' + kd + ': ' + want.join(' / '));
+    }
+    await go(rkS.id + ':1');
+    ok(same(await bigs(), ['1', '1', '0.500', '0.624']), 'scoring lab: right chunks at positions 2 and 5 give hit 1 at 3 and 5, MRR 0.5 and nDCG 0.624');
+    await pick('rk-r', 1); await pick('rk-r', 0); ok(same(await bigs(), ['1', '1', '1.000', '0.850']), 'scoring lab: right chunks at positions 1 and 5 give MRR 1 and nDCG 0.85 (1 + 0.387 over the ideal 1.631)');
+    await pick('rk-r', 0); await pick('rk-r', 4); await pick('rk-r', 7); ok(same(await bigs(), ['0', '0', '0.125', '0.193']), 'scoring lab: one right chunk at position 8 gives hit 0, MRR 0.125 and nDCG 0.193 (0.315 over the ideal 1.631)');
+    await go(rkS.id + ':2'); t = (await tables())[0];
+    ok(same(t, [['not in top 10', '9', '0 + 1/(60+9) = 0.0145', '10']]), 'scoring lab: question q09, the vector rank 9 gives an RRF score of 0.0145');
+
+    // access control: where the filter runs, for the manager role
+    const acS = scene('acl');
+    await go(acS.id + ':0'); await reset('ac', { f: 'none' });
+    for (const [f, want] of [['none', ['18', '0', '10']], ['after', ['0', '18', '0']], ['inside', ['0', '0', '0']]]) { await pick('ac-f', f); ok(same(await bigs(), want), 'access lab, filter ' + f + ': ' + want.join(', ')); }
+
+    // ingestion runs and the alias
+    const plS = scene('pipeline');
+    await go(plS.id + ':0'); await reset('pl', { r: 0, a: 0, mx: 0 });
+    for (const [r, want] of [[0, ['87', '0', '0', '87', '0']], [1, ['0', '87', '0', '0', '0']], [2, ['1', '86', '1', '1', '0']], [3, ['0', '84', '0', '0', '0']], [4, ['0', '84', '0', '0', '1']], [5, ['0', '84', '0', '0', '1']]]) { await pick('pl-r', r); ok(same(await bigs(), want), 'ingestion lab, run ' + (r + 1) + ': ' + want.join(', ')); }
+    await go(plS.id + ':1'); ok((await bigs())[0] === 'index-v1', 'ingestion lab: the alias starts on the old index');
+    for (let i = 0; i < 3; i++) await pick('pl-a', 'next');
+    ok(same(await bigs(), ['index-v2', '0.75', '0.833']), 'ingestion lab: after three steps the alias points to index-v2, scored 0.833 against 0.75');
+    await go(plS.id + ':2'); await pick('pl-m', 3); ok((await bigs())[0] === 'hit@5 0.917', 'ingestion lab: a query of another model of the same size ran, with hit at 5 of 0.917 on the stand-in');
+    await pick('pl-m', 2); ok(/^error:/.test((await bigs())[0]), 'ingestion lab: another size is an error');
+
+    // tokens: the stand-in tokenizer samples, then the prompt arithmetic
+    const tkS = scene('tokens');
+    await go(tkS.id + ':0'); await reset('tk', { x: 0, c: 5, t: 95, q: 1000, p: 1, rk: 0, ca: 0, sm: 0, bt: 0 });
+    await pick('tk-x', 7); ok(same(await bigs(), ['42', '118', '116', '0.36']), 'tokens lab: Thai text of 42 characters is 118 bytes and 116 tokens');
+    await pick('tk-x', 0); ok(same(await bigs(), ['86', '86', '18', '4.78']), 'tokens lab: plain English of 86 characters is 18 tokens');
+    const tkB = S.find(x => x.type === 'widget' && x.kind === 'tokens' && x.id === 'm7-tokens-lab');
+    await go(tkB.id + ':0');
+    const per = 300 + 5 * 95 + 40, perQ = per / 1e6 * 1 + 150 / 1e6 * 5;
+    ok(same(await bigs(), [n0(per), usd(perQ), usd(perQ * 1000), usd(perQ * 30000)]), 'tokens lab: 5 chunks of 95 tokens make 815 input tokens, and the cost follows the example price of $1 per million');
+    await pick('tk-c', 20); await pick('tk-t', 400); ok((await bigs())[0] === n0(300 + 20 * 400 + 40), 'tokens lab: 20 chunks of 400 tokens make 8,340 input tokens');
+
+    // retries: the recorded rows, and the worst case of one call
+    const rtS = scene('retry');
+    await go(rtS.id + ':0'); await reset('rt', { sdk: 'anthropic', f: 0, mr: 2, to: 600 });
+    for (const [f, want] of [[0, ['2', '0, 1', 'answer returned']], [2, ['3', '0, 1, 2', 'InternalServerError']], [3, ['1', '0', 'BadRequestError']], [4, ['2', '0, 1', 'APITimeoutError']], [5, ['1', '0', 'RateLimitError']]]) { await pick('rt-f', f); ok(same(await bigs(), want), 'retry lab, failure ' + f + ': ' + want.join(' / ')); }
+    await pick('rt-s', 'openai'); await pick('rt-f', 3); ok(same(await bigs(), ['1', '0', 'BadRequestError']), 'retry lab: the OpenAI library also sends a bad request once');
+    await go(rtS.id + ':1');
+    ok(same(await bigs(), ['0.5, 1.0', '1.5 s', '1,802 s']), 'retry lab: 2 retries and a timeout of 600 seconds give waits of 0.5 and 1.0 and a worst case of 1,802 seconds');
+    await pick('rt-m', 0); await pick('rt-t', 20); ok(same(await bigs(), ['none', '0.0 s', '20 s']), 'retry lab: no retries and a timeout of 20 seconds give a worst case of 20 seconds');
+    await pick('rt-m', 5); await pick('rt-t', 600); ok((await bigs())[2] === '3,610 s' || (await bigs())[2] === '60 min', 'retry lab: 5 retries of 600 seconds is more than an hour');
+
+    // the agent: four replays, two designs, three limits
+    const agS = scene('agent');
+    await go(agS.id + ':0'); await reset('ag', { k: 0, n: 1, w: 'workflow', l: 1 });
+    ok(same(await bigs(), ['1', '0', '1 of 5']), 'agent lab: run A starts with one message');
+    await pick('ag-n', 'all'); ok(same(await bigs(), ['3', '2', '5 of 5']), 'agent lab: run A has 3 model calls and 2 tool results');
+    await pick('ag-k', 2); await pick('ag-n', 'all'); ok(same(await bigs(), ['6', '5', '12 of 12']), 'agent lab: run C has 6 model calls and 5 tool results');
+    await pick('ag-k', 3); await pick('ag-n', 'all'); ok(/paused/.test(await text()) && same(await bigs(), ['2', '1', '4 of 4']), 'agent lab: run D pauses for a person');
+    await go(agS.id + ':1'); await pick('ag-w', 'agent'); ok(same(await bigs(), ['3', '2', 'the model', 'no']), 'agent lab: an agent asks the model 3 times and decides by the model');
+    await pick('ag-w', 'workflow'); ok(same(await bigs(), ['1', '2', 'the code', 'yes']), 'agent lab: a workflow asks the model once');
+    await go(agS.id + ':2'); await pick('ag-l', 1); ok(same(await bigs(), ['6', '5', 'answer']), 'agent lab: our limit of 6 steps ends with an answer'); await pick('ag-l', 2); ok(/raises an error/.test(await text()), 'agent lab: the library limit raises an error');
+
+    // the SQL guard: the fourteen statements and what each layer did
+    const sgS = scene('sqlguard');
+    await go(sgS.id + ':0'); await reset('sg', { q: 0, g: {} });
+    ok(await cnt('[data-act="sg-q"]') === 14, 'SQL guard lab: fourteen statements');
+    await pick('sg-q', 6); await pick('sg-g', 'refuse'); ok((await text()).includes('Right.'), 'SQL guard lab: the e-mail query is refused by the guard');
+    await pick('sg-g', 'allow'); ok((await text()).includes('The guard said refused.'), 'SQL guard lab: answering allow for the e-mail query is wrong');
+    await go(sgS.id + ':1'); ok(same(await bigs(), ['14', '7', '7', '1']), 'SQL guard lab: 14 statements, 7 allowed, 7 refused, 1 that a read-only connection alone would have run');
+
+    // MCP: messages and bytes in two protocol versions
+    const mwS = scene('mcpwire');
+    await go(mwS.id + ':0'); await reset('mw', { m: 0, f: 0, n: 3, sel: 0 });
+    ok(same(await bigs(), ['18', '6,672', '296']), 'MCP lab: 18 messages, 6,672 bytes, and 296 bytes in an average tools/call request');
+    await pick('mw-m', 1); ok(same(await bigs(), ['19', '4,041', '113']), 'MCP lab: the older version has 19 messages, 4,041 bytes, and 113 bytes in a tools/call request');
+    await go(mwS.id + ':2'); ok((await bigs())[0] === '383', 'MCP lab: three tools cost 383 tokens of definitions');
+    await pick('mw-n', 40); ok((await bigs())[0] === '5,110', 'MCP lab: forty tools of that size cost 5,110 tokens in every request');
+
+    // traces
+    const spS = scene('spans');
+    await go(spS.id + ':0'); await reset('sp', { s: 2, q: 0 });
+    ok(same(await bigs(), ['INTERNAL', 'ERROR', '2']), 'trace lab: the first tool span failed and recorded two events');
+    await pick('sp-s', 1); ok(same(await bigs(), ['CLIENT', 'UNSET', '0']), 'trace lab: a model call is a client span with no error');
+    await go(spS.id + ':1'); ok(same(await bigs(), ['6', '3', '2', '202 / 46']), 'trace lab: 6 spans, 3 model calls, 2 tool calls, 202 tokens in and 46 out');
+
+    // defences
+    const dfS = scene('defence');
+    await go(dfS.id + ':1'); await reset('df', { r: 0 });
+    for (const [r, want] of [[0, ['EUR 500.0', 'no']], [1, ['none', 'no']], [2, ['none', 'yes']], [3, ['none', 'no']]]) { await pick('df-r', r); ok(same(await bigs(), want), 'defence lab, run ' + (r + 1) + ': ' + want.join(' / ')); }
+    await go(dfS.id + ':0'); ok(same((await bigs()).slice(0, 2), ['1', '2']), 'defence lab: the planted chunk ranks first and the right chunk second');
+
+    // fine-tuning data
+    const ftS = scene('finetune');
+    await go(ftS.id + ':0'); await reset('ft', { s: 0, p: 0 });
+    await pick('ft-s', 3); ok(same(await bigs(), ['161', '27', '25.5']), 'fine-tuning lab: 161 examples remain from 27 facts, with 25.5 words on average');
+    await pick('ft-s', 2); ok((await bigs())[0] === '162', 'fine-tuning lab: exact de-duplication leaves 162');
+    await go(ftS.id + ':1');
+    await pick('ft-p', 0); ok(same(await bigs(), ['129', '32', '32']), 'fine-tuning lab: a random split leaves 32 of 32 validation answers in training');
+    await pick('ft-p', 1); ok(same(await bigs(), ['131', '30', '0']), 'fine-tuning lab: a split by fact leaves 0');
+
+    // checkpoints, approval, resume, durable
+    const ckS2 = scene('ckpt');
+    await go(ckS2.id + ':0'); await reset('ck2', { c: 2, d: 'approve' });
+    for (const [c, want] of [[0, ['__start__', '0', '0', '2']], [2, ['tools', '1', '2', '2']], [4, ['tools', '2', '4', '1']], [6, ['done', '3', '6', '0']]]) { await pick('ck-c', c); ok(same(await bigs(), want), 'checkpoint lab, checkpoint ' + c + ': ' + want.join(', ')); }
+    await go(ckS2.id + ':1'); await pick('ck-d', 'approve'); ok(same(await bigs(), ['0', '1', 'tools']), 'checkpoint lab: an approval writes one refund after the pause');
+    await pick('ck-d', 'deny'); ok(same(await bigs(), ['0', '0', 'tools']), 'checkpoint lab: a refusal writes none');
+    await go(ckS2.id + ':2'); t = (await tables())[0]; ok(same(t.find(r => r[0] === 'search_policies'), ['search_policies', '1', '2']), 'checkpoint lab: the read tool before the interrupt ran again on resume');
+    await go(ckS2.id + ':3'); ok(same(await bigs(), ['3', '1']), 'checkpoint lab: 3 checkpoints in the file, and one refund written by a new graph object');
+
+    // release gates
+    const rlS = scene('release');
+    await go(rlS.id + ':0'); await reset('rl', { c: 0, live: 'index-v2.db' });
+    ok(same(await pills(), ['pass', 'fail', 'not reached', 'not reached', 'not reached']), 'release lab: the fixed 500 change passes the tests and fails the evaluation gate');
+    await pick('rl-c', 2); ok(same(await pills(), ['pass', 'pass', 'next', 'next', 'next']), 'release lab: the keyword-only change passes both gates and goes on to the attack set and a canary');
+    await pick('rl-c', 4); ok(same(await pills(), ['pass', 'fail', 'not reached', 'not reached', 'not reached']), 'release lab: the vector-only change fails the evaluation gate');
+    await pick('rl-c', 5); ok(same(await pills(), ['fail', 'not reached', 'not reached', 'not reached', 'not reached']), 'release lab: removing the step limit is stopped by the tests');
+    await pick('rl-c', 6); ok(same(await pills(), ['fail', 'not reached', 'not reached', 'not reached', 'not reached']), 'release lab: removing the approval is stopped by the tests');
+    await go(rlS.id + ':1'); ok((await bigs())[0] === 'index-v2.db', 'release lab: the alias starts on the new index');
+    await pick('rl-live', 'index-v1.db'); ok((await bigs())[0] === 'index-v1.db', 'release lab: one write moves the alias back');
+
+    // the coding round: the query of mission 15 is run by verify_ai.py in DuckDB. Here: the table that it reads has 72 rows and 18 answers
+    const chS = S.find(x => x.type === 'challenge');
+    await go(chS.id + ':0'); ok((await text()).length > 500, 'coding round opens');
+  }
+
   // score screen counts every mock question on the path
   await go('mock-score:0');
   ok(await cnt('.ring') === 1 && await cnt('.srow') === S.filter(x => x.type === 'mock').length, 'scorecard lists every boss question');
