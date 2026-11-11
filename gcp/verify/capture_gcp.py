@@ -471,6 +471,49 @@ FROM (
     counts('sql.estimate_detail', est_detail)
     counts('sql.estimate_rules', {'billing_rounding': 'rounded up to a whole MiB, at least 10 MiB per table (documentation)', 'example_price_per_tib_usd': W.EXAMPLE_PRICE_PER_TIB, 'scale': SCALE,
                                   'clustering_not_modelled': True})
+
+    # --- the job history: a MADE-UP job log with the columns that INFORMATION_SCHEMA.JOBS has, priced with the estimates above. Nothing here came from BigQuery.
+    dash_b, adhoc_b, daily_b = (est_detail[k]['billed_bytes'] for k in ('three columns', 'SELECT *', 'three columns and a filter, one UTC day'))
+    day0 = dt.datetime(2026, 11, 4, tzinfo=dt.timezone.utc)
+    SA = '@brewline-dev.iam.gserviceaccount.com'
+    log = []
+    for d in range(7):
+        base = day0 + dt.timedelta(days=d)
+        log.append({'creation_time': base + dt.timedelta(hours=2), 'user_email': 'sa-pipeline' + SA, 'job_type': 'QUERY', 'statement_type': 'MERGE', 'priority': 'BATCH', 'state': 'DONE',
+                    'total_bytes_billed': daily_b, 'labels': [{'key': 'pipeline', 'value': 'daily_orders'}, {'key': 'env', 'value': 'prod'}]})
+        for k in range(96):                                  # a dashboard that refreshes every 15 minutes and reads three columns of the whole table
+            log.append({'creation_time': base + dt.timedelta(minutes=15 * k), 'user_email': 'sa-dashboard' + SA, 'job_type': 'QUERY', 'statement_type': 'SELECT', 'priority': 'INTERACTIVE',
+                        'state': 'DONE', 'total_bytes_billed': dash_b, 'labels': [{'key': 'pipeline', 'value': 'dashboard_refresh'}, {'key': 'env', 'value': 'prod'}]})
+        for k in range(12):                                  # analysts running SELECT *, with no labels
+            log.append({'creation_time': base + dt.timedelta(hours=9, minutes=40 * k), 'user_email': 'analyst%d@example.com' % (k % 4 + 1), 'job_type': 'QUERY', 'statement_type': 'SELECT',
+                        'priority': 'INTERACTIVE', 'state': 'DONE', 'total_bytes_billed': adhoc_b, 'labels': []})
+    wh.load('curated', 'jobs_log', log)
+    cost_sql = """
+WITH jobs AS (
+  SELECT
+    total_bytes_billed,
+    IFNULL((SELECT l.value FROM UNNEST(labels) AS l WHERE l.key = 'pipeline'), '(no label)') AS pipeline
+  FROM `region-asia-southeast1`.INFORMATION_SCHEMA.JOBS_BY_PROJECT
+  WHERE creation_time >= TIMESTAMP '2026-11-04 00:00:00+00'
+    AND job_type = 'QUERY'
+    AND state = 'DONE'
+)
+SELECT
+  pipeline,
+  COUNT(*) AS jobs,
+  ROUND(SUM(total_bytes_billed) / POW(1024, 4), 2) AS tib_billed,
+  ROUND(SUM(total_bytes_billed) / POW(1024, 4) * 6.25, 2) AS example_usd
+FROM jobs
+GROUP BY pipeline
+ORDER BY example_usd DESC
+"""
+    ran = cost_sql.replace('`region-asia-southeast1`.INFORMATION_SCHEMA.JOBS_BY_PROJECT', '`brewline-dev.curated.jobs_log`')
+    cr = wh.run(ran)
+    table('sql.cost_by_label', ['pipeline label', 'jobs', 'TiB billed', 'example USD'], [[r[0], r[1], r[2], r[3]] for r in cr[1]])
+    file('sql/cost_by_label.sql', cost_sql.strip())
+    counts('sql.cost_world', {'jobs': len(log), 'days': 7, 'window': '2026-11-04 to 2026-11-10', 'billed_bytes_per_job': {'dashboard_refresh': dash_b, 'analysts, SELECT *': adhoc_b, 'daily_orders': daily_b},
+                              'runs_per_day': {'dashboard_refresh': 96, 'analysts, SELECT *': 12, 'daily_orders': 1}, 'example_price_per_tib_usd': 6.25,
+                              'ran_on': 'a made-up table named jobs_log with the columns that the query reads: INFORMATION_SCHEMA itself does not exist outside BigQuery'})
     # --- the DDL of a partitioned, clustered table, read by sqlglot's BigQuery parser (a syntax check, not BigQuery)
     import sqlglot
     ddl = ("CREATE OR REPLACE TABLE `brewline-dev.curated.orders` (order_id INT64 NOT NULL, store_id STRING NOT NULL, customer_id STRING, order_ts TIMESTAMP NOT NULL, status STRING, "
@@ -775,7 +818,8 @@ GCLOUD_FLAGS = [
     ('functions deploy', ['--gen2', '--runtime', '--trigger-topic', '--entry-point', '--region', '--service-account']),
     ('eventarc triggers create', ['--event-filters', '--destination-run-service', '--location', '--service-account']),
     ('logging metrics create', ['--log-filter', '--description']),
-    ('billing budgets create', ['--billing-account', '--display-name', '--budget-amount', '--threshold-rule']),
+    ('billing budgets create', ['--billing-account', '--display-name', '--budget-amount', '--threshold-rule', '--filter-projects', '--notifications-rule-pubsub-topic']),
+    ('monitoring policies create', ['--policy-from-file', '--notification-channels']),
 ]
 BQ_FLAGS = [
     ('mk', ['--time_partitioning_field', '--time_partitioning_type', '--time_partitioning_expiration', '--clustering_fields', '--require_partition_filter', '--range_partitioning', '--dataset', '--table',

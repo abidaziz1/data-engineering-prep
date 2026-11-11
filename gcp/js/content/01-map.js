@@ -4,7 +4,7 @@
 (function () {
   var B = LAB.b, G = LAB.get;
   var FL = G.table('cli.flags'), CS = G.counts('cli.summary');
-  G.expect(CS.commands_checked === 23 && CS.flags_not_found.length === 0, 'every flag that the course names exists in gcloud and bq');
+  G.expect(CS.commands_checked === 24 && CS.flags_not_found.length === 0, 'every flag that the course names exists in gcloud and bq');
 
   LAB.addChapter({
     id: 'm1', n: 1, title: 'The map of Google Cloud for data', short: 'Map', blurb: 'Projects, locations, the services by job, the exam and the job descriptions', minutes: 30,
