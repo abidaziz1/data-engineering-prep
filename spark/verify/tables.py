@@ -58,8 +58,7 @@ def schema_enforcement(spark, table):
         extra.write.format('delta').mode('append').save(table)
         return None
     except Exception as e:  # noqa: BLE001
-        lines = [l.strip() for l in str(e).split('\n') if l.strip()]
-        return [l for l in lines if 'schema mismatch' in l.lower() or 'DELTA_' in l][0][:200]
+        return re.sub(r'\n{2,}', '\n', str(e).strip())[:1500]      # the whole message: it names the fix and shows both schemas
 
 
 def files(spark, table):
