@@ -11,7 +11,7 @@ POLICIES = {
     'refund approval': 'A refund above EUR 50 needs a second manager to approve it in the till.',
     'milk storage': 'Milk must be stored at 5 degrees Celsius or lower, and the fridge temperature is logged at open and close.',
 }
-COUNTS = {'COMPLETED': 144, 'CANCELLED': 24, 'PENDING': 32}
+COUNTS = {'COMPLETED': 120, 'CANCELLED': 40, 'PENDING': 40}
 
 
 @app.tool(annotations=ToolAnnotations(readOnlyHint=True))

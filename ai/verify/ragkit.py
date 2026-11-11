@@ -45,6 +45,41 @@ def content_hash(text):
 
 
 # ---------------------------------------------------------------------------------------------------------------------------------------
+# Personal data, and near-copies
+# ---------------------------------------------------------------------------------------------------------------------------------------
+PII = {'email': r'[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}', 'phone': r'\+\d{2}(?: ?\d){8,10}', 'iban': r'\b[A-Z]{2}\d{2}[A-Z0-9]{10,30}\b'}
+
+
+def mask_pii(text):
+    """Replace what a pattern recognises with a label. A pattern finds the shape of a thing. It does not find a name."""
+    found = {}
+    for kind, pattern in PII.items():
+        found[kind] = len(re.findall(pattern, text))
+        text = re.sub(pattern, '[' + kind.upper() + ']', text)
+    return text, found
+
+
+def shingles(text, n=5):
+    """Every run of n words, in lower case. Two texts that share most runs are near-copies."""
+    w = re.findall(r'\w+', text.lower())
+    return {' '.join(w[i:i + n]) for i in range(max(1, len(w) - n + 1))}
+
+
+def jaccard(a, b):
+    """The share of the runs that two texts have in common."""
+    return len(a & b) / len(a | b)
+
+
+def minhash(shingle_set, num_perm=128):
+    """A small signature of a set of shingles. The share of equal positions in two signatures estimates their Jaccard similarity."""
+    from datasketch import MinHash
+    m = MinHash(num_perm=num_perm, seed=1)
+    for sh in sorted(shingle_set):
+        m.update(sh.encode())
+    return m
+
+
+# ---------------------------------------------------------------------------------------------------------------------------------------
 # Chunk. Every function returns a list of strings.
 # ---------------------------------------------------------------------------------------------------------------------------------------
 def chunk_fixed(text, size=500, overlap=0):
@@ -153,6 +188,35 @@ def rrf(rankings, k=60):
             score[i] = score.get(i, 0.0) + 1.0 / (k + r)
     order = sorted(score, key=lambda i: (-score[i], i))
     return order, score
+
+
+class Searcher:
+    """BM25, the stand-in vectors, and the two fused, over one list of chunks (dicts with an id and a text).
+    A mask is a function of a chunk. A chunk that the mask rejects is never a candidate: the filter runs inside the search."""
+
+    def __init__(self, chunks, dim=64, seed=7):
+        from rank_bm25 import BM25Okapi
+        self.chunks = chunks
+        self.ids = [c['id'] for c in chunks]
+        self.bm25 = BM25Okapi([tokens(c['text']) for c in chunks])
+        self.emb = LsaEmbedder(dim, seed).fit([c['text'] for c in chunks])
+        self.vecs = self.emb.embed([c['text'] for c in chunks])
+
+    def bm25_rank(self, q, mask=None):
+        s = self.bm25.get_scores(tokens(q))
+        return self._order(s, mask)
+
+    def vec_rank(self, q, mask=None):
+        s = self.vecs @ self.emb.embed([q])[0]
+        return self._order(s, mask)
+
+    def hybrid_rank(self, q, mask=None, k=60):
+        order, _ = rrf([self.bm25_rank(q, mask)[:50], self.vec_rank(q, mask)[:50]], k)
+        return order
+
+    def _order(self, scores, mask):
+        idx = sorted(range(len(self.ids)), key=lambda i: (-scores[i], i))
+        return [self.ids[i] for i in idx if mask is None or mask(self.chunks[i])]
 
 
 # ---------------------------------------------------------------------------------------------------------------------------------------

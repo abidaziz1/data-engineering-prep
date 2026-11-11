@@ -101,6 +101,11 @@ OUT['meta'].update({'python': sys.version.split()[0], 'company': 'Brewline',
                             'TF-IDF and SVD stand-in, the agent model is scripted, and the LLM API is a local stand-in server. Nothing ran in a cloud.'})
 
 
+# The source of the modules that the lessons show, kept in the recording so that a lesson shows exactly the code that ran.
+for _name in ('parsekit', 'ragkit', 'ingest', 'sqlguard', 'finetune'):
+    OUT['files']['code/%s.py' % _name] = (HERE / ('%s.py' % _name)).read_text().rstrip('\n')
+
+
 # =======================================================================================================================================
 # The corpus, parsed, cleaned and chunked. Other sections reuse it.
 # =======================================================================================================================================
@@ -178,32 +183,7 @@ def evaluate(chunks, rank_fn, ks=(1, 3, 5)):
     return m, detail, rows
 
 
-class Searcher:
-    """BM25, the LSA stand-in vectors, and the two fused, over one list of chunks."""
-
-    def __init__(self, chunks, dim=64, seed=7):
-        from rank_bm25 import BM25Okapi
-        self.chunks = chunks
-        self.ids = [c['id'] for c in chunks]
-        self.bm25 = BM25Okapi([ragkit.tokens(c['text']) for c in chunks])
-        self.emb = ragkit.LsaEmbedder(dim, seed).fit([c['text'] for c in chunks])
-        self.vecs = self.emb.embed([c['text'] for c in chunks])
-
-    def bm25_rank(self, q, mask=None):
-        s = self.bm25.get_scores(ragkit.tokens(q))
-        return self._order(s, mask)
-
-    def vec_rank(self, q, mask=None):
-        s = self.vecs @ self.emb.embed([q])[0]
-        return self._order(s, mask)
-
-    def hybrid_rank(self, q, mask=None, k=60):
-        order, _ = ragkit.rrf([self.bm25_rank(q, mask)[:50], self.vec_rank(q, mask)[:50]], k)
-        return order
-
-    def _order(self, scores, mask):
-        idx = sorted(range(len(self.ids)), key=lambda i: (-scores[i], i))
-        return [self.ids[i] for i in idx if mask is None or mask(self.chunks[i])]
+Searcher = ragkit.Searcher
 
 
 COURSE = {'strategy': 'recursive', 'size': 500}                # the chunking that the later missions use
@@ -258,34 +238,23 @@ def sec_docs():
 
     # personal data in the meeting notes: patterns, and what they get wrong
     notes = D['notes']['text']
-    pats = {'email': r'[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}', 'phone': r'\+\d{2}(?: ?\d){8,10}', 'iban': r'\b[A-Z]{2}\d{2}[A-Z0-9]{10,30}\b'}
-    found = {k: re.findall(v, notes) for k, v in pats.items()}
-    masked = notes
-    for k, v in pats.items():
-        masked = re.sub(v, '[' + k.upper() + ']', masked)
+    masked, found_n = ragkit.mask_pii(notes)
     loose = re.findall(r'[\d\-\s+]{9,}', notes)               # a pattern that is too loose
-    counts('docs.pii', {'found': {k: len(v) for k, v in found.items()}, 'masked': masked, 'loose_pattern_hits': [x.strip() for x in loose],
-                        'names_in_text': [n for n, _, _ in corpus.PEOPLE if n in notes], 'names_masked_by_patterns': [n for n, _, _ in corpus.PEOPLE if n in masked],
+    counts('docs.pii', {'found': found_n, 'masked': masked, 'loose_pattern_hits': [x.strip() for x in loose],
+                        'names_in_text': [n for n, _, _ in corpus.PEOPLE if n in notes], 'names_left_after_masking': [n for n, _, _ in corpus.PEOPLE if n in masked],
                         'order_refs_untouched': all(x in masked for x in ('ORD-2026-0412', 'SKU-4471'))})
     file('corpus/meeting-notes-masked.txt', masked.rstrip('\n'))
 
     # near duplicates: exact Jaccard on 5-word shingles, then MinHash and LSH
     from datasketch import MinHash, MinHashLSH
 
-    def shingles(t, n=5):
-        w = re.findall(r'\w+', t.lower())
-        return {' '.join(w[i:i + n]) for i in range(max(1, len(w) - n + 1))}
-
-    sh = {d['doc_id']: shingles(d['text']) for d in p['docs']}
+    sh = {d['doc_id']: ragkit.shingles(d['text']) for d in p['docs']}
 
     def jac(a, b):
-        return len(sh[a] & sh[b]) / len(sh[a] | sh[b])
+        return ragkit.jaccard(sh[a], sh[b])
 
     def mh(doc_id, perm=128):
-        m_ = MinHash(num_perm=perm, seed=1)
-        for s in sorted(sh[doc_id]):
-            m_.update(s.encode())
-        return m_
+        return ragkit.minhash(sh[doc_id], perm)
 
     ids = [d['doc_id'] for d in p['docs'] if not d.get('extra')]
     pairs = sorted(((jac(a, b), a, b) for i, a in enumerate(ids) for b in ids[i + 1:]), reverse=True)
@@ -427,7 +396,7 @@ def sec_embed():
         mixed = hit(s.vecs, lambda q: new.embed([q])[0])
     except ValueError as e:
         mixed = str(e).split('\n')[0]
-    # same dimension, different seed: it runs, and it returns rubbish
+    # same dimension, another seed: it runs. With TF-IDF and an SVD the axes are almost the same, so it still works (a stand-in effect, not a rule)
     new64 = ragkit.LsaEmbedder(64, 99).fit([c['text'] for c in chunks])
     mixed64 = hit(s.vecs, lambda q: new64.embed([q])[0])
     counts('embed.versions', {'old_model_old_index_hit@5': old_old, 'new_model_new_index_hit@5': new_new, 'new_query_old_index_other_dimension': mixed, 'new_query_old_index_same_dimension_hit@5': mixed64})
@@ -661,6 +630,29 @@ def vec_literal(v):
     return '[' + ','.join('%.6f' % x for x in v) + ']'
 
 
+PG_SQL = """create extension if not exists vector;
+
+create table chunks (id int primary key, tenant int not null, embedding vector(64));
+
+-- build the index after the rows are loaded
+create index chunks_hnsw on chunks using hnsw (embedding vector_cosine_ops) with (m = 16, ef_construction = 64);
+
+-- the ten nearest neighbours of a query vector, by cosine distance
+select id from chunks order by embedding <=> $1::vector limit 10;
+
+-- how many candidates the index keeps while it searches (default 40)
+set hnsw.ef_search = 200;
+
+-- a filter: the index finds its candidates first, and the where clause removes rows afterwards
+select id from chunks where tenant = $1 order by embedding <=> $2::vector limit 10;
+
+-- keep scanning the index until enough rows survive the filter
+set hnsw.iterative_scan = relaxed_order;
+
+-- a partial index for a small tenant
+create index chunks_t1 on chunks using hnsw (embedding vector_cosine_ops) where tenant = 1;"""
+
+
 def sec_pgvector():
     import pixeltable_pgserver as pgs
     import psycopg
@@ -674,6 +666,7 @@ def sec_pgvector():
     conn.execute('create extension if not exists vector')
     ext = q("select extversion from pg_extension where extname = 'vector'")[0][0]
     counts('pg.versions', {'postgres': ver, 'pgvector': ext})
+    file('pg/statements.sql', PG_SQL)
     conn.execute('set max_parallel_maintenance_workers = 0')
     conn.execute('drop table if exists chunks')
     conn.execute('create table chunks (id int primary key, tenant int not null, embedding vector(%d))' % d)
@@ -857,7 +850,7 @@ def sec_pipeline():
                             'if the new index is not worse, write live -> index-v2.db (one small write)', 'keep index-v1.db for a day, so that going back is one write too']
     notes['hit@3_old_model_index'] = score(s_old, model1, 'lsa-64-v1')
     notes['hit@3_new_model_index'] = score(store2, model2, 'lsa-48-v2')
-    notes['mixing'] = 'a query vector from the new model has 48 numbers and the old index holds 64, so the comparison fails; with the same size and another model it would run and return rubbish'
+    notes['mixing'] = 'a query vector from the new model has 48 numbers and the old index holds 64, so the comparison fails. With the same size and another seed the stand-in kept working (see embed.versions), because TF-IDF and an SVD of the same size land on almost the same axes. Two different neural models do not share axes, so for them a same-size mix gives no error and the scores mean nothing (from documentation, not measured here)'
     counts('pipeline.notes', notes)
     file('pipeline/alias.json', json.dumps({'live': 'index-v2.db', 'previous': 'index-v1.db', 'model_id': 'lsa-48-v2', 'switched_after': 'hit@3 %s against %s' % (notes['hit@3_new_model_index'], notes['hit@3_old_model_index'])}, indent=2))
 
