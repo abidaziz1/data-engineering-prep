@@ -1,0 +1,9 @@
+config {
+  type: "view",
+  schema: "staging",
+  description: "One row per order: the latest delivery wins."
+}
+
+SELECT order_id, store_id, customer_id, order_ts, status, total_cents
+FROM ${ref("raw", "orders_raw")}
+QUALIFY ROW_NUMBER() OVER (PARTITION BY order_id ORDER BY ingest_ts DESC) = 1

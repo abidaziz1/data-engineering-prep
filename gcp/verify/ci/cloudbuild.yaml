@@ -1,0 +1,23 @@
+# Cloud Build: check the pipeline code, then deploy the DAGs to the Composer bucket. The service account of the build needs only those two jobs.
+steps:
+  - id: unit-tests
+    name: python:3.12
+    entrypoint: bash
+    args: ['-c', 'pip install -r requirements.txt && pytest -q']
+  - id: sql-compile
+    name: node:22
+    entrypoint: bash
+    args: ['-c', 'npx --yes @dataform/cli compile dataform']
+  - id: terraform-checks
+    name: python:3.12
+    entrypoint: bash
+    args: ['-c', 'pip install checkov && checkov -d iac --framework terraform --quiet']
+  - id: deploy-dags
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args: ['storage', 'rsync', '--recursive', 'dags', 'gs://${_COMPOSER_BUCKET}/dags']
+substitutions:
+  _COMPOSER_BUCKET: composer-bucket-dev
+options:
+  logging: CLOUD_LOGGING_ONLY
+timeout: 900s

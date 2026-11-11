@@ -1,0 +1,19 @@
+config {
+  type: "incremental",
+  schema: "curated",
+  uniqueKey: ["order_id"],
+  bigquery: {
+    partitionBy: "DATE(order_ts)",
+    clusterBy: ["store_id"],
+    requirePartitionFilter: true
+  },
+  assertions: {
+    uniqueKey: ["order_id"],
+    nonNull: ["order_id", "order_ts", "store_id"],
+    rowConditions: ["total_cents >= 0"]
+  }
+}
+
+SELECT order_id, store_id, customer_id, order_ts, status, total_cents
+FROM ${ref("stg_orders")}
+${when(incremental(), `WHERE order_ts > (SELECT MAX(order_ts) FROM ${self()})`)}
