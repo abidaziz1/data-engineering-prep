@@ -1,0 +1,15 @@
+config {
+  type: "table",
+  schema: "curated",
+  bigquery: { partitionBy: "sale_date", clusterBy: ["store_id"] },
+  tags: ["daily"]
+}
+
+SELECT
+  DATE(order_ts, "Asia/Singapore") AS sale_date,
+  store_id,
+  COUNT(*) AS orders,
+  SUM(total_cents) AS revenue_cents
+FROM ${ref("orders")}
+WHERE order_ts >= TIMESTAMP("2026-10-01") AND status IN (${constants.SALE_STATUSES})
+GROUP BY sale_date, store_id

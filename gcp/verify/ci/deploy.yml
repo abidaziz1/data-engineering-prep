@@ -1,0 +1,20 @@
+# GitHub Actions: deploy to Google Cloud without a key file. The job proves who it is with a short-lived token from GitHub (workload identity federation).
+name: deploy-data-platform
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - id: auth
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: projects/123456789/locations/global/workloadIdentityPools/github/providers/brewline
+          service_account: sa-deploy@brewline-dev.iam.gserviceaccount.com
+      - uses: google-github-actions/setup-gcloud@v3
+      - run: gcloud storage rsync --recursive dags gs://composer-bucket-dev/dags

@@ -1,0 +1,69 @@
+name: deploy-data-platform
+
+on:
+  pull_request:
+    paths:
+      - 'infra/**'
+  push:
+    branches:
+      - main
+    paths:
+      - 'infra/**'
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  whatif:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: What-if against dev
+        run: >
+          az deployment group what-if
+          --resource-group rg-brewline-data-dev
+          --template-file infra/main.bicep
+          --parameters envName=dev alertEmail=${{ vars.ALERT_EMAIL }}
+
+  deploy-dev:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: dev
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Deploy to dev
+        run: >
+          az deployment group create
+          --resource-group rg-brewline-data-dev
+          --template-file infra/main.bicep
+          --parameters envName=dev alertEmail=${{ vars.ALERT_EMAIL }}
+
+  deploy-prod:
+    if: github.event_name == 'push'
+    needs: deploy-dev
+    runs-on: ubuntu-latest
+    environment: prod
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Deploy to production
+        run: >
+          az deployment group create
+          --resource-group rg-brewline-data-prod
+          --template-file infra/main.bicep
+          --parameters envName=prod alertEmail=${{ vars.ALERT_EMAIL }}

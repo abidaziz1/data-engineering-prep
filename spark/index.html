@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0B1220">
+  <meta name="description" content="A guided, press-Next course on Apache Spark for data engineers: the plan that Spark builds, partitions, shuffles and joins, skew and adaptive execution, memory and caching, file layout, Spark SQL and ANSI mode, Python and UDFs, Structured Streaming, Delta Lake, tests, spark-submit and debugging from the event log. Run on a real Spark 4.0.1.">
+  <title>Apache Spark for data engineers</title>
+  <link rel="icon" type="image/svg+xml" href="../shared/assets/favicon.svg">
+  <link rel="stylesheet" href="../shared/css/app.css">
+  <link rel="stylesheet" href="css/spark.css">
+</head>
+<body>
+  <div id="app">
+    <header class="top">
+      <div class="brand">
+        <a class="logo" href="../index.html" title="Back to all tutorials" aria-label="Back to all tutorials">SPARK</a>
+        <span class="brand-t"><b>Spark</b><small id="crumb"></small></span>
+      </div>
+      <div id="segs" class="segs" aria-label="Progress by mission"></div>
+      <div class="stats">
+        <span class="stat"><b id="xp">0</b> XP<i id="xp-pop" class="xp-pop"></i></span>
+        <span class="stat lvl" id="lvl">Rookie</span>
+        <span class="stat left" id="left"></span>
+        <span class="fs"><button type="button" id="fs-down" aria-label="Smaller text">A-</button><button type="button" id="fs-up" aria-label="Larger text">A+</button></span>
+        <button type="button" id="menu-btn" class="btn-sm">Map</button>
+      </div>
+    </header>
+
+    <main class="main">
+      <aside class="coachcol" aria-label="Coach">
+        <div class="coach">
+          <div id="coach-photo" class="coach-photo"></div>
+          <div class="coach-name">Coach Kai<small>your Spark coach</small></div>
+        </div>
+        <div id="bubble" class="bubble" aria-live="polite"></div>
+        <div class="hintbox"><span id="hint"></span></div>
+      </aside>
+
+      <section class="stagecol" aria-label="Lesson">
+        <div class="stage-head">
+          <span id="seg-chip" class="seg-chip"></span>
+          <span id="tier-chip" class="tier-chip" style="display:none"></span>
+          <h1 id="stage-title"></h1>
+        </div>
+        <div id="stage-body" class="stage-body"></div>
+      </section>
+    </main>
+
+    <footer class="bar">
+      <button type="button" id="back" class="btn-back">Back</button>
+      <div class="pos" id="pos"></div>
+      <button type="button" id="next" class="btn-next"><span id="next-label">Next</span> <span aria-hidden="true">&rarr;</span></button>
+    </footer>
+  </div>
+  <div id="overlay" class="overlay"></div>
+  <noscript><p style="padding:2rem;font:20px sans-serif">This lesson needs JavaScript. Please enable it and reload.</p></noscript>
+
+  <script src="js/config.js"></script>
+  <script src="js/real.js"></script>
+  <script src="../shared/js/util.js"></script>
+  <script src="js/helpers.js"></script>
+  <script src="../shared/js/graph.js"></script>
+  <script src="js/graphs.js"></script>
+  <script src="../shared/js/coach.js"></script>
+  <script src="../shared/js/term.js"></script>
+  <script src="../shared/js/render1.js"></script>
+  <script src="../shared/js/render2.js"></script>
+  <script src="js/widgets.js"></script>
+  <script src="js/widgets2.js"></script>
+  <script src="../shared/js/build.js"></script>
+  <script src="js/content/00-start.js"></script>
+  <script src="js/content/01-map.js"></script>
+  <script src="js/content/02-plans.js"></script>
+  <script src="js/content/03-partitions.js"></script>
+  <script src="js/content/04-joins.js"></script>
+  <script src="js/content/05-skew.js"></script>
+  <script src="js/content/06-memory.js"></script>
+  <script src="js/content/07-files.js"></script>
+  <script src="js/content/08-sql.js"></script>
+  <script src="js/content/09-python.js"></script>
+  <script src="js/content/10-streaming.js"></script>
+  <script src="js/content/11-tables.js"></script>
+  <script src="js/content/12-testing.js"></script>
+  <script src="js/content/13-running.js"></script>
+  <script src="js/content/14-debugging.js"></script>
+  <script src="js/content/15-boss.js"></script>
+  <script src="../shared/js/analytics.js"></script>
+  <script src="../shared/js/app.js"></script>
+</body>
+</html>

@@ -28,3 +28,57 @@ parliament
 setuptools<81
 awscli
 aws-lambda-powertools
+# azure/verify (the recorder, verify_az.py and its --recapture). Azurite and the Kusto language service come from `npm install --prefix azure/verify` (Node 20 or later).
+# The lakehouse section also needs pyspark==4.0.1 and delta-spark==4.0.1 in an interpreter named by AZ_SPARK_PYTHON (Java 17 or 21), and the Bicep and workflow checks need
+# checkov, check-jsonschema and pycep-parser in the interpreter named by AZ_IAC_PYTHON. The az command check needs the Azure CLI (AZ_CLI). A check whose tool is missing says so and is skipped.
+azure-core
+azure-identity
+azure-storage-blob
+azure-storage-queue
+azure-eventhub
+azure-eventhub-checkpointstoreblob
+azure-eventgrid
+azure-functions
+azure-keyvault-secrets
+azure-mgmt-storage
+azure-mgmt-datafactory<10
+# ai/verify (the recorder, verify_ai.py and its --recapture). It needs Python 3.10 or later (the recording used 3.13) and Node 20 or later for the lint.
+# PostgreSQL with pgvector comes from the pixeltable-pgserver wheel (it carries its own server). No language model and no embedding model is used.
+numpy
+scikit-learn
+rank-bm25
+faiss-cpu
+hnswlib
+datasketch
+pypdf
+fpdf2
+python-docx
+beautifulsoup4
+pydantic
+langgraph
+langgraph-checkpoint-sqlite
+langchain-core
+mcp
+anthropic
+openai
+opentelemetry-sdk
+sqlglot
+duckdb
+tokenizers
+psycopg[binary]
+pgvector
+pixeltable-pgserver
+pytest
+pyyaml
+check-jsonschema
+# gcp/verify (the recorder, verify_gcp.py and its --recapture). The Dataform compiler comes from `npm install --prefix gcp/verify` (Node 20 or later).
+# Airflow 3.4.0 with the Google provider (and the constraints file of that release) lives in its own environment, named by GCP_AIRFLOW_PYTHON.
+# PySpark 4.0.1 with Java 17 or 21 is named by GCP_SPARK_PYTHON, and Checkov with check-jsonschema by GCP_IAC_PYTHON. A check whose tool is missing says so and is skipped.
+apache-beam
+google-cloud-storage
+google-cloud-bigquery
+google-cloud-pubsub
+gcp-storage-emulator
+functions-framework
+python-hcl2
+fastavro

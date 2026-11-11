@@ -65,6 +65,8 @@
 
   /* ---------- Syntax highlighting ---------- */
   var SQL_KW = 'select|from|where|join|left|right|inner|outer|full|cross|on|as|and|or|not|in|is|null|with|case|when|then|else|end|group|by|order|having|limit|offset|union|all|distinct|over|partition|rows|range|between|preceding|following|current|row|unbounded|qualify|create|or|replace|table|view|schema|database|warehouse|role|user|grant|revoke|alter|drop|insert|into|values|update|set|delete|merge|using|matched|truncate|use|show|describe|copy|stage|pipe|stream|task|clone|undrop|transient|temporary|if|exists|cluster|masking|policy|returns|usage|select|future|tables|schemas|to|resume|suspend|execute|lateral|flatten|input|outer|ilike|like|asc|desc|true|false|interval|date|timestamp|varchar|number|string|variant|boolean|integer|int|float|primary|key|foreign|references|constraint|default|comment|file_format|format|type|auto_ingest|integration|storage|url|schedule|after|when|at|before|offset|statement|retention|data_retention_time_in_days|min|max|sum|avg|count|exclude|of|any|pivot|unpivot|sample|tablesample|files|pattern|on_error|purge|force|notification|auto_refresh|target_lag|refresh_mode|downstream|initialize|dynamic|share|listing|replication|failover|monitor|credit_quota|triggers|notify|auto_suspend|auto_resume|initially_suspended|warehouse_size|max_cluster_count|min_cluster_count|scaling_policy|query_acceleration|managed|access|ownership|grants|roles|tag|allowed_values|operate|modify|apply|ingest|materialized|external|iceberg|volume|catalog|base_location|append_only|insert_only|show_initial_rows|declare|begin|exception|return|call|procedure|function|language|runtime_version|packages|handler|secure|recursive|connect|prior|start|returning|top|seed|swap|rename|unset|validation_mode|match_by_column_name|skip_header|field_delimiter|compression|strip_outer_array|size_limit|iff|nulls|rlike|regexp|collate|natural|asof|match_condition|generator|row_access|projection|aggregation|alert|network|authentication|git|api|notebook|streamlit|service|semantic';
+  /* T-SQL for Synapse and Azure SQL: added only to the 'tsql' language, so other tutorials color SQL exactly as before */
+  var TSQL_EXTRA = 'distribution|hash|round_robin|replicated|clustered|columnstore|heap|nonclustered|openrowset|bulk|external|data_source|credential|identity|file_type|parser_version|header_row|fieldterminator|rowterminator|firstrow|statistics|resource|workload|classifier|importance|mask|masked|security|policy|predicate|filter|block|schemabinding|state|dbo|nolock|pause|resume|go|exec|execute|sp_executesql|datepart|dateadd|datediff|getdate|sysdatetime|isnull|coalesce|convert|cast|try_cast|try_convert|nvarchar|bigint|smallint|tinyint|decimal|datetime2|datetimeoffset|uniqueidentifier|bit|money|char|nchar|text|ntext|varbinary|rows|rowcount|output|inserted|deleted|identity_insert|nocount|rebuild|reorganize|compression|page|row_number|rank|dense_rank|ntile|lag|lead|first_value|last_value|cume_dist|percent_rank|approx_count_distinct|string_agg|openjson|json_value|json_query|isjson|filepath|filename|format|with|copy|into';
   var PY_KW = 'def|class|return|if|elif|else|for|while|in|not|and|or|is|None|True|False|import|from|as|with|try|except|finally|raise|yield|lambda|pass|break|continue|global|nonlocal|assert|del|async|await';
   var PY_BI = 'print|len|range|list|dict|set|tuple|str|int|float|bool|open|sorted|enumerate|zip|map|filter|sum|min|max|any|all|isinstance|next|iter|super|type|round|abs|bytes';
   var YAML_KW = 'true|false|null|yes|no';
@@ -105,7 +107,7 @@
       R('fl', '(?:^|\\s)--?[A-Za-z][A-Za-z0-9\\-_]*'),
       R('vr', '\\$\\{?[A-Za-z_][A-Za-z0-9_]*\\}?'),
       R('kw', '\\b(?:' + BASH_KW + ')\\b'),
-      R('fn', '^(?:[ \\t]*)(?:dbt|docker|git|airflow|pip|python|snowsql|snow|npm|make|terraform|liquibase|sqlfluff|schemachange|curl|aws)\\b')
+      R('fn', '^(?:[ \\t]*)(?:dbt|docker|git|airflow|pip|python|snowsql|snow|npm|make|terraform|liquibase|sqlfluff|schemachange|curl|aws|az|azcopy|func|bicep|pytest)\\b')
     ],
     json: [
       R('ky', '"[^"\\n]*"(?=\\s*:)'),
@@ -133,6 +135,32 @@
       R('ky', '^[ \\t]*[A-Za-z_][A-Za-z0-9_]*(?=[ \\t]*=)'),
       R('fn', '[A-Za-z_][A-Za-z0-9_]*(?=\\s*\\()')
     ],
+    tsql: [
+      R('cm', '--[^\\n]*|/\\*[\\s\\S]*?\\*/'),
+      R('st', "N?'(?:[^'\\n]|'')*'"),
+      R('id', '"[^"\\n]*"|\\[[^\\]\\n]*\\]'),
+      R('nu', '\\b\\d+(?:\\.\\d+)?\\b'),
+      R('kw', '\\b(?:' + SQL_KW + '|' + TSQL_EXTRA + ')\\b'),
+      R('fn', '[A-Za-z_][A-Za-z0-9_$]*(?=\\s*\\()'),
+      R('vr', '@@?[A-Za-z0-9_]+|#[A-Za-z0-9_]+')
+    ],
+    kql: [
+      R('cm', '//[^\\n]*'),
+      R('st', '@?\'(?:[^\'\\n])*\'|@?"(?:[^"\\n])*"'),
+      R('nu', '\\b\\d+(?:\\.\\d+)?(?:ms|s|m|h|d)?\\b'),
+      R('kw', '\\b(?:where|summarize|by|project|project-away|project-rename|extend|join|on|kind|inner|leftouter|rightouter|fullouter|leftanti|leftsemi|order|sort|asc|desc|take|limit|top|distinct|count|union|let|render|timechart|barchart|piechart|parse|mv-expand|evaluate|between|and|or|not|in|has|has_any|has_all|contains|startswith|endswith|matches|regex|datatable|print|materialize|invoke|as|with|nulls|first|last|isfuzzy|true|false|null)\\b'),
+      R('fn', '[A-Za-z_][A-Za-z0-9_]*(?=\\s*\\()'),
+      R('vr', '\\|')
+    ],
+    bicep: [
+      R('cm', '//[^\\n]*|/\\*[\\s\\S]*?\\*/'),
+      R('st', "'''[\\s\\S]*?'''|'(?:[^'\\\\\\n]|\\\\.)*'"),
+      R('dc', '@[A-Za-z_][A-Za-z0-9_.]*'),
+      R('nu', '\\b\\d+(?:\\.\\d+)?\\b'),
+      R('kw', '\\b(?:param|var|resource|module|output|targetScope|existing|import|metadata|type|func|for|in|if|true|false|null|string|int|bool|object|array|secure)\\b'),
+      R('fn', '[A-Za-z_][A-Za-z0-9_]*(?=\\s*\\()'),
+      R('ky', '^[ \\t]*[A-Za-z_][A-Za-z0-9_]*(?=:)')
+    ],
     text: []
   };
   LANGS.tf = LANGS.hcl;
@@ -148,7 +176,7 @@
     if (!compiled[lang]) {
       var rules = LANGS[lang] || [];
       compiled[lang] = rules.length
-        ? new RegExp(rules.map(function (r) { return '(' + r[1] + ')'; }).join('|'), (lang === 'sql' || lang === 'jinja') ? 'gim' : 'gm')
+        ? new RegExp(rules.map(function (r) { return '(' + r[1] + ')'; }).join('|'), (lang === 'sql' || lang === 'jinja' || lang === 'tsql') ? 'gim' : 'gm')
         : null;
     }
     return compiled[lang];

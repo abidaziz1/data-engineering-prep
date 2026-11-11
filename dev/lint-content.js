@@ -18,7 +18,7 @@ load(shared + 'term.js');
 load(tut + 'graphs.js');
 load(shared + 'render1.js');
 load(shared + 'render2.js');
-if (has(tut + 'widgets.js')) load(tut + 'widgets.js');
+fs.readdirSync(tut).filter(f => /^widgets\d*\.js$/.test(f)).sort().forEach(f => load(tut + f));      // widgets.js, and widgets2.js when a tutorial has more labs than one file should hold
 load(shared + 'build.js');
 fs.readdirSync(tut + 'content').filter(f => f.endsWith('.js')).sort().forEach(f => load(tut + 'content/' + f));
 

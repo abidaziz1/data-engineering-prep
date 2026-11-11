@@ -1,0 +1,8 @@
+{
+  "name": "gcp-verify-tools",
+  "private": true,
+  "description": "Node tools used by gcp/verify. Install with: npm install --prefix gcp/verify",
+  "dependencies": {
+    "@dataform/cli": "3.1.5"
+  }
+}

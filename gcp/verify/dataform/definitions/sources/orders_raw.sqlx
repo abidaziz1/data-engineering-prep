@@ -1,0 +1,6 @@
+config {
+  type: "declaration",
+  schema: "raw",
+  name: "orders_raw",
+  description: "Orders as they land: one row per delivery, so an order can appear twice."
+}

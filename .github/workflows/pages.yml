@@ -1,11 +1,11 @@
 name: Deploy to GitHub Pages
 
-# Publishes the whole library as a static site on every push to main.
+# Publishes the library on every push to the published branch.
 # In the repository, open Settings, Pages, and set Source to "GitHub Actions".
-# (If you prefer "Deploy from a branch", choose main and / (root) instead. This workflow is then not needed.)
+# For branch-based publishing, select the default branch and / (root).
 on:
   push:
-    branches: [main]
+    branches: [claude/snowflake-tutorial, main]
   workflow_dispatch:
 
 permissions:

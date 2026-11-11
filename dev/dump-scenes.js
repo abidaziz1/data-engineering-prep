@@ -12,7 +12,7 @@ if (has(tut + 'real.js')) load(tut + 'real.js');
 load(shared + 'util.js');
 if (has(tut + 'helpers.js')) load(tut + 'helpers.js');
 load(shared + 'graph.js'); load(shared + 'term.js'); load(tut + 'graphs.js');
-load(shared + 'render1.js'); load(shared + 'render2.js'); if (has(tut + 'widgets.js')) load(tut + 'widgets.js');
+load(shared + 'render1.js'); load(shared + 'render2.js'); fs.readdirSync(tut).filter(f => /^widgets\d*\.js$/.test(f)).sort().forEach(f => load(tut + f));
 load(shared + 'build.js');
 fs.readdirSync(tut + 'content').filter(f => f.endsWith('.js')).sort().forEach(f => load(tut + 'content/' + f));
 const out = { snippets: [], results: [] };

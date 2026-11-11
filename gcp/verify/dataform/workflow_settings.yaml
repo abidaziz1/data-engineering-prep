@@ -1,0 +1,5 @@
+defaultProject: brewline-dev
+defaultLocation: asia-southeast1
+defaultDataset: staging
+defaultAssertionDataset: dataform_assertions
+dataformCoreVersion: 3.0.0

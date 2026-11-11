@@ -13,8 +13,11 @@ No install. No account. No server. Open `index.html` in a browser and press **Ne
 | **Snowflake and dbt together**: one pipeline, end to end | Ready. 10 missions, 3 paths, every statement dbt sends was recorded | [`snowflake-dbt/`](snowflake-dbt/README.md) |
 | **Databricks and Azure Databricks**: from first notebook to production | Ready. 13 missions, 3 paths, Spark and Delta Lake output recorded from the open-source engines | [`databricks/`](databricks/README.md) |
 | **AWS for data engineers**: from the first bucket to production | Ready. 13 missions, 3 paths, SDK output recorded against an open-source AWS emulator | [`aws/`](aws/README.md) |
-| Azure for data engineers | **Next** | |
-| Planned, one tutorial each | GCP, Microsoft Fabric, Spark, Hadoop, Kafka, Flink, Airflow, Python, SQL, Scala, Java, Docker, Kubernetes, Terraform, Git, PostgreSQL, Oracle, MongoDB, Power BI, Tableau | |
+| **Azure for data engineers**: from the first storage account to production | Ready. 14 missions, 3 paths, SDK output recorded against an open-source storage emulator, Spark and Delta Lake output recorded locally | [`azure/`](azure/README.md) |
+| **AI data engineering and agentic AI**: from a PDF to a production agent | Ready. 15 missions, 3 paths, parsers, vector indexes, SDK retries, agent graphs, an MCP server and a SQL guard recorded from open-source tools. No language model was used, and the screens say what is a stand-in | [`ai/`](ai/README.md) |
+| **Google Cloud for data engineers**: from a bucket to a model | Ready. 15 missions, 3 paths, client output, SQL results, Beam panes, Spark plans, DAG runs and Terraform scans recorded offline with open-source tools. Nothing ran on Google Cloud, and the screens say so | [`gcp/`](gcp/README.md) |
+| **Apache Spark** | 15 missions on query plans, shuffles, joins, skew, caching, streaming, Delta Lake, and debugging | [`spark/`](spark/index.html) |
+| Planned, one tutorial each | Microsoft Fabric, Hadoop, Kafka, Flink, Airflow, Python, SQL, Scala, Java, Docker, Kubernetes, Terraform, Git, PostgreSQL, Oracle, MongoDB, Power BI, Tableau | |
 
 Combined stacks come after the single tools. Snowflake with dbt is the first of them and is ready.
 
@@ -30,7 +33,7 @@ Every mission uses the same rhythm.
 | **TRY** | Labs you can click, quizzes, bug hunts, ordering games, architecture decisions with a recommended answer, and coding problems with hints and checked solutions. |
 | **SAY** | Interview questions with a timer. Answer out loud first, then compare with a model answer, tick the points you hit, and open the likely follow-ups. |
 
-Coach Sam, an illustrated teacher, talks you through every step. Text is large and dark, and the **A-** and **A+** buttons change the size.
+An illustrated coach talks you through every step: Sam teaches Snowflake, dbt, Databricks, AWS and Snowflake with dbt, and Noor teaches Azure. Text is large and dark, and the **A-** and **A+** buttons change the size.
 
 ### Three paths
 
@@ -47,17 +50,17 @@ A small tag on a screen shows whether it belongs only to Senior or Extra. Times 
 ## Open it
 
 1. Download or clone this repository.
-2. Double-click **`index.html`**, or open **`snowflake/index.html`**, **`dbt/index.html`**, **`databricks/index.html`**, **`aws/index.html`** or **`snowflake-dbt/index.html`** directly.
+2. Double-click **`index.html`** and select a tutorial, or open a tutorial's own `index.html` directly.
 
 It works from `file://` and from any web server, because every path is relative and there are no modules.
 
 ## Publish on GitHub Pages
 
-1. Push this repository to GitHub and merge to `main`.
+1. Merge updates into `claude/snowflake-tutorial`, this repository's default branch.
 2. Open **Settings, Pages**. Under **Build and deployment**, choose one of:
-   - **Source: GitHub Actions.** The included `.github/workflows/pages.yml` publishes everything except the check tools. Run it once from the **Actions** tab if you want it right away.
-   - **Source: Deploy from a branch**, branch `main`, folder `/ (root)`. This also works, because `.nojekyll` is present.
-3. The library is at `https://<your-user>.github.io/<repository-name>/`, Snowflake is under `/snowflake/`, dbt is under `/dbt/`, Databricks is under `/databricks/`, AWS is under `/aws/` and Snowflake with dbt is under `/snowflake-dbt/`.
+   - **Source: GitHub Actions.** The included `.github/workflows/pages.yml` publishes the site when the default branch changes. You can also run it from the **Actions** tab.
+   - **Source: Deploy from a branch**, select `claude/snowflake-tutorial` and `/ (root)`. The `.nojekyll` file allows direct static publishing.
+3. Open the [tutorial library](https://abidaziz1.github.io/data-engineering-prep/) to reach all nine courses.
 
 Progress, XP and answers are stored in each visitor's own browser (`localStorage`), one key per tutorial.
 
@@ -89,6 +92,20 @@ aws/                     one tutorial, same layout, plus
   js/real.js               SDK output, file sizes, catalog calls, templates and test runs recorded against an open-source AWS emulator
   verify/capture_aws.py    runs boto3 against moto, DuckDB, cfn-lint, parliament and pytest and writes js/real.js
   verify/verify_aws.py     checks every snippet, SQL statement, policy and template, the lab logic and, with --recapture, the recording
+azure/                   one tutorial, same layout, plus
+  js/real.js               SDK output, file layouts, handler tests, pipeline checks, Spark and Delta Lake output and infrastructure scans recorded with open-source tools
+  verify/capture_az.py     runs the Azure SDK against Azurite, DuckDB, local Spark, Checkov and more and writes js/real.js
+  verify/verify_az.py      checks every snippet, SQL statement, KQL query, template and az command, the lab logic and, with --recapture, the recording
+ai/                      one tutorial, same layout, plus
+  js/widgets2.js           a second file of labs, because this tutorial has 18 of them
+  js/real.js               parsers, chunkers, indexes, pgvector plans, SDK retries, agent runs, MCP wire logs, SQL guard results, spans and tests, recorded with open-source tools
+  verify/capture_ai.py     runs the real tools on generated Brewline documents and writes js/real.js (no language model is used)
+  verify/verify_ai.py      checks every snippet, runs the lesson modules and the tests of the agent again, checks the lab logic and, with --recapture, the recording
+gcp/                     one tutorial, same layout, plus
+  js/widgets2.js           a second file of labs, because this tutorial has 15 of them
+  js/real.js               client output, SQL results, Beam panes, Spark plans, DAG runs, Dataform and Terraform scans, recorded offline with open-source tools
+  verify/capture_gcp.py    runs the real tools (storage emulator, DuckDB, Beam, PySpark, Airflow, Checkov and more) and writes js/real.js
+  verify/verify_gcp.py     checks every snippet, runs the SQL again, checks every flag against the help pages, checks the lab data and, with --recapture, the recording
 snowflake-dbt/           the combined tutorial, same layout, plus
   js/real.js               every statement dbt-snowflake sent, in 43 scenarios
   verify/stand_in/         the stand-in for the Snowflake connection that recorded them
@@ -113,7 +130,7 @@ node dev/smoke.js snowflake --path all    # walks every frame: errors, overflow,
 node dev/e2e.js snowflake                 # clicks every interactive element and asserts the result
 node dev/stats.js snowflake               # minutes per mission and path, content counts
 node dev/analytics-test.js                # the optional visit counting, against a stub
-                                          # the same commands work for dbt, databricks, aws and snowflake-dbt
+                                          # the same commands work for dbt, databricks, aws, azure, ai, gcp and snowflake-dbt
 ```
 
 ```bash
@@ -123,9 +140,12 @@ python3 dbt/verify/verify_dbt.py          # dbt: syntax of hand-written snippets
 python3 snowflake-dbt/verify/verify_sf.py # Snowflake and dbt: hand-written SQL, YAML and shell, dbt flags, lab logic; --recapture records again
 python3 databricks/verify/verify_db.py    # Databricks: snippets, SDK and CLI schema checks, runs on local Spark and Delta Lake; --recapture records again
 python3 aws/verify/verify_aws.py          # AWS: snippets checked against the SDK service model, runs against an emulator; --recapture records again
+python3 azure/verify/verify_az.py         # Azure: snippets checked against the SDK, runs against an emulator, SQL, KQL, Bicep and az checks; --recapture records again
+python3 ai/verify/verify_ai.py            # AI: snippets checked against the SDKs, modules and agent tests run again, SQL guard, lab logic; --recapture records again
+python3 gcp/verify/verify_gcp.py          # GCP: snippets checked against the client libraries, SQL run again in DuckDB, every flag checked against the help pages, lab data; --recapture records again
 ```
 
-The AWS check also needs `npm install --prefix aws/verify`, which installs the Step Functions validator.
+The AWS check also needs `npm install --prefix aws/verify`, which installs the Step Functions validator. The Azure check needs `npm install --prefix azure/verify`, which installs the storage emulator and the KQL parser. Its Spark, Checkov and Azure CLI checks use interpreters and tools named in [`azure/README.md`](azure/README.md), and a check whose tool is missing says so and is skipped. The GCP check needs `npm install --prefix gcp/verify` for the Dataform compiler, and it reads the interpreters for Airflow, Spark and Checkov from `GCP_AIRFLOW_PYTHON`, `GCP_SPARK_PYTHON` and `GCP_IAC_PYTHON` (see [`gcp/README.md`](gcp/README.md)).
 
 `node dev/smoke.js snowflake --path all --width 390 --height 844` repeats the walk at phone width. `node dev/shot.js snowflake m2-lab:0 out.png --click "..."` saves a screenshot of one frame.
 
@@ -144,7 +164,7 @@ What it sends: a page view for the front page and for each tutorial, and three n
 ## Add a tutorial
 
 1. Copy `snowflake/` to a new folder and remove its `content/`, `verify/` and the diagram and widget bodies.
-2. Edit `js/config.js`: a new `id` and `storageKey`, the welcome text, the three paths and the map chips.
+2. Edit `js/config.js`: a new `id` and `storageKey`, the welcome text, the three paths and the map chips. Set `coach` to give the tutorial its own coach (Azure sets Noor, AI sets Ada, and the others keep Sam). A tutorial with many labs can split them over `widgets.js` and `widgets2.js`.
 3. Write diagrams in `js/graphs.js`, labs in `js/widgets.js`, and one file per mission in `js/content/`. Give every scene a tier `t` of 1, 2 or 3. The lint refuses a mission that has no Junior content.
 4. List each content file in the folder's `index.html`. The lint checks that you did.
 5. Run the check tools above, then add the folder to the front page.
@@ -156,6 +176,9 @@ What it sends: a page view for the front page and for each tutorial, and three n
 - **The Snowflake and dbt tutorial records statements, not results.** Every SQL statement that dbt sends in it was recorded from dbt-snowflake 1.12.5 (dbt Core 1.12.6) running the Brewline project against a stand-in for the Snowflake connection (`snowflake-dbt/verify/stand_in`). The stand-in writes each statement down and answers dbt's metadata questions from a small state file. Nothing ran on a Snowflake account, so results, timings and credit figures in the lessons are examples, and the screens say so. Facts about Snowflake itself come from its public documentation as known when the course was written. The ones to check are listed in [`snowflake-dbt/README.md`](snowflake-dbt/README.md).
 - **The Databricks tutorial records the open-source engines, not Databricks.** The Spark and Delta Lake output (query plans, Delta log files, `DESCRIBE HISTORY`, error messages, file counts, a bronze, silver and gold run, a declarative pipeline run and pytest runs) was recorded from Apache Spark 4.2.0 and Delta Lake 4.4.1 on one machine, and `databricks/verify/capture_db.py` records it again. Unity Catalog, Auto Loader, expectations, AUTO CDC on Delta, jobs, Photon, serverless compute, bundles and the Azure integration did not run anywhere. Those screens carry a "From documentation" tag. The Databricks documentation could not be opened, so their facts come from search summaries of the Databricks and Microsoft pages. Job and cluster JSON was checked against the Databricks Python SDK and the bundle file against the schema of Databricks CLI v1.25.0. The claims to re-check are listed in [`databricks/README.md`](databricks/README.md).
 - **The AWS tutorial records the AWS SDK against an emulator, not AWS.** The SDK output (request signing, S3 listings and versions, policy decisions, Glue catalog calls, shard mapping, queue timelines, event patterns, KMS and secret versions, pytest runs of a Lambda handler, cfn-lint and parliament findings, CLI output) was recorded from boto3 and botocore 1.43.126 against moto 5.2.5, an open-source emulator of AWS services, and `aws/verify/capture_aws.py` records it again. The Athena scan sizes are computed from real file sizes and Parquet footers written with DuckDB, not read by Athena. The Redshift key lab is a model with made-up numbers, and the retry and bill labs are arithmetic on documented rules and example prices. Glue and EMR jobs, the Athena and Redshift engines, Kinesis under load, Step Functions runs, Lake Formation, KMS key policies and every price did not run anywhere. Those screens carry a "From documentation" tag. The AWS documentation could not be opened, so their facts come from search summaries and from the documentation text inside the SDK service models. Calls were checked against those models, policies with parliament, templates with cfn-lint and state machines with asl-validator. The claims to re-check are listed in [`aws/README.md`](aws/README.md).
+- **The Azure tutorial records the Azure SDK against an emulator and open-source engines, not Azure.** The SDK output (SAS signing and refusals, listings, conditional writes, leases, queue timelines, the credential chain, Event Hubs batches and checkpoints, Event Grid events, Function handler tests, pipeline checks), the file layouts, watermark runs and bucket spreads (DuckDB and pyarrow), the Spark and Delta Lake output (Spark 4.0.1 and Delta Lake 4.0.1 on one machine), the envelope encryption, the Checkov scans and the workflow check were recorded on one machine, and `azure/verify/capture_az.py` records them again. The SDK is the real client library and Azurite is the storage emulator of Microsoft, which is not Azure. Data Factory, Synapse, Event Hubs under load, Key Vault, Entra ID, role assignments, private endpoints and every price did not run anywhere, and those screens carry a "From documentation" tag. The Bicep program was not run, only parsed and scanned. The Microsoft documentation could not be opened, so their facts come from search summaries and from the text inside the SDK. The claims to re-check are listed in [`azure/README.md`](azure/README.md).
+- **The AI tutorial used no language model and no embedding model.** None could be reached from where it was built. The embedding is a TF-IDF and SVD stand-in, the agent model is a script, and the model API is a local server that speaks the same protocol, and every screen says which parts are stand-ins. What ran for real: PDF, Word and HTML parsers, MinHash, FAISS and hnswlib, PostgreSQL with pgvector, BM25, the Anthropic and OpenAI client libraries (retries, streams, a tool call, checked answers), LangGraph (limits, checkpoints, a pause for a person, a resume), an MCP server and client with a tap on the wire in two protocol versions, a SQL guard on DuckDB, OpenTelemetry spans, pytest on the agent and on two copies that were broken on purpose, a workflow file checked against the GitHub Actions schema, and checks on a fine-tuning set. Nothing ran on a cloud or on a model provider, so what a real model would choose, obey or answer is not measured, the vector numbers come from made-up clusters, and prices and limits are examples. The job-description table in [`ai/README.md`](ai/README.md) is a small sample of search results. See that file for what was not checked and what to re-check.
+- **The GCP tutorial records open-source tools, not Google Cloud.** The Cloud Storage client output (listings, generations, a V4 signed URL made offline with a throwaway key and checked with its public key) was recorded against the emulator gcp-storage-emulator, which accepts a write that the real service refuses and answers a wrong location. The BigQuery client was used offline, only to show the request bodies it builds. BigQuery SQL was translated by sqlglot and run in DuckDB, so the logic of the SQL is real, and the plans, timings, slots and bytes are not BigQuery's: bytes are an estimate from the documented size of each type, at an example price. Beam panes and sessions come from Apache Beam 2.77.0 on its local runners, the Pub/Sub delivery rules are a model written from the documentation, Spark is PySpark 4.0.1 in local mode, Airflow 3.4.0 parsed and ran the DAGs, the Dataform compiler compiled the project, Checkov scanned the Terraform, check-jsonschema checked the Cloud Build file and the workflow, and the help pages of gcloud and bq showed that every flag in the lessons exists. BigQuery itself, Dataflow, Pub/Sub, Composer, Dataproc, Datastream, Dataplex, Sensitive Data Protection and Vertex AI are described from documentation, and `gcp/verify/capture_gcp.py` records the rest again. See [`gcp/README.md`](gcp/README.md).
 - **The Snowflake documentation could not be opened** from the environment that built this, because its network policy blocked the host. Facts about recent features were checked through search summaries only, and the ones that need a second look are listed in [`snowflake/README.md`](snowflake/README.md).
 - **The first site's SQL coloring did not color uppercase keywords.** This engine fixes that. The earlier Interview Quest repository still has the old behavior.
 - The coach is an illustration. To use a photo, see the Snowflake README.
