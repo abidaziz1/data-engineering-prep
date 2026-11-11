@@ -40,7 +40,7 @@ sys.path.insert(0, str(HERE))
 
 ap = argparse.ArgumentParser()
 ap.add_argument('--out', default=str(HERE.parent / 'js' / 'real.js'))
-ap.add_argument('--only', default='docs,chunk,embed,search,ann,pgvector,pipeline,llm,agent,mcp,sqlguard,otel,inject,finetune,tokens')
+ap.add_argument('--only', default='docs,chunk,embed,search,eval,ann,pgvector,pipeline,llm,agent,mcp,sqlguard,otel,inject,finetune,tokens')
 ap.add_argument('--json')
 args = ap.parse_args()
 ONLY = set(args.only.split(','))
@@ -102,7 +102,7 @@ OUT['meta'].update({'python': sys.version.split()[0], 'company': 'Brewline',
 
 
 # The source of the modules that the lessons show, kept in the recording so that a lesson shows exactly the code that ran.
-for _name in ('parsekit', 'ragkit', 'ingest', 'sqlguard', 'finetune'):
+for _name in ('parsekit', 'ragkit', 'evalkit', 'ingest', 'sqlguard', 'finetune', 'llm_calls'):
     OUT['files']['code/%s.py' % _name] = (HERE / ('%s.py' % _name)).read_text().rstrip('\n')
 
 
@@ -416,6 +416,22 @@ def sec_embed():
 # =======================================================================================================================================
 # Search: keyword, vector and the two fused, scored on the 24 questions
 # =======================================================================================================================================
+def glossary_expander():
+    """Rewrite a question by adding the words of the glossary sections that share a word with it (a stand-in for a model that rewrites the question)."""
+    gl = [sec for sec in corpus.GLOSSARY.split('## ')[1:]]
+    gl_tokens = [set(ragkit.tokens(sec)) for sec in gl]
+    gl_order = [ragkit.tokens(sec) for sec in gl]
+
+    def expand(q):
+        qt = set(ragkit.tokens(q))
+        extra = []
+        for toks, order in zip(gl_tokens, gl_order):
+            if qt & toks:
+                extra += [t for t in dict.fromkeys(order) if t not in qt and t not in extra]
+        return q + ' ' + ' '.join(extra[:12])
+    return expand
+
+
 def sec_search():
     s = course_searcher()
     chunks = P['chunks']
@@ -435,17 +451,7 @@ def sec_search():
         qrows.append([qid, kind, q] + [detail[n][qid]['first_relevant_rank'] or '-' for n in methods])
     table('search.questions', ['id', 'kind', 'question', 'BM25 rank', 'vector rank', 'hybrid rank'], qrows)
     # rewriting the query: add the words of the glossary sections that share a word with it (a stand-in for a model that rewrites the question)
-    gl = [sec for sec in corpus.GLOSSARY.split('## ')[1:]]
-    gl_tokens = [set(ragkit.tokens(sec)) for sec in gl]
-    gl_order = [ragkit.tokens(sec) for sec in gl]
-
-    def expand(q):
-        qt = set(ragkit.tokens(q))
-        extra = []
-        for toks, order in zip(gl_tokens, gl_order):
-            if qt & toks:
-                extra += [t for t in dict.fromkeys(order) if t not in qt and t not in extra]
-        return q + ' ' + ' '.join(extra[:12])
+    expand = glossary_expander()
 
     exp_rows = []
     for name, fn in methods.items():
@@ -499,6 +505,81 @@ def sec_search():
         if int(y_true.sum()) == ideal_hits:
             check.append(abs(ours - sk) < 1e-9)
     counts('search.metric_check', {'compared': len(check), 'all_equal': bool(all(check)) if check else None})
+
+
+# =======================================================================================================================================
+# Evaluation: how sure a score is, cheap checks of an answer, and a gate between two builds
+# =======================================================================================================================================
+def sec_eval():
+    import evalkit
+    s = course_searcher()
+    chunks = P['chunks']
+    by_id = {c_['id']: c_ for c_ in chunks}
+
+    def per_question(chunks_, rank_fn):
+        _, det, _ = evaluate(chunks_, rank_fn)
+        return {qid: {'kind': d['kind'], 'hit': int(d['first_relevant_rank'] is not None and d['first_relevant_rank'] <= 3)} for qid, d in det.items()}
+
+    base = per_question(chunks, s.hybrid_rank)
+    cands = {}
+    ch = make_chunks('fixed', 500, 0)
+    cands['fixed 500 characters, no overlap'] = per_question(ch, Searcher(ch).hybrid_rank)
+    ch = make_chunks('recursive', 150, 0)
+    cands['recursive 150 characters'] = per_question(ch, Searcher(ch).hybrid_rank)
+    expand = glossary_expander()
+    cands['glossary words added to each question'] = per_question(chunks, lambda q: s.hybrid_rank(expand(q)))
+    cands['vector search only (stand-in)'] = per_question(chunks, s.vec_rank)
+    cands['keyword search only'] = per_question(chunks, s.bm25_rank)
+    rows, detail = [], {}
+    for name, cand in cands.items():
+        g = evalkit.gate(base, cand)
+        detail[name] = g
+        rows.append([name, g['cand'], g['verdict'], ', '.join(g['worse']) or '-', ', '.join(g['better']) or '-', g['reasons'][0] if g['reasons'] else 'no drop beyond the limits'])
+    table('eval.gate', ['candidate build', 'hit@3', 'gate', 'questions that got worse', 'questions that got better', 'first reason'], rows)
+    counts('eval.gate_detail', {'baseline': 'recursive 500 characters, hybrid search', 'baseline_hit@3': round(sum(v['hit'] for v in base.values()) / len(base), 3), 'tolerance': 0.0, 'kind_tolerance': 0.2, 'candidates': detail})
+
+    # how sure is a score on 24 questions
+    noise = {}
+    for name, fn in (('BM25 (keywords)', s.bm25_rank), ('vector (stand-in)', s.vec_rank), ('hybrid (RRF)', s.hybrid_rank)):
+        pq = per_question(chunks, fn)
+        k = sum(v['hit'] for v in pq.values())
+        lo, hi = evalkit.wilson(k, len(pq))
+        noise[name] = {'hits': k, 'n': len(pq), 'share': round(k / len(pq), 3), 'low': lo, 'high': hi}
+    counts('eval.noise', {'methods': noise, 'one_question_is': round(1 / len(corpus.QUESTIONS), 3), 'interval': '95 percent Wilson interval'})
+
+    # cheap checks of an answer. The answers are written by hand, because no model was used. The checks are real.
+    manager = set(corpus.ROLES['manager'])
+    q1 = corpus.QUESTIONS[0]
+    top = s.hybrid_rank(q1[1], mask=lambda c_: c_['audience'] in manager)[:3]
+    right = sorted(relevant_ids(chunks, q1[2]) & set(top))[0]
+    got = {i: by_id[i]['text'] for i in top}
+    ok_ids = set(top)
+    q4 = corpus.QUESTIONS[3]
+    open_top = s.hybrid_rank(q4[1])[:3]
+    sup = sorted(relevant_ids(chunks, q4[2]) & set(open_top))[0]
+    open_got = {i: by_id[i]['text'] for i in open_top}
+    readable_open = {i for i in open_top if by_id[i]['audience'] in manager}
+    cases = [
+        ('a good answer', 'A customer may return a sealed bag of beans within 14 days of purchase with a receipt.', [right], got, ok_ids),
+        ('a wrong number', 'A customer may return a sealed bag of beans within 30 days of purchase with a receipt.', [right], got, ok_ids),
+        ('a source that was not retrieved', 'A customer may return a sealed bag of beans within 14 days of purchase with a receipt.', ['handbook-v2:99'], got, ok_ids),
+        ('a source this person may not read', 'The minimum order for Andes Roasters is 40 kg.', [sup], open_got, readable_open),
+        ('no source at all', 'A customer may return a sealed bag of beans within 14 days of purchase with a receipt.', [], got, ok_ids),
+        ('a refusal, for a question the person may not read', 'I cannot find that in the documents you may read.', [], got, ok_ids),
+    ]
+    arows = []
+    for name, answer, cited, retrieved, readable in cases:
+        r = evalkit.check_answer(answer, cited, retrieved, readable)
+        arows.append([name, answer, ', '.join(cited) or '-', 'yes' if r['ok'] else 'no', '; '.join(r['problems']) or '-'])
+    table('eval.answer_checks', ['case', 'the answer (written by hand)', 'cited', 'checks pass', 'problems found'], arows)
+
+    # the golden set is a file with one question for each line
+    def golden_line(qid, q, gold, kind):
+        doc, sec_, sentence, key = corpus.FACTS[gold]
+        audience = next(d['audience'] for d in load()['docs'] if d['doc_id'] == doc)
+        return {'id': qid, 'kind': kind, 'question': q, 'doc': doc, 'key_phrase': key, 'expected': sentence, 'audience': audience, 'refuse_for': sorted(r for r, a in corpus.ROLES.items() if audience not in a)}
+    pick = {'q01', 'q04', 'q09'}
+    file('eval/golden.jsonl', '\n'.join(json.dumps(golden_line(*x_)) for x_ in corpus.QUESTIONS if x_[0] in pick))
 
 
 # =======================================================================================================================================
@@ -986,20 +1067,13 @@ def sec_finetune():
 def sec_llm():
     import anthropic
     import openai
-    import pydantic
     import standin_llm as sl
+    import llm_calls as lc
     si = sl.StandIn()
     ac = anthropic.Anthropic(api_key='stand-in-key', base_url=si.base)
     oc = openai.OpenAI(api_key='stand-in-key', base_url=si.base + '/v1')
     ok_a, ok_o = sl.anthropic_message('hello'), sl.openai_chat('hello')
     e429 = lambda: sl.anthropic_error('rate_limit_error', 'slow down')
-    msg = [{'role': 'user', 'content': 'hi'}]
-
-    def a_call(client):
-        return client.messages.create(model='stand-in', max_tokens=20, messages=msg)
-
-    def o_call(client):
-        return client.chat.completions.create(model='stand-in', messages=msg)
     scen = [
         ('429 with retry-after: 1', [(429, {'retry-after': '1'}, e429(), 0), (200, {}, 'OK', 0)], {}),
         ('529, then 429, then 200', [(529, {}, sl.anthropic_error('overloaded_error', 'busy'), 0), (429, {}, e429(), 0), (200, {}, 'OK', 0)], {}),
@@ -1009,13 +1083,12 @@ def sec_llm():
         ('429 with retries switched off', [(429, {}, e429(), 0)], {'max_retries': 0}),
     ]
     rows = []
-    for sdk, client, call, ok in (('anthropic', ac, a_call, ok_a), ('openai', oc, o_call, ok_o)):
+    for sdk, client, call, ok in (('anthropic', ac, lc.ask_anthropic, ok_a), ('openai', oc, lc.ask_openai, ok_o)):
         for label, plan, opts in scen:
             plan = [(st, h, (ok if b == 'OK' else b), d) for st, h, b, d in plan]
             si.reset(plan)
-            cl = client.with_options(**opts) if opts else client
             try:
-                call(cl)
+                call(client, 'hi', **opts)
                 res = 'answer returned'
             except Exception as e:
                 res = type(e).__name__
@@ -1031,11 +1104,7 @@ def sec_llm():
     # streaming
     pieces = ['A refund ', 'is possible ', 'within 14 ', 'days.']
     si.reset([(200, {}, sl.anthropic_sse(pieces), 0)])
-    events, text_out = [], ''
-    with ac.messages.stream(model='stand-in', max_tokens=50, messages=msg) as st:
-        for ev in st:
-            events.append(ev.type)
-        final = st.get_final_message()
+    events, final = lc.stream_anthropic(ac, 'hi')
     text_out = ''.join(b.text for b in final.content if b.type == 'text')
     collapsed = []
     for e in events:
@@ -1044,37 +1113,26 @@ def sec_llm():
         else:
             collapsed.append([e, 1])
     si.reset([(200, {}, sl.openai_sse(pieces), 0)])
-    chunks = list(oc.chat.completions.create(model='stand-in', messages=msg, stream=True))
+    chunks = lc.stream_openai(oc, 'hi')
     counts('llm.stream', {'anthropic_event_types': events, 'anthropic_event_runs': collapsed, 'anthropic_text': text_out, 'anthropic_usage': {'input': final.usage.input_tokens, 'output': final.usage.output_tokens},
                           'openai_chunks': len(chunks), 'openai_text': ''.join(c.choices[0].delta.content or '' for c in chunks), 'openai_last_finish_reason': chunks[-1].choices[0].finish_reason,
                           'note': 'the stand-in sends the pieces that the script gave it, so the number of events is set by the script. The order and the names of the events are the real protocol.'})
     # a tool call, and the result sent back
-    tools = [{'name': 'search_policies', 'description': 'Find Brewline policy sentences.', 'input_schema': {'type': 'object', 'properties': {'query': {'type': 'string'}, 'limit': {'type': 'integer'}}, 'required': ['query']}}]
     si.reset([(200, {}, sl.anthropic_message(tool=('search_policies', {'query': 'refund window'})), 0), (200, {}, sl.anthropic_message('Within 14 days.'), 0)])
-    r1 = ac.messages.create(model='stand-in', max_tokens=100, messages=[{'role': 'user', 'content': 'How long do customers have to return beans?'}], tools=tools)
-    block = r1.content[0]
-    r2 = ac.messages.create(model='stand-in', max_tokens=100, tools=tools, messages=[{'role': 'user', 'content': 'How long do customers have to return beans?'}, {'role': 'assistant', 'content': [block.model_dump()]},
-                                                                                       {'role': 'user', 'content': [{'type': 'tool_result', 'tool_use_id': block.id, 'content': 'A customer may return ... within 14 days of purchase.'}]}])
+    r1, block, r2 = lc.answer_with_tool(ac, 'How long do customers have to return beans?', lambda name, **kw: 'A customer may return ... within 14 days of purchase.')
     b1, b2 = si.log[0]['body'], si.log[1]['body']
     counts('llm.tools', {'request_1_keys': sorted(b1.keys()), 'request_1_tools': b1['tools'], 'response_stop_reason': r1.stop_reason, 'response_block': {'type': block.type, 'name': block.name, 'input': block.input, 'id': block.id},
                          'request_2_roles': [m['role'] for m in b2['messages']], 'request_2_block_types': [[c['type'] for c in m['content']] if isinstance(m['content'], list) else 'text' for m in b2['messages']],
                          'request_2_tool_use_id_matches': b2['messages'][2]['content'][0]['tool_use_id'] == block.id, 'final_text': r2.content[0].text, 'requests_sent': len(si.log)})
     file('llm/request_with_tools.json', json.dumps({k: b1[k] for k in ('model', 'max_tokens', 'messages', 'tools')}, indent=2))
     # a structured answer, checked
-    class RefundDecision(pydantic.BaseModel):
-        order_id: str
-        approve: bool
-        reason: str = pydantic.Field(max_length=120)
-    schema = RefundDecision.model_json_schema()
+    schema = lc.RefundDecision.model_json_schema()
     raw = ['{"order_id": "ORD-2026-0412", "approve": true, "reason": "inside the 14 day window"}', '{"order_id": "ORD-2026-0412", "approve": "maybe"}',
            'Sure! Here is the JSON you asked for: {"order_id": "ORD-2026-0412", "approve": true, "reason": "ok"}']
     checks = []
     for r in raw:
-        try:
-            RefundDecision.model_validate_json(r)
-            checks.append({'text': r[:70], 'valid': True, 'error': ''})
-        except pydantic.ValidationError as e:
-            checks.append({'text': r[:70] + ('...' if len(r) > 70 else ''), 'valid': False, 'error': ' | '.join('%s: %s' % ('.'.join(str(x) for x in err['loc']) or 'the text', err['msg']) for err in e.errors())})
+        obj, why = lc.check_decision(r)
+        checks.append({'text': r[:70] + ('...' if len(r) > 70 else '') if obj is None else r[:70], 'valid': obj is not None, 'error': why})
     counts('llm.structured', {'schema': schema, 'checks': checks})
     si.close()
 
@@ -1466,7 +1524,7 @@ def finish():
     print('wrote', out, len(body), 'bytes:', {k: len(v) for k, v in OUT.items()})
 
 
-SECTIONS = [('docs', sec_docs), ('chunk', sec_chunk), ('embed', sec_embed), ('search', sec_search), ('ann', sec_ann), ('pgvector', sec_pgvector), ('pipeline', sec_pipeline), ('sqlguard', sec_sqlguard), ('finetune', sec_finetune), ('tokens', sec_tokens), ('llm', sec_llm), ('agent', sec_agent), ('mcp', sec_mcp), ('otel', sec_otel), ('inject', sec_inject)]
+SECTIONS = [('docs', sec_docs), ('chunk', sec_chunk), ('embed', sec_embed), ('search', sec_search), ('eval', sec_eval), ('ann', sec_ann), ('pgvector', sec_pgvector), ('pipeline', sec_pipeline), ('sqlguard', sec_sqlguard), ('finetune', sec_finetune), ('tokens', sec_tokens), ('llm', sec_llm), ('agent', sec_agent), ('mcp', sec_mcp), ('otel', sec_otel), ('inject', sec_inject)]
 
 if __name__ == '__main__':
     for name, fn in SECTIONS:

@@ -207,7 +207,7 @@ LAB.real = {
   },
   "ann.build": {
    "note": "time depends on the machine and is not compared between recordings",
-   "seconds_hnsw_m16": 1.73
+   "seconds_hnsw_m16": 1.78
   },
   "ann.data": {
    "bytes_float32": 7680000,
@@ -662,6 +662,275 @@ LAB.real = {
    "new_query_old_index_same_dimension_hit@5": 0.917,
    "old_model_old_index_hit@5": 0.875
   },
+  "eval.gate_detail": {
+   "baseline": "recursive 500 characters, hybrid search",
+   "baseline_hit@3": 0.875,
+   "candidates": {
+    "fixed 500 characters, no overlap": {
+     "base": 0.875,
+     "better": [],
+     "cand": 0.75,
+     "kinds": {
+      "code": [
+       1.0,
+       1.0,
+       1
+      ],
+      "meaning": [
+       0.625,
+       0.5,
+       8
+      ],
+      "number": [
+       1.0,
+       1.0,
+       2
+      ],
+      "stale": [
+       1.0,
+       1.0,
+       1
+      ],
+      "table": [
+       1.0,
+       1.0,
+       1
+      ],
+      "words": [
+       1.0,
+       0.818,
+       11
+      ]
+     },
+     "reasons": [
+      "hit@3 fell from 0.875 to 0.750"
+     ],
+     "verdict": "fail",
+     "worse": [
+      "q08",
+      "q13",
+      "q22"
+     ]
+    },
+    "glossary words added to each question": {
+     "base": 0.875,
+     "better": [
+      "q09",
+      "q15"
+     ],
+     "cand": 0.75,
+     "kinds": {
+      "code": [
+       1.0,
+       1.0,
+       1
+      ],
+      "meaning": [
+       0.625,
+       0.75,
+       8
+      ],
+      "number": [
+       1.0,
+       1.0,
+       2
+      ],
+      "stale": [
+       1.0,
+       1.0,
+       1
+      ],
+      "table": [
+       1.0,
+       1.0,
+       1
+      ],
+      "words": [
+       1.0,
+       0.636,
+       11
+      ]
+     },
+     "reasons": [
+      "hit@3 fell from 0.875 to 0.750",
+      "kind \"words\" fell from 1.000 to 0.636"
+     ],
+     "verdict": "fail",
+     "worse": [
+      "q06",
+      "q08",
+      "q13",
+      "q21",
+      "q24"
+     ]
+    },
+    "keyword search only": {
+     "base": 0.875,
+     "better": [],
+     "cand": 0.875,
+     "kinds": {
+      "code": [
+       1.0,
+       1.0,
+       1
+      ],
+      "meaning": [
+       0.625,
+       0.625,
+       8
+      ],
+      "number": [
+       1.0,
+       1.0,
+       2
+      ],
+      "stale": [
+       1.0,
+       1.0,
+       1
+      ],
+      "table": [
+       1.0,
+       1.0,
+       1
+      ],
+      "words": [
+       1.0,
+       1.0,
+       11
+      ]
+     },
+     "reasons": [],
+     "verdict": "pass",
+     "worse": []
+    },
+    "recursive 150 characters": {
+     "base": 0.875,
+     "better": [
+      "q09"
+     ],
+     "cand": 0.708,
+     "kinds": {
+      "code": [
+       1.0,
+       1.0,
+       1
+      ],
+      "meaning": [
+       0.625,
+       0.375,
+       8
+      ],
+      "number": [
+       1.0,
+       1.0,
+       2
+      ],
+      "stale": [
+       1.0,
+       1.0,
+       1
+      ],
+      "table": [
+       1.0,
+       0.0,
+       1
+      ],
+      "words": [
+       1.0,
+       0.909,
+       11
+      ]
+     },
+     "reasons": [
+      "hit@3 fell from 0.875 to 0.708",
+      "kind \"meaning\" fell from 0.625 to 0.375"
+     ],
+     "verdict": "fail",
+     "worse": [
+      "q10",
+      "q11",
+      "q12",
+      "q18",
+      "q23"
+     ]
+    },
+    "vector search only (stand-in)": {
+     "base": 0.875,
+     "better": [],
+     "cand": 0.792,
+     "kinds": {
+      "code": [
+       1.0,
+       1.0,
+       1
+      ],
+      "meaning": [
+       0.625,
+       0.5,
+       8
+      ],
+      "number": [
+       1.0,
+       1.0,
+       2
+      ],
+      "stale": [
+       1.0,
+       1.0,
+       1
+      ],
+      "table": [
+       1.0,
+       0.0,
+       1
+      ],
+      "words": [
+       1.0,
+       1.0,
+       11
+      ]
+     },
+     "reasons": [
+      "hit@3 fell from 0.875 to 0.792"
+     ],
+     "verdict": "fail",
+     "worse": [
+      "q12",
+      "q18"
+     ]
+    }
+   },
+   "kind_tolerance": 0.2,
+   "tolerance": 0.0
+  },
+  "eval.noise": {
+   "interval": "95 percent Wilson interval",
+   "methods": {
+    "BM25 (keywords)": {
+     "high": 0.957,
+     "hits": 21,
+     "low": 0.69,
+     "n": 24,
+     "share": 0.875
+    },
+    "hybrid (RRF)": {
+     "high": 0.957,
+     "hits": 21,
+     "low": 0.69,
+     "n": 24,
+     "share": 0.875
+    },
+    "vector (stand-in)": {
+     "high": 0.908,
+     "hits": 19,
+     "low": 0.595,
+     "n": 24,
+     "share": 0.792
+    }
+   },
+   "one_question_is": 0.042
+  },
   "finetune.dataset": {
    "after_adding_repeats": 186,
    "after_exact_dedup": 162,
@@ -987,7 +1256,7 @@ LAB.real = {
    "rows_with_ef_search_40": 40
   },
   "pg.partial": {
-   "index_bytes": 188416,
+   "index_bytes": 196608,
    "plan": [
     "Limit",
     "  ->  Index Scan using chunks_t1 on chunks",
@@ -1004,9 +1273,9 @@ LAB.real = {
    ]
   },
   "pg.plan_hnsw": {
-   "build_seconds": 4.53,
-   "index_bytes": 17129472,
-   "index_bytes_per_row": 571.0,
+   "build_seconds": 4.29,
+   "index_bytes": 17121280,
+   "index_bytes_per_row": 570.7,
    "plan": [
     "Limit",
     "  ->  Index Scan using chunks_hnsw on chunks",
@@ -1203,8 +1472,10 @@ LAB.real = {
  "files": {
   "agent/agent_graph.py": "\"\"\"A small agent for Brewline store managers, built with LangGraph. The lessons show this file, and the recorder runs it.\n\nThe model in this course is a script: a list of replies that the recorder gives it. A real model chooses its own replies, so a real run\ndiffers from the recorded one. What the recording shows is real: how the graph moves, what a tool error looks like, where the loop stops,\nwhat a checkpoint holds, and what happens at a point that needs a person.\n\"\"\"\nimport operator\nfrom typing import Annotated, TypedDict\n\nfrom langgraph.graph import END, START, StateGraph\nfrom langgraph.types import interrupt\n\nWRITE_TOOLS = {'issue_refund'}\n\n\nclass State(TypedDict):\n    messages: Annotated[list, operator.add]       # the conversation. New messages are added to it, never replaced.\n    steps: int                                    # how many times the model has been asked\n\n\nclass ScriptedModel:\n    \"\"\"Each step is a reply, or a function that reads the messages and returns a reply. A reply is {'tool_calls': [...]} or {'final': text}.\n    Like a real model it keeps nothing between calls: the step is chosen from the messages it is given (how many replies it has already made).\"\"\"\n\n    def __init__(self, script):\n        self.script = list(script)\n\n    def next(self, messages):\n        i = sum(1 for m in messages if m['role'] == 'assistant')\n        step = self.script[min(i, len(self.script) - 1)]\n        return step(messages) if callable(step) else step\n\n\ndef make_graph(model, tools, checkpointer=None, max_steps=8, approve_writes=True, on_tool=None):\n    def call_model(state):\n        reply = model.next(state['messages'])\n        return {'messages': [{'role': 'assistant', **reply}], 'steps': state['steps'] + 1}\n\n    def run_tools(state):\n        out = []\n        for call in state['messages'][-1]['tool_calls']:\n            name, args = call['name'], call['args']\n            if name not in tools:\n                out.append({'role': 'tool', 'name': name, 'ok': False, 'content': 'unknown tool %s' % name})\n                continue\n            if approve_writes and name in WRITE_TOOLS:\n                decision = interrupt({'tool': name, 'args': args, 'question': 'Approve this write?'})\n                if decision != 'approve':\n                    out.append({'role': 'tool', 'name': name, 'ok': False, 'content': 'the approver said no'})\n                    continue\n            try:\n                if on_tool:\n                    on_tool(name, args)                              # lets the recorder count how often a tool really runs\n                out.append({'role': 'tool', 'name': name, 'ok': True, 'content': tools[name](**args)})\n            except Exception as e:                                   # the error goes back to the model as a message, so that it can try again\n                out.append({'role': 'tool', 'name': name, 'ok': False, 'content': str(e)})\n        return {'messages': out}\n\n    def give_up(state):\n        return {'messages': [{'role': 'assistant', 'final': 'I stopped after %d steps without an answer.' % state['steps']}]}\n\n    def route(state):\n        last = state['messages'][-1]\n        if 'final' in last:\n            return END\n        return 'give_up' if state['steps'] >= max_steps else 'tools'\n\n    g = StateGraph(State)\n    g.add_node('model', call_model)\n    g.add_node('tools', run_tools)\n    g.add_node('give_up', give_up)\n    g.add_edge(START, 'model')\n    g.add_conditional_edges('model', route, ['tools', 'give_up', END])\n    g.add_edge('tools', 'model')\n    g.add_edge('give_up', END)\n    return g.compile(checkpointer=checkpointer)",
   "chunk/chunk_record.json": "{\n  \"id\": \"suppliers:0\",\n  \"doc_id\": \"suppliers\",\n  \"i\": 0,\n  \"text\": \"Supplier terms Andes Roasters Questions about this section go to the operations team. Andes Roasters delivers beans ever ...\",\n  \"audience\": \"finance\",\n  \"current\": true,\n  \"version\": 3,\n  \"content_hash\": \"5cdfc7d1ebb4bd0d\"\n}",
+  "code/evalkit.py": "\"\"\"Small tools for scoring a retrieval assistant: how sure a score is, cheap checks of an answer, and a gate that compares two builds.\n\nThe lessons show this file, and the recorder runs it on the real chunks and the real per-question results of the Brewline course.\nThe answers that the checks look at are written by hand, because no language model was used. The checks are real.\n\"\"\"\nimport math\nimport re\n\n\ndef wilson(hits, n, z=1.96):\n    \"\"\"A 95 percent interval for a share that was measured on n questions.\"\"\"\n    if n == 0:\n        return (0.0, 1.0)\n    p = hits / n\n    d = 1 + z * z / n\n    centre = (p + z * z / (2 * n)) / d\n    half = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / d\n    return (round(centre - half, 3), round(centre + half, 3))\n\n\nNUM = re.compile(r'\\d+(?:[.,]\\d+)?')\n\n\ndef check_answer(answer, cited, retrieved, readable):\n    \"\"\"Checks that need no model. retrieved maps a chunk id to its text. readable is the set of chunk ids that this person may read.\"\"\"\n    if answer.lower().startswith('i cannot find'):\n        return {'ok': not cited, 'refused': True, 'problems': ['a refusal that cites a source'] if cited else []}\n    problems = []\n    if not cited:\n        problems.append('no source is cited')\n    for c in cited:\n        if c not in retrieved:\n            problems.append('cites %s, which was not retrieved' % c)\n        elif c not in readable:\n            problems.append('cites %s, which this person may not read' % c)\n    support = NUM.findall(' '.join(retrieved[c] for c in cited if c in retrieved))\n    for n in NUM.findall(answer):\n        if n not in support:\n            problems.append('the number %s is not in any cited source' % n)\n    return {'ok': not problems, 'refused': False, 'problems': problems}\n\n\ndef gate(base, cand, tolerance=0.0, kind_tolerance=0.2, min_kind=3):\n    \"\"\"base and cand map a question id to {'kind': ..., 'hit': 0 or 1}. Returns a verdict, the questions that got worse and better, and the change by kind.\"\"\"\n    ids = sorted(base)\n    b = sum(base[i]['hit'] for i in ids) / len(ids)\n    c = sum(cand[i]['hit'] for i in ids) / len(ids)\n    worse = [i for i in ids if base[i]['hit'] > cand[i]['hit']]\n    better = [i for i in ids if base[i]['hit'] < cand[i]['hit']]\n    kinds = {}\n    for k in sorted({base[i]['kind'] for i in ids}):\n        ks = [i for i in ids if base[i]['kind'] == k]\n        kinds[k] = [round(sum(base[i]['hit'] for i in ks) / len(ks), 3), round(sum(cand[i]['hit'] for i in ks) / len(ks), 3), len(ks)]\n    reasons = []\n    if c < b - tolerance:\n        reasons.append('hit@3 fell from %.3f to %.3f' % (b, c))\n    for k, (kb, kc, n) in kinds.items():\n        if n >= min_kind and kc < kb - kind_tolerance:\n            reasons.append('kind \"%s\" fell from %.3f to %.3f' % (k, kb, kc))\n    return {'verdict': 'fail' if reasons else 'pass', 'reasons': reasons, 'base': round(b, 3), 'cand': round(c, 3), 'worse': worse, 'better': better, 'kinds': kinds}",
   "code/finetune.py": "\"\"\"Turn the Brewline facts into training examples, and check the set before it is used. The lessons show this file, and the recorder runs it.\"\"\"\nimport hashlib\nimport json\nimport random\nimport re\n\nTEMPLATES = [\n    'What is the rule about {topic}?', 'A new colleague asks: {q}', 'Explain the {topic} policy in one sentence.', 'Quick question about {topic}: what should I do?',\n    'What does the {doc} document say about {topic}?', '{q}',\n]\n\n\ndef examples(facts, questions, seed=5):\n    \"\"\"facts: {id: (doc, section, sentence, key)}. questions: [(id, text, fact id, kind)]. Returns a list of {fact, messages}.\"\"\"\n    rng = random.Random(seed)\n    out = []\n    qs = {}\n    for qid, text, gold, kind in questions:\n        qs.setdefault(gold, []).append(text)\n    for fid, (doc, section, sentence, key) in facts.items():\n        if fid.endswith('_v1') or fid.endswith('_old'):\n            continue\n        prompts = []\n        for t in TEMPLATES:\n            q = rng.choice(qs.get(fid, [section + '?']))\n            prompts.append(t.format(topic=section.lower(), doc=doc, q=q))\n        for p in dict.fromkeys(prompts):\n            out.append({'fact': fid, 'messages': [{'role': 'user', 'content': p}, {'role': 'assistant', 'content': sentence}]})\n    return out\n\n\ndef norm(text):\n    return re.sub(r'\\s+', ' ', text.lower()).strip()\n\n\ndef exact_key(ex):\n    return hashlib.sha256((norm(ex['messages'][0]['content']) + '|' + norm(ex['messages'][1]['content'])).encode()).hexdigest()\n\n\ndef drop_exact(exs):\n    seen, out = set(), []\n    for e in exs:\n        k = exact_key(e)\n        if k not in seen:\n            seen.add(k)\n            out.append(e)\n    return out\n\n\ndef split_random(exs, share=0.2, seed=1):\n    rng = random.Random(seed)\n    idx = list(range(len(exs)))\n    rng.shuffle(idx)\n    cut = int(len(exs) * share)\n    return [exs[i] for i in idx[cut:]], [exs[i] for i in idx[:cut]]\n\n\ndef split_by_fact(exs, share=0.2, seed=1):\n    \"\"\"All the examples of one fact go to the same side, so that the validation set holds facts that training never saw.\"\"\"\n    rng = random.Random(seed)\n    facts = sorted({e['fact'] for e in exs})\n    rng.shuffle(facts)\n    held = set(facts[:max(1, int(len(facts) * share))])\n    return [e for e in exs if e['fact'] not in held], [e for e in exs if e['fact'] in held]\n\n\ndef leakage(train, valid):\n    \"\"\"How many validation answers also appear as a training answer.\"\"\"\n    answers = {norm(e['messages'][1]['content']) for e in train}\n    return sum(1 for e in valid if norm(e['messages'][1]['content']) in answers)\n\n\ndef to_jsonl(exs):\n    return '\\n'.join(json.dumps({'messages': e['messages']}, ensure_ascii=False) for e in exs)",
   "code/ingest.py": "\"\"\"An ingestion pipeline for a vector index that is safe to run again. The lessons show this file, and the recorder runs it.\n\nFour ideas make a run safe to repeat:\n  1. A chunk is named by what it says (a hash of the model and the text), so the same text gives the same id.\n  2. Only chunks that are new are embedded. A chunk that is unchanged keeps its vector.\n  3. A chunk that is gone from its document is deleted, and a deleted document leaves no chunks behind.\n  4. A change of a label (who may read it, whether it is current) updates the row and costs no embedding.\nThe store is SQLite and the search is a scan with numpy, so that every step can be read. A real system uses a vector database\nfor the search, and keeps the same rules for what goes in.\n\"\"\"\nimport hashlib\nimport sqlite3\n\nimport numpy as np\n\nSCHEMA = \"\"\"\ncreate table if not exists documents (doc_id text primary key, content_hash text, audience text, current integer, deleted integer default 0);\ncreate table if not exists chunks (chunk_id text primary key, doc_id text, text text, embedding blob, model_id text, audience text, current integer);\n\"\"\"\n\n\ndef chunk_id(doc_id, model_id, text):\n    return doc_id + ':' + hashlib.sha256((model_id + '|' + text).encode()).hexdigest()[:10]\n\n\nclass Store:\n    def __init__(self, path):\n        self.db = sqlite3.connect(path)\n        self.db.executescript(SCHEMA)\n\n    def count(self, table='chunks'):\n        return self.db.execute('select count(*) from ' + table).fetchone()[0]\n\n\ndef ingest(store, docs, chunker, embedder, model_id):\n    \"\"\"docs: list of {doc_id, text, audience, current}. Returns what the run did.\"\"\"\n    stats = {'documents': len(docs), 'chunks_added': 0, 'chunks_unchanged': 0, 'chunks_removed': 0, 'embedded': 0, 'label_updates': 0, 'documents_skipped': 0}\n    for d in docs:\n        row = store.db.execute('select content_hash, audience, current from documents where doc_id = ?', (d['doc_id'],)).fetchone()\n        h = hashlib.sha256(d['text'].encode()).hexdigest()[:16]\n        labels = (d['audience'], int(d['current']))\n        if row and row[0] == h and (row[1], row[2]) == labels:\n            stats['documents_skipped'] += 1\n            have = store.db.execute('select count(*) from chunks where doc_id = ? and model_id = ?', (d['doc_id'], model_id)).fetchone()[0]\n            stats['chunks_unchanged'] += have\n            continue\n        existing = {r[0] for r in store.db.execute('select chunk_id from chunks where doc_id = ? and model_id = ?', (d['doc_id'], model_id))}\n        wanted = {}\n        for t in chunker(d['text']):\n            wanted[chunk_id(d['doc_id'], model_id, t)] = t\n        new = [i for i in wanted if i not in existing]\n        if new:\n            vecs = embedder([wanted[i] for i in new])\n            stats['embedded'] += len(new)\n            for i, v in zip(new, vecs):\n                store.db.execute('insert into chunks values (?,?,?,?,?,?,?)', (i, d['doc_id'], wanted[i], np.asarray(v, dtype='float32').tobytes(), model_id, d['audience'], int(d['current'])))\n        for i in existing - set(wanted):\n            store.db.execute('delete from chunks where chunk_id = ?', (i,))\n            stats['chunks_removed'] += 1\n        stats['chunks_added'] += len(new)\n        stats['chunks_unchanged'] += len(set(wanted) & existing)\n        if row and (row[1], row[2]) != labels and row[0] == h:\n            stats['label_updates'] += 1\n        store.db.execute('update chunks set audience = ?, current = ? where doc_id = ? and model_id = ?', (d['audience'], int(d['current']), d['doc_id'], model_id))\n        store.db.execute('insert or replace into documents values (?,?,?,?,0)', (d['doc_id'], h, d['audience'], int(d['current'])))\n    store.db.commit()\n    return stats\n\n\ndef delete_document(store, doc_id):\n    n = store.db.execute('delete from chunks where doc_id = ?', (doc_id,)).rowcount\n    store.db.execute('update documents set deleted = 1 where doc_id = ?', (doc_id,))\n    store.db.commit()\n    return n\n\n\ndef search(store, embed_query, query, model_id, k=3, audiences=None, only_current=True):\n    \"\"\"The filter runs inside the search: a row that may not be read is never a candidate.\"\"\"\n    sql = 'select chunk_id, text, embedding, audience from chunks where model_id = ?' + (' and current = 1' if only_current else '')\n    rows = [r for r in store.db.execute(sql, (model_id,)) if audiences is None or r[3] in audiences]\n    if not rows:\n        return []\n    mat = np.vstack([np.frombuffer(r[2], dtype='float32') for r in rows])\n    sims = mat @ embed_query(query)\n    order = np.argsort(-sims, kind='stable')[:k]\n    return [(rows[i][0], round(float(sims[i]), 3), rows[i][1]) for i in order]",
+  "code/llm_calls.py": "\"\"\"The model API calls of the course, as small functions. The lessons show this file, and the recorder runs it.\n\nThe recorder points the real Anthropic and OpenAI client libraries at a local server that speaks the same protocol as the services.\nNo provider was called, and no language model was used. What the recording proves is what the libraries send, what they do when the\nserver fails, and how a tool call and a checked answer travel. It proves nothing about what a real model would say.\n\"\"\"\nimport pydantic\n\nMODEL = 'stand-in'\n\n\ndef ask_anthropic(client, text, **options):\n    \"\"\"One question, one answer. options go to with_options: timeout, max_retries.\"\"\"\n    c = client.with_options(**options) if options else client\n    return c.messages.create(model=MODEL, max_tokens=20, messages=[{'role': 'user', 'content': text}])\n\n\ndef ask_openai(client, text, **options):\n    c = client.with_options(**options) if options else client\n    return c.chat.completions.create(model=MODEL, messages=[{'role': 'user', 'content': text}])\n\n\ndef stream_anthropic(client, text):\n    \"\"\"Stream the answer. The events arrive one by one, and the final message holds the usage.\"\"\"\n    events = []\n    with client.messages.stream(model=MODEL, max_tokens=50, messages=[{'role': 'user', 'content': text}]) as stream:\n        for event in stream:\n            events.append(event.type)\n        final = stream.get_final_message()\n    return events, final\n\n\ndef stream_openai(client, text):\n    return list(client.chat.completions.create(model=MODEL, messages=[{'role': 'user', 'content': text}], stream=True))\n\n\nTOOLS = [{'name': 'search_policies', 'description': 'Find Brewline policy sentences.',\n          'input_schema': {'type': 'object', 'properties': {'query': {'type': 'string'}, 'limit': {'type': 'integer'}}, 'required': ['query']}}]\n\n\ndef answer_with_tool(client, question, run_tool):\n    \"\"\"Two calls. The first returns a request to call a tool. The code runs the tool, and sends the result back in a second call.\"\"\"\n    first = client.messages.create(model=MODEL, max_tokens=100, messages=[{'role': 'user', 'content': question}], tools=TOOLS)\n    block = next(b for b in first.content if b.type == 'tool_use')\n    result = run_tool(block.name, **block.input)\n    second = client.messages.create(model=MODEL, max_tokens=100, tools=TOOLS, messages=[\n        {'role': 'user', 'content': question},\n        {'role': 'assistant', 'content': [block.model_dump()]},\n        {'role': 'user', 'content': [{'type': 'tool_result', 'tool_use_id': block.id, 'content': result}]}])\n    return first, block, second\n\n\nclass RefundDecision(pydantic.BaseModel):\n    order_id: str\n    approve: bool\n    reason: str = pydantic.Field(max_length=120)\n\n\ndef check_decision(raw):\n    \"\"\"Check the text of a model's answer against the schema. Returns the object, or the reasons that it was refused.\"\"\"\n    try:\n        return RefundDecision.model_validate_json(raw), ''\n    except pydantic.ValidationError as e:\n        return None, ' | '.join('%s: %s' % ('.'.join(str(x) for x in err['loc']) or 'the text', err['msg']) for err in e.errors())",
   "code/parsekit.py": "\"\"\"Turn the documents of the Brewline set into text that keeps what matters: sections and tables. The lessons show this file.\"\"\"\nimport re\n\n\ndef pdf_pages(path):\n    \"\"\"One string for each page. A PDF has no headings and no table cells inside, only text placed on a page, so this is all that a text extractor sees.\"\"\"\n    import pypdf\n    return [p.extract_text() or '' for p in pypdf.PdfReader(str(path)).pages]\n\n\ndef _row(cells):\n    return '| ' + ' | '.join(c.strip() for c in cells) + ' |'\n\n\ndef docx_markdown(path):\n    \"\"\"Headings become # lines and tables become pipe rows, in the order of the document.\"\"\"\n    import docx\n    from docx.table import Table\n    from docx.text.paragraph import Paragraph\n    d = docx.Document(str(path))\n    out = []\n    for child in d.element.body.iterchildren():\n        if child.tag.endswith('}p'):\n            p = Paragraph(child, d)\n            m = re.match(r'Heading (\\d)', p.style.name or '')\n            if p.text.strip():\n                out.append(('#' * int(m.group(1)) + ' ' if m else '') + p.text.strip())\n        elif child.tag.endswith('}tbl'):\n            t = Table(child, d)\n            out += [_row([c.text for c in r.cells]) for r in t.rows]\n    return '\\n\\n'.join(out)\n\n\ndef html_naive(html):\n    \"\"\"What you get from get_text(): the navigation, the script, the footer, and a table with its cells in a row of words.\"\"\"\n    from bs4 import BeautifulSoup\n    return BeautifulSoup(html, 'html.parser').get_text(' ')\n\n\ndef html_markdown(html):\n    \"\"\"Drop what is not content, keep headings, and write a table as rows, so that a cell stays next to its column.\"\"\"\n    from bs4 import BeautifulSoup\n    soup = BeautifulSoup(html, 'html.parser')\n    for tag in soup(['script', 'style', 'nav', 'footer', 'head']):\n        tag.decompose()\n    out = []\n    for el in soup.body.find_all(['h1', 'h2', 'h3', 'p', 'table'], recursive=True):\n        if el.name == 'table':\n            out += [_row([c.get_text(' ', strip=True) for c in tr.find_all(['th', 'td'])]) for tr in el.find_all('tr')]\n        elif el.name == 'p':\n            out.append(el.get_text(' ', strip=True))\n        else:\n            out.append('#' * int(el.name[1]) + ' ' + el.get_text(' ', strip=True))\n    return '\\n\\n'.join(out)",
   "code/ragkit.py": "\"\"\"The small RAG toolkit of the course: parse, clean, chunk, embed, search, fuse and score.\n\nThe lessons show this file, and the recorder runs it, so the code on the screen is the code that produced the numbers.\nThe embedding is a stand-in: TF-IDF followed by a truncated SVD (latent semantic analysis), trained on the Brewline documents.\nA real embedding model is a neural network that was trained on a very large amount of text. This one cannot do that. It is here because no\nmodel could be downloaded where the course was recorded, and because the mechanics (vectors, distance, indexes, filters, fusion, scores) are\nthe same for any embedding.\n\"\"\"\nimport hashlib\nimport math\nimport re\n\nimport numpy as np\n\nSENT = re.compile(r'(?<=[.!?])\\s+(?=[A-Z0-9\"])')\n\n\n# ---------------------------------------------------------------------------------------------------------------------------------------\n# Clean\n# ---------------------------------------------------------------------------------------------------------------------------------------\ndef drop_repeated_lines(pages, share=0.6):\n    \"\"\"Remove the lines that appear on most pages (a running header or a footer), and the page counters.\"\"\"\n    seen = {}\n    for p in pages:\n        for line in set(l.strip() for l in p.splitlines() if l.strip()):\n            seen[line] = seen.get(line, 0) + 1\n    repeated = {l for l, n in seen.items() if n >= max(2, share * len(pages))}\n    out = []\n    for p in pages:\n        keep = [l for l in p.splitlines() if l.strip() not in repeated and not re.fullmatch(r'Page \\d+ of \\d+', l.strip())]\n        out.append('\\n'.join(keep))\n    return out, sorted(repeated)\n\n\ndef normalize(text):\n    \"\"\"Join lines that were wrapped inside a paragraph, fix spaces, keep paragraph breaks.\"\"\"\n    text = text.replace(' ', ' ')\n    paras = re.split(r'\\n\\s*\\n', text)\n    paras = [re.sub(r'\\s*\\n\\s*', ' ', p).strip() for p in paras]\n    return '\\n\\n'.join(p for p in paras if p)\n\n\ndef content_hash(text):\n    return hashlib.sha256(text.encode('utf-8')).hexdigest()[:16]\n\n\n# ---------------------------------------------------------------------------------------------------------------------------------------\n# Personal data, and near-copies\n# ---------------------------------------------------------------------------------------------------------------------------------------\nPII = {'email': r'[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}', 'phone': r'\\+\\d{2}(?: ?\\d){8,10}', 'iban': r'\\b[A-Z]{2}\\d{2}[A-Z0-9]{10,30}\\b'}\n\n\ndef mask_pii(text):\n    \"\"\"Replace what a pattern recognises with a label. A pattern finds the shape of a thing. It does not find a name.\"\"\"\n    found = {}\n    for kind, pattern in PII.items():\n        found[kind] = len(re.findall(pattern, text))\n        text = re.sub(pattern, '[' + kind.upper() + ']', text)\n    return text, found\n\n\ndef shingles(text, n=5):\n    \"\"\"Every run of n words, in lower case. Two texts that share most runs are near-copies.\"\"\"\n    w = re.findall(r'\\w+', text.lower())\n    return {' '.join(w[i:i + n]) for i in range(max(1, len(w) - n + 1))}\n\n\ndef jaccard(a, b):\n    \"\"\"The share of the runs that two texts have in common.\"\"\"\n    return len(a & b) / len(a | b)\n\n\ndef minhash(shingle_set, num_perm=128):\n    \"\"\"A small signature of a set of shingles. The share of equal positions in two signatures estimates their Jaccard similarity.\"\"\"\n    from datasketch import MinHash\n    m = MinHash(num_perm=num_perm, seed=1)\n    for sh in sorted(shingle_set):\n        m.update(sh.encode())\n    return m\n\n\n# ---------------------------------------------------------------------------------------------------------------------------------------\n# Chunk. Every function returns a list of strings.\n# ---------------------------------------------------------------------------------------------------------------------------------------\ndef chunk_fixed(text, size=500, overlap=0):\n    step = max(1, size - overlap)\n    return [text[i:i + size] for i in range(0, len(text), step) if text[i:i + size].strip()]\n\n\ndef split_sentences(text):\n    out = []\n    for para in re.split(r'\\n\\s*\\n', text):\n        out += [s.strip() for s in SENT.split(para) if s.strip()]\n    return out\n\n\ndef chunk_sentences(text, size=500):\n    \"\"\"Pack whole sentences until the next one would not fit.\"\"\"\n    chunks, cur = [], ''\n    for s in split_sentences(text):\n        if cur and len(cur) + 1 + len(s) > size:\n            chunks.append(cur)\n            cur = s\n        else:\n            cur = (cur + ' ' + s).strip()\n    if cur:\n        chunks.append(cur)\n    return chunks\n\n\ndef chunk_recursive(text, size=500, seps=('\\n\\n', '\\n', '. ', ' ')):\n    \"\"\"Split at the biggest separator that makes the pieces fit, then merge neighbours back up to the size.\"\"\"\n    if len(text) <= size:\n        return [text] if text.strip() else []\n    for sep in seps:\n        if sep in text:\n            parts = [p for p in text.split(sep) if p.strip()]\n            pieces = []\n            for p in parts:\n                pieces += chunk_recursive(p, size, seps[seps.index(sep) + 1:] or (' ',)) if len(p) > size else [p]\n            merged, cur = [], ''\n            for p in pieces:\n                if cur and len(cur) + len(sep) + len(p) > size:\n                    merged.append(cur)\n                    cur = p\n                else:\n                    cur = (cur + sep + p) if cur else p\n            if cur:\n                merged.append(cur)\n            return merged\n    return chunk_fixed(text, size)\n\n\ndef chunk_by_heading(text, size=500):\n    \"\"\"For Markdown, HTML turned into Markdown, or Word: one chunk for each section, and a long section is cut by sentences. The heading stays in every chunk.\"\"\"\n    parts, head, body = [], '', []\n    for line in text.splitlines():\n        if line.startswith('#'):\n            if body:\n                parts.append((head, '\\n'.join(body).strip()))\n            head, body = line.lstrip('# ').strip(), []\n        else:\n            body.append(line)\n    if body:\n        parts.append((head, '\\n'.join(body).strip()))\n    out = []\n    for head, body in parts:\n        for c in chunk_sentences(body, size):\n            out.append((head + '\\n' + c) if head else c)\n    return out\n\n\n# ---------------------------------------------------------------------------------------------------------------------------------------\n# Search\n# ---------------------------------------------------------------------------------------------------------------------------------------\nSTOP = set('a an the of to is are was were be been in on at for and or by with from that this it as do does did can what which who when where how'.split())\n\n\ndef tokens(text):\n    return [t for t in re.findall(r'[a-z0-9]+', text.lower()) if t not in STOP]\n\n\nclass LsaEmbedder:\n    \"\"\"TF-IDF and a truncated SVD. fit() learns the vocabulary and the axes, embed() turns texts into unit-length vectors.\"\"\"\n\n    def __init__(self, dim=64, seed=7):\n        from sklearn.decomposition import TruncatedSVD\n        from sklearn.feature_extraction.text import TfidfVectorizer\n        self.vec = TfidfVectorizer(ngram_range=(1, 2), sublinear_tf=True, stop_words=sorted(STOP))\n        self.svd = TruncatedSVD(n_components=dim, random_state=seed)\n        self.dim = dim\n\n    def fit(self, texts):\n        self.svd.fit(self.vec.fit_transform(texts))\n        return self\n\n    def embed(self, texts):\n        m = self.svd.transform(self.vec.transform(texts))\n        n = np.linalg.norm(m, axis=1, keepdims=True)\n        return (m / np.where(n == 0, 1, n)).astype('float32')\n\n\ndef rrf(rankings, k=60):\n    \"\"\"Reciprocal rank fusion. rankings is a list of lists of ids, best first. Returns ids, best first, and the scores.\"\"\"\n    score = {}\n    for ranking in rankings:\n        for r, i in enumerate(ranking, 1):\n            score[i] = score.get(i, 0.0) + 1.0 / (k + r)\n    order = sorted(score, key=lambda i: (-score[i], i))\n    return order, score\n\n\nclass Searcher:\n    \"\"\"BM25, the stand-in vectors, and the two fused, over one list of chunks (dicts with an id and a text).\n    A mask is a function of a chunk. A chunk that the mask rejects is never a candidate: the filter runs inside the search.\"\"\"\n\n    def __init__(self, chunks, dim=64, seed=7):\n        from rank_bm25 import BM25Okapi\n        self.chunks = chunks\n        self.ids = [c['id'] for c in chunks]\n        self.bm25 = BM25Okapi([tokens(c['text']) for c in chunks])\n        self.emb = LsaEmbedder(dim, seed).fit([c['text'] for c in chunks])\n        self.vecs = self.emb.embed([c['text'] for c in chunks])\n\n    def bm25_rank(self, q, mask=None):\n        s = self.bm25.get_scores(tokens(q))\n        return self._order(s, mask)\n\n    def vec_rank(self, q, mask=None):\n        s = self.vecs @ self.emb.embed([q])[0]\n        return self._order(s, mask)\n\n    def hybrid_rank(self, q, mask=None, k=60):\n        order, _ = rrf([self.bm25_rank(q, mask)[:50], self.vec_rank(q, mask)[:50]], k)\n        return order\n\n    def _order(self, scores, mask):\n        idx = sorted(range(len(self.ids)), key=lambda i: (-scores[i], i))\n        return [self.ids[i] for i in idx if mask is None or mask(self.chunks[i])]\n\n\n# ---------------------------------------------------------------------------------------------------------------------------------------\n# Score. relevant is a set of ids. ranked is a list of ids, best first.\n# ---------------------------------------------------------------------------------------------------------------------------------------\ndef hit_at_k(ranked, relevant, k):\n    return 1.0 if any(i in relevant for i in ranked[:k]) else 0.0\n\n\ndef mrr_at_k(ranked, relevant, k=10):\n    for r, i in enumerate(ranked[:k], 1):\n        if i in relevant:\n            return 1.0 / r\n    return 0.0\n\n\ndef ndcg_at_k(ranked, relevant, k=10):\n    dcg = sum(1.0 / math.log2(r + 1) for r, i in enumerate(ranked[:k], 1) if i in relevant)\n    ideal = sum(1.0 / math.log2(r + 1) for r in range(1, min(len(relevant), k) + 1))\n    return dcg / ideal if ideal else 0.0",
   "code/sqlguard.py": "\"\"\"A guard between a model that writes SQL and a database. The lessons show this file, and the recorder runs it.\n\nThe rule is simple: the model proposes, the guard decides, and the database enforces what the guard cannot see.\n  1. Parse the text. One statement, and it must be a SELECT.\n  2. Only the tables on the allow list. No table functions (they read files and URLs).\n  3. No column on the deny list (personal data).\n  4. A LIMIT that cannot be larger than the cap.\n  5. Run on a read-only connection, with no access to files or the network, a memory cap and a timeout.\nParsing is not enough on its own, because a parser reads text and the database does the work. Rules 5 is the part that still holds when the parser is wrong.\n\"\"\"\nimport threading\n\nimport duckdb\nimport sqlglot\nfrom sqlglot import exp\n\nALLOWED_TABLES = {'orders', 'stores', 'products'}\nDENIED_COLUMNS = {'email', 'phone', 'card_number'}\nMAX_LIMIT = 100\n\n\nclass Refused(Exception):\n    pass\n\n\ndef check(sql, dialect='duckdb'):\n    \"\"\"Return the SQL to run, and the notes about what was changed. Raise Refused with the reason.\"\"\"\n    try:\n        statements = sqlglot.parse(sql, read=dialect)\n    except sqlglot.errors.ParseError as e:\n        raise Refused('the text is not valid SQL: ' + str(e).splitlines()[0])\n    statements = [s for s in statements if s is not None]\n    if len(statements) != 1:\n        raise Refused('exactly one statement is allowed, found %d' % len(statements))\n    stmt = statements[0]\n    if not isinstance(stmt, exp.Select):\n        raise Refused('only SELECT is allowed, found ' + type(stmt).__name__.upper())\n    ctes = {c.alias.lower() for c in stmt.find_all(exp.CTE)}\n    for t in stmt.find_all(exp.Table):\n        if not isinstance(t.this, exp.Identifier):\n            raise Refused('table functions are not allowed (they read files and URLs)')\n        if t.name.lower() not in ALLOWED_TABLES | ctes:\n            raise Refused('the table %s is not on the allow list' % t.name)\n    for c in stmt.find_all(exp.Column):\n        if c.name.lower() in DENIED_COLUMNS:\n            raise Refused('the column %s holds personal data' % c.name)\n    notes = []\n    limit = stmt.args.get('limit')\n    if limit is None:\n        stmt = stmt.limit(MAX_LIMIT)\n        notes.append('LIMIT %d added' % MAX_LIMIT)\n    else:\n        n = limit.expression\n        if isinstance(n, exp.Literal) and n.is_int and int(n.name) > MAX_LIMIT:\n            stmt = stmt.limit(MAX_LIMIT)\n            notes.append('LIMIT lowered from %s to %d' % (n.name, MAX_LIMIT))\n    return stmt.sql(dialect=dialect), notes\n\n\ndef run_readonly(db_path, sql, timeout=1.0):\n    \"\"\"Run on a read-only connection with no external access. A query that runs longer than the timeout is interrupted.\"\"\"\n    con = duckdb.connect(db_path, read_only=True)\n    con.execute(\"SET enable_external_access = false\")\n    con.execute(\"SET memory_limit = '256MB'\")\n    timer = threading.Timer(timeout, con.interrupt)\n    timer.start()\n    try:\n        return con.execute(sql).fetchall()\n    finally:\n        timer.cancel()\n        con.close()",
@@ -1214,6 +1485,7 @@ LAB.real = {
   "corpus/meeting-notes-masked.txt": "Meeting notes, 12 March 2026\nPresent: Maria Santos, Kenji Mori, and the three store leads.\nMaria Santos can be reached at [EMAIL] or [PHONE]. Kenji Mori can be reached at [EMAIL] or [PHONE].\n\nAgenda\n1. Summer menu. The pistachio cold brew sells well and stays on the menu.\n2. Milk prices. Decision: raise the milk alternative surcharge from EUR 0.40 to EUR 0.50 from 1 May.\n3. Payroll. The tip payout for February is paid to the account [IBAN]. Order references such as ORD-2026-0412 and SKU-4471 are not personal data.\n4. Next meeting on 9 April. Please keep the area tidy and ask your shift lead if anything is unclear.",
   "corpus/menu-and-allergens.html": "<html><head><title>Menu and allergens</title><style>td{padding:2px}</style></head><body>\n<nav>Home | Menu | Stores | Careers</nav>\n<h1>Menu and allergens</h1>\n<h2>Allergens</h2>\n<p>Report broken equipment to the maintenance team the same day. Training videos for this topic are on the staff portal. The pistachio cold brew contains tree nuts and is made on shared equipment. Write down anything unusual in the shift log. Questions about this section go to the operations team.</p>\n<table><tr><th>Drink</th><th>Contains</th><th>May contain</th></tr><tr><td>Latte</td><td>milk</td><td>none</td></tr><tr><td>Oat flat white</td><td>oats</td><td>gluten</td></tr><tr><td>Almond croissant</td><td>tree nuts, gluten, milk, eggs</td><td>sesame</td></tr><tr><td>Pistachio cold brew</td><td>tree nuts</td><td>milk</td></tr><tr><td>Matcha latte</td><td>milk</td><td>none</td></tr></table>\n<script>var tracking = true;</script>\n<footer>Brewline 2026. All rights reserved.</footer>\n</body></html>",
   "docs/record.json": "{\n  \"doc_id\": \"handbook-v2\",\n  \"file\": \"store-handbook-v2.pdf\",\n  \"format\": \"pdf\",\n  \"audience\": \"managers\",\n  \"version\": 2,\n  \"current\": true,\n  \"hash\": \"954c34664d33aee9\",\n  \"source\": \"lake://raw/docs/store-handbook-v2.pdf\",\n  \"parsed_with\": \"pypdf 7.0.1\"\n}",
+  "eval/golden.jsonl": "{\"id\": \"q01\", \"kind\": \"words\", \"question\": \"How many days do customers have to return a bag of beans?\", \"doc\": \"handbook-v2\", \"key_phrase\": \"within 14 days of purchase\", \"expected\": \"A customer may return an unused drink voucher or a sealed bag of beans within 14 days of purchase with a receipt.\", \"audience\": \"managers\", \"refuse_for\": [\"finance\", \"hr\", \"staff\"]}\n{\"id\": \"q04\", \"kind\": \"words\", \"question\": \"What is the minimum order for Andes Roasters?\", \"doc\": \"suppliers\", \"key_phrase\": \"minimum order of 40 kg\", \"expected\": \"Andes Roasters delivers beans every Tuesday and Friday with a lead time of 3 days and a minimum order of 40 kg.\", \"audience\": \"finance\", \"refuse_for\": [\"hr\", \"manager\", \"staff\"]}\n{\"id\": \"q09\", \"kind\": \"meaning\", \"question\": \"Can a shopper get reimbursed for beans they have not opened?\", \"doc\": \"handbook-v2\", \"key_phrase\": \"within 14 days of purchase\", \"expected\": \"A customer may return an unused drink voucher or a sealed bag of beans within 14 days of purchase with a receipt.\", \"audience\": \"managers\", \"refuse_for\": [\"finance\", \"hr\", \"staff\"]}",
   "finetune/card.json": "{\n  \"name\": \"brewline-policy-qa\",\n  \"version\": \"2026-03-14\",\n  \"rows\": 161,\n  \"source\": \"corpus.py facts, 6 prompt templates\",\n  \"split\": \"grouped by fact\",\n  \"removed\": {\n    \"exact_duplicates\": 24,\n    \"near_duplicates\": 1\n  },\n  \"contains_personal_data\": false,\n  \"known_gaps\": [\n    \"no examples that refuse a question\",\n    \"one answer style\"\n  ]\n}",
   "finetune/preference_example.jsonl": "{\"prompt\": [{\"role\": \"user\", \"content\": \"How many days do customers have to return a bag of beans?\"}], \"chosen\": [{\"role\": \"assistant\", \"content\": \"Within 14 days of purchase, with a receipt (handbook v2).\"}], \"rejected\": [{\"role\": \"assistant\", \"content\": \"Within 30 days of purchase.\"}]}",
   "finetune/train_example.jsonl": "{\"messages\": [{\"role\": \"user\", \"content\": \"What is the rule about refunds and returns?\"}, {\"role\": \"assistant\", \"content\": \"A customer may return an unused drink voucher or a sealed bag of beans within 14 days of purchase with a receipt.\"}]}\n{\"messages\": [{\"role\": \"user\", \"content\": \"A new colleague asks: Can a shopper get reimbursed for beans they have not opened?\"}, {\"role\": \"assistant\", \"content\": \"A customer may return an unused drink voucher or a sealed bag of beans within 14 days of purchase with a receipt.\"}]}",
@@ -1949,6 +2221,111 @@ LAB.real = {
     ]
    ]
   },
+  "eval.answer_checks": {
+   "cols": [
+    "case",
+    "the answer (written by hand)",
+    "cited",
+    "checks pass",
+    "problems found"
+   ],
+   "rows": [
+    [
+     "a good answer",
+     "A customer may return a sealed bag of beans within 14 days of purchase with a receipt.",
+     "handbook-v2:0",
+     "yes",
+     "-"
+    ],
+    [
+     "a wrong number",
+     "A customer may return a sealed bag of beans within 30 days of purchase with a receipt.",
+     "handbook-v2:0",
+     "no",
+     "the number 30 is not in any cited source"
+    ],
+    [
+     "a source that was not retrieved",
+     "A customer may return a sealed bag of beans within 14 days of purchase with a receipt.",
+     "handbook-v2:99",
+     "no",
+     "cites handbook-v2:99, which was not retrieved; the number 14 is not in any cited source"
+    ],
+    [
+     "a source this person may not read",
+     "The minimum order for Andes Roasters is 40 kg.",
+     "suppliers:0",
+     "no",
+     "cites suppliers:0, which this person may not read"
+    ],
+    [
+     "no source at all",
+     "A customer may return a sealed bag of beans within 14 days of purchase with a receipt.",
+     "-",
+     "no",
+     "no source is cited; the number 14 is not in any cited source"
+    ],
+    [
+     "a refusal, for a question the person may not read",
+     "I cannot find that in the documents you may read.",
+     "-",
+     "yes",
+     "-"
+    ]
+   ]
+  },
+  "eval.gate": {
+   "cols": [
+    "candidate build",
+    "hit@3",
+    "gate",
+    "questions that got worse",
+    "questions that got better",
+    "first reason"
+   ],
+   "rows": [
+    [
+     "fixed 500 characters, no overlap",
+     0.75,
+     "fail",
+     "q08, q13, q22",
+     "-",
+     "hit@3 fell from 0.875 to 0.750"
+    ],
+    [
+     "recursive 150 characters",
+     0.708,
+     "fail",
+     "q10, q11, q12, q18, q23",
+     "q09",
+     "hit@3 fell from 0.875 to 0.708"
+    ],
+    [
+     "glossary words added to each question",
+     0.75,
+     "fail",
+     "q06, q08, q13, q21, q24",
+     "q09, q15",
+     "hit@3 fell from 0.875 to 0.750"
+    ],
+    [
+     "vector search only (stand-in)",
+     0.792,
+     "fail",
+     "q12, q18",
+     "-",
+     "hit@3 fell from 0.875 to 0.792"
+    ],
+    [
+     "keyword search only",
+     0.875,
+     "pass",
+     "-",
+     "-",
+     "no drop beyond the limits"
+    ]
+   ]
+  },
   "finetune.split": {
    "cols": [
     "split",
@@ -2471,9 +2848,9 @@ LAB.real = {
     [
      1,
      "1 %",
-     0.4,
+     0.5,
      10.0,
-     0.98
+     0.977
     ],
     [
      2,
@@ -2487,7 +2864,7 @@ LAB.real = {
      "89 %",
      10.0,
      10.0,
-     0.975
+     0.977
     ]
    ]
   },
@@ -2499,27 +2876,27 @@ LAB.real = {
    "rows": [
     [
      10,
-     0.845
+     0.848
     ],
     [
      20,
-     0.946
+     0.94
     ],
     [
      40,
-     0.982
+     0.98
     ],
     [
      100,
-     0.988
+     0.986
     ],
     [
      200,
-     0.988
+     0.996
     ],
     [
      400,
-     0.998
+     0.996
     ]
    ]
   },
@@ -2531,7 +2908,7 @@ LAB.real = {
    "rows": [
     [
      1,
-     0.595
+     0.629
     ],
     [
      5,
