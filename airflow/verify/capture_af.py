@@ -565,7 +565,12 @@ class Stack:
 
     # --- helpers
     def cli(self, *a, check=False, timeout=120):
-        return af(*a, home=self.home, extra=self.extra, check=check, timeout=timeout)
+        for attempt in range(4):
+            rc, out = af(*a, home=self.home, extra=self.extra, check=check, timeout=timeout)
+            if rc == 0 or 'database is locked' not in out:
+                break
+            time.sleep(3)                                  # SQLite allows one writer at a time: the scheduler held the lock, so ask again
+        return rc, out
 
     def sql(self, q, params=()):
         for _ in range(30):
@@ -1066,17 +1071,24 @@ def sec_waiting():
     res = {}
     tasks = ['wait_%d' % n for n in range(1, 5)]
     for m in modes:
-        for f in WATCH.glob('*'):
-            f.unlink()
-        run = st.trigger('brewline_wait_' + m)
-        made = {'t': None}
+        for attempt in range(3):
+            for f in WATCH.glob('*'):
+                f.unlink()
+            run = st.trigger('brewline_wait_' + m)
+            made = {'t': None}
 
-        def each(t, m=m, made=made):
-            if made['t'] is None and t >= 14.0:
-                for n in range(1, 5):
-                    (WATCH / ('%s_partner_%d.csv' % (m, n))).write_text('partner file')
-                made['t'] = t
-        series = st.sample('brewline_wait_' + m, run, until=lambda s: len(s) == 4 and all(v in ('success', 'failed') for v in s.values()), timeout=90, each=each)
+            def each(t, m=m, made=made):
+                if made['t'] is None and t >= 14.0:
+                    for n in range(1, 5):
+                        (WATCH / ('%s_partner_%d.csv' % (m, n))).write_text('partner file')
+                    made['t'] = t
+            series = st.sample('brewline_wait_' + m, run, until=lambda s: len(s) == 4 and all(v in ('success', 'failed') for v in s.values()), timeout=90, each=each)
+            if all(v == 'success' for v in series[-1][1].values()):
+                break
+            for t_id, v in series[-1][1].items():
+                if v != 'success':
+                    print('waiting %s attempt %d: %s ended as %s' % (m, attempt + 1, t_id, v), file=sys.stderr)
+                    print(show_log(st.task_log('brewline_wait_' + m, run, t_id))[-700:], file=sys.stderr)
         facts = timeline_facts(series, tasks)
         segs = segments(series, tasks)
         res[m] = {'files_created_at': round(made['t'] or 0), 'facts': facts, 'segments': {k: [[a, round(b), round(c)] for a, b, c in v] for k, v in segs.items()},
@@ -1416,21 +1428,33 @@ def sec_backoff():
     st = the_stack()
     st.unpause('brewline_backoff')
     ld = '2026-03-14T00:00:00+00:00'                       # a fixed logical date: the jitter is a hash of it, so the recorded waits can be reproduced
-    run = st.trigger('brewline_backoff', logical_date=ld)
-    waiting = {}
-    t0 = time.time()
-    while time.time() - t0 < 150:
-        _, r = st.sql("SELECT try_number, end_date, retry_at, state FROM task_instance WHERE dag_id = ? AND run_id = ? AND task_id = ? ORDER BY try_number", ('brewline_backoff', run, 'call_partner'))
-        ends = {n: e for n, e, ra, sta in r}
-        for n, end, retry_at, sta in r:
-            if retry_at and sta == 'up_for_retry':
-                prev_end = ends.get(n - 1) or end
-                if prev_end:
-                    waiting[n - 1] = round(datetime.datetime.fromisoformat(retry_at).timestamp() - datetime.datetime.fromisoformat(prev_end).timestamp(), 2)
-        _, d = st.sql('SELECT state FROM dag_run WHERE dag_id = ? AND run_id = ?', ('brewline_backoff', run))
-        if d and d[0][0] in ('success', 'failed'):
+    for attempt in range(3):
+        if attempt:
+            ld = '2026-03-%02dT00:00:00+00:00' % (14 + attempt)   # a short wait was missed: run again on the next day, the jitter changes with the date
+        run = st.trigger('brewline_backoff', logical_date=ld)
+        waiting = {}
+        t0 = time.time()
+        con = sqlite3.connect('file:%s?mode=ro' % (pathlib.Path(st.home) / 'airflow.db'), uri=True, timeout=5)
+        try:
+            while time.time() - t0 < 150:
+                try:
+                    r = con.execute("SELECT try_number, end_date, retry_at, state FROM task_instance WHERE dag_id = ? AND run_id = ? AND task_id = ? ORDER BY try_number", ('brewline_backoff', run, 'call_partner')).fetchall()
+                    ends = {n: e for n, e, ra, sta in r}
+                    for n, end, retry_at, sta in r:
+                        if retry_at and sta == 'up_for_retry':
+                            prev_end = ends.get(n - 1) or end
+                            if prev_end:
+                                waiting[n - 1] = round(datetime.datetime.fromisoformat(retry_at).timestamp() - datetime.datetime.fromisoformat(prev_end).timestamp(), 2)
+                    d = con.execute('SELECT state FROM dag_run WHERE dag_id = ? AND run_id = ?', ('brewline_backoff', run)).fetchall()
+                    if d and d[0][0] in ('success', 'failed'):
+                        break
+                except sqlite3.OperationalError:
+                    pass
+                time.sleep(0.05)
+        finally:
+            con.close()
+        if len(waiting) >= 4:
             break
-        time.sleep(0.2)
     st.wait_run('brewline_backoff', run, timeout=150)
     time.sleep(1)
     _, rows = st.sql('SELECT try_number, state, end_date, retry_at, start_date FROM task_instance WHERE dag_id = ? AND run_id = ? AND task_id = ? ORDER BY try_number', ('brewline_backoff', run, 'call_partner'))
@@ -1452,7 +1476,7 @@ def sec_backoff():
         expected.append(min(base + ti_hash % base, 10))
     counts('af.backoff', {'retry_delay_seconds': 1, 'multiplier': 2.0, 'max_retry_delay_seconds': 10, 'retries': 4, 'tries': len(rows), 'final_state': rows[-1][1],
                           'delays_in_database': [waiting[k] for k in sorted(waiting)], 'delays_from_formula': expected, 'seconds_between_end_and_next_start': waits,
-                          'dag_id': 'brewline_backoff', 'task_id': 'call_partner', 'logical_date': '2026-03-14 00:00:00+00:00'})
+                          'dag_id': 'brewline_backoff', 'task_id': 'call_partner', 'logical_date': datetime.datetime.fromisoformat(ld).strftime('%Y-%m-%d %H:%M:%S+00:00')})
 
 # =====================================================================================================================================
 SECTIONS = []
