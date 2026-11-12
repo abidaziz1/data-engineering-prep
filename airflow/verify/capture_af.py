@@ -445,6 +445,7 @@ TIMETABLES = [
     ('daily_trigger', {'kind': 'CronTriggerTimetable', 'args': {'expr': '@daily', 'timezone': 'UTC'}}),
     ('daily_interval', {'kind': 'CronDataIntervalTimetable', 'args': {'expr': '@daily', 'timezone': 'UTC'}}),
     ('weekly_interval', {'kind': 'CronDataIntervalTimetable', 'args': {'expr': '0 6 * * 1', 'timezone': 'UTC'}}),
+    ('weekly_trigger', {'kind': 'CronTriggerTimetable', 'args': {'expr': '0 6 * * 1', 'timezone': 'UTC'}}),
     ('delta_trigger_6h', {'kind': 'DeltaTriggerTimetable', 'args': {'delta': {'hours': 6}}}),
     ('delta_interval_6h', {'kind': 'DeltaDataIntervalTimetable', 'args': {'delta': {'hours': 6}}}),
 ]
@@ -454,7 +455,8 @@ def sec_timetables():
     migrate(HOME_TEST)
     res = {}
     for label, spec in TIMETABLES:
-        spec = dict(spec, start='2026-03-01T00:00:00+00:00', n=4, catchup=True, manual_at=['2026-03-14T15:30:00+00:00'])
+        spec = dict(spec, start='2026-03-01T00:00:00+00:00', n=4, catchup=True,
+                    manual_at=['2026-03-14T01:30:00+00:00', '2026-03-14T15:30:00+00:00', '2026-03-14T23:30:00+00:00'])
         res[label] = probe('timetable', json.dumps(spec))
     counts('af.timetables', res)
 
@@ -1141,11 +1143,24 @@ def sec_assets():
         time.sleep(1)
     both = st.runs('brewline_customer_orders')
     and_logs = [norm(show_log(st.task_log('brewline_customer_orders', r[0], 'build')), shift=True) for r in both]
+    # a customers event on its own does not start the AND consumer, because the orders events were already used. An orders event after it does.
+    st.trigger('brewline_land_customers')
+    time.sleep(12)
+    after_customers = len(st.runs('brewline_customer_orders'))
+    st.trigger('brewline_land_orders')
+    for _ in range(80):
+        runs = st.runs('brewline_customer_orders')
+        if len(runs) > after_customers and all(r[2] in ('success', 'failed') for r in runs):
+            break
+        time.sleep(1)
+    final = st.runs('brewline_customer_orders')
+    final_logs = [norm(show_log(st.task_log('brewline_customer_orders', r[0], 'build')), shift=True) for r in final]
     _, ev = st.sql('SELECT a.name, e.source_dag_id, count(*) FROM asset_event e JOIN asset a ON a.id = e.asset_id GROUP BY a.name, e.source_dag_id ORDER BY a.name')
     _, assets = st.sql('SELECT name, uri FROM asset ORDER BY name')
     rc, listing = st.cli('assets', 'list')
     counts('af.assets', {'producer_runs': 3, 'consumer_runs_after_3_events': len(daily), 'consumer_run_types': sorted({r[1] for r in daily}), 'consumer_logs': logs,
                          'and_consumer_runs_before': before_and, 'and_consumer_runs_after': len(both), 'and_consumer_logs': and_logs,
+                         'and_runs_after_extra_customers_event': after_customers, 'and_runs_after_extra_orders_event': len(final), 'and_consumer_logs_all': final_logs,
                          'events': [{'asset': a, 'source_dag': b, 'events': c} for a, b, c in ev], 'assets': [{'name': a, 'uri': b} for a, b in assets]})
     text('af.assets_list', norm(listing.strip()))
 
@@ -1389,11 +1404,18 @@ def sec_timetables_more():
     counts('af.timetables_more', res)
 
 
+def sec_retry_grid():
+    """The retry lab offers a grid of settings. Airflow's own delay function runs on every one of them and the lab is checked against the result."""
+    migrate(HOME_TEST)
+    r = probe('retry_grid')
+    counts('af.retry_grid', r)
+
+
 def sec_backoff():
     """Exponential backoff: the delay before each retry, read back from the metadata database, next to the formula in the installed source."""
     st = the_stack()
     st.unpause('brewline_backoff')
-    ld = TODAY_REAL.isoformat() + 'T00:00:00+00:00'
+    ld = '2026-03-14T00:00:00+00:00'                       # a fixed logical date: the jitter is a hash of it, so the recorded waits can be reproduced
     run = st.trigger('brewline_backoff', logical_date=ld)
     waiting = {}
     t0 = time.time()
@@ -1468,6 +1490,7 @@ section('waiting')(sec_waiting)
 section('pools')(sec_pools)
 section('assets')(sec_assets)
 section('backoff')(sec_backoff)
+section('retry_grid')(sec_retry_grid)
 section('config')(sec_config)
 section('cli')(sec_cli)
 section('retry_policy')(sec_retry_policy)

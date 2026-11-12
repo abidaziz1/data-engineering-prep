@@ -204,6 +204,35 @@ def cmd_imports():
     emit(results)
 
 
+def cmd_retry_grid():
+    """Airflow's own retry-delay function (TaskInstance._compute_retry_deadline) on a fake task instance, for every setting the retry lab offers."""
+    import datetime
+    import logging
+    import types
+
+    from airflow.models.taskinstance import TaskInstance
+
+    base = datetime.datetime(2026, 3, 14, 0, 0, 0, tzinfo=datetime.timezone.utc)
+    logical = datetime.datetime(2026, 3, 14, 0, 0, 0, tzinfo=datetime.timezone.utc)
+    rows = []
+    for delay in (1, 5, 30):
+        for mult in (0, 2, 3):
+            for cap in (None, 10, 60):
+                waits = []
+                for k in range(1, 6):
+                    task = types.SimpleNamespace(
+                        retry_delay=datetime.timedelta(seconds=delay),
+                        retry_exponential_backoff=mult,
+                        max_retry_delay=datetime.timedelta(seconds=cap) if cap else None,
+                    )
+                    fake = types.SimpleNamespace(retry_delay_override=None, task=task, dag_id="brewline_backoff", task_id="call_partner",
+                                                 logical_date=logical, log=logging.getLogger("retry_grid"))
+                    due = TaskInstance._compute_retry_deadline(fake, failed_try_number=k, failed_end_date=base)
+                    waits.append((due - base).total_seconds())
+                rows.append({"delay": delay, "mult": mult, "cap": cap, "waits": waits})
+    emit({"dag_id": "brewline_backoff", "task_id": "call_partner", "logical_date": str(logical), "rows": rows})
+
+
 if __name__ == "__main__":
     cmd, *rest = sys.argv[1:]
     globals()["cmd_" + cmd](*rest)

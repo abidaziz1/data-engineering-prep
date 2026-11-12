@@ -91,3 +91,7 @@ a.logo:hover{background:#155E75}
 
 /* long identifiers and long paths must wrap on a phone */
 .qtext,.alertbox,.alertbox *,.prompt,.opt .ot,.callout,.clues li,.triage li,.lab-out .big b,.lab-out .big span,.tcell,.tseg,.tmark{overflow-wrap:anywhere}
+.lanes{position:relative;display:flex;flex-direction:column;gap:.35rem}
+.fmark{position:absolute;top:0;bottom:0;border-left:3px dashed #9A3412;z-index:2;pointer-events:none}
+.gbar.s-running{background:#34D399}.gbar.s-queued{background:#E2E8F0}.gbar.s-scheduled{background:#E7E5E4}
+.gbar.s-deferred{background:#C4B5FD}.gbar.s-up_for_reschedule{background:#99F6E4}.gbar.s-success{background:#BBF7D0}

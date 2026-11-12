@@ -40,7 +40,8 @@ def customer_orders():
     @task
     def build():
         events = get_current_context()["triggering_asset_events"]
-        print("triggered by", sorted(a.name for a in events))
+        for asset, evs in sorted(events.items(), key=lambda kv: kv[0].name):
+            print(f"triggered by {asset.name}: {len(evs)} event(s)")
 
     build()
 
