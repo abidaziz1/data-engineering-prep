@@ -11,7 +11,7 @@ from airflow.providers.standard.operators.empty import EmptyOperator
 from airflow.providers.standard.operators.python import PythonOperator
 
 
-def validate_orders(**context):
+def check_order_files(**context):
     print("checking the files of", context["ds"])
 
 
@@ -25,10 +25,10 @@ with DAG(
     tags=["brewline", "nightly"],
 ) as dag:
     start = EmptyOperator(task_id="start")
-    extract = BashOperator(task_id="extract_orders", bash_command="echo extracting {{ ds }}")
-    validate = PythonOperator(task_id="validate_orders", python_callable=validate_orders)
-    load = BashOperator(task_id="load_orders", bash_command="echo loading {{ ds }}")
-    marts = BashOperator(task_id="build_marts", bash_command="echo building marts")
+    extract_orders = BashOperator(task_id="extract_orders", bash_command="echo extracting {{ ds }}")
+    validate_orders = PythonOperator(task_id="validate_orders", python_callable=check_order_files)
+    load_orders = BashOperator(task_id="load_orders", bash_command="echo loading {{ ds }}")
+    build_marts = BashOperator(task_id="build_marts", bash_command="echo building marts")
     notify = BashOperator(task_id="notify", bash_command="echo done", trigger_rule="all_done")
 
-    start >> extract >> validate >> load >> marts >> notify
+    start >> extract_orders >> validate_orders >> load_orders >> build_marts >> notify

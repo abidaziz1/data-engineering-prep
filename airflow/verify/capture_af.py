@@ -154,7 +154,7 @@ for k in list(BASE_ENV):
 BASE_ENV.update({
     'AIRFLOW__CORE__LOAD_EXAMPLES': 'False', 'PYTHONDONTWRITEBYTECODE': '1', 'NO_PROXY': '127.0.0.1,localhost', 'no_proxy': '127.0.0.1,localhost',
     'BREWLINE_OUT': str(OUTDIR), 'BREWLINE_DB': str(OUTDIR / 'brewline.db'), 'FLAKY_COUNT_FILE': str(OUTDIR / 'flaky_count'),
-    'BREWLINE_CALLBACK_LOG': str(OUTDIR / 'callbacks.log'), 'BREWLINE_WATCH': str(WATCH),
+    'BREWLINE_CALLBACK_LOG': str(OUTDIR / 'callbacks.log'), 'BREWLINE_WATCH': str(WATCH), 'BREWLINE_DEADLINE_LOG': str(OUTDIR / 'deadline.log'), 'BREWLINE_POLICY_COUNT': str(OUTDIR / 'policy_count'),
     'AIRFLOW__LOGGING__COLORED_CONSOLE_LOG': 'False',
 })
 NOISE = re.compile(r'graphviz|Run `pip install|You might need to install|warnings\.warn|\[py\.warnings\]')
@@ -339,6 +339,7 @@ def sec_files():
     if TESTS_SRC.exists():
         for f in sorted(TESTS_SRC.glob('*.py')):
             file('tests/' + f.name, f.read_text())
+    file('gen/trigger_rules_gen.py', (HERE / 'gen' / 'trigger_rules_gen.py').read_text())
     for f in sorted((HERE / 'snippets').glob('*')) if (HERE / 'snippets').exists() else []:
         file('snippets/' + f.name, f.read_text())
 
@@ -802,13 +803,17 @@ def sec_backfill():
     n_before = len([r for r in st.runs('brewline_backfill_demo') if r[1] == 'backfill'])
     rc, again = st.cli('backfill', 'create', '--dag-id', 'brewline_backfill_demo', '--from-date', f, '--to-date', t, '--reprocess-behavior', 'none')
     time.sleep(4)
+    _, cn0 = st.sql("SELECT run_id, clear_number FROM dag_run WHERE dag_id = 'brewline_backfill_demo' AND run_type = 'backfill' ORDER BY run_after")
+    rc, comp = st.cli('backfill', 'create', '--dag-id', 'brewline_backfill_demo', '--from-date', f, '--to-date', t, '--reprocess-behavior', 'completed')
+    time.sleep(12)
+    _, cn1 = st.sql("SELECT run_id, clear_number FROM dag_run WHERE dag_id = 'brewline_backfill_demo' AND run_type = 'backfill' ORDER BY run_after")
     runs_after = st.runs('brewline_backfill_demo')
     n_after = len([r for r in runs_after if r[1] == 'backfill'])
     _, bf = st.sql('SELECT dag_id, from_date, to_date, max_active_runs, reprocess_behavior FROM backfill ORDER BY id')
     counts('af.backfill', {'window': [norm(f, shift=True), norm(t, shift=True)],
                            'created': [{'run_id': norm(r[0], shift=True), 'type': r[1], 'state': r[2], 'logical_date': norm(str(r[3]), shift=True)} for r in runs_after if r[1] == 'backfill'],
                            'backfill_rows': [[a, norm(str(b), shift=True), norm(str(c), shift=True), d, e] for a, b, c, d, e in bf],
-                           'runs_after_first_call': n_before, 'runs_after_second_call': n_after})
+                           'runs_after_first_call': n_before, 'runs_after_second_call': n_after, 'clear_numbers_after_none': [r[1] for r in cn0], 'clear_numbers_after_completed': [r[1] for r in cn1]})
     text('af.backfill_dry_run', norm(clean_console(dry, keep=('creating dag run', 'Created', 'Dry', 'dry')), shift=True) or norm(dry[-600:], shift=True))
     text('af.backfill_create', norm(clean_console(real, keep=('creating dag run', 'Created')), shift=True))
 
@@ -1274,6 +1279,16 @@ def sec_deadline():
     state = st.wait_run('brewline_deadline', run, timeout=90)
     _, dl = st.sql('SELECT count(*) FROM deadline')
     _, da = st.sql('SELECT count(*) FROM deadline_alert')
+    lines = []
+    for ln in (WORK / 'stack_logs' / 'scheduler.log').read_text().splitlines():
+        if 'allback' in ln and ('deadline_missed' in ln or 'ExecutorCallback' in ln or 'for callback' in ln):
+            m = LINE.match(ln) or re.match(r'^(\d{4}-\d{2}-\d{2} [\d:.+]+)\s+\[(\w+)\s*\]\s+(.*)$', ln)
+            if m:
+                msg = re.sub(r'\s+\[[\w.]+\](\s+\w+=.*)?$', '', m.group(3))
+                msg = re.sub(r'\s+(loc|duration|exit_code|workload_id|workload_type)=\S+', '', msg).strip()
+                msg = re.sub(r'callback [0-9a-f]{8}-[0-9a-f-]+', 'callback <id>', msg)
+                lines.append('[%s] %s' % (m.group(2), msg))
+    text('af.deadline_log', '\n'.join(lines))
     counts('af.deadline', {'deadline_seconds': 5, 'task_seconds': 20, 'callback_file': log.read_text().splitlines() if log.exists() else [], 'callback_seen_before_run_end': seen is not None and seen < 18,
                            'run_state': state, 'deadline_rows': dl[0][0], 'deadline_alert_rows': da[0][0]})
 
@@ -1295,7 +1310,7 @@ def sec_versions():
         time.sleep(1)
     r2 = st.trigger('brewline_first')
     st.wait_run('brewline_first', r2, timeout=90)
-    _, rows = st.sql('SELECT r.run_id, v.version_number FROM dag_run r JOIN dag_version v ON v.id = r.created_dag_version_id WHERE r.dag_id = ? ORDER BY r.id', ('brewline_first',))
+    _, rows = st.sql('SELECT ti.run_id, max(v.version_number) FROM task_instance ti JOIN dag_version v ON v.id = ti.dag_version_id WHERE ti.dag_id = ? AND ti.run_id IN (?, ?) AND ti.working_set = 1 GROUP BY ti.run_id ORDER BY min(ti.start_date)', ('brewline_first', r1, r2))
     _, tasks1 = st.sql('SELECT count(*) FROM task_instance WHERE dag_id = ? AND run_id = ? AND working_set = 1', ('brewline_first', r1))
     _, tasks2 = st.sql('SELECT count(*) FROM task_instance WHERE dag_id = ? AND run_id = ? AND working_set = 1', ('brewline_first', r2))
     counts('af.versions', {'versions_before': [x[0] for x in v0], 'versions_after': [x[0] for x in v1], 'runs': [{'run': 'first run', 'dag_version': rows[0][1], 'tasks': tasks1[0][0]}, {'run': 'second run', 'dag_version': rows[1][1], 'tasks': tasks2[0][0]}],
@@ -1373,6 +1388,50 @@ def sec_timetables_more():
     res['multiple_cron'] = probe('timetable', json.dumps(spec))
     counts('af.timetables_more', res)
 
+
+def sec_backoff():
+    """Exponential backoff: the delay before each retry, read back from the metadata database, next to the formula in the installed source."""
+    st = the_stack()
+    st.unpause('brewline_backoff')
+    ld = TODAY_REAL.isoformat() + 'T00:00:00+00:00'
+    run = st.trigger('brewline_backoff', logical_date=ld)
+    waiting = {}
+    t0 = time.time()
+    while time.time() - t0 < 150:
+        _, r = st.sql("SELECT try_number, end_date, retry_at, state FROM task_instance WHERE dag_id = ? AND run_id = ? AND task_id = ? ORDER BY try_number", ('brewline_backoff', run, 'call_partner'))
+        ends = {n: e for n, e, ra, sta in r}
+        for n, end, retry_at, sta in r:
+            if retry_at and sta == 'up_for_retry':
+                prev_end = ends.get(n - 1) or end
+                if prev_end:
+                    waiting[n - 1] = round(datetime.datetime.fromisoformat(retry_at).timestamp() - datetime.datetime.fromisoformat(prev_end).timestamp(), 2)
+        _, d = st.sql('SELECT state FROM dag_run WHERE dag_id = ? AND run_id = ?', ('brewline_backoff', run))
+        if d and d[0][0] in ('success', 'failed'):
+            break
+        time.sleep(0.2)
+    st.wait_run('brewline_backoff', run, timeout=150)
+    time.sleep(1)
+    _, rows = st.sql('SELECT try_number, state, end_date, retry_at, start_date FROM task_instance WHERE dag_id = ? AND run_id = ? AND task_id = ? ORDER BY try_number', ('brewline_backoff', run, 'call_partner'))
+
+    def p(x):
+        return datetime.datetime.fromisoformat(x).timestamp() if x else None
+    delays, waits = [], []
+    for i, (n, state, end, retry_at, start) in enumerate(rows):
+        if retry_at and end:
+            delays.append(round(p(retry_at) - p(end)))
+        if i + 1 < len(rows) and end:
+            waits.append(round(p(rows[i + 1][4]) - p(end), 1))
+    # the formula of Airflow 3.4.0 (airflow/models/taskinstance.py, _compute_retry_deadline), written out again here
+    import hashlib
+    expected = []
+    for k in range(1, 5):
+        base = max(1, -(-int(1 * 2 ** (k - 1) * 1000) // 1000))
+        ti_hash = int(hashlib.sha1(('brewline_backoff#call_partner#%s#%d' % (datetime.datetime.fromisoformat(ld).strftime('%Y-%m-%d %H:%M:%S+00:00'), k)).encode()).hexdigest(), 16)
+        expected.append(min(base + ti_hash % base, 10))
+    counts('af.backoff', {'retry_delay_seconds': 1, 'multiplier': 2.0, 'max_retry_delay_seconds': 10, 'retries': 4, 'tries': len(rows), 'final_state': rows[-1][1],
+                          'delays_in_database': [waiting[k] for k in sorted(waiting)], 'delays_from_formula': expected, 'seconds_between_end_and_next_start': waits,
+                          'dag_id': 'brewline_backoff', 'task_id': 'call_partner', 'logical_date': '2026-03-14 00:00:00+00:00'})
+
 # =====================================================================================================================================
 SECTIONS = []
 
@@ -1408,6 +1467,7 @@ section('failed_deps')(sec_failed_deps)
 section('waiting')(sec_waiting)
 section('pools')(sec_pools)
 section('assets')(sec_assets)
+section('backoff')(sec_backoff)
 section('config')(sec_config)
 section('cli')(sec_cli)
 section('retry_policy')(sec_retry_policy)
@@ -1454,7 +1514,10 @@ def main():
     finally:
         close_stack()
         finish()
-        shutil.rmtree(WORK, ignore_errors=True)
+        if os.environ.get('AF_KEEP'):
+            print('kept', WORK)
+        else:
+            shutil.rmtree(WORK, ignore_errors=True)
 
 
 if __name__ == '__main__':

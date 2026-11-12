@@ -14,9 +14,9 @@ with DAG(
         task_id="dates",
         bash_command="echo ds={{ ds }} nodash={{ ds_nodash }} logical_date={{ logical_date }} start={{ data_interval_start }} end={{ data_interval_end }}",
     )
-    path = BashOperator(
+    partition_path = BashOperator(
         task_id="partition_path",
         bash_command="echo s3://brewline-lake/raw/orders/dt={{ ds }}/region={{ params.region }}/",
     )
-    previous = BashOperator(task_id="previous_day", bash_command="echo {{ macros.ds_add(ds, -1) }}")
-    dates >> path >> previous
+    previous_day = BashOperator(task_id="previous_day", bash_command="echo {{ macros.ds_add(ds, -1) }}")
+    dates >> partition_path >> previous_day
