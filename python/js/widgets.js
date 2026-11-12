@@ -245,5 +245,82 @@
     W.genmemInfo = { data: data, estimate: estimate, targets: TARGETS };
   })();
 
+  /* ====================== Mission 5: seven file formats ====================== */
+  (function () {
+    var NOTES = {
+      'CSV': 'Text, row by row. Every value is written out as characters, and a query reads all of them.',
+      'CSV, gzip': 'The same text, compressed. Smaller, and it has to be unpacked from the start for every query.',
+      'CSV, zstd': 'The same text with zstd (new in the standard library in Python 3.14). The default level traded a little size for speed.',
+      'JSON Lines': 'One object per line. The key names repeat in every line, so the file is the largest.',
+      'JSON Lines, gzip': 'Compression removes most of the repeated key names.',
+      'Parquet, snappy': 'Columns stored together with their types, and statistics for every column. A query can read one column.',
+      'Parquet, zstd': 'The same columns with a stronger codec. The smallest file here.'
+    };
+    function data() { return G.counts('m5.formats'); }
+    function logw(x, lo, hi) { return Math.max(1, Math.round((Math.log10(x) - Math.log10(lo)) / (Math.log10(hi) - Math.log10(lo)) * 99)); }
+    function ms(x) { return x >= 100 ? fmtN(x, 0) + ' ms' : x >= 10 ? fmtN(x, 1) + ' ms' : fmtN(x, 2) + ' ms'; }
+    W.formats = {
+      steps: function () { return 1; },
+      hint: 'Pick size or time. Read the notes in the table.',
+      say: function () {
+        return 'The same 200,000 orders written in seven formats, and one DuckDB query run over each file: the sum of the totals. The sizes are exact. The times are medians of five runs on one machine, so read the ratios and not the digits.';
+      },
+      mood: function () { return 'wow'; },
+      render: function (box, s, i, A) {
+        var d = data(), st = A.local.fm || (A.local.fm = { m: 'size' }), csv = d.formats[0];
+        var vals = d.formats.map(function (f) { return st.m === 'size' ? f.bytes : f.query_ms; });
+        var max = Math.max.apply(null, vals), min = Math.min.apply(null, vals);
+        var h = '<div class="lab"><div class="lab-row"><span class="lab-l">Show</span><div class="sel-chips">' + chips(['size', 'time'], st.m, 'fm-m', function (k) { return k === 'size' ? 'size on disk' : 'time of one query'; }) + '</div></div><div class="gantt">' +
+          d.formats.map(function (f, k) {
+            var w = st.m === 'size' ? Math.max(1, Math.round(f.bytes / max * 100)) : logw(f.query_ms, min * 0.8, max);
+            var good = /Parquet/.test(f.format);
+            return '<div class="lane"><span class="lane-n lane-wide">' + esc(f.format) + '</span><div class="lane-track"><div class="gbar' + (good ? '' : ' bad') + '" style="width:' + w + '%"></div></div><span class="lane-v">' + (st.m === 'size' ? bytes(f.bytes) : ms(f.query_ms)) + '</span></div>';
+          }).join('') + '</div>' + (st.m === 'time' ? '<p class="lab-note">The bars for time use a log scale, because the slowest query took about ' + fmtN(max / min, 0) + ' times as long as the fastest.</p>' : '') +
+          table(['Format', 'Bytes', 'Against CSV', 'Query', 'What it is'], d.formats.map(function (f) { return [f.format, fmtN(f.bytes), fmtN(f.bytes / csv.bytes * 100, 0) + ' %', ms(f.query_ms), NOTES[f.format]]; })) +
+          '<p class="lab-note">' + esc(d.query) + '. ' + esc(d.note) + '. Every query returned the same total: ' + fmtN(d.formats[0].total, 2) + '.</p></div>';
+        box.innerHTML = h;
+        A.bindWidget = function (act, el) { if (act === 'fm-m') { st.m = el.getAttribute('data-v'); A.render(true); } };
+      }
+    };
+    W.formatsInfo = { data: data };
+  })();
+
+  /* ====================== Mission 5: text, bytes and encodings ====================== */
+  (function () {
+    function data() { return G.counts('m5.encoding'); }
+    function cell(d, t, fe, ra) { var c = d.cells[t + '|' + fe + '|' + ra]; if (!c) throw new Error('no recorded cell for ' + t + '|' + fe + '|' + ra); return c; }
+    /* the verdict for one combination: right text, wrong text without an error, or an error */
+    function verdict(d, t, fe, ra) {
+      var c = cell(d, t, fe, ra);
+      if (c.bytes === null) return { k: 'noenc', c: c };
+      if (c.error) return { k: 'error', c: c };
+      return { k: c.text === t ? 'ok' : 'garbled', c: c };
+    }
+    W.encoding = {
+      steps: function () { return 1; },
+      hint: 'Pick a text, the encoding it was saved with, and the encoding you read it with.',
+      say: function () {
+        return 'A file holds bytes. Saving text chooses an encoding, and reading it back must use the same one. Pick a text, how it was saved, and how it is read. These are the real results from Python: the bytes that were written, and what the reader made of them.';
+      },
+      mood: function () { return 'think'; },
+      render: function (box, s, i, A) {
+        var d = data(), st = A.local.en || (A.local.en = { t: 'café', fe: 'utf-8', ra: 'latin-1' }), v = verdict(d, st.t, st.fe, st.ra), c = v.c;
+        var msg = { ok: 'The text came back as it was written. Reading with the encoding that was used for saving is the rule.', garbled: 'No error, and the text is wrong. This is mojibake: every bad character is a valid character of the other encoding. It is the worst case, because nothing fails.', error: 'The reader refused the bytes. A loud error is better than quiet garbage. It names the problem and the byte where it starts.', noenc: 'The encoding cannot represent this text at all. Python refuses to write it.' }[v.k];
+        var h = '<div class="lab"><div class="lab-row"><span class="lab-l">Text</span><div class="sel-chips">' + chips(d.texts, st.t, 'en-t') + '</div></div>' +
+          '<div class="lab-row"><span class="lab-l">Saved as</span><div class="sel-chips">' + chips(d.file_encodings, st.fe, 'en-f') + '</div></div>' +
+          '<div class="lab-row"><span class="lab-l">Read as</span><div class="sel-chips">' + chips(d.readers, st.ra, 'en-r') + '</div></div>' +
+          code('python', 'python', 'text = ' + JSON.stringify(st.t).replace(/"/g, "'") + '\ndata = text.encode(' + "'" + st.fe + "'" + ')\ntext.encode(...).decode(' + "'" + st.ra + "'" + ')') +
+          '<div class="lab-out"><div class="big"><b>' + (c.bytes === null ? 'none' : c.length) + '</b><span>bytes in the file</span></div>' +
+          '<div class="big ' + (v.k === 'ok' ? 'good' : v.k === 'garbled' ? 'warn' : 'bad') + '"><b>' + esc(v.k === 'ok' ? 'correct' : v.k === 'garbled' ? 'garbled' : v.k === 'error' ? 'error' : 'cannot save') + '</b><span>what reading gives</span></div></div>' +
+          table(['The bytes, in hex', 'What the reader returns'], [[c.bytes === null ? 'nothing was written' : '`' + c.bytes + '`', c.error ? '**' + c.error + '**' : '`' + c.text + '`']]) +
+          '<div class="callout ' + (v.k === 'ok' ? 'good' : v.k === 'garbled' ? 'warn' : 'bad') + '">' + msg + '</div></div>';
+        box.innerHTML = h;
+        bindCodes(box);
+        A.bindWidget = function (act, el) { var x = el.getAttribute('data-v'); if (act === 'en-t') st.t = x; if (act === 'en-f') st.fe = x; if (act === 'en-r') st.ra = x; A.render(true); };
+      }
+    };
+    W.encodingInfo = { data: data, cell: cell, verdict: verdict };
+  })();
+
   /* @@END */
 })();

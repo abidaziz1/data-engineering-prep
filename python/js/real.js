@@ -62,7 +62,16 @@ LAB.real = {
   "m4/generator_close.py": "\"\"\"A generator that holds a resource: what happens when the caller stops early.\"\"\"\nfrom contextlib import closing\n\n\ndef read_lines(name):\n    print(\"open\", name)\n    try:\n        for i in range(1, 6):\n            yield i\n    finally:\n        print(\"close\", name)\n\n\nfor n in read_lines(\"a.csv\"):\n    if n == 3:\n        break\nprint(\"after the loop\")\n\nwith closing(read_lines(\"b.csv\")) as lines:\n    next(lines)\n    print(\"leaving the with block\")\nprint(\"done\")\n",
   "m4/flatten_json.py": "\"\"\"Coding round: walk nested JSON and yield (path, value) pairs, without building one big list.\"\"\"\n\n\ndef flatten(obj, prefix=\"\"):\n    if isinstance(obj, dict):\n        for key, value in obj.items():\n            yield from flatten(value, f\"{prefix}{key}.\")\n    elif isinstance(obj, list):\n        for i, value in enumerate(obj):\n            yield from flatten(value, f\"{prefix}{i}.\")\n    else:\n        yield prefix.rstrip(\".\"), obj\n\n\norder = {\n    \"order_id\": \"O-1\",\n    \"customer\": {\"id\": \"C-7\", \"tier\": \"gold\"},\n    \"lines\": [{\"sku\": \"LATTE\", \"qty\": 2}, {\"sku\": \"MUFFIN\", \"qty\": 1}],\n    \"note\": None,\n}\nfor path, value in flatten(order):\n    print(f\"{path:<16} {value!r}\")\n\nassert dict(flatten({})) == {}\nassert dict(flatten({\"a\": [1, [2, 3]]})) == {\"a.0\": 1, \"a.1.0\": 2, \"a.1.1\": 3}\nprint(\"tests passed\")\n",
   "m4/sessionize.py": "\"\"\"Coding round: split each user's events into sessions. A gap of more than 30 minutes starts a new session.\"\"\"\n\n\ndef sessionize(events, gap=30):\n    \"\"\"events: (user, minute) pairs, sorted by user and then by minute. Yield (user, first, last, count).\"\"\"\n    current = None\n    for user, minute in events:\n        if current and current[0] == user and minute - current[2] <= gap:\n            current[2] = minute\n            current[3] += 1\n        else:\n            if current:\n                yield tuple(current)\n            current = [user, minute, minute, 1]\n    if current:\n        yield tuple(current)\n\n\nevents = [(\"C-1\", 5), (\"C-1\", 20), (\"C-1\", 90), (\"C-1\", 100), (\"C-2\", 15), (\"C-3\", 0), (\"C-3\", 30), (\"C-3\", 61)]\nfor user, first, last, count in sessionize(events):\n    print(f\"{user}  minutes {first:>3} to {last:>3}  events: {count}\")\n\nassert list(sessionize([])) == []\nassert list(sessionize([(\"A\", 0), (\"A\", 30)])) == [(\"A\", 0, 30, 2)]\nassert list(sessionize([(\"A\", 0), (\"A\", 31)])) == [(\"A\", 0, 0, 1), (\"A\", 31, 31, 1)]\nprint(\"tests passed\")\n",
-  "m4/pipeline.py": "\"\"\"One pass over a CSV file of orders, in small steps, with the memory that Python used.\"\"\"\nimport csv\nimport itertools\nimport sys\nimport tracemalloc\nfrom decimal import Decimal\n\n\ndef read_rows(path):\n    with open(path, newline=\"\", encoding=\"utf-8\") as f:\n        yield from csv.DictReader(f)\n\n\ndef parse(rows):\n    for r in rows:\n        yield {\"order_id\": r[\"order_id\"], \"store\": r[\"store\"], \"status\": r[\"status\"], \"cents\": int(Decimal(r[\"total\"]) * 100)}\n\n\ndef paid(rows):\n    return (r for r in rows if r[\"status\"] == \"paid\")\n\n\ndef batches(rows, size):\n    return itertools.batched(rows, size)\n\n\ntracemalloc.start()\nrows_in_batches = batches(paid(parse(read_rows(sys.argv[1]))), 10_000)\ntotal_cents = orders = batch_count = 0\nfor batch in rows_in_batches:\n    total_cents += sum(r[\"cents\"] for r in batch)\n    orders += len(batch)\n    batch_count += 1\npeak = tracemalloc.get_traced_memory()[1]\n\nprint(f\"paid orders: {orders:,} in {batch_count} batches\")\nprint(f\"paid revenue: {total_cents / 100:,.2f}\")\nprint(f\"peak memory held by Python: {peak / 1e6:.2f} MB\")\n"
+  "m4/pipeline.py": "\"\"\"One pass over a CSV file of orders, in small steps, with the memory that Python used.\"\"\"\nimport csv\nimport itertools\nimport sys\nimport tracemalloc\nfrom decimal import Decimal\n\n\ndef read_rows(path):\n    with open(path, newline=\"\", encoding=\"utf-8\") as f:\n        yield from csv.DictReader(f)\n\n\ndef parse(rows):\n    for r in rows:\n        yield {\"order_id\": r[\"order_id\"], \"store\": r[\"store\"], \"status\": r[\"status\"], \"cents\": int(Decimal(r[\"total\"]) * 100)}\n\n\ndef paid(rows):\n    return (r for r in rows if r[\"status\"] == \"paid\")\n\n\ndef batches(rows, size):\n    return itertools.batched(rows, size)\n\n\ntracemalloc.start()\nrows_in_batches = batches(paid(parse(read_rows(sys.argv[1]))), 10_000)\ntotal_cents = orders = batch_count = 0\nfor batch in rows_in_batches:\n    total_cents += sum(r[\"cents\"] for r in batch)\n    orders += len(batch)\n    batch_count += 1\npeak = tracemalloc.get_traced_memory()[1]\n\nprint(f\"paid orders: {orders:,} in {batch_count} batches\")\nprint(f\"paid revenue: {total_cents / 100:,.2f}\")\nprint(f\"peak memory held by Python: {peak / 1e6:.2f} MB\")\n",
+  "m5/csv_traps.py": "\"\"\"One supplier file, read two ways. The file has a quoted comma, a quoted line break and a byte order mark.\"\"\"\nimport csv\nimport io\n\nraw = (\n    \"﻿order_id,customer,note,total\\n\"\n    'O-1,\"Ng, Mei\",\"extra shot\",12.50\\n'\n    'O-2,Ravi,\"leave at door\\nring twice\",4.75\\n'\n    \"O-3,Zoë,,31.00\\n\"\n)\nprint(\"bytes in the file:\", len(raw.encode(\"utf-8\")), \"  lines:\", raw.count(\"\\n\"))\n\nprint(\"\\nwith line.split(','):\")\nfor line in raw.splitlines():\n    print(\"  \", len(line.split(\",\")), \"fields:\", line.split(\",\")[:4])\n\nprint(\"\\nwith the csv module:\")\nfor row in csv.DictReader(io.StringIO(raw)):\n    print(\"  \", row)\n\nprint(\"\\nwith the csv module, and the byte order mark removed:\")\nrows = list(csv.DictReader(io.StringIO(raw.lstrip(\"﻿\"))))\nprint(\"  \", [r[\"order_id\"] for r in rows], \"total:\", sum(float(r[\"total\"]) for r in rows))\n",
+  "m5/encodings.py": "\"\"\"Text is characters. A file is bytes. An encoding is the rule between them.\"\"\"\nfor text in [\"Zoe\", \"Zoë\", \"café\", \"東京\"]:\n    print(f\"{text!r}\")\n    for enc in [\"utf-8\", \"latin-1\", \"utf-16\"]:\n        try:\n            data = text.encode(enc)\n            print(f\"   {enc:<8} {len(data)} bytes  {data.hex(' ')}\")\n        except UnicodeEncodeError as e:\n            print(f\"   {enc:<8} cannot encode: {e.reason}\")\n\ndata = \"café\".encode(\"utf-8\")\nprint()\nprint(\"the bytes of 'café' in UTF-8, read as latin-1:\", data.decode(\"latin-1\"))\nprint(\"the bytes of 'café' in latin-1, read as UTF-8:\", end=\" \")\ntry:\n    \"café\".encode(\"latin-1\").decode(\"utf-8\")\nexcept UnicodeDecodeError as e:\n    print(\"UnicodeDecodeError:\", e.reason, \"at byte\", e.start)\nprint(\"the same bytes, errors='replace':\", \"café\".encode(\"latin-1\").decode(\"utf-8\", errors=\"replace\"))\nprint(\"a file saved with a byte order mark:\", repr(b\"\\xef\\xbb\\xbforder_id\".decode(\"utf-8\")), \"against\", repr(b\"\\xef\\xbb\\xbforder_id\".decode(\"utf-8-sig\")))\n",
+  "m5/json_lines.py": "\"\"\"One JSON document, or one JSON object per line, and a file that was cut off in the middle.\"\"\"\nimport json\n\norders = [{\"order_id\": f\"O-{i}\", \"total\": i * 1.5} for i in range(1, 6)]\n\nwhole = json.dumps(orders)\nlines = \"\\n\".join(json.dumps(o) for o in orders) + \"\\n\"\nprint(\"JSON array:\", len(whole), \"bytes.  JSON Lines:\", len(lines), \"bytes, one object per line\")\n\ncut = 118  # the upload stopped here\nprint(\"\\nthe array, cut at byte\", cut, \":\")\ntry:\n    json.loads(whole[:cut])\nexcept json.JSONDecodeError as e:\n    print(\"  JSONDecodeError:\", e.msg, f\"(line {e.lineno}, column {e.colno})  ->  0 orders readable\")\n\nprint(\"\\nthe JSON Lines file, cut at byte\", cut, \":\")\ngood = bad = 0\nfor line in lines[:cut].split(\"\\n\"):\n    if not line:\n        continue\n    try:\n        json.loads(line)\n        good += 1\n    except json.JSONDecodeError:\n        bad += 1\nprint(\"  readable lines:\", good, \"  broken lines:\", bad, \"(the last one, cut in the middle)\")\nprint(\"  the last bytes of the cut file:\", repr(lines[:cut][-14:]))\n",
+  "m5/atomic_write.py": "\"\"\"A job that stops while it writes. Two ways to write the same file.\"\"\"\nimport os\nimport pathlib\nimport tempfile\n\nrows = [f\"O-{i},{i * 2.5}\\n\" for i in range(1, 6)]\ntarget = pathlib.Path(\"orders.csv\")\ntarget.write_text(\"order_id,total\\nO-0,1.0\\n\")  # last night's complete file\n\n\ndef write_in_place(path, rows, fail_after):\n    with open(path, \"w\") as f:\n        f.write(\"order_id,total\\n\")\n        for n, r in enumerate(rows):\n            if n == fail_after:\n                raise RuntimeError(\"the job was killed\")\n            f.write(r)\n\n\ndef write_atomically(path, rows, fail_after):\n    fd, tmp = tempfile.mkstemp(dir=path.parent, suffix=\".tmp\")\n    try:\n        with os.fdopen(fd, \"w\") as f:\n            f.write(\"order_id,total\\n\")\n            for n, r in enumerate(rows):\n                if n == fail_after:\n                    raise RuntimeError(\"the job was killed\")\n                f.write(r)\n        os.replace(tmp, path)  # one step: the new file replaces the old one\n    except BaseException:\n        os.unlink(tmp)\n        raise\n\n\ndef lines(path):\n    return len(path.read_text().splitlines()) - 1\n\n\ntry:\n    write_in_place(target, rows, fail_after=3)\nexcept RuntimeError as e:\n    print(\"in place:   \", e, \"-> the file now has\", lines(target), \"of 5 orders, and last night's file is gone\")\n\ntarget.write_text(\"order_id,total\\nO-0,1.0\\n\")\ntry:\n    write_atomically(target, rows, fail_after=3)\nexcept RuntimeError as e:\n    print(\"atomically: \", e, \"-> the file still has\", lines(target), \"order from last night, nothing half written\")\n\nwrite_atomically(target, rows, fail_after=99)\nprint(\"atomically, no failure: the file has\", lines(target), \"orders;\", sorted(p.name for p in pathlib.Path(\".\").iterdir() if p.suffix == \".tmp\"), \"temporary files are left\")\n",
+  "m5/paths.py": "\"\"\"Paths with pathlib, a partitioned layout, and the sort that surprises people.\"\"\"\nimport pathlib\nimport tempfile\n\nroot = pathlib.Path(tempfile.mkdtemp())\nfor name in [\"part-1.csv\", \"part-2.csv\", \"part-10.csv\", \"notes.txt\"]:\n    (root / \"dt=2026-03-14\").mkdir(parents=True, exist_ok=True)\n    (root / \"dt=2026-03-14\" / name).write_text(\"x\")\n\np = root / \"dt=2026-03-14\" / \"part-1.csv\"\nprint(\"name:\", p.name, \" stem:\", p.stem, \" suffix:\", p.suffix, \" parent folder:\", p.parent.name)\nprint(\"another extension:\", p.with_suffix(\".parquet\").name)\nprint(\"is a file:\", p.is_file(), \" exists:\", (root / \"nothing\").exists())\n\nfiles = [f.name for f in (root / \"dt=2026-03-14\").glob(\"part-*.csv\")]\nprint(\"\\nsorted as text:   \", sorted(files))\nprint(\"sorted by number: \", sorted(files, key=lambda n: int(n.split(\"-\")[1].split(\".\")[0])))\nprint(\"zero-padded names sort correctly as text:\", sorted([\"part-0001.csv\", \"part-0002.csv\", \"part-0010.csv\"]))\n",
+  "m5/parquet_tour.py": "\"\"\"What is inside a Parquet file: row groups, types and the minimum and maximum of each column.\"\"\"\nimport datetime as dt\nimport random\nfrom decimal import Decimal\n\nimport pyarrow as pa\nimport pyarrow.dataset as ds\nimport pyarrow.parquet as pq\n\nrng = random.Random(42)  # made-up orders, the same on every machine\nstart = dt.datetime(2026, 3, 1)\nrows = sorted(\n    (f\"O-{i:07d}\", rng.choice([\"SG-01\", \"SG-02\", \"KL-01\", \"JK-01\"]), rng.choice([\"paid\", \"paid\", \"paid\", \"cancelled\"]),\n     Decimal(rng.randint(350, 12000)) / 100, start + dt.timedelta(seconds=rng.randint(0, 31 * 86400 - 1)))\n    for i in range(200_000)\n)\nrows.sort(key=lambda r: r[4])\ntable = pa.table({\n    \"order_id\": [r[0] for r in rows],\n    \"store\": [r[1] for r in rows],\n    \"status\": [r[2] for r in rows],\n    \"total\": pa.array([r[3] for r in rows], pa.decimal128(10, 2)),\n    \"ordered_at\": pa.array([r[4] for r in rows], pa.timestamp(\"us\")),\n})\npq.write_table(table, \"orders.parquet\", row_group_size=50_000, compression=\"zstd\")\n\nf = pq.ParquetFile(\"orders.parquet\")\nprint(\"rows:\", f.metadata.num_rows, \" row groups:\", f.metadata.num_row_groups, \" columns:\", f.metadata.num_columns)\nprint(f.schema_arrow)\nprint()\nprint(\"row group  rows    first order_at        last order_at\")\nfor g in range(f.metadata.num_row_groups):\n    st = f.metadata.row_group(g).column(4).statistics\n    print(f\"{g:>9}  {f.metadata.row_group(g).num_rows:<6}  {st.min}  {st.max}\")\n\ndataset = ds.dataset(\"orders.parquet\")\nflt = ds.field(\"ordered_at\") >= pa.scalar(dt.datetime(2026, 3, 30), pa.timestamp(\"us\"))\nfragment = next(iter(dataset.get_fragments()))\npicked = list(fragment.split_by_row_group(filter=flt))\nprint(f\"\\nrows from 30 March on: the statistics select {len(picked)} of {f.metadata.num_row_groups} row groups to read\")\nprint(\"one column only:\", pq.read_table(\"orders.parquet\", columns=[\"total\"]).num_rows, \"values, without reading the other four\")\n",
+  "m5/parse_log.py": "\"\"\"Coding round: turn log lines into dicts, and count the lines that cannot be parsed.\"\"\"\nimport re\n\nPATTERN = re.compile(r\"^(?P<ts>\\S+) (?P<level>[A-Z]+) (?P<job>\\S+) rows=(?P<rows>\\d+) ms=(?P<ms>\\d+)$\")\n\nlines = [\n    \"2026-03-14T02:00:01Z INFO load_orders rows=1200 ms=340\",\n    \"2026-03-14T02:00:05Z WARN load_orders rows=0 ms=12\",\n    \"2026-03-14T02:01:00Z INFO load_stores rows=40 ms=8\",\n    \"this line is not a log line\",\n    \"2026-03-14T02:02:00Z INFO load_orders rows=abc ms=9\",\n]\n\n\ndef parse_log(lines):\n    good, bad = [], 0\n    for line in lines:\n        m = PATTERN.match(line)\n        if not m:\n            bad += 1\n            continue\n        d = m.groupdict()\n        d[\"rows\"], d[\"ms\"] = int(d[\"rows\"]), int(d[\"ms\"])\n        good.append(d)\n    return good, bad\n\n\ngood, bad = parse_log(lines)\nfor d in good:\n    print(d[\"ts\"], d[\"level\"].ljust(4), d[\"job\"].ljust(12), d[\"rows\"], d[\"ms\"])\nprint(\"unparsable lines:\", bad)\n\nassert len(good) == 3 and bad == 2\nassert parse_log([]) == ([], 0)\nprint(\"tests passed\")\n",
+  "m5/write_partitions.py": "\"\"\"Coding round: write orders into one folder for each day, so a later job can read a single day.\"\"\"\nimport csv\nimport os\nimport pathlib\nimport tempfile\nfrom collections import defaultdict\n\norders = [\n    (\"O-1\", \"2026-03-14 08:15:00\", 12.5), (\"O-2\", \"2026-03-14 09:02:00\", 4.75), (\"O-3\", \"2026-03-15 00:03:00\", 8.2),\n    (\"O-4\", \"2026-03-15 10:41:00\", 19.9), (\"O-5\", \"2026-03-14 23:58:00\", 31.0),\n]\n\n\ndef write_partitions(rows, root):\n    by_day = defaultdict(list)\n    for order_id, ts, total in rows:\n        by_day[ts[:10]].append((order_id, ts, total))\n    written = {}\n    for day, day_rows in sorted(by_day.items()):\n        folder = pathlib.Path(root) / f\"dt={day}\"\n        folder.mkdir(parents=True, exist_ok=True)\n        fd, tmp = tempfile.mkstemp(dir=folder, suffix=\".tmp\")\n        with os.fdopen(fd, \"w\", newline=\"\") as f:\n            csv.writer(f).writerows(sorted(day_rows))\n        os.replace(tmp, folder / \"part-0000.csv\")\n        written[day] = len(day_rows)\n    return written\n\n\nroot = tempfile.mkdtemp()\nresult = write_partitions(orders, root)\nfor day, n in result.items():\n    print(f\"dt={day}/part-0000.csv  {n} rows\")\nassert write_partitions(orders, root) == result  # running it again changes nothing\nassert sorted(p.name for p in pathlib.Path(root).iterdir()) == [\"dt=2026-03-14\", \"dt=2026-03-15\"]\nprint(\"tests passed\")\n",
+  "m5/read_csv_safely.py": "\"\"\"The safe way to read a supplier CSV: say the encoding, pass newline=\"\", and let utf-8-sig drop a byte order mark.\"\"\"\nimport csv\n\nwith open(\"supplier.csv\", newline=\"\", encoding=\"utf-8-sig\") as f:\n    rows = list(csv.DictReader(f))\n\nprint(\"rows:\", len(rows), \" columns:\", list(rows[0]))\nprint(\"customer of the first row:\", rows[0][\"customer\"])\nprint(\"note of the second row:\", repr(rows[1][\"note\"]))\nprint(\"total as money:\", sum(float(r[\"total\"]) for r in rows))\n"
  },
  "text": {
   "m1_fragile_script.py#1": "Traceback (most recent call last):\n  File \"/work/m1_fragile_script/m1_fragile_script.py\", line 13, in <module>\n    r[\"total\"] = float(r[\"total\"])\n                 ~~~~~^^^^^^^^^^^^\nValueError: could not convert string to float: 'n/a'",
@@ -101,7 +110,16 @@ LAB.real = {
   "m4/generator_close.py": "open a.csv\nclose a.csv\nafter the loop\nopen b.csv\nleaving the with block\nclose b.csv\ndone",
   "m4/flatten_json.py": "order_id         'O-1'\ncustomer.id      'C-7'\ncustomer.tier    'gold'\nlines.0.sku      'LATTE'\nlines.0.qty      2\nlines.1.sku      'MUFFIN'\nlines.1.qty      1\nnote             None\ntests passed",
   "m4/sessionize.py": "C-1  minutes   5 to  20  events: 2\nC-1  minutes  90 to 100  events: 2\nC-2  minutes  15 to  15  events: 1\nC-3  minutes   0 to  30  events: 2\nC-3  minutes  61 to  61  events: 1\ntests passed",
-  "m4/pipeline.py": "paid orders: 133,273 in 14 batches\npaid revenue: 8,250,382.67\npeak memory held by Python: 7.47 MB"
+  "m4/pipeline.py": "paid orders: 133,273 in 14 batches\npaid revenue: 8,250,382.67\npeak memory held by Python: 7.47 MB",
+  "m5/csv_traps.py": "bytes in the file: 122   lines: 5\n\nwith line.split(','):\n   4 fields: ['\\ufefforder_id', 'customer', 'note', 'total']\n   5 fields: ['O-1', '\"Ng', ' Mei\"', '\"extra shot\"']\n   3 fields: ['O-2', 'Ravi', '\"leave at door']\n   2 fields: ['ring twice\"', '4.75']\n   4 fields: ['O-3', 'Zoë', '', '31.00']\n\nwith the csv module:\n   {'\\ufefforder_id': 'O-1', 'customer': 'Ng, Mei', 'note': 'extra shot', 'total': '12.50'}\n   {'\\ufefforder_id': 'O-2', 'customer': 'Ravi', 'note': 'leave at door\\nring twice', 'total': '4.75'}\n   {'\\ufefforder_id': 'O-3', 'customer': 'Zoë', 'note': '', 'total': '31.00'}\n\nwith the csv module, and the byte order mark removed:\n   ['O-1', 'O-2', 'O-3'] total: 48.25",
+  "m5/encodings.py": "'Zoe'\n   utf-8    3 bytes  5a 6f 65\n   latin-1  3 bytes  5a 6f 65\n   utf-16   8 bytes  ff fe 5a 00 6f 00 65 00\n'Zoë'\n   utf-8    4 bytes  5a 6f c3 ab\n   latin-1  3 bytes  5a 6f eb\n   utf-16   8 bytes  ff fe 5a 00 6f 00 eb 00\n'café'\n   utf-8    5 bytes  63 61 66 c3 a9\n   latin-1  4 bytes  63 61 66 e9\n   utf-16   10 bytes  ff fe 63 00 61 00 66 00 e9 00\n'東京'\n   utf-8    6 bytes  e6 9d b1 e4 ba ac\n   latin-1  cannot encode: ordinal not in range(256)\n   utf-16   6 bytes  ff fe 71 67 ac 4e\n\nthe bytes of 'café' in UTF-8, read as latin-1: cafÃ©\nthe bytes of 'café' in latin-1, read as UTF-8: UnicodeDecodeError: unexpected end of data at byte 3\nthe same bytes, errors='replace': caf�\na file saved with a byte order mark: '\\ufefforder_id' against 'order_id'",
+  "m5/json_lines.py": "JSON array: 175 bytes.  JSON Lines: 170 bytes, one object per line\n\nthe array, cut at byte 118 :\n  JSONDecodeError: Expecting value (line 1, column 119)  ->  0 orders readable\n\nthe JSON Lines file, cut at byte 118 :\n  readable lines: 3   broken lines: 1 (the last one, cut in the middle)\n  the last bytes of the cut file: 'order_id\": \"O-'",
+  "m5/atomic_write.py": "in place:    the job was killed -> the file now has 3 of 5 orders, and last night's file is gone\natomically:  the job was killed -> the file still has 1 order from last night, nothing half written\natomically, no failure: the file has 5 orders; [] temporary files are left",
+  "m5/paths.py": "name: part-1.csv  stem: part-1  suffix: .csv  parent folder: dt=2026-03-14\nanother extension: part-1.parquet\nis a file: True  exists: False\n\nsorted as text:    ['part-1.csv', 'part-10.csv', 'part-2.csv']\nsorted by number:  ['part-1.csv', 'part-2.csv', 'part-10.csv']\nzero-padded names sort correctly as text: ['part-0001.csv', 'part-0002.csv', 'part-0010.csv']",
+  "m5/parquet_tour.py": "rows: 200000  row groups: 4  columns: 5\norder_id: string\nstore: string\nstatus: string\ntotal: decimal128(10, 2)\nordered_at: timestamp[us]\n\nrow group  rows    first order_at        last order_at\n        0  50000   2026-03-01 00:00:05  2026-03-08 18:38:14\n        1  50000   2026-03-08 18:38:16  2026-03-16 13:01:20\n        2  50000   2026-03-16 13:01:22  2026-03-24 06:44:28\n        3  50000   2026-03-24 06:44:36  2026-03-31 23:59:56\n\nrows from 30 March on: the statistics select 1 of 4 row groups to read\none column only: 200000 values, without reading the other four",
+  "m5/parse_log.py": "2026-03-14T02:00:01Z INFO load_orders  1200 340\n2026-03-14T02:00:05Z WARN load_orders  0 12\n2026-03-14T02:01:00Z INFO load_stores  40 8\nunparsable lines: 2\ntests passed",
+  "m5/write_partitions.py": "dt=2026-03-14/part-0000.csv  3 rows\ndt=2026-03-15/part-0000.csv  2 rows\ntests passed",
+  "m5/read_csv_safely.py": "rows: 3  columns: ['order_id', 'customer', 'note', 'total']\ncustomer of the first row: Ng, Mei\nnote of the second row: 'leave at door\\nring twice'\ntotal as money: 48.25"
  },
  "tables": {
   "m3.structs": {
@@ -230,7 +248,16 @@ LAB.real = {
    "m4/generator_close.py": 0,
    "m4/flatten_json.py": 0,
    "m4/sessionize.py": 0,
-   "m4/pipeline.py": 0
+   "m4/pipeline.py": 0,
+   "m5/csv_traps.py": 0,
+   "m5/encodings.py": 0,
+   "m5/json_lines.py": 0,
+   "m5/atomic_write.py": 0,
+   "m5/paths.py": 0,
+   "m5/parquet_tour.py": 0,
+   "m5/parse_log.py": 0,
+   "m5/write_partitions.py": 0,
+   "m5/read_csv_safely.py": 0
   },
   "m2.specifiers.pandas": {
    "versions": [
@@ -555,6 +582,478 @@ LAB.real = {
     46796291
    ],
    "note": "peak bytes of Python memory (tracemalloc) while adding up the paid orders of a CSV file; both ways give the same total"
+  },
+  "m5.encoding": {
+   "texts": [
+    "Zoe",
+    "Zoë",
+    "café",
+    "Ñandú",
+    "東京"
+   ],
+   "file_encodings": [
+    "utf-8",
+    "utf-16",
+    "latin-1",
+    "cp1252"
+   ],
+   "readers": [
+    "utf-8",
+    "latin-1",
+    "cp1252",
+    "ascii"
+   ],
+   "cells": {
+    "Zoe|utf-8|utf-8": {
+     "bytes": "5a 6f 65",
+     "length": 3,
+     "text": "Zoe"
+    },
+    "Zoe|utf-8|latin-1": {
+     "bytes": "5a 6f 65",
+     "length": 3,
+     "text": "Zoe"
+    },
+    "Zoe|utf-8|cp1252": {
+     "bytes": "5a 6f 65",
+     "length": 3,
+     "text": "Zoe"
+    },
+    "Zoe|utf-8|ascii": {
+     "bytes": "5a 6f 65",
+     "length": 3,
+     "text": "Zoe"
+    },
+    "Zoe|utf-16|utf-8": {
+     "bytes": "ff fe 5a 00 6f 00 65 00",
+     "length": 8,
+     "error": "UnicodeDecodeError: invalid start byte at byte 0"
+    },
+    "Zoe|utf-16|latin-1": {
+     "bytes": "ff fe 5a 00 6f 00 65 00",
+     "length": 8,
+     "text": "ÿþZ\u0000o\u0000e\u0000"
+    },
+    "Zoe|utf-16|cp1252": {
+     "bytes": "ff fe 5a 00 6f 00 65 00",
+     "length": 8,
+     "text": "ÿþZ\u0000o\u0000e\u0000"
+    },
+    "Zoe|utf-16|ascii": {
+     "bytes": "ff fe 5a 00 6f 00 65 00",
+     "length": 8,
+     "error": "UnicodeDecodeError: ordinal not in range(128) at byte 0"
+    },
+    "Zoe|latin-1|utf-8": {
+     "bytes": "5a 6f 65",
+     "length": 3,
+     "text": "Zoe"
+    },
+    "Zoe|latin-1|latin-1": {
+     "bytes": "5a 6f 65",
+     "length": 3,
+     "text": "Zoe"
+    },
+    "Zoe|latin-1|cp1252": {
+     "bytes": "5a 6f 65",
+     "length": 3,
+     "text": "Zoe"
+    },
+    "Zoe|latin-1|ascii": {
+     "bytes": "5a 6f 65",
+     "length": 3,
+     "text": "Zoe"
+    },
+    "Zoe|cp1252|utf-8": {
+     "bytes": "5a 6f 65",
+     "length": 3,
+     "text": "Zoe"
+    },
+    "Zoe|cp1252|latin-1": {
+     "bytes": "5a 6f 65",
+     "length": 3,
+     "text": "Zoe"
+    },
+    "Zoe|cp1252|cp1252": {
+     "bytes": "5a 6f 65",
+     "length": 3,
+     "text": "Zoe"
+    },
+    "Zoe|cp1252|ascii": {
+     "bytes": "5a 6f 65",
+     "length": 3,
+     "text": "Zoe"
+    },
+    "Zoë|utf-8|utf-8": {
+     "bytes": "5a 6f c3 ab",
+     "length": 4,
+     "text": "Zoë"
+    },
+    "Zoë|utf-8|latin-1": {
+     "bytes": "5a 6f c3 ab",
+     "length": 4,
+     "text": "ZoÃ«"
+    },
+    "Zoë|utf-8|cp1252": {
+     "bytes": "5a 6f c3 ab",
+     "length": 4,
+     "text": "ZoÃ«"
+    },
+    "Zoë|utf-8|ascii": {
+     "bytes": "5a 6f c3 ab",
+     "length": 4,
+     "error": "UnicodeDecodeError: ordinal not in range(128) at byte 2"
+    },
+    "Zoë|utf-16|utf-8": {
+     "bytes": "ff fe 5a 00 6f 00 eb 00",
+     "length": 8,
+     "error": "UnicodeDecodeError: invalid start byte at byte 0"
+    },
+    "Zoë|utf-16|latin-1": {
+     "bytes": "ff fe 5a 00 6f 00 eb 00",
+     "length": 8,
+     "text": "ÿþZ\u0000o\u0000ë\u0000"
+    },
+    "Zoë|utf-16|cp1252": {
+     "bytes": "ff fe 5a 00 6f 00 eb 00",
+     "length": 8,
+     "text": "ÿþZ\u0000o\u0000ë\u0000"
+    },
+    "Zoë|utf-16|ascii": {
+     "bytes": "ff fe 5a 00 6f 00 eb 00",
+     "length": 8,
+     "error": "UnicodeDecodeError: ordinal not in range(128) at byte 0"
+    },
+    "Zoë|latin-1|utf-8": {
+     "bytes": "5a 6f eb",
+     "length": 3,
+     "error": "UnicodeDecodeError: unexpected end of data at byte 2"
+    },
+    "Zoë|latin-1|latin-1": {
+     "bytes": "5a 6f eb",
+     "length": 3,
+     "text": "Zoë"
+    },
+    "Zoë|latin-1|cp1252": {
+     "bytes": "5a 6f eb",
+     "length": 3,
+     "text": "Zoë"
+    },
+    "Zoë|latin-1|ascii": {
+     "bytes": "5a 6f eb",
+     "length": 3,
+     "error": "UnicodeDecodeError: ordinal not in range(128) at byte 2"
+    },
+    "Zoë|cp1252|utf-8": {
+     "bytes": "5a 6f eb",
+     "length": 3,
+     "error": "UnicodeDecodeError: unexpected end of data at byte 2"
+    },
+    "Zoë|cp1252|latin-1": {
+     "bytes": "5a 6f eb",
+     "length": 3,
+     "text": "Zoë"
+    },
+    "Zoë|cp1252|cp1252": {
+     "bytes": "5a 6f eb",
+     "length": 3,
+     "text": "Zoë"
+    },
+    "Zoë|cp1252|ascii": {
+     "bytes": "5a 6f eb",
+     "length": 3,
+     "error": "UnicodeDecodeError: ordinal not in range(128) at byte 2"
+    },
+    "café|utf-8|utf-8": {
+     "bytes": "63 61 66 c3 a9",
+     "length": 5,
+     "text": "café"
+    },
+    "café|utf-8|latin-1": {
+     "bytes": "63 61 66 c3 a9",
+     "length": 5,
+     "text": "cafÃ©"
+    },
+    "café|utf-8|cp1252": {
+     "bytes": "63 61 66 c3 a9",
+     "length": 5,
+     "text": "cafÃ©"
+    },
+    "café|utf-8|ascii": {
+     "bytes": "63 61 66 c3 a9",
+     "length": 5,
+     "error": "UnicodeDecodeError: ordinal not in range(128) at byte 3"
+    },
+    "café|utf-16|utf-8": {
+     "bytes": "ff fe 63 00 61 00 66 00 e9 00",
+     "length": 10,
+     "error": "UnicodeDecodeError: invalid start byte at byte 0"
+    },
+    "café|utf-16|latin-1": {
+     "bytes": "ff fe 63 00 61 00 66 00 e9 00",
+     "length": 10,
+     "text": "ÿþc\u0000a\u0000f\u0000é\u0000"
+    },
+    "café|utf-16|cp1252": {
+     "bytes": "ff fe 63 00 61 00 66 00 e9 00",
+     "length": 10,
+     "text": "ÿþc\u0000a\u0000f\u0000é\u0000"
+    },
+    "café|utf-16|ascii": {
+     "bytes": "ff fe 63 00 61 00 66 00 e9 00",
+     "length": 10,
+     "error": "UnicodeDecodeError: ordinal not in range(128) at byte 0"
+    },
+    "café|latin-1|utf-8": {
+     "bytes": "63 61 66 e9",
+     "length": 4,
+     "error": "UnicodeDecodeError: unexpected end of data at byte 3"
+    },
+    "café|latin-1|latin-1": {
+     "bytes": "63 61 66 e9",
+     "length": 4,
+     "text": "café"
+    },
+    "café|latin-1|cp1252": {
+     "bytes": "63 61 66 e9",
+     "length": 4,
+     "text": "café"
+    },
+    "café|latin-1|ascii": {
+     "bytes": "63 61 66 e9",
+     "length": 4,
+     "error": "UnicodeDecodeError: ordinal not in range(128) at byte 3"
+    },
+    "café|cp1252|utf-8": {
+     "bytes": "63 61 66 e9",
+     "length": 4,
+     "error": "UnicodeDecodeError: unexpected end of data at byte 3"
+    },
+    "café|cp1252|latin-1": {
+     "bytes": "63 61 66 e9",
+     "length": 4,
+     "text": "café"
+    },
+    "café|cp1252|cp1252": {
+     "bytes": "63 61 66 e9",
+     "length": 4,
+     "text": "café"
+    },
+    "café|cp1252|ascii": {
+     "bytes": "63 61 66 e9",
+     "length": 4,
+     "error": "UnicodeDecodeError: ordinal not in range(128) at byte 3"
+    },
+    "Ñandú|utf-8|utf-8": {
+     "bytes": "c3 91 61 6e 64 c3 ba",
+     "length": 7,
+     "text": "Ñandú"
+    },
+    "Ñandú|utf-8|latin-1": {
+     "bytes": "c3 91 61 6e 64 c3 ba",
+     "length": 7,
+     "text": "ÃandÃº"
+    },
+    "Ñandú|utf-8|cp1252": {
+     "bytes": "c3 91 61 6e 64 c3 ba",
+     "length": 7,
+     "text": "Ã‘andÃº"
+    },
+    "Ñandú|utf-8|ascii": {
+     "bytes": "c3 91 61 6e 64 c3 ba",
+     "length": 7,
+     "error": "UnicodeDecodeError: ordinal not in range(128) at byte 0"
+    },
+    "Ñandú|utf-16|utf-8": {
+     "bytes": "ff fe d1 00 61 00 6e 00 64 00 fa 00",
+     "length": 12,
+     "error": "UnicodeDecodeError: invalid start byte at byte 0"
+    },
+    "Ñandú|utf-16|latin-1": {
+     "bytes": "ff fe d1 00 61 00 6e 00 64 00 fa 00",
+     "length": 12,
+     "text": "ÿþÑ\u0000a\u0000n\u0000d\u0000ú\u0000"
+    },
+    "Ñandú|utf-16|cp1252": {
+     "bytes": "ff fe d1 00 61 00 6e 00 64 00 fa 00",
+     "length": 12,
+     "text": "ÿþÑ\u0000a\u0000n\u0000d\u0000ú\u0000"
+    },
+    "Ñandú|utf-16|ascii": {
+     "bytes": "ff fe d1 00 61 00 6e 00 64 00 fa 00",
+     "length": 12,
+     "error": "UnicodeDecodeError: ordinal not in range(128) at byte 0"
+    },
+    "Ñandú|latin-1|utf-8": {
+     "bytes": "d1 61 6e 64 fa",
+     "length": 5,
+     "error": "UnicodeDecodeError: invalid continuation byte at byte 0"
+    },
+    "Ñandú|latin-1|latin-1": {
+     "bytes": "d1 61 6e 64 fa",
+     "length": 5,
+     "text": "Ñandú"
+    },
+    "Ñandú|latin-1|cp1252": {
+     "bytes": "d1 61 6e 64 fa",
+     "length": 5,
+     "text": "Ñandú"
+    },
+    "Ñandú|latin-1|ascii": {
+     "bytes": "d1 61 6e 64 fa",
+     "length": 5,
+     "error": "UnicodeDecodeError: ordinal not in range(128) at byte 0"
+    },
+    "Ñandú|cp1252|utf-8": {
+     "bytes": "d1 61 6e 64 fa",
+     "length": 5,
+     "error": "UnicodeDecodeError: invalid continuation byte at byte 0"
+    },
+    "Ñandú|cp1252|latin-1": {
+     "bytes": "d1 61 6e 64 fa",
+     "length": 5,
+     "text": "Ñandú"
+    },
+    "Ñandú|cp1252|cp1252": {
+     "bytes": "d1 61 6e 64 fa",
+     "length": 5,
+     "text": "Ñandú"
+    },
+    "Ñandú|cp1252|ascii": {
+     "bytes": "d1 61 6e 64 fa",
+     "length": 5,
+     "error": "UnicodeDecodeError: ordinal not in range(128) at byte 0"
+    },
+    "東京|utf-8|utf-8": {
+     "bytes": "e6 9d b1 e4 ba ac",
+     "length": 6,
+     "text": "東京"
+    },
+    "東京|utf-8|latin-1": {
+     "bytes": "e6 9d b1 e4 ba ac",
+     "length": 6,
+     "text": "æ±äº¬"
+    },
+    "東京|utf-8|cp1252": {
+     "bytes": "e6 9d b1 e4 ba ac",
+     "length": 6,
+     "error": "UnicodeDecodeError: character maps to <undefined> at byte 1"
+    },
+    "東京|utf-8|ascii": {
+     "bytes": "e6 9d b1 e4 ba ac",
+     "length": 6,
+     "error": "UnicodeDecodeError: ordinal not in range(128) at byte 0"
+    },
+    "東京|utf-16|utf-8": {
+     "bytes": "ff fe 71 67 ac 4e",
+     "length": 6,
+     "error": "UnicodeDecodeError: invalid start byte at byte 0"
+    },
+    "東京|utf-16|latin-1": {
+     "bytes": "ff fe 71 67 ac 4e",
+     "length": 6,
+     "text": "ÿþqg¬N"
+    },
+    "東京|utf-16|cp1252": {
+     "bytes": "ff fe 71 67 ac 4e",
+     "length": 6,
+     "text": "ÿþqg¬N"
+    },
+    "東京|utf-16|ascii": {
+     "bytes": "ff fe 71 67 ac 4e",
+     "length": 6,
+     "error": "UnicodeDecodeError: ordinal not in range(128) at byte 0"
+    },
+    "東京|latin-1|utf-8": {
+     "bytes": null,
+     "error": "cannot encode: ordinal not in range(256)"
+    },
+    "東京|latin-1|latin-1": {
+     "bytes": null,
+     "error": "cannot encode: ordinal not in range(256)"
+    },
+    "東京|latin-1|cp1252": {
+     "bytes": null,
+     "error": "cannot encode: ordinal not in range(256)"
+    },
+    "東京|latin-1|ascii": {
+     "bytes": null,
+     "error": "cannot encode: ordinal not in range(256)"
+    },
+    "東京|cp1252|utf-8": {
+     "bytes": null,
+     "error": "cannot encode: character maps to <undefined>"
+    },
+    "東京|cp1252|latin-1": {
+     "bytes": null,
+     "error": "cannot encode: character maps to <undefined>"
+    },
+    "東京|cp1252|cp1252": {
+     "bytes": null,
+     "error": "cannot encode: character maps to <undefined>"
+    },
+    "東京|cp1252|ascii": {
+     "bytes": null,
+     "error": "cannot encode: character maps to <undefined>"
+    }
+   }
+  },
+  "m5.formats": {
+   "rows": 200000,
+   "formats": [
+    {
+     "format": "CSV",
+     "file": "orders.csv",
+     "bytes": 11699307,
+     "query_ms": 84.61,
+     "total": 12311029.11
+    },
+    {
+     "format": "CSV, gzip",
+     "file": "orders.csv.gz",
+     "bytes": 3087406,
+     "query_ms": 134.19,
+     "total": 12311029.11
+    },
+    {
+     "format": "CSV, zstd",
+     "file": "orders.csv.zst",
+     "bytes": 3363892,
+     "query_ms": 105.47,
+     "total": 12311029.11
+    },
+    {
+     "format": "JSON Lines",
+     "file": "orders.jsonl",
+     "bytes": 30703423,
+     "query_ms": 112.64,
+     "total": 12311029.11
+    },
+    {
+     "format": "JSON Lines, gzip",
+     "file": "orders.jsonl.gz",
+     "bytes": 3798380,
+     "query_ms": 193.22,
+     "total": 12311029.11
+    },
+    {
+     "format": "Parquet, snappy",
+     "file": "orders_snappy.parquet",
+     "bytes": 4153000,
+     "query_ms": 1.86,
+     "total": 12311029.11
+    },
+    {
+     "format": "Parquet, zstd",
+     "file": "orders_zstd.parquet",
+     "bytes": 2900742,
+     "query_ms": 1.59,
+     "total": 12311029.11
+    }
+   ],
+   "query": "SELECT sum(total) FROM <the file>",
+   "runs": 5,
+   "note": "bytes of each file, and the median of 5 runs of one DuckDB query over it, on this machine"
   }
  }
 };
