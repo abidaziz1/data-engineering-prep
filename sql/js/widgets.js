@@ -248,6 +248,51 @@
     SQ.info.fanout = { find: find, truth: truth, methods: METHODS };
   })();
 
+  /* ====================== mission 4: grouping sets explorer ====================== */
+  (function () {
+    function variants() { return G.counts('m4.sets').variants; }
+    function find(label) { return variants().filter(function (v) { return v.label === label; })[0]; }
+    var NOTES = {
+      'by store': 'A plain GROUP BY: one row for each store. No subtotals.',
+      'by channel': 'A plain GROUP BY on another column: one row for each channel.',
+      'by store and channel': 'One row for each pair of store and channel that exists. There is no row for a store in total.',
+      'ROLLUP (store, channel)': 'ROLLUP adds a subtotal for each store, and a grand total. Order matters: it rolls up from the right, so the subtotals are by store.',
+      'ROLLUP (channel, store)': 'The same columns in the other order give subtotals for each channel instead. ROLLUP is not symmetric.',
+      'CUBE (store, channel)': 'CUBE gives every combination: the pairs, the subtotals by store, the subtotals by channel and the grand total.',
+      'GROUPING SETS': 'You list the groupings you want. Here: by store, by channel and the grand total. There are no rows for the pairs.'
+    };
+    W.rollup = {
+      steps: function () { return 2; },
+      hint: function (s, i) { return i === 0 ? 'Pick a way to group.' : 'Compare the row counts.'; },
+      say: function (s, i) {
+        return [
+          'Nine paid orders, grouped in seven ways. The NULLs that you see in store_id and channel are not data: they mark a subtotal row. `GROUPING(col)` is 1 on those rows, so you can tell a subtotal from a real NULL. DuckDB and PostgreSQL returned the same rows.',
+          'Count the rows. A subtotal row is an extra row, so the sums of a column that includes subtotals are not the total of the table. Filter on the GROUPING flags before you add a column up.'
+        ][i];
+      },
+      mood: function () { return 'think'; },
+      render: function (box, s, i, A) {
+        var h = '<div class="lab">', list = variants();
+        if (i === 0) {
+          var st = A.local.ro || (A.local.ro = { v: 'ROLLUP (store, channel)' }), v = find(st.v), tb = G.table(v.key);
+          h += '<div class="sel-chips">' + chips(list.map(function (x) { return x.label; }), st.v, 'ro-v') + '</div>' +
+            code('grouping', 'sql', G.file(v.key)) +
+            '<div class="lab-out"><div class="big"><b>' + v.rows + '</b><span>rows</span></div><div class="big ' + (v.agree ? 'good' : 'bad') + '"><b>' + (v.agree ? 'same' : 'differs') + '</b><span>on ' + v.engines.map(function (e) { return ENGINE_LABEL[e]; }).join(', ') + '</span></div></div>' +
+            table(tb.cols, tb.rows, function (r) { return r.some(function (c, k) { return /^g_/.test(tb.cols[k]) && c === '1'; }) ? 'inframe' : ''; }, function (r, ri, ci) { return r[ci] === 'NULL' && /^(store_id|channel)$/.test(tb.cols[ci]) ? 'wwarn' : ''; }) +
+            '<div class="callout tip">' + md(NOTES[st.v]) + '</div>' +
+            (/ROLLUP|CUBE|SETS/.test(st.v) ? '<div class="callout warn">SQLite has no ROLLUP, CUBE or GROUPING SETS. It answered: <b>' + esc(G.text('m4.rollup_sqlite.error')) + '</b>.</div>' : '');
+        } else {
+          h += table(['Grouping', 'Rows'], list.map(function (x) { return [x.label, String(x.rows)]; }), null, function (r, ri, ci) { return ''; }) +
+            '<div class="callout tip">Rows: 3 stores, 3 channels and 7 pairs. ROLLUP over two columns adds 3 store subtotals and 1 grand total to the 7 pairs: 11 rows. CUBE adds 3 channel subtotals too: 14 rows.</div>';
+        }
+        box.innerHTML = h + '</div>';
+        bindCodes(box);
+        A.bindWidget = function (act, el) { if (act === 'ro-v') A.local.ro.v = el.getAttribute('data-v'); A.render(true); };
+      }
+    };
+    SQ.info.rollup = { variants: variants, find: find };
+  })();
+
   /* the helpers are shared with part 2 (widgets2.js) */
   SQ.u = { chips: chips, table: table, code: code, bindCodes: bindCodes, pre: pre, ENGINES: ENGINES, ENGINE_LABEL: ENGINE_LABEL };
 })();

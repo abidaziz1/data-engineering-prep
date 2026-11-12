@@ -779,6 +779,83 @@ LAB.real = {
      "type": "CROSS"
     }
    ]
+  },
+  "m4.sets": {
+   "variants": [
+    {
+     "agree": true,
+     "engines": [
+      "duckdb",
+      "postgres",
+      "sqlite"
+     ],
+     "key": "m4.set.0",
+     "label": "by store",
+     "rows": 3
+    },
+    {
+     "agree": true,
+     "engines": [
+      "duckdb",
+      "postgres",
+      "sqlite"
+     ],
+     "key": "m4.set.1",
+     "label": "by channel",
+     "rows": 3
+    },
+    {
+     "agree": true,
+     "engines": [
+      "duckdb",
+      "postgres",
+      "sqlite"
+     ],
+     "key": "m4.set.2",
+     "label": "by store and channel",
+     "rows": 7
+    },
+    {
+     "agree": true,
+     "engines": [
+      "duckdb",
+      "postgres"
+     ],
+     "key": "m4.set.3",
+     "label": "ROLLUP (store, channel)",
+     "rows": 11
+    },
+    {
+     "agree": true,
+     "engines": [
+      "duckdb",
+      "postgres"
+     ],
+     "key": "m4.set.4",
+     "label": "ROLLUP (channel, store)",
+     "rows": 11
+    },
+    {
+     "agree": true,
+     "engines": [
+      "duckdb",
+      "postgres"
+     ],
+     "key": "m4.set.5",
+     "label": "CUBE (store, channel)",
+     "rows": 14
+    },
+    {
+     "agree": true,
+     "engines": [
+      "duckdb",
+      "postgres"
+     ],
+     "key": "m4.set.6",
+     "label": "GROUPING SETS",
+     "rows": 7
+    }
+   ]
   }
  },
  "files": {
@@ -846,7 +923,29 @@ LAB.real = {
   "m3.preagg_revenue": "WITH paid_by_order AS (\n  SELECT order_id, sum(amount) AS net_paid\n  FROM payments\n  GROUP BY order_id\n)\nSELECT count(*) AS rows, sum(o.total) AS revenue\nFROM orders AS o\nLEFT JOIN paid_by_order AS p ON p.order_id = o.order_id\nWHERE o.status = 'paid';\n",
   "m3.range_join": "SELECT i.order_id, i.line_no, i.product_id, CAST(o.order_ts AS DATE) AS order_day,\n       i.unit_price AS charged, h.price AS list_price\nFROM order_items AS i\nJOIN orders AS o ON o.order_id = i.order_id\nJOIN price_history AS h\n  ON h.product_id = i.product_id\n AND CAST(o.order_ts AS DATE) BETWEEN h.valid_from AND h.valid_to\nWHERE i.unit_price <> h.price\nORDER BY i.order_id, i.line_no;\n",
   "m3.self_join": "SELECT c.category_id, c.name AS category, p.name AS parent\nFROM categories AS c\nLEFT JOIN categories AS p ON p.category_id = c.parent_id\nORDER BY c.category_id;\n",
-  "m3.using": "SELECT customer_id, name, order_id\nFROM customers\nJOIN orders USING (customer_id)\nWHERE order_id < 1004\nORDER BY order_id;\n"
+  "m3.using": "SELECT customer_id, name, order_id\nFROM customers\nJOIN orders USING (customer_id)\nWHERE order_id < 1004\nORDER BY order_id;\n",
+  "m4.approx": "SELECT count(DISTINCT customer_id)         AS exact,\n       approx_count_distinct(customer_id)  AS approximate\nFROM big_orders;\n",
+  "m4.avg_of_avgs": "WITH per_store AS (\n  SELECT store_id, avg(total) AS avg_total\n  FROM orders\n  WHERE status = 'paid'\n  GROUP BY store_id\n)\nSELECT round(avg(avg_total), 2)                                           AS average_of_averages,\n       (SELECT round(avg(total), 2) FROM orders WHERE status = 'paid')    AS average_of_orders\nFROM per_store;\n",
+  "m4.bare_column": "SELECT status, channel, count(*) AS orders\nFROM orders\nGROUP BY status\nORDER BY status;\n",
+  "m4.basic": "SELECT status,\n       count(*)              AS orders,\n       sum(total)            AS revenue,\n       min(total)            AS smallest,\n       max(total)            AS largest,\n       round(avg(total), 2)  AS average\nFROM orders\nGROUP BY status\nORDER BY status;\n",
+  "m4.ch_conditional": "SELECT store_id,\n       sum(CASE WHEN status = 'paid'      THEN total ELSE 0 END) AS paid,\n       sum(CASE WHEN status = 'cancelled' THEN total ELSE 0 END) AS cancelled,\n       sum(CASE WHEN status = 'refunded'  THEN total ELSE 0 END) AS refunded\nFROM orders\nGROUP BY store_id\nORDER BY store_id;\n",
+  "m4.ch_daily": "SELECT CAST(order_ts AS DATE) AS day, count(*) AS orders, sum(total) AS revenue\nFROM orders\nWHERE status = 'paid'\nGROUP BY ROLLUP (CAST(order_ts AS DATE))\nORDER BY day NULLS LAST;\n",
+  "m4.ch_repeat": "SELECT customer_id, count(*) AS paid_orders, sum(total) AS spent\nFROM orders\nWHERE status = 'paid' AND customer_id IS NOT NULL\nGROUP BY customer_id\nHAVING count(*) >= 2\nORDER BY spent DESC;\n",
+  "m4.conditional": "SELECT store_id,\n       count(*)                                         AS orders,\n       sum(CASE WHEN status = 'paid' THEN total ELSE 0 END) AS paid_with_case,\n       sum(total) FILTER (WHERE status = 'paid')        AS paid_with_filter,\n       count(*) FILTER (WHERE status = 'paid')          AS paid_orders\nFROM orders\nGROUP BY store_id\nORDER BY store_id;\n",
+  "m4.distinct_counts": "SELECT store_id,\n       count(*)                    AS orders,\n       count(customer_id)          AS with_customer,\n       count(DISTINCT customer_id) AS different_customers\nFROM orders\nGROUP BY store_id\nORDER BY store_id;\n",
+  "m4.empty_sum": "SELECT sum(total)               AS sum_of_nothing,\n       count(*)                 AS rows,\n       coalesce(sum(total), 0)  AS sum_or_zero\nFROM orders\nWHERE status = 'does not exist';\n",
+  "m4.having": "SELECT store_id, count(*) AS paid_orders, sum(total) AS revenue\nFROM orders\nWHERE status = 'paid'\nGROUP BY store_id\nHAVING sum(total) > 20\nORDER BY store_id;\n",
+  "m4.median": "SELECT round(avg(total), 2)                                          AS average,\n       percentile_cont(0.5) WITHIN GROUP (ORDER BY total)           AS median,\n       percentile_cont(0.9) WITHIN GROUP (ORDER BY total)           AS p90\nFROM orders\nWHERE status = 'paid';\n",
+  "m4.pivot": "SELECT status,\n       sum(CASE WHEN channel = 'web'   THEN total END) AS web,\n       sum(CASE WHEN channel = 'app'   THEN total END) AS app,\n       sum(CASE WHEN channel = 'store' THEN total END) AS store\nFROM orders\nGROUP BY status\nORDER BY status;\n",
+  "m4.rollup_sqlite": "SELECT store_id, channel, sum(total) AS revenue\nFROM orders\nWHERE status = 'paid'\nGROUP BY ROLLUP (store_id, channel);\n",
+  "m4.set.0": "SELECT store_id,\n       count(*) AS orders, sum(total) AS revenue\nFROM orders\nWHERE status = 'paid'\nGROUP BY store_id\nORDER BY store_id NULLS LAST\n",
+  "m4.set.1": "SELECT channel,\n       count(*) AS orders, sum(total) AS revenue\nFROM orders\nWHERE status = 'paid'\nGROUP BY channel\nORDER BY channel NULLS LAST\n",
+  "m4.set.2": "SELECT store_id, channel,\n       count(*) AS orders, sum(total) AS revenue\nFROM orders\nWHERE status = 'paid'\nGROUP BY store_id, channel\nORDER BY store_id NULLS LAST, channel NULLS LAST\n",
+  "m4.set.3": "SELECT store_id, channel,\n       GROUPING(store_id) AS g_store, GROUPING(channel) AS g_channel,\n       count(*) AS orders, sum(total) AS revenue\nFROM orders\nWHERE status = 'paid'\nGROUP BY ROLLUP (store_id, channel)\nORDER BY store_id NULLS LAST, channel NULLS LAST\n",
+  "m4.set.4": "SELECT channel, store_id,\n       GROUPING(channel) AS g_channel, GROUPING(store_id) AS g_store,\n       count(*) AS orders, sum(total) AS revenue\nFROM orders\nWHERE status = 'paid'\nGROUP BY ROLLUP (channel, store_id)\nORDER BY channel NULLS LAST, store_id NULLS LAST\n",
+  "m4.set.5": "SELECT store_id, channel,\n       GROUPING(store_id) AS g_store, GROUPING(channel) AS g_channel,\n       count(*) AS orders, sum(total) AS revenue\nFROM orders\nWHERE status = 'paid'\nGROUP BY CUBE (store_id, channel)\nORDER BY store_id NULLS LAST, channel NULLS LAST\n",
+  "m4.set.6": "SELECT store_id, channel,\n       GROUPING(store_id) AS g_store, GROUPING(channel) AS g_channel,\n       count(*) AS orders, sum(total) AS revenue\nFROM orders\nWHERE status = 'paid'\nGROUP BY GROUPING SETS ((store_id), (channel), ())\nORDER BY store_id NULLS LAST, channel NULLS LAST\n",
+  "m4.string_agg": "SELECT country, count(*) AS customers, string_agg(name, ', ' ORDER BY name) AS names\nFROM customers\nGROUP BY country\nORDER BY country NULLS LAST;\n"
  },
  "meta": {
   "duckdb": "2.0.0",
@@ -5497,6 +5596,1219 @@ LAB.real = {
      "1003"
     ]
    ]
+  },
+  "m4.approx": {
+   "cols": [
+    "exact",
+    "approximate"
+   ],
+   "rows": [
+    [
+     "3000",
+     "2999"
+    ]
+   ]
+  },
+  "m4.avg_of_avgs": {
+   "cols": [
+    "average_of_averages",
+    "average_of_orders"
+   ],
+   "rows": [
+    [
+     "12.97",
+     "14.11"
+    ]
+   ]
+  },
+  "m4.bare_column.sqlite": {
+   "cols": [
+    "status",
+    "channel",
+    "orders"
+   ],
+   "rows": [
+    [
+     "cancelled",
+     "app",
+     "1"
+    ],
+    [
+     "paid",
+     "web",
+     "9"
+    ],
+    [
+     "pending",
+     "app",
+     "1"
+    ],
+    [
+     "refunded",
+     "web",
+     "1"
+    ]
+   ]
+  },
+  "m4.basic": {
+   "cols": [
+    "status",
+    "orders",
+    "revenue",
+    "smallest",
+    "largest",
+    "average"
+   ],
+   "rows": [
+    [
+     "cancelled",
+     "1",
+     "9.00",
+     "9.00",
+     "9.00",
+     "9.0"
+    ],
+    [
+     "paid",
+     "9",
+     "127.00",
+     "5.00",
+     "26.00",
+     "14.11"
+    ],
+    [
+     "pending",
+     "1",
+     "8.00",
+     "8.00",
+     "8.00",
+     "8.0"
+    ],
+    [
+     "refunded",
+     "1",
+     "12.00",
+     "12.00",
+     "12.00",
+     "12.0"
+    ]
+   ]
+  },
+  "m4.ch_conditional": {
+   "cols": [
+    "store_id",
+    "paid",
+    "cancelled",
+    "refunded"
+   ],
+   "rows": [
+    [
+     "1",
+     "82.00",
+     "0.00",
+     "0.00"
+    ],
+    [
+     "2",
+     "14.50",
+     "0.00",
+     "0.00"
+    ],
+    [
+     "3",
+     "0.00",
+     "9.00",
+     "0.00"
+    ],
+    [
+     "4",
+     "30.50",
+     "0.00",
+     "12.00"
+    ]
+   ]
+  },
+  "m4.ch_daily": {
+   "cols": [
+    "day",
+    "orders",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "2026-03-01",
+     "1",
+     "11.50"
+    ],
+    [
+     "2026-03-02",
+     "2",
+     "31.00"
+    ],
+    [
+     "2026-03-03",
+     "1",
+     "18.50"
+    ],
+    [
+     "2026-03-04",
+     "1",
+     "14.00"
+    ],
+    [
+     "2026-03-05",
+     "1",
+     "7.00"
+    ],
+    [
+     "2026-03-06",
+     "1",
+     "9.50"
+    ],
+    [
+     "2026-03-07",
+     "1",
+     "19.00"
+    ],
+    [
+     "2026-03-08",
+     "1",
+     "16.50"
+    ],
+    [
+     "NULL",
+     "9",
+     "127.00"
+    ]
+   ]
+  },
+  "m4.ch_repeat": {
+   "cols": [
+    "customer_id",
+    "paid_orders",
+    "spent"
+   ],
+   "rows": [
+    [
+     "3",
+     "2",
+     "45.00"
+    ],
+    [
+     "1",
+     "3",
+     "37.00"
+    ],
+    [
+     "5",
+     "2",
+     "30.50"
+    ]
+   ]
+  },
+  "m4.conditional.duckdb": {
+   "cols": [
+    "store_id",
+    "orders",
+    "paid_with_case",
+    "paid_with_filter",
+    "paid_orders"
+   ],
+   "rows": [
+    [
+     "1",
+     "5",
+     "82.00",
+     "82.00",
+     "5"
+    ],
+    [
+     "2",
+     "3",
+     "14.50",
+     "14.50",
+     "2"
+    ],
+    [
+     "3",
+     "1",
+     "0.00",
+     "NULL",
+     "0"
+    ],
+    [
+     "4",
+     "3",
+     "30.50",
+     "30.50",
+     "2"
+    ]
+   ]
+  },
+  "m4.conditional.postgres": {
+   "cols": [
+    "store_id",
+    "orders",
+    "paid_with_case",
+    "paid_with_filter",
+    "paid_orders"
+   ],
+   "rows": [
+    [
+     "1",
+     "5",
+     "82.00",
+     "82.00",
+     "5"
+    ],
+    [
+     "2",
+     "3",
+     "14.50",
+     "14.50",
+     "2"
+    ],
+    [
+     "3",
+     "1",
+     "0",
+     "NULL",
+     "0"
+    ],
+    [
+     "4",
+     "3",
+     "30.50",
+     "30.50",
+     "2"
+    ]
+   ]
+  },
+  "m4.conditional.sqlite": {
+   "cols": [
+    "store_id",
+    "orders",
+    "paid_with_case",
+    "paid_with_filter",
+    "paid_orders"
+   ],
+   "rows": [
+    [
+     "1",
+     "5",
+     "82.0",
+     "82.0",
+     "5"
+    ],
+    [
+     "2",
+     "3",
+     "14.5",
+     "14.5",
+     "2"
+    ],
+    [
+     "3",
+     "1",
+     "0",
+     "NULL",
+     "0"
+    ],
+    [
+     "4",
+     "3",
+     "30.5",
+     "30.5",
+     "2"
+    ]
+   ]
+  },
+  "m4.distinct_counts.duckdb": {
+   "cols": [
+    "store_id",
+    "orders",
+    "with_customer",
+    "different_customers"
+   ],
+   "rows": [
+    [
+     "1",
+     "5",
+     "5",
+     "2"
+    ],
+    [
+     "2",
+     "3",
+     "2",
+     "1"
+    ],
+    [
+     "3",
+     "1",
+     "1",
+     "1"
+    ],
+    [
+     "4",
+     "3",
+     "3",
+     "2"
+    ]
+   ]
+  },
+  "m4.distinct_counts.postgres": {
+   "cols": [
+    "store_id",
+    "orders",
+    "with_customer",
+    "different_customers"
+   ],
+   "rows": [
+    [
+     "1",
+     "5",
+     "5",
+     "2"
+    ],
+    [
+     "2",
+     "3",
+     "2",
+     "1"
+    ],
+    [
+     "3",
+     "1",
+     "1",
+     "1"
+    ],
+    [
+     "4",
+     "3",
+     "3",
+     "2"
+    ]
+   ]
+  },
+  "m4.distinct_counts.sqlite": {
+   "cols": [
+    "store_id",
+    "orders",
+    "with_customer",
+    "different_customers"
+   ],
+   "rows": [
+    [
+     "1",
+     "5",
+     "5",
+     "2"
+    ],
+    [
+     "2",
+     "3",
+     "2",
+     "1"
+    ],
+    [
+     "3",
+     "1",
+     "1",
+     "1"
+    ],
+    [
+     "4",
+     "3",
+     "3",
+     "2"
+    ]
+   ]
+  },
+  "m4.empty_sum.duckdb": {
+   "cols": [
+    "sum_of_nothing",
+    "rows",
+    "sum_or_zero"
+   ],
+   "rows": [
+    [
+     "NULL",
+     "0",
+     "0.00"
+    ]
+   ]
+  },
+  "m4.empty_sum.postgres": {
+   "cols": [
+    "sum_of_nothing",
+    "rows",
+    "sum_or_zero"
+   ],
+   "rows": [
+    [
+     "NULL",
+     "0",
+     "0"
+    ]
+   ]
+  },
+  "m4.empty_sum.sqlite": {
+   "cols": [
+    "sum_of_nothing",
+    "rows",
+    "sum_or_zero"
+   ],
+   "rows": [
+    [
+     "NULL",
+     "0",
+     "0"
+    ]
+   ]
+  },
+  "m4.having": {
+   "cols": [
+    "store_id",
+    "paid_orders",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "1",
+     "5",
+     "82.00"
+    ],
+    [
+     "4",
+     "2",
+     "30.50"
+    ]
+   ]
+  },
+  "m4.median.duckdb": {
+   "cols": [
+    "average",
+    "median",
+    "p90"
+   ],
+   "rows": [
+    [
+     "14.11",
+     "14.00",
+     "20.40"
+    ]
+   ]
+  },
+  "m4.median.postgres": {
+   "cols": [
+    "average",
+    "median",
+    "p90"
+   ],
+   "rows": [
+    [
+     "14.11",
+     "14.0",
+     "20.400000000000002"
+    ]
+   ]
+  },
+  "m4.pivot.duckdb": {
+   "cols": [
+    "status",
+    "web",
+    "app",
+    "store"
+   ],
+   "rows": [
+    [
+     "cancelled",
+     "NULL",
+     "9.00",
+     "NULL"
+    ],
+    [
+     "paid",
+     "70.50",
+     "28.50",
+     "28.00"
+    ],
+    [
+     "pending",
+     "NULL",
+     "8.00",
+     "NULL"
+    ],
+    [
+     "refunded",
+     "12.00",
+     "NULL",
+     "NULL"
+    ]
+   ]
+  },
+  "m4.pivot.postgres": {
+   "cols": [
+    "status",
+    "web",
+    "app",
+    "store"
+   ],
+   "rows": [
+    [
+     "cancelled",
+     "NULL",
+     "9.00",
+     "NULL"
+    ],
+    [
+     "paid",
+     "70.50",
+     "28.50",
+     "28.00"
+    ],
+    [
+     "pending",
+     "NULL",
+     "8.00",
+     "NULL"
+    ],
+    [
+     "refunded",
+     "12.00",
+     "NULL",
+     "NULL"
+    ]
+   ]
+  },
+  "m4.pivot.sqlite": {
+   "cols": [
+    "status",
+    "web",
+    "app",
+    "store"
+   ],
+   "rows": [
+    [
+     "cancelled",
+     "NULL",
+     "9",
+     "NULL"
+    ],
+    [
+     "paid",
+     "70.5",
+     "28.5",
+     "28.0"
+    ],
+    [
+     "pending",
+     "NULL",
+     "8",
+     "NULL"
+    ],
+    [
+     "refunded",
+     "12",
+     "NULL",
+     "NULL"
+    ]
+   ]
+  },
+  "m4.set.0": {
+   "cols": [
+    "store_id",
+    "orders",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "1",
+     "5",
+     "82.00"
+    ],
+    [
+     "2",
+     "2",
+     "14.50"
+    ],
+    [
+     "4",
+     "2",
+     "30.50"
+    ]
+   ]
+  },
+  "m4.set.1": {
+   "cols": [
+    "channel",
+    "orders",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "app",
+     "3",
+     "28.50"
+    ],
+    [
+     "store",
+     "2",
+     "28.00"
+    ],
+    [
+     "web",
+     "4",
+     "70.50"
+    ]
+   ]
+  },
+  "m4.set.2": {
+   "cols": [
+    "store_id",
+    "channel",
+    "orders",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "1",
+     "app",
+     "1",
+     "7.00"
+    ],
+    [
+     "1",
+     "store",
+     "1",
+     "18.50"
+    ],
+    [
+     "1",
+     "web",
+     "3",
+     "56.50"
+    ],
+    [
+     "2",
+     "app",
+     "1",
+     "5.00"
+    ],
+    [
+     "2",
+     "store",
+     "1",
+     "9.50"
+    ],
+    [
+     "4",
+     "app",
+     "1",
+     "16.50"
+    ],
+    [
+     "4",
+     "web",
+     "1",
+     "14.00"
+    ]
+   ]
+  },
+  "m4.set.3": {
+   "cols": [
+    "store_id",
+    "channel",
+    "g_store",
+    "g_channel",
+    "orders",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "1",
+     "app",
+     "0",
+     "0",
+     "1",
+     "7.00"
+    ],
+    [
+     "1",
+     "store",
+     "0",
+     "0",
+     "1",
+     "18.50"
+    ],
+    [
+     "1",
+     "web",
+     "0",
+     "0",
+     "3",
+     "56.50"
+    ],
+    [
+     "1",
+     "NULL",
+     "0",
+     "1",
+     "5",
+     "82.00"
+    ],
+    [
+     "2",
+     "app",
+     "0",
+     "0",
+     "1",
+     "5.00"
+    ],
+    [
+     "2",
+     "store",
+     "0",
+     "0",
+     "1",
+     "9.50"
+    ],
+    [
+     "2",
+     "NULL",
+     "0",
+     "1",
+     "2",
+     "14.50"
+    ],
+    [
+     "4",
+     "app",
+     "0",
+     "0",
+     "1",
+     "16.50"
+    ],
+    [
+     "4",
+     "web",
+     "0",
+     "0",
+     "1",
+     "14.00"
+    ],
+    [
+     "4",
+     "NULL",
+     "0",
+     "1",
+     "2",
+     "30.50"
+    ],
+    [
+     "NULL",
+     "NULL",
+     "1",
+     "1",
+     "9",
+     "127.00"
+    ]
+   ]
+  },
+  "m4.set.4": {
+   "cols": [
+    "channel",
+    "store_id",
+    "g_channel",
+    "g_store",
+    "orders",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "app",
+     "1",
+     "0",
+     "0",
+     "1",
+     "7.00"
+    ],
+    [
+     "app",
+     "2",
+     "0",
+     "0",
+     "1",
+     "5.00"
+    ],
+    [
+     "app",
+     "4",
+     "0",
+     "0",
+     "1",
+     "16.50"
+    ],
+    [
+     "app",
+     "NULL",
+     "0",
+     "1",
+     "3",
+     "28.50"
+    ],
+    [
+     "store",
+     "1",
+     "0",
+     "0",
+     "1",
+     "18.50"
+    ],
+    [
+     "store",
+     "2",
+     "0",
+     "0",
+     "1",
+     "9.50"
+    ],
+    [
+     "store",
+     "NULL",
+     "0",
+     "1",
+     "2",
+     "28.00"
+    ],
+    [
+     "web",
+     "1",
+     "0",
+     "0",
+     "3",
+     "56.50"
+    ],
+    [
+     "web",
+     "4",
+     "0",
+     "0",
+     "1",
+     "14.00"
+    ],
+    [
+     "web",
+     "NULL",
+     "0",
+     "1",
+     "4",
+     "70.50"
+    ],
+    [
+     "NULL",
+     "NULL",
+     "1",
+     "1",
+     "9",
+     "127.00"
+    ]
+   ]
+  },
+  "m4.set.5": {
+   "cols": [
+    "store_id",
+    "channel",
+    "g_store",
+    "g_channel",
+    "orders",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "1",
+     "app",
+     "0",
+     "0",
+     "1",
+     "7.00"
+    ],
+    [
+     "1",
+     "store",
+     "0",
+     "0",
+     "1",
+     "18.50"
+    ],
+    [
+     "1",
+     "web",
+     "0",
+     "0",
+     "3",
+     "56.50"
+    ],
+    [
+     "1",
+     "NULL",
+     "0",
+     "1",
+     "5",
+     "82.00"
+    ],
+    [
+     "2",
+     "app",
+     "0",
+     "0",
+     "1",
+     "5.00"
+    ],
+    [
+     "2",
+     "store",
+     "0",
+     "0",
+     "1",
+     "9.50"
+    ],
+    [
+     "2",
+     "NULL",
+     "0",
+     "1",
+     "2",
+     "14.50"
+    ],
+    [
+     "4",
+     "app",
+     "0",
+     "0",
+     "1",
+     "16.50"
+    ],
+    [
+     "4",
+     "web",
+     "0",
+     "0",
+     "1",
+     "14.00"
+    ],
+    [
+     "4",
+     "NULL",
+     "0",
+     "1",
+     "2",
+     "30.50"
+    ],
+    [
+     "NULL",
+     "app",
+     "1",
+     "0",
+     "3",
+     "28.50"
+    ],
+    [
+     "NULL",
+     "store",
+     "1",
+     "0",
+     "2",
+     "28.00"
+    ],
+    [
+     "NULL",
+     "web",
+     "1",
+     "0",
+     "4",
+     "70.50"
+    ],
+    [
+     "NULL",
+     "NULL",
+     "1",
+     "1",
+     "9",
+     "127.00"
+    ]
+   ]
+  },
+  "m4.set.6": {
+   "cols": [
+    "store_id",
+    "channel",
+    "g_store",
+    "g_channel",
+    "orders",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "1",
+     "NULL",
+     "0",
+     "1",
+     "5",
+     "82.00"
+    ],
+    [
+     "2",
+     "NULL",
+     "0",
+     "1",
+     "2",
+     "14.50"
+    ],
+    [
+     "4",
+     "NULL",
+     "0",
+     "1",
+     "2",
+     "30.50"
+    ],
+    [
+     "NULL",
+     "app",
+     "1",
+     "0",
+     "3",
+     "28.50"
+    ],
+    [
+     "NULL",
+     "store",
+     "1",
+     "0",
+     "2",
+     "28.00"
+    ],
+    [
+     "NULL",
+     "web",
+     "1",
+     "0",
+     "4",
+     "70.50"
+    ],
+    [
+     "NULL",
+     "NULL",
+     "1",
+     "1",
+     "9",
+     "127.00"
+    ]
+   ]
+  },
+  "m4.string_agg.duckdb": {
+   "cols": [
+    "country",
+    "customers",
+    "names"
+   ],
+   "rows": [
+    [
+     "AU",
+     "2",
+     "Eli Cohen, Gus Hall"
+    ],
+    [
+     "ID",
+     "1",
+     "Dara Putri"
+    ],
+    [
+     "MY",
+     "1",
+     "Ben Ortiz"
+    ],
+    [
+     "SG",
+     "3",
+     "Ana Lim, Chen Wei, Hana Ito"
+    ],
+    [
+     "NULL",
+     "1",
+     "Fay Tan"
+    ]
+   ]
+  },
+  "m4.string_agg.postgres": {
+   "cols": [
+    "country",
+    "customers",
+    "names"
+   ],
+   "rows": [
+    [
+     "AU",
+     "2",
+     "Eli Cohen, Gus Hall"
+    ],
+    [
+     "ID",
+     "1",
+     "Dara Putri"
+    ],
+    [
+     "MY",
+     "1",
+     "Ben Ortiz"
+    ],
+    [
+     "SG",
+     "3",
+     "Ana Lim, Chen Wei, Hana Ito"
+    ],
+    [
+     "NULL",
+     "1",
+     "Fay Tan"
+    ]
+   ]
+  },
+  "m4.string_agg.sqlite": {
+   "cols": [
+    "country",
+    "customers",
+    "names"
+   ],
+   "rows": [
+    [
+     "AU",
+     "2",
+     "Eli Cohen, Gus Hall"
+    ],
+    [
+     "ID",
+     "1",
+     "Dara Putri"
+    ],
+    [
+     "MY",
+     "1",
+     "Ben Ortiz"
+    ],
+    [
+     "SG",
+     "3",
+     "Ana Lim, Chen Wei, Hana Ito"
+    ],
+    [
+     "NULL",
+     "1",
+     "Fay Tan"
+    ]
+   ]
   }
  },
  "text": {
@@ -5507,6 +6819,9 @@ LAB.real = {
   "m1.psql": " country | customers \n---------+-----------\n AU      |         2\n ID      |         1\n MY      |         1\n SG      |         3\n         |         1\n(5 rows)",
   "m1.psql.command": "psql brewline -c \"SELECT country, count(*) AS customers FROM customers GROUP BY country ORDER BY country NULLS LAST;\"",
   "m1.where_vs_having_error.error": "aggregate functions are not allowed in WHERE",
-  "m2.div_zero.postgres.error": "division by zero"
+  "m2.div_zero.postgres.error": "division by zero",
+  "m4.bare_column.duckdb.error": "Binder Error: column \"channel\" must appear in the GROUP BY clause or must be part of an aggregate function.",
+  "m4.bare_column.postgres.error": "column \"orders.channel\" must appear in the GROUP BY clause or be used in an aggregate function",
+  "m4.rollup_sqlite.error": "no such function: ROLLUP"
  }
 };

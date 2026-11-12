@@ -161,4 +161,27 @@
       { id: 'tg_g2', x: 380, y: 232, t: 'grain: one payment', c: 'int' }
     ]
   });
+  /* ------------------------------------------------------------------ */
+  /* 5. GROUP BY: rows, groups, aggregates                               */
+  /* ------------------------------------------------------------------ */
+  S.group = build({
+    h: 300,
+    label: 'What GROUP BY does. The rows that pass WHERE are split into groups by the grouping columns. Each group is reduced by the aggregate functions to one value for each function. The result has one row for each group.',
+    nodes: [
+      ['g_rows', 0, 0, 'Rows after WHERE', 'one row for each paid order', 'src'],
+      ['g_split', 1, 0, 'Split into groups', 'one group for each store', 'raw'],
+      ['g_agg', 2, 0, 'Aggregate', 'count, sum, avg of each group', 'stg'],
+      ['g_out', 3, 0, 'Result', 'one row for each group', 'mart']
+    ],
+    edges: [
+      ['y1', 'g_rows', 'g_split', 1],
+      ['y2', 'g_split', 'g_agg', 2],
+      ['y3', 'g_agg', 'g_out', 3]
+    ],
+    tags: [
+      { id: 'tg_gr1', x: 20, y: 148, t: 'grain: one order', c: 'qual' },
+      { id: 'tg_gr2', x: 840, y: 148, t: 'grain: one store', c: 'mart' },
+      { id: 'tg_gr3', x: 295, y: 232, t: 'every other column must be grouped or aggregated', c: 'int' }
+    ]
+  });
 })();
