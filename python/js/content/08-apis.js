@@ -171,7 +171,7 @@
         id: 'm8-rate', t: 1, src: 'rec', title: 'Obeying 429 and Retry-After', file: 'rate_limit.py', lang: 'python', code: RLF,
         steps: [
           { say: 'The fake API lets a client make 3 requests in each second. The fourth gets a 429. The output is real.', lines: null },
-          { say: 'A 429 is not an error to give up on. The server says `Retry-After`, the number of seconds to wait, so the client waits that long.', lines: G.span(RLF, /if r\.status_code == 429:/, /continue/) },
+          { say: 'A 429 is not an error to give up on. The server says `Retry-After`, the number of seconds to wait, so the client waits that long. The header can also hold an HTTP date. This client reads only the seconds form, which is what the fake API sends.', lines: G.span(RLF, /if r\.status_code == 429:/, /continue/) },
           { say: '`continue` asks again. After five tries it raises, so a server that never relents ends as a failed run.', lines: G.span(RLF, /^    for attempt in range/, /still limited after/) },
           { say: 'Six calls in a row. Calls 1 to 3 pass at once, call 4 is refused, and the client waits.', lines: [G.at(RLF, /^with requests\.Session/), last(RLF)] }
         ]
@@ -451,7 +451,7 @@
         id: 'qa-bulk', t: 2, tag: 'Databases', secs: 60,
         q: 'You have to write 10 million rows to a database. How?',
         pts: ['One commit for a batch, not for a row', 'executemany or COPY or a bulk loader', 'Batches that can be rerun', 'Indexes and constraints during a load'],
-        short: 'Not with a commit for every row. In a recording, a commit for every row ran at about 800 rows per second and one `executemany` in one transaction at hundreds of thousands. For 10 million rows I would use the database\'s bulk path, such as `COPY` for PostgreSQL or a staged file and a bulk load for a warehouse, and where that is not available `executemany` in batches of a few thousand rows, each batch one transaction, with an upsert so that a rerun is safe. I measure on the real database, because the gap depends on the disk, the network and the constraints.',
+        short: 'Not with a commit for every row. In a recording, a commit for every row ran at about ' + EACH.rows_per_second.toLocaleString('en-US') + ' rows per second and one `executemany` in one transaction at about ' + MANY.rows_per_second.toLocaleString('en-US') + '. For 10 million rows I would use the database\'s bulk path, such as `COPY` for PostgreSQL or a staged file and a bulk load for a warehouse, and where that is not available `executemany` in batches of a few thousand rows, each batch one transaction, with an upsert so that a rerun is safe. I measure on the real database, because the gap depends on the disk, the network and the constraints.',
         fu: [['What about indexes?', 'Each index is extra work on every insert. For a very large first load, load the data, then build the indexes.'], ['How large is a batch?', 'Start around 1,000 to 10,000 rows and measure. Too small wastes round trips, and too large holds locks.']],
         trap: 'Quoting a speed-up as a fact for every database. It depends on the machine.',
         real: 'Tell what the fastest load that you built did differently.'

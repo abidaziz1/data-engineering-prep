@@ -11,6 +11,7 @@
   function per(re) { var r = STR.rows.filter(function (x) { return re.test(x[0]); })[0]; G.expect(!!r, 'a structure row for ' + re); return r[2]; }
   var P_DICT = per(/list of dicts/), P_TUPLE = per(/list of tuples/), P_SLOTS = per(/with slots/), P_COLS = per(/dict of lists/), P_PD = per(/default types/), P_PDT = per(/category/), P_ARROW = per(/pyarrow/), P_POLARS = per(/Polars/);
   var N = G.counts('m3.structs.meta').records;
+  G.expect(Math.round(G.table('m3.structs').rows[0][2] / 10) * 10 === 500, 'a list of dicts costs about 500 bytes for each record, as the interview answers say');
   function fmt(x, d) { return x.toLocaleString('en-US', { minimumFractionDigits: d || 0, maximumFractionDigits: d || 0 }); }
   function listCmp() { return MEMT.split('\n').map(function (l) { var m = /^\s*(\d+) ids\s+list:\s+(\d+) comparisons\s+set: (\d+) comparison, (\d+) hash call/.exec(l); G.expect(!!m, 'a comparison line'); return { n: +m[1], list: +m[2], set: +m[3] }; }); }
   var CMPS = listCmp(), LASTC = CMPS[CMPS.length - 1];

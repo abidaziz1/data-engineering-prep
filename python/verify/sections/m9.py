@@ -53,3 +53,10 @@ def record(rec, work, cache):
     rec.counts('m9.engines', {'rows': 2000000, 'file_mb': round(parquet.stat().st_size / 1e6, 1), 'engines': results,
                               'note': 'each number is the median of 5 runs, each run a new process, reading the same Parquet file and answering the same question, on this machine. extra_mb is the growth of the peak resident memory during the query.'})
     rec.counts('m9.fanout', fanout())
+    try:
+        import duckdb
+        duckdb.sql('SELECT 1').fetchone()
+        msg = None
+    except AttributeError as err:
+        msg = str(err)
+    rec.counts('m9.duckdb2', {'fetchone_error': msg, 'note': 'what DuckDB itself answers when a relation is asked for fetchone(): the error text of the installed version'})

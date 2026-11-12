@@ -9,6 +9,10 @@ const storageKey = (fs.readFileSync(path.join(root, name, 'js', 'config.js'), 'u
 const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.ttf': 'font/ttf' };
 let pass = 0, fail = 0;
 const ok = (c, m) => { if (c) pass++; else { fail++; console.log('FAIL:', m); } };
+// Sizes and counts are the same in every recording, so the checks below work them out by hand. Timings change with every recording,
+// so the formats lab check reads them from js/real.js and applies the lab's rounding rule (100 ms and more: whole, 10 ms and more: one decimal, else two).
+const REC = (() => { const w = { LAB: {} }; new Function('window', 'LAB', fs.readFileSync(path.join(root, name, 'js', 'real.js'), 'utf8'))(w, w.LAB); return w.LAB.real; })();
+const fmtMs = x => (x >= 100 ? x.toFixed(0) : x >= 10 ? x.toFixed(1) : x.toFixed(2)) + ' ms';
 
 (async () => {
   const srv = http.createServer((req, res) => {
@@ -106,7 +110,10 @@ const ok = (c, m) => { if (c) pass++; else { fail++; console.log('FAIL:', m); } 
     let t = await stage(); const r = await rows(); ok(r.length === 7, 'seven formats in the table, saw ' + r.length);
     ok(/CSV 11,699,307 100 %/.test(t) && /CSV, gzip 3,087,406 26 %/.test(t) && /CSV, zstd 3,363,892 29 %/.test(t) && /JSON Lines 30,703,423 262 %/.test(t), 'shares of the CSV size by hand: gzip 3,087,406 / 11,699,307 = 26 %, zstd 29 %, JSON Lines 262 %');
     ok(/Parquet, snappy 4,153,000 35 %/.test(t) && /Parquet, zstd 2,900,742 25 %/.test(t), 'Parquet: 4,153,000 / 11,699,307 = 35 %, with zstd 25 %');
-    await click('fm-m', 'time'); t = await stage(); ok(/53\.2 ms/.test(t) && /1\.57 ms/.test(t), 'the time view shows the CSV and Parquet query times');
+    await click('fm-m', 'time'); t = await stage();
+    const fq = REC.counts['m5.formats'].formats.map(f => f.query_ms), ratio = Math.round(Math.max(...fq) / Math.min(...fq));
+    ok(REC.counts['m5.formats'].formats.length === 7 && REC.counts['m5.formats'].formats.every(f => t.includes(fmtMs(f.query_ms))), 'the time view shows the recorded query time of all seven formats: ' + REC.counts['m5.formats'].formats.map(f => fmtMs(f.query_ms)).join(', '));
+    ok(t.includes('about ' + ratio + ' times as long'), 'the time view says the slowest query took about ' + ratio + ' times as long as the fastest (' + Math.max(...fq) + ' / ' + Math.min(...fq) + ')');
   });
 
   // ---------- m6: time zones and money ----------

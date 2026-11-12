@@ -18,7 +18,7 @@ async def wait_async(_):
 
 def cpu_job(_):
     total = 0
-    for i in range(3_000_000):
+    for i in range(10_000_000):
         total += i * i % 7
     return total
 

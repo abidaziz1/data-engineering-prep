@@ -5,6 +5,7 @@
   var BASICT = G.text('m4/generator_basics.py'), PULLT = G.text('m4/pull_trace.py'), PIPET = G.text('m4/pipeline.py'), TOOLST = G.text('m4/itertools_tools.py'), CLOSET = G.text('m4/generator_close.py'), FLATT = G.text('m4/flatten_json.py'), SESST = G.text('m4/sessionize.py');
   var GM = G.counts('m4.genmem'), L = GM.sizes.length - 1;
 
+  (function () { var gm = G.counts('m4.genmem'), L = gm.sizes.length - 1; G.expect(gm.sizes[L] === 800000 && Math.round(gm.list[L].peak_bytes / 1e6) === 461 && Math.round(gm.generator[L].peak_bytes / 1e6) === 12 && Math.round(gm.list[L].peak_bytes / gm.sizes[L]) === 576, 'the memory numbers that the interview answers quote: 461 MB, 12 MB and 576 bytes per row'); })();
   function fmt(x, d) { return x.toLocaleString('en-US', { minimumFractionDigits: d || 0, maximumFractionDigits: d || 0 }); }
   var PK = /peak memory held by Python: ([\d.]+) MB/.exec(PIPET)[1], PAID = /paid orders: ([\d,]+) in (\d+) batches/.exec(PIPET), REV = /paid revenue: ([\d,.]+)/.exec(PIPET)[1];
   G.expect(!!PAID && !!REV, 'the pipeline printed its orders, batches and revenue');

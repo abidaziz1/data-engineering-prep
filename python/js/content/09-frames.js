@@ -3,7 +3,8 @@
   var B = LAB.b, G = LAB.get;
   var NUF = G.file('m9/nulls_and_types.py'), MFF = G.file('m9/merge_fanout.py'), TEF = G.file('m9/three_engines.py'), LPF = G.file('m9/lazy_polars.py'), SJF = G.file('m9/safe_join.py'), LOF = G.file('m9/latest_per_order.py');
   var NUT = G.text('m9/nulls_and_types.py'), MFT = G.text('m9/merge_fanout.py'), TET = G.text('m9/three_engines.py'), LPT = G.text('m9/lazy_polars.py'), SJT = G.text('m9/safe_join.py'), LOT = G.text('m9/latest_per_order.py');
-  var EN = G.counts('m9.engines'), FO = G.counts('m9.fanout');
+  var EN = G.counts('m9.engines'), FO = G.counts('m9.fanout'), D2 = G.counts('m9.duckdb2');
+  G.expect(/Relations no longer have fetchone\(\)/.test(D2.fetchone_error || ''), 'DuckDB ' + G.meta('duckdb') + ' answers that a relation has no fetchone()');
 
   function blk(file, name) { var a = G.at(file, new RegExp('^def ' + name + '\\(')), l = file.split('\n'), b = a; while (b < l.length && l[b] !== '') b++; return [a, b]; }
   function fn(file, name) { var r = blk(file, name); return G.lines(file, r[0], r[1]); }
@@ -228,7 +229,7 @@
         rows: [
           ['pandas', 'The biggest community, the most examples, many libraries accept a DataFrame.', 'The whole table sits in memory. A key with gaps is dropped by `groupby`.', 'The data fits in memory and the team knows it.'],
           ['Polars', 'Fast, multi-threaded, lazy plans, strict types.', 'A different API. Eager mode holds the table in memory like pandas.', 'A bigger file or a chain of steps that can be planned.'],
-          ['DuckDB', 'SQL on CSV and Parquet files, little memory, no server.', 'No `validate` on joins. A relation has no `fetchone()` in version 2.', 'The logic is SQL, or you query files directly.'],
+          ['DuckDB', 'SQL on CSV and Parquet files, little memory, no server.', 'No `validate` on joins. In version ' + G.meta('duckdb') + ' a relation has no `fetchone()`: DuckDB says so in its error message.', 'The logic is SQL, or you query files directly.'],
           ['A cluster (Spark and others)', 'Data that does not fit on one machine.', 'Setup, cost and a slower start for small jobs.', 'One machine really is not enough. Name the numbers first.']
         ],
         steps: [
@@ -312,7 +313,7 @@
         id: 'qa-engines', t: 1, tag: 'Dataframes', secs: 60,
         q: 'pandas, Polars or DuckDB: how do you choose?',
         pts: ['Size of the data and the memory you have', 'The team and the language of the logic', 'Lazy engines read only what they need', 'Measure on your data'],
-        short: 'I start from the size of the data and the machine, then from the team. For data that fits in memory and a team that knows pandas, pandas. For a bigger file or a chain of steps, Polars lazy or DuckDB, because they plan the work and read only the columns and rows they need. If the logic is mostly SQL, or I query files directly, DuckDB. In a recording on two million rows, pandas added about 270 MB of memory and DuckDB about 38 MB for the same answer, on one machine. I measure on the real data before I choose, and I do not move to a cluster until one machine is shown not to be enough.',
+        short: 'I start from the size of the data and the machine, then from the team. For data that fits in memory and a team that knows pandas, pandas. For a bigger file or a chain of steps, Polars lazy or DuckDB, because they plan the work and read only the columns and rows they need. If the logic is mostly SQL, or I query files directly, DuckDB. In a recording on two million rows, pandas added about ' + Math.round(PD.extra_mb) + ' MB of memory and DuckDB about ' + Math.round(DK.extra_mb) + ' MB for the same answer, on one machine. I measure on the real data before I choose, and I do not move to a cluster until one machine is shown not to be enough.',
         fu: [['What about Spark?', 'For data that does not fit on one machine, or a platform that already runs it. Not for a file that DuckDB or Polars can handle in seconds.'], ['Can you mix them?', 'Yes. DuckDB can query a pandas or Polars table by name, and they exchange data through Arrow.']],
         trap: 'Saying that one engine is always fastest. It depends on the data and the machine.',
         real: 'Say which engine your team uses and why.'
@@ -332,7 +333,7 @@
         id: 'qa-bigframe', t: 2, tag: 'Dataframes', secs: 60,
         q: 'A file is bigger than your memory. What do you do?',
         pts: ['Read only the columns you need', 'A lazy or streaming engine, or DuckDB', 'Parquet lets the engine skip columns and row groups', 'Process in chunks, or add a cluster last'],
-        short: 'I read only the columns I need, and I use an engine that streams, such as DuckDB or Polars lazy, so that the filter and the column choice are pushed into the file read. A Parquet file helps, because the reader can skip whole columns and row groups. In a recording the Polars plan showed the scan reading 3 of 4 columns with the filter inside the scan, and DuckDB added about 38 MB of memory against about 270 MB for pandas. If that is still not enough, I process the file in chunks that I can rerun, and only then a cluster.',
+        short: 'I read only the columns I need, and I use an engine that streams, such as DuckDB or Polars lazy, so that the filter and the column choice are pushed into the file read. A Parquet file helps, because the reader can skip whole columns and row groups. In a recording the Polars plan showed the scan reading 3 of 4 columns with the filter inside the scan, and DuckDB added about ' + Math.round(DK.extra_mb) + ' MB of memory against about ' + Math.round(PD.extra_mb) + ' MB for pandas. If that is still not enough, I process the file in chunks that I can rerun, and only then a cluster.',
         fu: [['What if the file is CSV?', 'Convert it to Parquet once. CSV has no column skipping, and every read parses the text again.'], ['Chunks in pandas?', 'Possible with `chunksize`, but a join or a sort across chunks needs more work. A streaming engine does it for you.']],
         trap: 'Buying a bigger machine before checking the plan.',
         real: 'Describe the largest file that you processed on one machine.'

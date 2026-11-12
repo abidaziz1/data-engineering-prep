@@ -13,6 +13,7 @@
   G.expect(CSV.query_ms / PZS.query_ms > 10 && CSV.query_ms / PSN.query_ms > 10, 'the query over Parquet is more than ten times faster than over CSV');
   G.expect(FM.formats.every(function (x) { return Math.abs(x.total - CSV.total) < 0.5; }), 'every format gave the same total');
   var SPEED = CSV.query_ms / PZS.query_ms;
+  G.expect(Math.round(CSV.bytes / 1e5) === 117 && Math.round(JSONL.bytes / 1e5) === 307 && Math.round(PSN.bytes / 1e5) === 42 && Math.round(PZS.bytes / 1e5) === 29 && Math.round(CSVGZ.bytes / 1e5) === 31, 'the file sizes that the interview answers quote: 11.7, 30.7, 4.2, 2.9 and 3.1 MB')
   function cell(t, fe, ra) { var c = EN.cells[t + '|' + fe + '|' + ra]; G.expect(!!c, 'an encoding cell ' + t + ' ' + fe + ' ' + ra); return c; }
   G.expect(cell('café', 'utf-8', 'latin-1').text === 'cafÃ©' && /unexpected end of data/.test(cell('café', 'latin-1', 'utf-8').error) && cell('東京', 'latin-1', 'utf-8').bytes === null, 'café read with the wrong codec, and 東京 cannot be saved as latin-1');
   G.expect(/with the csv module:/.test(TRAPST) && /5 fields/.test(TRAPST) && /3 fields/.test(TRAPST), 'a line split sees 5 and 3 fields in two of the lines');
@@ -377,7 +378,7 @@
         id: 'qa-parquet', t: 1, tag: 'Formats', secs: 60,
         q: 'Why do analytics pipelines use Parquet instead of CSV?',
         pts: ['Columns are stored together, with types', 'A query reads only the columns it needs', 'Statistics let it skip blocks', 'Smaller files through compression'],
-        short: 'Parquet stores the data by column, with a schema, in compressed blocks, with a minimum and a maximum for each column in each block. A query reads only the columns it needs and can skip blocks by those statistics, and the types are in the file so nobody guesses them. In a recording of 200,000 orders the Parquet file with zstd was 2.9 MB against 11.7 MB of CSV and 30.7 MB of JSON Lines, and a sum of one column took about 2 ms against about 70 ms for the CSV in DuckDB. CSV is still how data arrives from people and old systems, so I keep what arrives and write the clean layer as Parquet.',
+        short: 'Parquet stores the data by column, with a schema, in compressed blocks, with a minimum and a maximum for each column in each block. A query reads only the columns it needs and can skip blocks by those statistics, and the types are in the file so nobody guesses them. In a recording of 200,000 orders the Parquet file with zstd was 2.9 MB against 11.7 MB of CSV and 30.7 MB of JSON Lines, and a sum of one column took about ' + fmt(PZS.query_ms, 0) + ' ms against about ' + fmt(CSV.query_ms, 0) + ' ms for the CSV in DuckDB. CSV is still how data arrives from people and old systems, so I keep what arrives and write the clean layer as Parquet.',
         fu: [['Is Parquet good for appending single rows?', 'No. It is written in blocks. For a stream I append to JSON Lines or to a table format, and compact into Parquet later.'], ['What are row groups?', 'The blocks of rows inside a file. Each holds all columns for a range of rows, and its statistics let a reader skip it.']],
         trap: 'Saying "it is faster" without saying why: reading one column, skipping blocks and compression.',
         real: 'Give a size and a speed from a conversion you did.'
