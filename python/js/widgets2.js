@@ -345,5 +345,35 @@
     W.validateInfo = { data: data };
   })();
 
+  /* ====================== Mission 12: do the tests notice a change in the code? ====================== */
+  (function () {
+    function data() { return G.counts('m12.mutants'); }
+    var CATCH = {
+      'is_large: >= becomes >': '`(10_000, True)`: an order that is exactly at the limit is large',
+      'discount: qty >= 10 becomes > 10': '`(10_000, 10, 1000)`: ten items already get the discount',
+      'discount: the cap 5,000 becomes 50,000': '`(100_000, 10, 5_000)`: a big order reaches the cap'
+    };
+    W.mutants = {
+      steps: function () { return 1; },
+      hint: 'Pick a test suite. Count the changes that it catches.',
+      say: function () { return 'Seven small changes were made to the code, one at a time, and a test suite ran after each. A change that makes a test fail is caught. A change that all tests accept survives, and a survivor is a bug that the tests would not notice. These are real runs of pytest.'; },
+      mood: function (s, i, A) { var st = A && A.local.mt; return st && st.s === 'weak' ? 'oops' : 'think'; },
+      render: function (box, s, i, A) {
+        var d = data(), st = A.local.mt || (A.local.mt = { s: 'weak' }), file = 'test_' + st.s + '.py', su = d.suites[file], cov = d.coverage[st.s], h = '<div class="lab">';
+        h += '<div class="lab-row"><span class="lab-l">Test suite</span><div class="sel-chips">' + chips(['weak', 'strong'], st.s, 'mt-s', function (k) { return k === 'weak' ? 'weak: ' + d.coverage.weak.tests + ' tests' : 'strong: ' + d.coverage.strong.tests + ' test cases'; }) + '</div></div>' +
+          '<div class="lab-out"><div class="big good"><b>' + cov.percent + ' percent</b><span>line coverage (' + cov.statements + ' lines, ' + cov.missed + ' not run)</span></div><div class="big ' + (su.caught === su.total ? 'good' : 'bad') + '"><b>' + su.caught + ' of ' + su.total + '</b><span>changes caught</span></div></div>' +
+          table(st.s === 'strong' ? ['The change to the code', 'Result', 'The test case that catches it'] : ['The change to the code', 'Result'], d.mutants.map(function (m) {
+            var survived = su.survived.indexOf(m.name) >= 0, row = [m.name + ' (`' + m.old + '` becomes `' + m.new + '`)', survived ? 'survived: no test noticed' : 'caught'];
+            if (st.s === 'strong') row.push(CATCH[m.name] || 'any test of this function');
+            return row;
+          }), null, function (r, ri, ci) { return ci === 1 ? (/^survived/.test(String(r[1])) ? 'wbad' : 'wgood') : ''; }) +
+          '<div class="callout ' + (st.s === 'weak' ? 'warn' : 'tip') + '">' + md(st.s === 'weak' ? 'Every line of the code ran: **' + cov.percent + ' percent coverage**. And **' + su.survived.length + ' changes survived**, because no test checks the boundary of a limit, the first item that earns a discount, or the cap. Coverage counts the lines that ran. It does not count the facts that were checked.' : 'The same ' + cov.percent + ' percent coverage, with test cases on the boundaries, and all **' + su.total + ' changes are caught**. A parametrized test is a table of facts, and each row is one more thing that the code must keep true.') + '</div></div>';
+        box.innerHTML = h;
+        A.bindWidget = function (act, el) { var v = el.getAttribute('data-v'); if (act === 'mt-s') st.s = v; A.render(true); };
+      }
+    };
+    W.mutantsInfo = { data: data };
+  })();
+
   /* @@END */
 })();
