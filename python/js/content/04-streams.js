@@ -178,7 +178,7 @@
       }),
 
       B.quiz({
-        id: 'm4-q4', t: 1, src: 'docs',
+        id: 'm4-q4', t: 2, src: 'docs',
         q: 'Which of these does not build the whole result in memory at once?',
         opts: [
           { t: '`[int(x) for x in lines]`', fb: 'Square brackets make a list of everything.' },
@@ -202,7 +202,7 @@
       }),
 
       B.quiz({
-        id: 'm4-q5', t: 1, src: 'rec',
+        id: 'm4-q5', t: 2, src: 'rec',
         q: 'You run `itertools.groupby(rows, key=store)` on rows that are not sorted by store. What do you get, according to the recording?',
         opts: [
           { t: 'A new group each time the store changes, so a store can appear several times', fb: '' },

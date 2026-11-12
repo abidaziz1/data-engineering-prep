@@ -255,7 +255,7 @@
       }),
 
       B.quiz({
-        id: 'm12-q5', t: 1, src: 'rec',
+        id: 'm12-q5', t: 2, src: 'rec',
         q: 'Which rule code did ruff report for `def load(rows, seen=[]):`, and what is the bug?',
         opts: [
           { t: 'B006: the default list is created once and shared by all calls', fb: '' },
@@ -267,7 +267,7 @@
       }),
 
       B.bug({
-        id: 'm12-bug2', t: 1, src: 'rec', q: 'ruff flagged this function with B006. Run it twice with no second argument and the second result contains the first run\'s numbers. Click the line.',
+        id: 'm12-bug2', t: 2, src: 'rec', q: 'ruff flagged this function with B006. Run it twice with no second argument and the second result contains the first run\'s numbers. Click the line.',
         file: 'load.py', lang: 'python', code: BUG_DEFAULT, bad: [1],
         hint: 'When is the default value created?',
         why: 'The default `[]` is created once, when the `def` line runs. Both calls use that same list, so the second call appends to the first one\'s items. Default to `None` and create a new list inside the function.',

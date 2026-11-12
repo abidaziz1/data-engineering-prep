@@ -6,16 +6,16 @@
 
   /* Boss round: questions come from the earlier missions, in mission order. Tier 1 is the junior path, tier 2 adds the senior questions, tier 3 adds the rest. */
   var BOSS = [
-    ['qa-pyrole', 1], ['qa-idem', 1], ['qa-sqlpy', 2],
-    ['qa-venv', 1], ['qa-lock', 1], ['qa-repro', 2],
+    ['qa-pyrole', 1], ['qa-sqlpy', 2],
+    ['qa-lock', 1], ['qa-repro', 2],
     ['qa-structs', 1], ['qa-mutable', 1], ['qa-complexity', 2],
-    ['qa-generator', 1], ['qa-bigfile', 1], ['qa-itertools', 2],
-    ['qa-csv', 1], ['qa-parquet', 1], ['qa-atomic', 2], ['qa-codec', 3],
+    ['qa-generator', 1], ['qa-itertools', 2],
+    ['qa-parquet', 1], ['qa-atomic', 2], ['qa-codec', 3],
     ['qa-utc', 1], ['qa-decimal', 1], ['qa-dst', 2],
-    ['qa-retry', 1], ['qa-idempotent', 1], ['qa-errors', 1], ['qa-delivery', 2],
-    ['qa-paging', 1], ['qa-sqli', 1], ['qa-tx', 1], ['qa-timeout', 2],
+    ['qa-retry', 1], ['qa-idempotent', 1], ['qa-delivery', 2],
+    ['qa-paging', 1], ['qa-sqli', 1], ['qa-timeout', 2],
     ['qa-joinfan', 1], ['qa-engines', 1], ['qa-bigframe', 2],
-    ['qa-profile', 1], ['qa-gil', 1], ['qa-threadsprocs', 1], ['qa-free', 3],
+    ['qa-profile', 1], ['qa-gil', 1], ['qa-free', 3],
     ['qa-pydantic', 1], ['qa-quarantine', 1], ['qa-contract', 2],
     ['qa-testing', 1], ['qa-coverage', 1], ['qa-hypothesis', 2],
     ['qa-config', 1], ['qa-secrets', 1], ['qa-package', 2],

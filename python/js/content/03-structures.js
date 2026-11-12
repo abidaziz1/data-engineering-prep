@@ -173,7 +173,7 @@
       }),
 
       B.quiz({
-        id: 'm3-q4', t: 1, src: 'rec',
+        id: 'm3-q4', t: 2, src: 'rec',
         q: 'A job keeps `snapshot = list(orders)` before it changes the orders, so that it can compare later. It changes a nested list inside one order. What does the snapshot show?',
         opts: [
           { t: 'The old values, because it is a copy', fb: 'It is a shallow copy. The inner lists are shared, as the recording shows.' },
@@ -208,7 +208,7 @@
       B.widget({ id: 'm3-lab-structs', kind: 'structs', t: 1, src: 'rec', title: 'Lab: ' + fmt(N) + ' records in ten structures' }),
 
       B.quiz({
-        id: 'm3-q6', t: 1, src: 'rec',
+        id: 'm3-q6', t: 2, src: 'rec',
         q: 'In the recording a list of dicts took ' + fmt(P_DICT, 1) + ' bytes per record and a list of tuples ' + fmt(P_TUPLE, 1) + '. Why do dicts cost more?',
         opts: [
           { t: 'Every dict carries its own hash table of the six keys, on top of the six values', fb: '' },

@@ -213,7 +213,7 @@
       B.widget({ id: 'm5-lab-formats', kind: 'formats', t: 1, src: 'rec', title: 'Lab: seven formats for the same orders' }),
 
       B.quiz({
-        id: 'm5-q4', t: 1, src: 'rec',
+        id: 'm5-q4', t: 2, src: 'rec',
         q: 'In the lab, one DuckDB query summed the totals over each file. Roughly how did the Parquet file compare with the CSV file?',
         opts: [
           { t: 'About ' + fmt(CSV.bytes / PZS.bytes, 0) + ' times smaller, and more than ten times faster for this query', fb: '' },
@@ -254,7 +254,7 @@
       }),
 
       B.quiz({
-        id: 'm5-q5', t: 1, src: 'rec',
+        id: 'm5-q5', t: 2, src: 'rec',
         q: 'In the recording the in-place write was killed after three of five rows. What did the target file contain afterwards?',
         opts: [
           { t: 'The header and 3 rows, and last night\'s complete file was gone', fb: '' },
@@ -278,7 +278,7 @@
       }),
 
       B.bug({
-        id: 'm5-bug3', t: 1, src: 'rec', q: 'The loader must apply the files of one day in order, part-1, part-2, up to part-10. With ten parts the result is wrong, and with nine it is right. Click the line that breaks at ten.',
+        id: 'm5-bug3', t: 2, src: 'rec', q: 'The loader must apply the files of one day in order, part-1, part-2, up to part-10. With ten parts the result is wrong, and with nine it is right. Click the line that breaks at ten.',
         file: 'load_day.py', lang: 'python', code: BUG_SORT, bad: [1],
         hint: 'How does Python sort the text "part-10.csv" against "part-2.csv"?',
         why: 'Names sort character by character, and `1` comes before `2`, so `part-10.csv` sorts before `part-2.csv`. The recording printed `part-1, part-10, part-2`. Sort by the number, or pad the numbers with zeros when you write them.',

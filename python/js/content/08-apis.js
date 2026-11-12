@@ -247,7 +247,7 @@
       }),
 
       B.quiz({
-        id: 'm8-q4', t: 1, src: 'rec',
+        id: 'm8-q4', t: 2, src: 'rec',
         q: 'The f-string query got the name `x\' OR \'1\'=\'1`. How many customers did it return, in the recording?',
         opts: [
           { t: '3 of 3, every customer', fb: '' },
@@ -309,7 +309,7 @@
       }),
 
       B.bug({
-        id: 'm8-bug3', t: 1, src: 'rec', q: 'This load takes 40 minutes for a million rows, and the database is nearly idle. Click the line that makes it slow.',
+        id: 'm8-bug3', t: 2, src: 'rec', q: 'This load takes 40 minutes for a million rows, and the database is nearly idle. Click the line that makes it slow.',
         file: 'load.py', lang: 'python', code: BUG_COMMIT, bad: [4],
         hint: 'How often does it ask the disk to save?',
         why: 'A commit for every row waits for the disk each time. In the recording that gave ' + EACH.rows_per_second.toLocaleString('en-US') + ' rows per second, against ' + MANY.rows_per_second.toLocaleString('en-US') + ' for one transaction with `executemany`. Write the rows in one transaction, or in batches.',
@@ -318,7 +318,7 @@
       }),
 
       B.quiz({
-        id: 'm8-q6', t: 1, src: 'rec',
+        id: 'm8-q6', t: 2, src: 'rec',
         q: 'Which method was the slowest in the recording, and about how much slower than one transaction with `executemany`?',
         opts: [
           { t: 'A commit for every row, more than 50 times slower', fb: '' },

@@ -161,7 +161,7 @@
       }),
 
       B.code({
-        id: 'm13-test', t: 1, src: 'rec', title: 'Test the command line', file: 'test_cli.py', lang: 'python', code: TCF,
+        id: 'm13-test', t: 2, src: 'rec', title: 'Test the command line', file: 'test_cli.py', lang: 'python', code: TCF,
         steps: [
           { say: 'Typer ships a `CliRunner` that calls the command in the same process and captures the exit code and the output. The tests ran in the CI checks below.', lines: null },
           { say: 'A helper writes a small file of orders in a temporary folder.', lines: blk(TCF, 'orders_file') },

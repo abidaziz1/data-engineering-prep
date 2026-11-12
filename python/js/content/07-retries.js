@@ -149,7 +149,7 @@
       }),
 
       B.quiz({
-        id: 'm7-q2', t: 1, src: 'rec',
+        id: 'm7-q2', t: 2, src: 'rec',
         q: 'The loader that caught every exception ran on a file with two bad rows. What exit code did the recording show?',
         opts: [
           { t: '0, with the message "status: success"', fb: '' },
@@ -230,7 +230,7 @@
       }),
 
       B.quiz({
-        id: 'm7-q4', t: 1, src: 'rec',
+        id: 'm7-q4', t: 2, src: 'rec',
         q: 'With a base of 0.5 seconds and a cap of 8, the recording lists the most a wait can last: 0.5, 1.0, 2.0, 4.0, 8.0. After the fourth failure, what is the longest possible wait?',
         opts: [
           { t: '4.0 seconds', fb: '' },
@@ -277,7 +277,7 @@
       }),
 
       B.bug({
-        id: 'm7-bug3', t: 1, src: 'docs', q: 'This code creates an order with a POST and retries on a timeout. Customers report two orders for one click. Click the line that makes duplicates possible.',
+        id: 'm7-bug3', t: 2, src: 'docs', q: 'This code creates an order with a POST and retries on a timeout. Customers report two orders for one click. Click the line that makes duplicates possible.',
         file: 'create_order.py', lang: 'python', code: BUG_POST, bad: [4],
         hint: 'A timeout means that you did not get an answer. Does it mean that the server did nothing?',
         why: 'On a timeout the server may already have created the order and only the reply was lost. A second `POST` creates a second order. A POST is not idempotent by itself. Make one **idempotency key** before the loop and send it with every try, so the server can recognise the repeat and return the first result.',
@@ -325,7 +325,7 @@
       }),
 
       B.order({
-        id: 'm7-order', t: 1, src: 'docs', q: 'Put the steps of a safe retry in order.',
+        id: 'm7-order', t: 2, src: 'docs', q: 'Put the steps of a safe retry in order.',
         items: ['Call the API with a timeout', 'Sort the answer: is it worth another try?', 'If not, raise the error at once', 'If yes, wait a random time that grows with each try', 'Call again, and after the last allowed try raise the last error'],
         why: 'The timeout comes first, because a hung call never fails. Sorting comes before waiting, because waiting for an error that cannot change only delays the failure. The last step makes sure that a long outage ends as a failed run.',
         cheer: 'Say it as: timeout, sort, stop or wait, try again, raise at the end.'
@@ -380,7 +380,7 @@
       }),
 
       B.quiz({
-        id: 'm7-q8', t: 1, src: 'rec',
+        id: 'm7-q8', t: 2, src: 'rec',
         q: 'The job died after 3 rows and was run again. Which way to load ended with 9 rows, and which one ended with only 3?',
         opts: [
           { t: 'Append ended with 9 rows. Insert with a key ended with 3 rows, because the rerun failed on the first duplicate.', fb: '' },

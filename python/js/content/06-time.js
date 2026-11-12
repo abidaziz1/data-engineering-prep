@@ -160,7 +160,7 @@
       }),
 
       B.quiz({
-        id: 'm6-q4', t: 1, src: 'rec',
+        id: 'm6-q4', t: 2, src: 'rec',
         q: 'A New York store records `2026-11-01 01:30` with no offset. How many different moments can that mean, and how far apart are they?',
         opts: [
           { t: 'Two, one hour apart: 05:30 UTC and 06:30 UTC', fb: '' },
@@ -256,7 +256,7 @@
       B.widget({ id: 'm6-lab-money', kind: 'money', t: 1, src: 'rec', title: 'Lab: float, Decimal and cents' }),
 
       B.quiz({
-        id: 'm6-q6', t: 1, src: 'rec',
+        id: 'm6-q6', t: 2, src: 'rec',
         q: 'A job adds the price 0.10 one million times in a float loop, and compares the total with 100,000. In the recording, what is the float total?',
         opts: [
           { t: S1M.float, fb: '' },
