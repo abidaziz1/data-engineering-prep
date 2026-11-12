@@ -82,8 +82,46 @@ def cmd_test(dag_id, logical_date=None):
     tis = []
     for ti in sorted(run.get_task_instances(), key=lambda t: (t.task_id, t.map_index)):
         tis.append({"task_id": ti.task_id, "map_index": ti.map_index, "state": str(getattr(ti.state, "value", ti.state)), "try_number": ti.try_number})
+    if os.environ.get("AF_PROBE_NOCONSOLE"):
+        console = ""
     emit({"dag_id": dag_id, "state": str(getattr(run.state, "value", run.state)), "run_id": run.run_id, "logical_date": str(run.logical_date),
           "run_type": str(getattr(run.run_type, "value", run.run_type)), "tis": tis, "seconds": round(seconds, 2), "console": console})
+
+
+# ------------------------------------------------------------------------------------------------------------------------------------------
+def cmd_idem(dag_id, table, db, dates):
+    """Run a load DAG for each date in turn, in one process, and count the rows of its table after every run."""
+    import sqlite3
+    import pendulum
+    from airflow.dag_processing.dagbag import DagBag
+    bag, _ = quiet(DagBag, dag_folder=os.environ["AIRFLOW__CORE__DAGS_FOLDER"])
+    dag = bag.dags[dag_id]
+    out = []
+    for d in dates.split(","):
+        quiet(dag.test, logical_date=pendulum.parse(d))
+        con = sqlite3.connect(db)
+        per_day = dict(con.execute("SELECT dt, count(*) FROM %s GROUP BY dt ORDER BY dt" % table).fetchall())
+        con.close()
+        out.append({"day": d, "rows": sum(per_day.values()), "per_day": per_day})
+    emit(out)
+
+
+# ------------------------------------------------------------------------------------------------------------------------------------------
+def cmd_rules():
+    from airflow.task.trigger_rule import TriggerRule
+    emit([r.value for r in TriggerRule])
+
+
+# ------------------------------------------------------------------------------------------------------------------------------------------
+def cmd_parse_cost(path, repeats="5"):
+    """Parse one DAG file again and again with a fresh DagBag, and return the wall time of each parse in seconds."""
+    from airflow.dag_processing.dagbag import DagBag
+    times = []
+    for _ in range(int(repeats)):
+        t0 = time.perf_counter()
+        quiet(DagBag, dag_folder=path)
+        times.append(round(time.perf_counter() - t0, 4))
+    emit({"path": os.path.basename(path), "times": times})
 
 
 # ------------------------------------------------------------------------------------------------------------------------------------------
@@ -103,13 +141,22 @@ def cmd_timetable(spec_json):
     elif kind == "DeltaTriggerTimetable":
         from airflow.timetables.trigger import DeltaTriggerTimetable as T
         args = dict(args, delta=datetime.timedelta(**args["delta"]))
+    elif kind == "EventsTimetable":
+        from airflow.timetables.events import EventsTimetable as T
+        args = dict(args, event_dates=[pendulum.parse(x) for x in args["event_dates"]])
+    elif kind == "MultipleCronTriggerTimetable":
+        from airflow.timetables.trigger import MultipleCronTriggerTimetable as T
     else:
         raise SystemExit("unknown timetable " + kind)
     if "interval" in args and isinstance(args["interval"], dict):
         args = dict(args, interval=datetime.timedelta(**args["interval"]))
     args = dict(args)
     cron_or_delta = args.pop("expr", None)
-    tt = T(cron_or_delta, **args) if cron_or_delta is not None else T(**args)
+    exprs = args.pop("exprs", None)
+    if exprs:
+        tt = T(*exprs, **args)
+    else:
+        tt = T(cron_or_delta, **args) if cron_or_delta is not None else T(**args)
     start = pendulum.parse(spec["start"])
     latest = pendulum.parse(spec["latest"]) if spec.get("latest") else None
     restriction = TimeRestriction(earliest=start, latest=latest, catchup=spec.get("catchup", True))
