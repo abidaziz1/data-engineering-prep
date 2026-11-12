@@ -1,0 +1,5 @@
+order_id,store,status,ordered_at,total_cents
+O-1, london ,paid,2026-03-14T08:15:00,1250
+O-2,London,refunded,2026-03-14T09:00:00,475
+O-3,London,paid,2026-03-14T10:30:00,820
+O-4,Singapore,paid,2026-03-15T01:00:00,1990
