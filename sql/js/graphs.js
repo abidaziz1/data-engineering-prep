@@ -209,4 +209,30 @@
       { id: 'tg_rec2', x: 20, y: 290, t: 'a cycle in the data never stops', c: 'int' }
     ]
   });
+  /* ------------------------------------------------------------------ */
+  /* 7. A window function                                                */
+  /* ------------------------------------------------------------------ */
+  S.window = build({
+    h: 340, cw: 190, dx: 216,
+    label: 'What a window function does. The rows that remain after WHERE, GROUP BY and HAVING are split into partitions, sorted inside each partition, and for every row a frame of nearby rows is chosen. The function reads the frame and writes one value on the row. No row is removed.',
+    nodes: [
+      ['w_rows', 0, 0, 'Input rows', 'after the filters', 'src'],
+      ['w_part', 1, 0, 'PARTITION BY', 'separate groups of rows', 'raw'],
+      ['w_order', 2, 0, 'ORDER BY', 'sort inside each group', 'stg'],
+      ['w_frame', 3, 0, 'Frame', 'rows the function sees', 'int'],
+      ['w_fn', 4, 0, 'Function', 'sum, rank, lag and more', 'mart'],
+      ['w_out', 4, 1.3, 'New column', 'one value for each row', 'qual']
+    ],
+    edges: [
+      ['v1', 'w_rows', 'w_part', 1],
+      ['v2', 'w_part', 'w_order', 2],
+      ['v3', 'w_order', 'w_frame', 3],
+      ['v4', 'w_frame', 'w_fn', 4],
+      ['v5', 'w_fn', 'w_out', 5]
+    ],
+    tags: [
+      { id: 'tg_w1', x: 20, y: 150, t: 'no row is removed or merged', c: 'qual' },
+      { id: 'tg_w2', x: 20, y: 290, t: 'runs after GROUP BY and HAVING, before DISTINCT, ORDER BY and LIMIT', c: 'int' }
+    ]
+  });
 })();

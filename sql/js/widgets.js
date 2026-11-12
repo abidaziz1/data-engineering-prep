@@ -305,7 +305,7 @@
       say: function (s, i) {
         return [
           'This recursive CTE walks the category tree. The anchor starts at the root. Each iteration adds the children of the rows added by the last one. Step through the iterations and watch the working table. The loop stops when an iteration adds no rows.',
-          'A cycle in the data breaks that stop rule. Here category 1 was made a child of category 9, which is below it. `UNION` drops rows it has seen, so the walk ends. `UNION ALL` keeps going until a depth guard stops it.'
+          'A cycle in the data breaks that stop rule. Here Menu (category 1) was made a child of Merch (category 9), which is below it. `UNION` drops rows it has seen, so the walk ends. `UNION ALL` keeps going until a depth guard stops it.'
         ][i];
       },
       mood: function () { return 'think'; },
@@ -325,7 +325,7 @@
           var u = G.on('m5.cycle_union', 'duckdb').rows[0][0], ua = G.on('m5.cycle_union_all', 'duckdb').rows[0];
           h += '<div class="pair"><div>' + code('UNION: drops rows it has seen', 'sql', G.file('m5.cycle_union')) + '<div class="lab-out"><div class="big good"><b>' + u + '</b><span>categories reached, then the walk ends</span></div></div></div>' +
             '<div>' + code('UNION ALL with a depth guard', 'sql', G.file('m5.cycle_union_all')) + '<div class="lab-out"><div class="big bad"><b>' + ua[0] + '</b><span>rows produced, until depth ' + ua[1] + '</span></div></div></div></div>' +
-            '<div class="callout warn">`UNION ALL` is faster because it does not compare rows, and it is the right choice for a tree. With a cycle it never ends, so the engine needs a guard such as `depth < 20`, or the query runs until it uses all memory or disk. DuckDB, PostgreSQL and SQLite gave the same two numbers.</div>';
+            '<div class="callout warn">`UNION ALL` does not compare rows, which makes it the usual choice for a tree. With a cycle it never ends on its own, so it needs a guard such as `depth < 20`. DuckDB, PostgreSQL and SQLite gave the same two numbers.</div>';
         }
         box.innerHTML = h + '</div>';
         bindCodes(box);
@@ -333,6 +333,103 @@
       }
     };
     SQ.info.recursive = { iter: iter, maxIter: maxIter, cumulative: cumulative };
+  })();
+
+  /* ====================== mission 6: the window frame lab ====================== */
+  (function () {
+    var MODES = ['ROWS', 'RANGE', 'GROUPS'], STARTS = ['UNBOUNDED PRECEDING', 'N PRECEDING', 'CURRENT ROW'], ENDS = ['CURRENT ROW', 'N FOLLOWING', 'UNBOUNDED FOLLOWING'];
+    function C() { return G.counts('m6.frames'); }
+    /* the ten daily revenues in the order the window sorts them: revenue, then store (the store only labels a row). Rows with the same revenue share a group. */
+    function withGroups() {
+      var t = G.table('data.daily_revenue'), i = { day: t.cols.indexOf('day'), store: t.cols.indexOf('store_id'), rev: t.cols.indexOf('revenue') }, g = -1, last = null;
+      return t.rows.map(function (r) { return { day: r[i.day], store: r[i.store], rev: parseFloat(r[i.rev]) }; })
+        .sort(function (a, b) { return a.rev - b.rev || a.store - b.store; })
+        .map(function (r) { if (r.rev !== last) { g++; last = r.rev; } r.group = g; return r; });
+    }
+    function n(mode) { return mode === 'RANGE' ? C().range_n : C().row_n; }
+    /* the rows [lo, hi] (positions in the sorted list) that the frame of row i holds */
+    function frameOf(rows, mode, start, end, i) {
+      var N = n(mode), last = rows.length - 1, lo, hi, v = rows[i].rev, g = rows[i].group, k, a = Infinity, b = -Infinity;
+      if (mode === 'ROWS') {
+        lo = start === 'UNBOUNDED PRECEDING' ? 0 : start === 'N PRECEDING' ? i - N : i;
+        hi = end === 'UNBOUNDED FOLLOWING' ? last : end === 'N FOLLOWING' ? i + N : i;
+        return [Math.max(0, lo), Math.min(last, hi)];
+      }
+      var key = mode === 'RANGE' ? 'rev' : 'group', cur = mode === 'RANGE' ? v : g;
+      var from = start === 'UNBOUNDED PRECEDING' ? -Infinity : start === 'N PRECEDING' ? cur - N : cur;
+      var to = end === 'UNBOUNDED FOLLOWING' ? Infinity : end === 'N FOLLOWING' ? cur + N : cur;
+      for (k = 0; k <= last; k++) if (rows[k][key] >= from && rows[k][key] <= to) { a = Math.min(a, k); b = Math.max(b, k); }
+      return [a, b];
+    }
+    function compute(mode, start, end) {
+      var rows = withGroups();
+      return rows.map(function (r, i) {
+        var f = frameOf(rows, mode, start, end, i), sum = 0, k;
+        for (k = f[0]; k <= f[1]; k++) sum += rows[k].rev;
+        return { rev: r.rev, sum: sum, count: f[1] - f[0] + 1, lo: f[0], hi: f[1] };
+      });
+    }
+    function key(mode, start, end) { return mode + '|' + start + '|' + end; }
+    function label(w, mode) { return String(w).replace('N PRECEDING', n(mode) + ' PRECEDING').replace('N FOLLOWING', n(mode) + ' FOLLOWING'); }
+    /* the page's own answer for every setting, compared with what the engines returned: a list of mismatches */
+    function check() {
+      var bad = [];
+      MODES.forEach(function (m) { STARTS.forEach(function (s0) { ENDS.forEach(function (e0) {
+        var mine = compute(m, s0, e0).map(function (r) { return [r.rev, r.sum, r.count]; }).sort(function (a, b) { return a[0] - b[0] || a[1] - b[1] || a[2] - b[2]; });
+        var rec = C().combos[key(m, s0, e0)].rows.map(function (r) { return [parseFloat(r[0]), parseFloat(r[1]), +r[2]]; });
+        if (JSON.stringify(mine) !== JSON.stringify(rec)) bad.push(key(m, s0, e0));
+      }); }); });
+      return bad;
+    }
+    var EXPLAIN = {
+      ROWS: '`ROWS` counts physical rows. `1 PRECEDING` is the one row before this row, and a tie does not matter: rows with the same revenue are separate rows.',
+      RANGE: '`RANGE` counts values of the ORDER BY column. `10 PRECEDING` means every row whose revenue is within 10 below this row. Rows with the same revenue (peers) are always in the frame together.',
+      GROUPS: '`GROUPS` counts groups of peers. `1 PRECEDING` is the whole group of rows before this one, so rows with the same revenue move in and out of the frame together.'
+    };
+    W.frame = {
+      steps: function () { return 2; },
+      hint: function (s, i) { return i === 0 ? 'Pick a frame and click a row.' : 'Compare the two running totals on the tied rows.'; },
+      say: function (s, i) {
+        if (i === 1) return 'The default frame of an ordered window is `RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW`. Two days have the same revenue, 50.00. With the default frame both get the same running total, because the peer is inside the frame. With `ROWS` the second one adds the first.';
+        return 'Ten daily revenues, sorted. Pick the type of frame, where it starts and where it ends. The blue rows are the frame of the yellow row. Click another row to move the current row. The sums are computed here from the frame rule, and the recorder ran all 27 settings on DuckDB, PostgreSQL and SQLite, which returned the same sums.';
+      },
+      mood: function () { return 'think'; },
+      render: function (box, s, i, A) {
+        var h = '<div class="lab">';
+        if (i === 0) {
+          var st = A.local.fr || (A.local.fr = { mode: 'ROWS', start: 'N PRECEDING', end: 'CURRENT ROW', cur: 6 });
+          var rows = withGroups(), res = compute(st.mode, st.start, st.end), r = res[st.cur], c = C().combos[key(st.mode, st.start, st.end)];
+          var sql = C().query.replace(/<frame>/g, c.frame), peers = rows.filter(function (x) { return x.rev === rows[st.cur].rev; }).length;
+          h += '<div class="lab-h">Type of frame</div><div class="sel-chips">' + chips(MODES, st.mode, 'fr-mode') + '</div>' +
+            '<div class="lab-h">Starts at</div><div class="sel-chips">' + chips(STARTS, st.start, 'fr-start', function (k) { return label(k, st.mode); }) + '</div>' +
+            '<div class="lab-h">Ends at</div><div class="sel-chips">' + chips(ENDS, st.end, 'fr-end', function (k) { return label(k, st.mode); }) + '</div>' +
+            code('the window', 'sql', sql, G.span(sql, /sum\(revenue\)/)) +
+            '<p class="lab-note">' + md(EXPLAIN[st.mode]) + '</p>' +
+            '<div class="tbl-wrap"><table class="tbl"><thead><tr>' + ['', 'day', 'store', 'revenue', 'in the frame', 'sum of the frame', 'rows in the frame'].map(function (c) { return '<th>' + esc(c) + '</th>'; }).join('') + '</tr></thead><tbody>' +
+            rows.map(function (x, k) {
+              var cls = k === st.cur ? 'cur' : k >= r.lo && k <= r.hi ? 'inframe' : '';
+              return '<tr class="' + cls + '"><td>' + (k === st.cur ? '<b>row ' + (k + 1) + '</b>' : '<button type="button" class="sel-chip" data-act="fr-cur" data-v="' + k + '">row ' + (k + 1) + '</button>') + '</td><td>' + esc(x.day) + '</td><td>' + esc(x.store) + '</td><td>' + x.rev.toFixed(2) + '</td><td>' +
+                (k >= r.lo && k <= r.hi ? 'in the frame' : '') + '</td><td>' + res[k].sum.toFixed(2) + '</td><td>' + res[k].count + '</td></tr>';
+            }).join('') + '</tbody></table></div>' +
+            '<div class="lab-out"><div class="big"><b>' + r.count + '</b><span>rows in the frame of row ' + (st.cur + 1) + '</span></div>' +
+            '<div class="big"><b>' + r.sum.toFixed(2) + '</b><span>sum(revenue) over the frame</span></div>' +
+            '<div class="big ' + (peers > 1 ? 'warn' : 'good') + '"><b>' + (peers > 1 ? 'a peer exists' : 'no peers') + '</b><span>' + (peers > 1 ? 'two rows have revenue ' + rows[st.cur].rev.toFixed(2) : 'no other row has this revenue') + '</span></div></div>';
+        } else {
+          var t = G.on('m6.running_ties', 'duckdb'), sq = G.file('m6.running_ties');
+          h += code('two running totals', 'sql', sq, G.span(sq, /sum\(revenue\) OVER \(ORDER BY revenue\)/, /rows_frame/)) +
+            table(t.cols, t.rows, function (r2) { return r2[2] === '50.00' ? 'cur' : ''; }) +
+            '<div class="callout warn">The two rows with revenue 50.00 are peers. `default_frame` gives both the same total, 295.00, because the frame reaches to the last peer. `rows_frame` gives 245.00 and 295.00, because it stops at the row itself, and it needs a tie-breaker (`store_id`) so that the order of the peers is fixed. DuckDB, PostgreSQL and SQLite returned the same numbers.</div>';
+        }
+        box.innerHTML = h + '</div>';
+        bindCodes(box);
+        A.bindWidget = function (act, el) {
+          var st2 = A.local.fr, v = el.getAttribute('data-v');
+          if (act === 'fr-mode') st2.mode = v; else if (act === 'fr-start') st2.start = v; else if (act === 'fr-end') st2.end = v; else if (act === 'fr-cur') st2.cur = +v;
+          A.render(true);
+        };
+      }
+    };
+    SQ.info.frame = { compute: compute, check: check, rows: withGroups, key: key, MODES: MODES, STARTS: STARTS, ENDS: ENDS };
   })();
 
   /* the helpers are shared with part 2 (widgets2.js) */
