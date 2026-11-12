@@ -2502,7 +2502,50 @@ LAB.real = {
   "m6.running_ties": "SELECT day, store_id, revenue,\n       sum(revenue) OVER (ORDER BY revenue) AS default_frame,\n       sum(revenue) OVER (ORDER BY revenue, store_id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS rows_frame\nFROM daily_revenue\nORDER BY revenue, store_id;\n",
   "m6.share": "SELECT store_id,\n       sum(total) AS revenue,\n       round(100.0 * sum(total) / sum(sum(total)) OVER (), 1) AS share_percent\nFROM orders\nWHERE status = 'paid'\nGROUP BY store_id\nORDER BY revenue DESC;\n",
   "m6.top3_cte": "WITH ranked AS (\n  SELECT order_id, total, ROW_NUMBER() OVER (ORDER BY total DESC) AS rn\n  FROM orders\n  WHERE status = 'paid'\n)\nSELECT order_id, total, rn\nFROM ranked\nWHERE rn <= 3\nORDER BY rn;\n",
-  "m6.where_error": "SELECT order_id, total\nFROM orders\nWHERE ROW_NUMBER() OVER (ORDER BY total DESC) <= 3;\n"
+  "m6.where_error": "SELECT order_id, total\nFROM orders\nWHERE ROW_NUMBER() OVER (ORDER BY total DESC) <= 3;\n",
+  "m7.arith_duckdb": "SELECT o.order_id,\n       date_diff('minute', o.order_ts, min(p.paid_ts)) AS first_payment_after,\n       date_diff('minute', o.order_ts, max(p.paid_ts)) AS last_payment_after\nFROM orders AS o\nJOIN payments AS p ON p.order_id = o.order_id\nGROUP BY o.order_id, o.order_ts\nORDER BY o.order_id;\n",
+  "m7.arith_postgres": "SELECT o.order_id,\n       CAST(extract(epoch FROM min(p.paid_ts) - o.order_ts) / 60 AS INTEGER) AS first_payment_after,\n       CAST(extract(epoch FROM max(p.paid_ts) - o.order_ts) / 60 AS INTEGER) AS last_payment_after\nFROM orders AS o\nJOIN payments AS p ON p.order_id = o.order_id\nGROUP BY o.order_id, o.order_ts\nORDER BY o.order_id;\n",
+  "m7.arith_sqlite": "SELECT o.order_id,\n       CAST(round((julianday(min(p.paid_ts)) - julianday(o.order_ts)) * 1440) AS INTEGER) AS first_payment_after,\n       CAST(round((julianday(max(p.paid_ts)) - julianday(o.order_ts)) * 1440) AS INTEGER) AS last_payment_after\nFROM orders AS o\nJOIN payments AS p ON p.order_id = o.order_id\nGROUP BY o.order_id, o.order_ts\nORDER BY o.order_id;\n",
+  "m7.arrays_duckdb": "SELECT i.order_id,\n       list(p.name ORDER BY i.line_no) AS products,\n       len(list(p.name)) AS lines,\n       list_contains(list(p.name), 'Latte') AS has_latte\nFROM order_items AS i\nJOIN products AS p ON p.product_id = i.product_id\nWHERE i.order_id IN (1001, 1002, 1011)\nGROUP BY i.order_id\nORDER BY i.order_id;\n",
+  "m7.arrays_postgres": "SELECT i.order_id,\n       array_agg(p.name ORDER BY i.line_no) AS products,\n       cardinality(array_agg(p.name)) AS lines,\n       'Latte' = ANY(array_agg(p.name)) AS has_latte\nFROM order_items AS i\nJOIN products AS p ON p.product_id = i.product_id\nWHERE i.order_id IN (1001, 1002, 1011)\nGROUP BY i.order_id\nORDER BY i.order_id;\n",
+  "m7.arrays_sqlite": "SELECT order_id,\n       json_group_array(name) AS products,\n       count(*) AS lines,\n       max(name = 'Latte') AS has_latte\nFROM (\n  SELECT i.order_id, p.name\n  FROM order_items AS i\n  JOIN products AS p ON p.product_id = i.product_id\n  WHERE i.order_id IN (1001, 1002, 1011)\n  ORDER BY i.order_id, i.line_no\n)\nGROUP BY order_id\nORDER BY order_id;\n",
+  "m7.bytes": "SELECT 'Zoë' AS s, length('Zoë') AS chars, octet_length('Zoë') AS bytes;\n",
+  "m7.bytes_duckdb": "SELECT 'Zoë' AS s, length('Zoë') AS chars, strlen('Zoë') AS bytes;\n",
+  "m7.ch_domain": "SELECT coalesce(split_part(email, '@', 2), 'unknown') AS domain, count(*) AS customers\nFROM customers\nGROUP BY coalesce(split_part(email, '@', 2), 'unknown')\nORDER BY customers DESC, domain;\n",
+  "m7.ch_firstorder": "SELECT c.customer_id, c.name,\n       CAST(min(o.order_ts) AS DATE) - c.signup_date AS days_to_first_order\nFROM customers AS c\nJOIN orders AS o ON o.customer_id = c.customer_id\nGROUP BY c.customer_id, c.name, c.signup_date\nORDER BY c.customer_id;\n",
+  "m7.ch_localday": "WITH store_tz(store_id, tz) AS (\n  VALUES (1, 'Asia/Singapore'), (2, 'Asia/Kuala_Lumpur'), (3, 'Asia/Jakarta'), (4, 'Australia/Sydney')\n)\nSELECT z.store_id,\n       CAST((o.order_ts AT TIME ZONE 'UTC') AT TIME ZONE z.tz AS DATE) AS local_day,\n       count(*) AS orders\nFROM orders AS o\nJOIN store_tz AS z ON z.store_id = o.store_id\nGROUP BY z.store_id, CAST((o.order_ts AT TIME ZONE 'UTC') AT TIME ZONE z.tz AS DATE)\nORDER BY z.store_id, local_day;\n",
+  "m7.collation": "WITH w(word) AS (\n  VALUES ('banana'), ('Banana'), ('apple'), ('Éclair'), ('cherry'), ('Apple')\n)\nSELECT word FROM w ORDER BY word;\n",
+  "m7.collation_en": "WITH w(word) AS (\n  VALUES ('banana'), ('Banana'), ('apple'), ('Éclair'), ('cherry'), ('Apple')\n)\nSELECT word FROM w ORDER BY word COLLATE en;\n",
+  "m7.collation_icu": "WITH w(word) AS (\n  VALUES ('banana'), ('Banana'), ('apple'), ('Éclair'), ('cherry'), ('Apple')\n)\nSELECT word FROM w ORDER BY word COLLATE \"und-x-icu\";\n",
+  "m7.collation_nocase": "WITH w(word) AS (\n  VALUES ('banana'), ('Banana'), ('apple'), ('Éclair'), ('cherry'), ('Apple')\n)\nSELECT word FROM w ORDER BY word COLLATE NOCASE, word;\n",
+  "m7.domain": "SELECT customer_id, email, split_part(email, '@', 2) AS domain\nFROM customers\nORDER BY customer_id;\n",
+  "m7.domain_sqlite": "SELECT customer_id, email, substr(email, instr(email, '@') + 1) AS domain\nFROM customers\nORDER BY customer_id;\n",
+  "m7.fmt": "SELECT strftime(order_ts, '%Y-%m-%d %H:%M') AS minute_text,\n       strftime(order_ts, '%Y-%m') AS month_text\nFROM orders\nWHERE order_id = 1001;\n",
+  "m7.fmt_postgres": "SELECT to_char(order_ts, 'YYYY-MM-DD HH24:MI') AS minute_text,\n       to_char(order_ts, 'YYYY-MM') AS month_text\nFROM orders\nWHERE order_id = 1001;\n",
+  "m7.fmt_sqlite": "SELECT strftime('%Y-%m-%d %H:%M', order_ts) AS minute_text,\n       strftime('%Y-%m', order_ts) AS month_text\nFROM orders\nWHERE order_id = 1001;\n",
+  "m7.json_data": "SELECT event_id, payload FROM app_events ORDER BY event_id;\n",
+  "m7.json_fields_duckdb": "SELECT event_id,\n       payload ->> '$.device' AS device,\n       payload ->> '$.cart.coupon' AS coupon,\n       json_array_length(payload, '$.cart.items') AS items\nFROM app_events\nORDER BY event_id;\n",
+  "m7.json_fields_postgres": "SELECT event_id,\n       payload::jsonb ->> 'device' AS device,\n       payload::jsonb #>> '{cart,coupon}' AS coupon,\n       jsonb_array_length(payload::jsonb #> '{cart,items}') AS items\nFROM app_events\nORDER BY event_id;\n",
+  "m7.json_fields_sqlite": "SELECT event_id,\n       json_extract(payload, '$.device') AS device,\n       json_extract(payload, '$.cart.coupon') AS coupon,\n       json_array_length(payload, '$.cart.items') AS items\nFROM app_events\nORDER BY event_id;\n",
+  "m7.json_flat_duckdb": "SELECT e.event_id, j.item.sku AS sku, j.item.qty AS qty\nFROM app_events AS e\nCROSS JOIN LATERAL (\n  SELECT unnest(from_json(e.payload -> '$.cart.items', '[{\"sku\":\"VARCHAR\",\"qty\":\"INTEGER\"}]')) AS item\n) AS j\nORDER BY e.event_id, sku;\n",
+  "m7.json_flat_left_duckdb": "SELECT e.event_id, j.item.sku AS sku, j.item.qty AS qty\nFROM app_events AS e\nLEFT JOIN LATERAL (\n  SELECT unnest(from_json(e.payload -> '$.cart.items', '[{\"sku\":\"VARCHAR\",\"qty\":\"INTEGER\"}]')) AS item\n) AS j ON true\nORDER BY e.event_id, sku;\n",
+  "m7.json_flat_left_postgres": "SELECT e.event_id, j.item ->> 'sku' AS sku, CAST(j.item ->> 'qty' AS INTEGER) AS qty\nFROM app_events AS e\nLEFT JOIN LATERAL jsonb_array_elements(e.payload::jsonb #> '{cart,items}') AS j(item) ON true\nORDER BY e.event_id, sku;\n",
+  "m7.json_flat_left_sqlite": "SELECT e.event_id, json_extract(j.value, '$.sku') AS sku, json_extract(j.value, '$.qty') AS qty\nFROM app_events AS e\nLEFT JOIN json_each(e.payload, '$.cart.items') AS j\nORDER BY e.event_id, sku;\n",
+  "m7.json_flat_postgres": "SELECT e.event_id, j.item ->> 'sku' AS sku, CAST(j.item ->> 'qty' AS INTEGER) AS qty\nFROM app_events AS e\nCROSS JOIN LATERAL jsonb_array_elements(e.payload::jsonb #> '{cart,items}') AS j(item)\nORDER BY e.event_id, sku;\n",
+  "m7.json_flat_sqlite": "SELECT e.event_id, json_extract(j.value, '$.sku') AS sku, json_extract(j.value, '$.qty') AS qty\nFROM app_events AS e\nCROSS JOIN json_each(e.payload, '$.cart.items') AS j\nORDER BY e.event_id, sku;\n",
+  "m7.month_end": "SELECT CAST(DATE '2026-01-31' + INTERVAL '1 month' AS DATE) AS plus_one_month,\n       CAST(DATE '2026-03-31' - INTERVAL '1 month' AS DATE) AS minus_one_month;\n",
+  "m7.month_end_sqlite": "SELECT date('2026-01-31', '+1 month') AS plus_one_month,\n       date('2026-03-31', '-1 month') AS minus_one_month;\n",
+  "m7.parts": "SELECT order_id, order_ts,\n       extract(isodow FROM order_ts) AS isodow,\n       extract(dow FROM order_ts) AS dow,\n       extract(week FROM order_ts) AS iso_week\nFROM orders\nWHERE order_id IN (1001, 1002, 1011)\nORDER BY order_id;\n",
+  "m7.parts_sqlite": "SELECT order_id, order_ts,\n       CAST(strftime('%u', order_ts) AS INTEGER) AS isodow,\n       CAST(strftime('%w', order_ts) AS INTEGER) AS dow,\n       CAST(strftime('%V', order_ts) AS INTEGER) AS iso_week,\n       CAST(strftime('%W', order_ts) AS INTEGER) AS week_monday_first\nFROM orders\nWHERE order_id IN (1001, 1002, 1011)\nORDER BY order_id;\n",
+  "m7.regex": "SELECT name, regexp_replace(name, '[aeiou]', '*', 'g') AS masked\nFROM customers\nORDER BY customer_id;\n",
+  "m7.shift": "SELECT order_id, order_ts,\n       order_ts + INTERVAL '7 days' AS refund_deadline,\n       CAST(order_ts AS DATE) + 7 AS refund_deadline_day\nFROM orders\nWHERE order_id IN (1001, 1004)\nORDER BY order_id;\n",
+  "m7.strings": "SELECT customer_id, name,\n       upper(name) AS shouted,\n       length(name) AS chars,\n       substr(name, 1, 3) AS first3,\n       replace(lower(name), ' ', '.') AS handle\nFROM customers\nORDER BY customer_id;\n",
+  "m7.trunc": "SELECT date_trunc('week', order_ts) AS week_start,\n       count(*) AS orders,\n       sum(total) AS revenue\nFROM orders\nGROUP BY date_trunc('week', order_ts)\nORDER BY week_start;\n",
+  "m7.trunc_sqlite": "SELECT date(order_ts, 'weekday 0', '-6 days') AS week_start,\n       count(*) AS orders,\n       sum(total) AS revenue\nFROM orders\nGROUP BY date(order_ts, 'weekday 0', '-6 days')\nORDER BY week_start;\n",
+  "m7.tz_day": "WITH store_tz(store_id, tz) AS (\n  VALUES (1, 'Asia/Singapore'), (2, 'Asia/Kuala_Lumpur'), (3, 'Asia/Jakarta'), (4, 'Australia/Sydney')\n),\nlocal AS (\n  SELECT o.order_id,\n         CAST(o.order_ts AS DATE) AS utc_day,\n         CAST((o.order_ts AT TIME ZONE 'UTC') AT TIME ZONE z.tz AS DATE) AS local_day\n  FROM orders AS o\n  JOIN store_tz AS z ON z.store_id = o.store_id\n)\nSELECT order_id, utc_day, local_day\nFROM local\nWHERE utc_day <> local_day\nORDER BY order_id;\n",
+  "m7.tz_local": "WITH store_tz(store_id, tz) AS (\n  VALUES (1, 'Asia/Singapore'), (2, 'Asia/Kuala_Lumpur'), (3, 'Asia/Jakarta'), (4, 'Australia/Sydney')\n)\nSELECT o.order_id, o.store_id, z.tz,\n       o.order_ts AS utc_ts,\n       (o.order_ts AT TIME ZONE 'UTC') AT TIME ZONE z.tz AS local_ts\nFROM orders AS o\nJOIN store_tz AS z ON z.store_id = o.store_id\nORDER BY o.order_id;\n",
+  "m7.tz_sqlite": "SELECT order_id, order_ts AS utc_ts, datetime(order_ts, '+8 hours') AS singapore_ts\nFROM orders\nWHERE store_id = 1\nORDER BY order_id;\n",
+  "m7.tz_sqlite_error": "SELECT order_ts AT TIME ZONE 'Asia/Singapore' FROM orders;\n"
  },
  "meta": {
   "duckdb": "2.0.0",
@@ -13403,6 +13446,2085 @@ LAB.real = {
      "3"
     ]
    ]
+  },
+  "m7.arith_duckdb": {
+   "cols": [
+    "order_id",
+    "first_payment_after",
+    "last_payment_after"
+   ],
+   "rows": [
+    [
+     "1001",
+     "1",
+     "1"
+    ],
+    [
+     "1002",
+     "1",
+     "2"
+    ],
+    [
+     "1003",
+     "1",
+     "1"
+    ],
+    [
+     "1004",
+     "1",
+     "1"
+    ],
+    [
+     "1006",
+     "1",
+     "1"
+    ],
+    [
+     "1007",
+     "1",
+     "1"
+    ],
+    [
+     "1008",
+     "1",
+     "280"
+    ],
+    [
+     "1009",
+     "1",
+     "1"
+    ],
+    [
+     "1010",
+     "1",
+     "1"
+    ],
+    [
+     "1011",
+     "1",
+     "1"
+    ]
+   ]
+  },
+  "m7.arith_postgres": {
+   "cols": [
+    "order_id",
+    "first_payment_after",
+    "last_payment_after"
+   ],
+   "rows": [
+    [
+     "1001",
+     "1",
+     "1"
+    ],
+    [
+     "1002",
+     "1",
+     "2"
+    ],
+    [
+     "1003",
+     "1",
+     "1"
+    ],
+    [
+     "1004",
+     "1",
+     "1"
+    ],
+    [
+     "1006",
+     "1",
+     "1"
+    ],
+    [
+     "1007",
+     "1",
+     "1"
+    ],
+    [
+     "1008",
+     "1",
+     "280"
+    ],
+    [
+     "1009",
+     "1",
+     "1"
+    ],
+    [
+     "1010",
+     "1",
+     "1"
+    ],
+    [
+     "1011",
+     "1",
+     "1"
+    ]
+   ]
+  },
+  "m7.arith_sqlite": {
+   "cols": [
+    "order_id",
+    "first_payment_after",
+    "last_payment_after"
+   ],
+   "rows": [
+    [
+     "1001",
+     "1",
+     "1"
+    ],
+    [
+     "1002",
+     "1",
+     "2"
+    ],
+    [
+     "1003",
+     "1",
+     "1"
+    ],
+    [
+     "1004",
+     "1",
+     "1"
+    ],
+    [
+     "1006",
+     "1",
+     "1"
+    ],
+    [
+     "1007",
+     "1",
+     "1"
+    ],
+    [
+     "1008",
+     "1",
+     "280"
+    ],
+    [
+     "1009",
+     "1",
+     "1"
+    ],
+    [
+     "1010",
+     "1",
+     "1"
+    ],
+    [
+     "1011",
+     "1",
+     "1"
+    ]
+   ]
+  },
+  "m7.arrays_duckdb": {
+   "cols": [
+    "order_id",
+    "products",
+    "lines",
+    "has_latte"
+   ],
+   "rows": [
+    [
+     "1001",
+     "[Espresso, Latte]",
+     "2",
+     "true"
+    ],
+    [
+     "1002",
+     "[House beans 250g, Latte]",
+     "2",
+     "true"
+    ],
+    [
+     "1011",
+     "[Latte, Brewline mug]",
+     "2",
+     "true"
+    ]
+   ]
+  },
+  "m7.arrays_postgres": {
+   "cols": [
+    "order_id",
+    "products",
+    "lines",
+    "has_latte"
+   ],
+   "rows": [
+    [
+     "1001",
+     "[Espresso, Latte]",
+     "2",
+     "true"
+    ],
+    [
+     "1002",
+     "[House beans 250g, Latte]",
+     "2",
+     "true"
+    ],
+    [
+     "1011",
+     "[Latte, Brewline mug]",
+     "2",
+     "true"
+    ]
+   ]
+  },
+  "m7.arrays_sqlite": {
+   "cols": [
+    "order_id",
+    "products",
+    "lines",
+    "has_latte"
+   ],
+   "rows": [
+    [
+     "1001",
+     "[\"Espresso\",\"Latte\"]",
+     "2",
+     "1"
+    ],
+    [
+     "1002",
+     "[\"House beans 250g\",\"Latte\"]",
+     "2",
+     "1"
+    ],
+    [
+     "1011",
+     "[\"Latte\",\"Brewline mug\"]",
+     "2",
+     "1"
+    ]
+   ]
+  },
+  "m7.bytes.postgres": {
+   "cols": [
+    "s",
+    "chars",
+    "bytes"
+   ],
+   "rows": [
+    [
+     "Zoë",
+     "3",
+     "4"
+    ]
+   ]
+  },
+  "m7.bytes.sqlite": {
+   "cols": [
+    "s",
+    "chars",
+    "bytes"
+   ],
+   "rows": [
+    [
+     "Zoë",
+     "3",
+     "4"
+    ]
+   ]
+  },
+  "m7.bytes_duckdb": {
+   "cols": [
+    "s",
+    "chars",
+    "bytes"
+   ],
+   "rows": [
+    [
+     "Zoë",
+     "3",
+     "4"
+    ]
+   ]
+  },
+  "m7.ch_domain.duckdb": {
+   "cols": [
+    "domain",
+    "customers"
+   ],
+   "rows": [
+    [
+     "example.com",
+     "6"
+    ],
+    [
+     "unknown",
+     "2"
+    ]
+   ]
+  },
+  "m7.ch_domain.postgres": {
+   "cols": [
+    "domain",
+    "customers"
+   ],
+   "rows": [
+    [
+     "example.com",
+     "6"
+    ],
+    [
+     "unknown",
+     "2"
+    ]
+   ]
+  },
+  "m7.ch_firstorder.duckdb": {
+   "cols": [
+    "customer_id",
+    "name",
+    "days_to_first_order"
+   ],
+   "rows": [
+    [
+     "1",
+     "Ana Lim",
+     "55"
+    ],
+    [
+     "2",
+     "Ben Ortiz",
+     "49"
+    ],
+    [
+     "3",
+     "Chen Wei",
+     "41"
+    ],
+    [
+     "4",
+     "Dara Putri",
+     "30"
+    ],
+    [
+     "5",
+     "Eli Cohen",
+     "22"
+    ],
+    [
+     "7",
+     "Gus Hall",
+     "14"
+    ]
+   ]
+  },
+  "m7.ch_firstorder.postgres": {
+   "cols": [
+    "customer_id",
+    "name",
+    "days_to_first_order"
+   ],
+   "rows": [
+    [
+     "1",
+     "Ana Lim",
+     "55"
+    ],
+    [
+     "2",
+     "Ben Ortiz",
+     "49"
+    ],
+    [
+     "3",
+     "Chen Wei",
+     "41"
+    ],
+    [
+     "4",
+     "Dara Putri",
+     "30"
+    ],
+    [
+     "5",
+     "Eli Cohen",
+     "22"
+    ],
+    [
+     "7",
+     "Gus Hall",
+     "14"
+    ]
+   ]
+  },
+  "m7.ch_localday.duckdb": {
+   "cols": [
+    "store_id",
+    "local_day",
+    "orders"
+   ],
+   "rows": [
+    [
+     "1",
+     "2026-03-01",
+     "1"
+    ],
+    [
+     "1",
+     "2026-03-03",
+     "2"
+    ],
+    [
+     "1",
+     "2026-03-05",
+     "1"
+    ],
+    [
+     "1",
+     "2026-03-07",
+     "1"
+    ],
+    [
+     "2",
+     "2026-03-03",
+     "1"
+    ],
+    [
+     "2",
+     "2026-03-06",
+     "1"
+    ],
+    [
+     "2",
+     "2026-03-09",
+     "1"
+    ],
+    [
+     "3",
+     "2026-03-04",
+     "1"
+    ],
+    [
+     "4",
+     "2026-03-05",
+     "1"
+    ],
+    [
+     "4",
+     "2026-03-06",
+     "1"
+    ],
+    [
+     "4",
+     "2026-03-08",
+     "1"
+    ]
+   ]
+  },
+  "m7.ch_localday.postgres": {
+   "cols": [
+    "store_id",
+    "local_day",
+    "orders"
+   ],
+   "rows": [
+    [
+     "1",
+     "2026-03-01",
+     "1"
+    ],
+    [
+     "1",
+     "2026-03-03",
+     "2"
+    ],
+    [
+     "1",
+     "2026-03-05",
+     "1"
+    ],
+    [
+     "1",
+     "2026-03-07",
+     "1"
+    ],
+    [
+     "2",
+     "2026-03-03",
+     "1"
+    ],
+    [
+     "2",
+     "2026-03-06",
+     "1"
+    ],
+    [
+     "2",
+     "2026-03-09",
+     "1"
+    ],
+    [
+     "3",
+     "2026-03-04",
+     "1"
+    ],
+    [
+     "4",
+     "2026-03-05",
+     "1"
+    ],
+    [
+     "4",
+     "2026-03-06",
+     "1"
+    ],
+    [
+     "4",
+     "2026-03-08",
+     "1"
+    ]
+   ]
+  },
+  "m7.collation.duckdb": {
+   "cols": [
+    "word"
+   ],
+   "rows": [
+    [
+     "Apple"
+    ],
+    [
+     "Banana"
+    ],
+    [
+     "apple"
+    ],
+    [
+     "banana"
+    ],
+    [
+     "cherry"
+    ],
+    [
+     "Éclair"
+    ]
+   ]
+  },
+  "m7.collation.postgres": {
+   "cols": [
+    "word"
+   ],
+   "rows": [
+    [
+     "Apple"
+    ],
+    [
+     "Banana"
+    ],
+    [
+     "apple"
+    ],
+    [
+     "banana"
+    ],
+    [
+     "cherry"
+    ],
+    [
+     "Éclair"
+    ]
+   ]
+  },
+  "m7.collation.sqlite": {
+   "cols": [
+    "word"
+   ],
+   "rows": [
+    [
+     "Apple"
+    ],
+    [
+     "Banana"
+    ],
+    [
+     "apple"
+    ],
+    [
+     "banana"
+    ],
+    [
+     "cherry"
+    ],
+    [
+     "Éclair"
+    ]
+   ]
+  },
+  "m7.collation_en": {
+   "cols": [
+    "word"
+   ],
+   "rows": [
+    [
+     "apple"
+    ],
+    [
+     "Apple"
+    ],
+    [
+     "banana"
+    ],
+    [
+     "Banana"
+    ],
+    [
+     "cherry"
+    ],
+    [
+     "Éclair"
+    ]
+   ]
+  },
+  "m7.collation_icu": {
+   "cols": [
+    "word"
+   ],
+   "rows": [
+    [
+     "apple"
+    ],
+    [
+     "Apple"
+    ],
+    [
+     "banana"
+    ],
+    [
+     "Banana"
+    ],
+    [
+     "cherry"
+    ],
+    [
+     "Éclair"
+    ]
+   ]
+  },
+  "m7.collation_nocase.duckdb": {
+   "cols": [
+    "word"
+   ],
+   "rows": [
+    [
+     "Apple"
+    ],
+    [
+     "apple"
+    ],
+    [
+     "Banana"
+    ],
+    [
+     "banana"
+    ],
+    [
+     "cherry"
+    ],
+    [
+     "Éclair"
+    ]
+   ]
+  },
+  "m7.collation_nocase.sqlite": {
+   "cols": [
+    "word"
+   ],
+   "rows": [
+    [
+     "Apple"
+    ],
+    [
+     "apple"
+    ],
+    [
+     "Banana"
+    ],
+    [
+     "banana"
+    ],
+    [
+     "cherry"
+    ],
+    [
+     "Éclair"
+    ]
+   ]
+  },
+  "m7.domain.duckdb": {
+   "cols": [
+    "customer_id",
+    "email",
+    "domain"
+   ],
+   "rows": [
+    [
+     "1",
+     "ana@example.com",
+     "example.com"
+    ],
+    [
+     "2",
+     "NULL",
+     "NULL"
+    ],
+    [
+     "3",
+     "chen@example.com",
+     "example.com"
+    ],
+    [
+     "4",
+     "dara@example.com",
+     "example.com"
+    ],
+    [
+     "5",
+     "eli@example.com",
+     "example.com"
+    ],
+    [
+     "6",
+     "NULL",
+     "NULL"
+    ],
+    [
+     "7",
+     "gus@example.com",
+     "example.com"
+    ],
+    [
+     "8",
+     "hana@example.com",
+     "example.com"
+    ]
+   ]
+  },
+  "m7.domain.postgres": {
+   "cols": [
+    "customer_id",
+    "email",
+    "domain"
+   ],
+   "rows": [
+    [
+     "1",
+     "ana@example.com",
+     "example.com"
+    ],
+    [
+     "2",
+     "NULL",
+     "NULL"
+    ],
+    [
+     "3",
+     "chen@example.com",
+     "example.com"
+    ],
+    [
+     "4",
+     "dara@example.com",
+     "example.com"
+    ],
+    [
+     "5",
+     "eli@example.com",
+     "example.com"
+    ],
+    [
+     "6",
+     "NULL",
+     "NULL"
+    ],
+    [
+     "7",
+     "gus@example.com",
+     "example.com"
+    ],
+    [
+     "8",
+     "hana@example.com",
+     "example.com"
+    ]
+   ]
+  },
+  "m7.domain_sqlite": {
+   "cols": [
+    "customer_id",
+    "email",
+    "domain"
+   ],
+   "rows": [
+    [
+     "1",
+     "ana@example.com",
+     "example.com"
+    ],
+    [
+     "2",
+     "NULL",
+     "NULL"
+    ],
+    [
+     "3",
+     "chen@example.com",
+     "example.com"
+    ],
+    [
+     "4",
+     "dara@example.com",
+     "example.com"
+    ],
+    [
+     "5",
+     "eli@example.com",
+     "example.com"
+    ],
+    [
+     "6",
+     "NULL",
+     "NULL"
+    ],
+    [
+     "7",
+     "gus@example.com",
+     "example.com"
+    ],
+    [
+     "8",
+     "hana@example.com",
+     "example.com"
+    ]
+   ]
+  },
+  "m7.fmt": {
+   "cols": [
+    "minute_text",
+    "month_text"
+   ],
+   "rows": [
+    [
+     "2026-03-01 02:15",
+     "2026-03"
+    ]
+   ]
+  },
+  "m7.fmt_postgres": {
+   "cols": [
+    "minute_text",
+    "month_text"
+   ],
+   "rows": [
+    [
+     "2026-03-01 02:15",
+     "2026-03"
+    ]
+   ]
+  },
+  "m7.fmt_sqlite": {
+   "cols": [
+    "minute_text",
+    "month_text"
+   ],
+   "rows": [
+    [
+     "2026-03-01 02:15",
+     "2026-03"
+    ]
+   ]
+  },
+  "m7.json_data.duckdb": {
+   "cols": [
+    "event_id",
+    "payload"
+   ],
+   "rows": [
+    [
+     "1",
+     "{\"device\":\"ios\",\"country\":\"SG\",\"cart\":{\"items\":[{\"sku\":\"ESP-01\",\"qty\":2},{\"sku\":\"LAT-01\",\"qty\":1}],\"coupon\":null}}"
+    ],
+    [
+     "2",
+     "{\"device\":\"android\",\"country\":\"MY\",\"cart\":{\"items\":[{\"sku\":\"BEA-01\",\"qty\":1}],\"coupon\":\"WELCOME\"}}"
+    ],
+    [
+     "3",
+     "{\"device\":\"web\",\"country\":\"SG\",\"cart\":{\"items\":[]}}"
+    ],
+    [
+     "4",
+     "{\"device\":\"ios\",\"country\":\"ID\"}"
+    ]
+   ]
+  },
+  "m7.json_data.postgres": {
+   "cols": [
+    "event_id",
+    "payload"
+   ],
+   "rows": [
+    [
+     "1",
+     "{\"device\":\"ios\",\"country\":\"SG\",\"cart\":{\"items\":[{\"sku\":\"ESP-01\",\"qty\":2},{\"sku\":\"LAT-01\",\"qty\":1}],\"coupon\":null}}"
+    ],
+    [
+     "2",
+     "{\"device\":\"android\",\"country\":\"MY\",\"cart\":{\"items\":[{\"sku\":\"BEA-01\",\"qty\":1}],\"coupon\":\"WELCOME\"}}"
+    ],
+    [
+     "3",
+     "{\"device\":\"web\",\"country\":\"SG\",\"cart\":{\"items\":[]}}"
+    ],
+    [
+     "4",
+     "{\"device\":\"ios\",\"country\":\"ID\"}"
+    ]
+   ]
+  },
+  "m7.json_data.sqlite": {
+   "cols": [
+    "event_id",
+    "payload"
+   ],
+   "rows": [
+    [
+     "1",
+     "{\"device\":\"ios\",\"country\":\"SG\",\"cart\":{\"items\":[{\"sku\":\"ESP-01\",\"qty\":2},{\"sku\":\"LAT-01\",\"qty\":1}],\"coupon\":null}}"
+    ],
+    [
+     "2",
+     "{\"device\":\"android\",\"country\":\"MY\",\"cart\":{\"items\":[{\"sku\":\"BEA-01\",\"qty\":1}],\"coupon\":\"WELCOME\"}}"
+    ],
+    [
+     "3",
+     "{\"device\":\"web\",\"country\":\"SG\",\"cart\":{\"items\":[]}}"
+    ],
+    [
+     "4",
+     "{\"device\":\"ios\",\"country\":\"ID\"}"
+    ]
+   ]
+  },
+  "m7.json_fields_duckdb": {
+   "cols": [
+    "event_id",
+    "device",
+    "coupon",
+    "items"
+   ],
+   "rows": [
+    [
+     "1",
+     "ios",
+     "NULL",
+     "2"
+    ],
+    [
+     "2",
+     "android",
+     "WELCOME",
+     "1"
+    ],
+    [
+     "3",
+     "web",
+     "NULL",
+     "0"
+    ],
+    [
+     "4",
+     "ios",
+     "NULL",
+     "NULL"
+    ]
+   ]
+  },
+  "m7.json_fields_postgres": {
+   "cols": [
+    "event_id",
+    "device",
+    "coupon",
+    "items"
+   ],
+   "rows": [
+    [
+     "1",
+     "ios",
+     "NULL",
+     "2"
+    ],
+    [
+     "2",
+     "android",
+     "WELCOME",
+     "1"
+    ],
+    [
+     "3",
+     "web",
+     "NULL",
+     "0"
+    ],
+    [
+     "4",
+     "ios",
+     "NULL",
+     "NULL"
+    ]
+   ]
+  },
+  "m7.json_fields_sqlite": {
+   "cols": [
+    "event_id",
+    "device",
+    "coupon",
+    "items"
+   ],
+   "rows": [
+    [
+     "1",
+     "ios",
+     "NULL",
+     "2"
+    ],
+    [
+     "2",
+     "android",
+     "WELCOME",
+     "1"
+    ],
+    [
+     "3",
+     "web",
+     "NULL",
+     "0"
+    ],
+    [
+     "4",
+     "ios",
+     "NULL",
+     "NULL"
+    ]
+   ]
+  },
+  "m7.json_flat_duckdb": {
+   "cols": [
+    "event_id",
+    "sku",
+    "qty"
+   ],
+   "rows": [
+    [
+     "1",
+     "ESP-01",
+     "2"
+    ],
+    [
+     "1",
+     "LAT-01",
+     "1"
+    ],
+    [
+     "2",
+     "BEA-01",
+     "1"
+    ]
+   ]
+  },
+  "m7.json_flat_left_duckdb": {
+   "cols": [
+    "event_id",
+    "sku",
+    "qty"
+   ],
+   "rows": [
+    [
+     "1",
+     "ESP-01",
+     "2"
+    ],
+    [
+     "1",
+     "LAT-01",
+     "1"
+    ],
+    [
+     "2",
+     "BEA-01",
+     "1"
+    ],
+    [
+     "3",
+     "NULL",
+     "NULL"
+    ],
+    [
+     "4",
+     "NULL",
+     "NULL"
+    ]
+   ]
+  },
+  "m7.json_flat_left_postgres": {
+   "cols": [
+    "event_id",
+    "sku",
+    "qty"
+   ],
+   "rows": [
+    [
+     "1",
+     "ESP-01",
+     "2"
+    ],
+    [
+     "1",
+     "LAT-01",
+     "1"
+    ],
+    [
+     "2",
+     "BEA-01",
+     "1"
+    ],
+    [
+     "3",
+     "NULL",
+     "NULL"
+    ],
+    [
+     "4",
+     "NULL",
+     "NULL"
+    ]
+   ]
+  },
+  "m7.json_flat_left_sqlite": {
+   "cols": [
+    "event_id",
+    "sku",
+    "qty"
+   ],
+   "rows": [
+    [
+     "1",
+     "ESP-01",
+     "2"
+    ],
+    [
+     "1",
+     "LAT-01",
+     "1"
+    ],
+    [
+     "2",
+     "BEA-01",
+     "1"
+    ],
+    [
+     "3",
+     "NULL",
+     "NULL"
+    ],
+    [
+     "4",
+     "NULL",
+     "NULL"
+    ]
+   ]
+  },
+  "m7.json_flat_postgres": {
+   "cols": [
+    "event_id",
+    "sku",
+    "qty"
+   ],
+   "rows": [
+    [
+     "1",
+     "ESP-01",
+     "2"
+    ],
+    [
+     "1",
+     "LAT-01",
+     "1"
+    ],
+    [
+     "2",
+     "BEA-01",
+     "1"
+    ]
+   ]
+  },
+  "m7.json_flat_sqlite": {
+   "cols": [
+    "event_id",
+    "sku",
+    "qty"
+   ],
+   "rows": [
+    [
+     "1",
+     "ESP-01",
+     "2"
+    ],
+    [
+     "1",
+     "LAT-01",
+     "1"
+    ],
+    [
+     "2",
+     "BEA-01",
+     "1"
+    ]
+   ]
+  },
+  "m7.month_end.duckdb": {
+   "cols": [
+    "plus_one_month",
+    "minus_one_month"
+   ],
+   "rows": [
+    [
+     "2026-02-28",
+     "2026-02-28"
+    ]
+   ]
+  },
+  "m7.month_end.postgres": {
+   "cols": [
+    "plus_one_month",
+    "minus_one_month"
+   ],
+   "rows": [
+    [
+     "2026-02-28",
+     "2026-02-28"
+    ]
+   ]
+  },
+  "m7.month_end_sqlite": {
+   "cols": [
+    "plus_one_month",
+    "minus_one_month"
+   ],
+   "rows": [
+    [
+     "2026-03-03",
+     "2026-03-03"
+    ]
+   ]
+  },
+  "m7.parts.duckdb": {
+   "cols": [
+    "order_id",
+    "order_ts",
+    "isodow",
+    "dow",
+    "iso_week"
+   ],
+   "rows": [
+    [
+     "1001",
+     "2026-03-01 02:15:00",
+     "7",
+     "0",
+     "9"
+    ],
+    [
+     "1002",
+     "2026-03-03 09:40:00",
+     "2",
+     "2",
+     "10"
+    ],
+    [
+     "1011",
+     "2026-03-08 04:45:00",
+     "7",
+     "0",
+     "10"
+    ]
+   ]
+  },
+  "m7.parts.postgres": {
+   "cols": [
+    "order_id",
+    "order_ts",
+    "isodow",
+    "dow",
+    "iso_week"
+   ],
+   "rows": [
+    [
+     "1001",
+     "2026-03-01 02:15:00",
+     "7",
+     "0",
+     "9"
+    ],
+    [
+     "1002",
+     "2026-03-03 09:40:00",
+     "2",
+     "2",
+     "10"
+    ],
+    [
+     "1011",
+     "2026-03-08 04:45:00",
+     "7",
+     "0",
+     "10"
+    ]
+   ]
+  },
+  "m7.parts_sqlite": {
+   "cols": [
+    "order_id",
+    "order_ts",
+    "isodow",
+    "dow",
+    "iso_week",
+    "week_monday_first"
+   ],
+   "rows": [
+    [
+     "1001",
+     "2026-03-01 02:15:00",
+     "7",
+     "0",
+     "9",
+     "8"
+    ],
+    [
+     "1002",
+     "2026-03-03 09:40:00",
+     "2",
+     "2",
+     "10",
+     "9"
+    ],
+    [
+     "1011",
+     "2026-03-08 04:45:00",
+     "7",
+     "0",
+     "10",
+     "9"
+    ]
+   ]
+  },
+  "m7.regex.duckdb": {
+   "cols": [
+    "name",
+    "masked"
+   ],
+   "rows": [
+    [
+     "Ana Lim",
+     "An* L*m"
+    ],
+    [
+     "Ben Ortiz",
+     "B*n Ort*z"
+    ],
+    [
+     "Chen Wei",
+     "Ch*n W**"
+    ],
+    [
+     "Dara Putri",
+     "D*r* P*tr*"
+    ],
+    [
+     "Eli Cohen",
+     "El* C*h*n"
+    ],
+    [
+     "Fay Tan",
+     "F*y T*n"
+    ],
+    [
+     "Gus Hall",
+     "G*s H*ll"
+    ],
+    [
+     "Hana Ito",
+     "H*n* It*"
+    ]
+   ]
+  },
+  "m7.regex.postgres": {
+   "cols": [
+    "name",
+    "masked"
+   ],
+   "rows": [
+    [
+     "Ana Lim",
+     "An* L*m"
+    ],
+    [
+     "Ben Ortiz",
+     "B*n Ort*z"
+    ],
+    [
+     "Chen Wei",
+     "Ch*n W**"
+    ],
+    [
+     "Dara Putri",
+     "D*r* P*tr*"
+    ],
+    [
+     "Eli Cohen",
+     "El* C*h*n"
+    ],
+    [
+     "Fay Tan",
+     "F*y T*n"
+    ],
+    [
+     "Gus Hall",
+     "G*s H*ll"
+    ],
+    [
+     "Hana Ito",
+     "H*n* It*"
+    ]
+   ]
+  },
+  "m7.shift.duckdb": {
+   "cols": [
+    "order_id",
+    "order_ts",
+    "refund_deadline",
+    "refund_deadline_day"
+   ],
+   "rows": [
+    [
+     "1001",
+     "2026-03-01 02:15:00",
+     "2026-03-08 02:15:00",
+     "2026-03-08"
+    ],
+    [
+     "1004",
+     "2026-03-02 23:50:00",
+     "2026-03-09 23:50:00",
+     "2026-03-09"
+    ]
+   ]
+  },
+  "m7.shift.postgres": {
+   "cols": [
+    "order_id",
+    "order_ts",
+    "refund_deadline",
+    "refund_deadline_day"
+   ],
+   "rows": [
+    [
+     "1001",
+     "2026-03-01 02:15:00",
+     "2026-03-08 02:15:00",
+     "2026-03-08"
+    ],
+    [
+     "1004",
+     "2026-03-02 23:50:00",
+     "2026-03-09 23:50:00",
+     "2026-03-09"
+    ]
+   ]
+  },
+  "m7.strings.duckdb": {
+   "cols": [
+    "customer_id",
+    "name",
+    "shouted",
+    "chars",
+    "first3",
+    "handle"
+   ],
+   "rows": [
+    [
+     "1",
+     "Ana Lim",
+     "ANA LIM",
+     "7",
+     "Ana",
+     "ana.lim"
+    ],
+    [
+     "2",
+     "Ben Ortiz",
+     "BEN ORTIZ",
+     "9",
+     "Ben",
+     "ben.ortiz"
+    ],
+    [
+     "3",
+     "Chen Wei",
+     "CHEN WEI",
+     "8",
+     "Che",
+     "chen.wei"
+    ],
+    [
+     "4",
+     "Dara Putri",
+     "DARA PUTRI",
+     "10",
+     "Dar",
+     "dara.putri"
+    ],
+    [
+     "5",
+     "Eli Cohen",
+     "ELI COHEN",
+     "9",
+     "Eli",
+     "eli.cohen"
+    ],
+    [
+     "6",
+     "Fay Tan",
+     "FAY TAN",
+     "7",
+     "Fay",
+     "fay.tan"
+    ],
+    [
+     "7",
+     "Gus Hall",
+     "GUS HALL",
+     "8",
+     "Gus",
+     "gus.hall"
+    ],
+    [
+     "8",
+     "Hana Ito",
+     "HANA ITO",
+     "8",
+     "Han",
+     "hana.ito"
+    ]
+   ]
+  },
+  "m7.strings.postgres": {
+   "cols": [
+    "customer_id",
+    "name",
+    "shouted",
+    "chars",
+    "first3",
+    "handle"
+   ],
+   "rows": [
+    [
+     "1",
+     "Ana Lim",
+     "ANA LIM",
+     "7",
+     "Ana",
+     "ana.lim"
+    ],
+    [
+     "2",
+     "Ben Ortiz",
+     "BEN ORTIZ",
+     "9",
+     "Ben",
+     "ben.ortiz"
+    ],
+    [
+     "3",
+     "Chen Wei",
+     "CHEN WEI",
+     "8",
+     "Che",
+     "chen.wei"
+    ],
+    [
+     "4",
+     "Dara Putri",
+     "DARA PUTRI",
+     "10",
+     "Dar",
+     "dara.putri"
+    ],
+    [
+     "5",
+     "Eli Cohen",
+     "ELI COHEN",
+     "9",
+     "Eli",
+     "eli.cohen"
+    ],
+    [
+     "6",
+     "Fay Tan",
+     "FAY TAN",
+     "7",
+     "Fay",
+     "fay.tan"
+    ],
+    [
+     "7",
+     "Gus Hall",
+     "GUS HALL",
+     "8",
+     "Gus",
+     "gus.hall"
+    ],
+    [
+     "8",
+     "Hana Ito",
+     "HANA ITO",
+     "8",
+     "Han",
+     "hana.ito"
+    ]
+   ]
+  },
+  "m7.strings.sqlite": {
+   "cols": [
+    "customer_id",
+    "name",
+    "shouted",
+    "chars",
+    "first3",
+    "handle"
+   ],
+   "rows": [
+    [
+     "1",
+     "Ana Lim",
+     "ANA LIM",
+     "7",
+     "Ana",
+     "ana.lim"
+    ],
+    [
+     "2",
+     "Ben Ortiz",
+     "BEN ORTIZ",
+     "9",
+     "Ben",
+     "ben.ortiz"
+    ],
+    [
+     "3",
+     "Chen Wei",
+     "CHEN WEI",
+     "8",
+     "Che",
+     "chen.wei"
+    ],
+    [
+     "4",
+     "Dara Putri",
+     "DARA PUTRI",
+     "10",
+     "Dar",
+     "dara.putri"
+    ],
+    [
+     "5",
+     "Eli Cohen",
+     "ELI COHEN",
+     "9",
+     "Eli",
+     "eli.cohen"
+    ],
+    [
+     "6",
+     "Fay Tan",
+     "FAY TAN",
+     "7",
+     "Fay",
+     "fay.tan"
+    ],
+    [
+     "7",
+     "Gus Hall",
+     "GUS HALL",
+     "8",
+     "Gus",
+     "gus.hall"
+    ],
+    [
+     "8",
+     "Hana Ito",
+     "HANA ITO",
+     "8",
+     "Han",
+     "hana.ito"
+    ]
+   ]
+  },
+  "m7.trunc.duckdb": {
+   "cols": [
+    "week_start",
+    "orders",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "2026-02-23 00:00:00",
+     "1",
+     "11.50"
+    ],
+    [
+     "2026-03-02 00:00:00",
+     "10",
+     "136.50"
+    ],
+    [
+     "2026-03-09 00:00:00",
+     "1",
+     "8.00"
+    ]
+   ]
+  },
+  "m7.trunc.postgres": {
+   "cols": [
+    "week_start",
+    "orders",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "2026-02-23 00:00:00",
+     "1",
+     "11.50"
+    ],
+    [
+     "2026-03-02 00:00:00",
+     "10",
+     "136.50"
+    ],
+    [
+     "2026-03-09 00:00:00",
+     "1",
+     "8.00"
+    ]
+   ]
+  },
+  "m7.trunc_sqlite": {
+   "cols": [
+    "week_start",
+    "orders",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "2026-02-23",
+     "1",
+     "11.5"
+    ],
+    [
+     "2026-03-02",
+     "10",
+     "136.5"
+    ],
+    [
+     "2026-03-09",
+     "1",
+     "8"
+    ]
+   ]
+  },
+  "m7.tz_day.duckdb": {
+   "cols": [
+    "order_id",
+    "utc_day",
+    "local_day"
+   ],
+   "rows": [
+    [
+     "1003",
+     "2026-03-02",
+     "2026-03-03"
+    ],
+    [
+     "1004",
+     "2026-03-02",
+     "2026-03-03"
+    ],
+    [
+     "1006",
+     "2026-03-04",
+     "2026-03-05"
+    ]
+   ]
+  },
+  "m7.tz_day.postgres": {
+   "cols": [
+    "order_id",
+    "utc_day",
+    "local_day"
+   ],
+   "rows": [
+    [
+     "1003",
+     "2026-03-02",
+     "2026-03-03"
+    ],
+    [
+     "1004",
+     "2026-03-02",
+     "2026-03-03"
+    ],
+    [
+     "1006",
+     "2026-03-04",
+     "2026-03-05"
+    ]
+   ]
+  },
+  "m7.tz_local.duckdb": {
+   "cols": [
+    "order_id",
+    "store_id",
+    "tz",
+    "utc_ts",
+    "local_ts"
+   ],
+   "rows": [
+    [
+     "1001",
+     "1",
+     "Asia/Singapore",
+     "2026-03-01 02:15:00",
+     "2026-03-01 10:15:00"
+    ],
+    [
+     "1002",
+     "1",
+     "Asia/Singapore",
+     "2026-03-03 09:40:00",
+     "2026-03-03 17:40:00"
+    ],
+    [
+     "1003",
+     "2",
+     "Asia/Kuala_Lumpur",
+     "2026-03-02 16:30:00",
+     "2026-03-03 00:30:00"
+    ],
+    [
+     "1004",
+     "1",
+     "Asia/Singapore",
+     "2026-03-02 23:50:00",
+     "2026-03-03 07:50:00"
+    ],
+    [
+     "1005",
+     "3",
+     "Asia/Jakarta",
+     "2026-03-04 03:05:00",
+     "2026-03-04 10:05:00"
+    ],
+    [
+     "1006",
+     "4",
+     "Australia/Sydney",
+     "2026-03-04 21:10:00",
+     "2026-03-05 08:10:00"
+    ],
+    [
+     "1007",
+     "1",
+     "Asia/Singapore",
+     "2026-03-05 08:00:00",
+     "2026-03-05 16:00:00"
+    ],
+    [
+     "1008",
+     "4",
+     "Australia/Sydney",
+     "2026-03-06 10:20:00",
+     "2026-03-06 21:20:00"
+    ],
+    [
+     "1009",
+     "2",
+     "Asia/Kuala_Lumpur",
+     "2026-03-06 11:00:00",
+     "2026-03-06 19:00:00"
+    ],
+    [
+     "1010",
+     "1",
+     "Asia/Singapore",
+     "2026-03-07 12:30:00",
+     "2026-03-07 20:30:00"
+    ],
+    [
+     "1011",
+     "4",
+     "Australia/Sydney",
+     "2026-03-08 04:45:00",
+     "2026-03-08 15:45:00"
+    ],
+    [
+     "1012",
+     "2",
+     "Asia/Kuala_Lumpur",
+     "2026-03-09 15:00:00",
+     "2026-03-09 23:00:00"
+    ]
+   ]
+  },
+  "m7.tz_local.postgres": {
+   "cols": [
+    "order_id",
+    "store_id",
+    "tz",
+    "utc_ts",
+    "local_ts"
+   ],
+   "rows": [
+    [
+     "1001",
+     "1",
+     "Asia/Singapore",
+     "2026-03-01 02:15:00",
+     "2026-03-01 10:15:00"
+    ],
+    [
+     "1002",
+     "1",
+     "Asia/Singapore",
+     "2026-03-03 09:40:00",
+     "2026-03-03 17:40:00"
+    ],
+    [
+     "1003",
+     "2",
+     "Asia/Kuala_Lumpur",
+     "2026-03-02 16:30:00",
+     "2026-03-03 00:30:00"
+    ],
+    [
+     "1004",
+     "1",
+     "Asia/Singapore",
+     "2026-03-02 23:50:00",
+     "2026-03-03 07:50:00"
+    ],
+    [
+     "1005",
+     "3",
+     "Asia/Jakarta",
+     "2026-03-04 03:05:00",
+     "2026-03-04 10:05:00"
+    ],
+    [
+     "1006",
+     "4",
+     "Australia/Sydney",
+     "2026-03-04 21:10:00",
+     "2026-03-05 08:10:00"
+    ],
+    [
+     "1007",
+     "1",
+     "Asia/Singapore",
+     "2026-03-05 08:00:00",
+     "2026-03-05 16:00:00"
+    ],
+    [
+     "1008",
+     "4",
+     "Australia/Sydney",
+     "2026-03-06 10:20:00",
+     "2026-03-06 21:20:00"
+    ],
+    [
+     "1009",
+     "2",
+     "Asia/Kuala_Lumpur",
+     "2026-03-06 11:00:00",
+     "2026-03-06 19:00:00"
+    ],
+    [
+     "1010",
+     "1",
+     "Asia/Singapore",
+     "2026-03-07 12:30:00",
+     "2026-03-07 20:30:00"
+    ],
+    [
+     "1011",
+     "4",
+     "Australia/Sydney",
+     "2026-03-08 04:45:00",
+     "2026-03-08 15:45:00"
+    ],
+    [
+     "1012",
+     "2",
+     "Asia/Kuala_Lumpur",
+     "2026-03-09 15:00:00",
+     "2026-03-09 23:00:00"
+    ]
+   ]
+  },
+  "m7.tz_sqlite": {
+   "cols": [
+    "order_id",
+    "utc_ts",
+    "singapore_ts"
+   ],
+   "rows": [
+    [
+     "1001",
+     "2026-03-01 02:15:00",
+     "2026-03-01 10:15:00"
+    ],
+    [
+     "1002",
+     "2026-03-03 09:40:00",
+     "2026-03-03 17:40:00"
+    ],
+    [
+     "1004",
+     "2026-03-02 23:50:00",
+     "2026-03-03 07:50:00"
+    ],
+    [
+     "1007",
+     "2026-03-05 08:00:00",
+     "2026-03-05 16:00:00"
+    ],
+    [
+     "1010",
+     "2026-03-07 12:30:00",
+     "2026-03-07 20:30:00"
+    ]
+   ]
   }
  },
  "text": {
@@ -13438,6 +15560,8 @@ LAB.real = {
   "m6.qualify.sqlite.error": "near \"QUALIFY\": syntax error",
   "m6.where_error.duckdb.error": "Binder Error: WHERE clause cannot contain window functions!",
   "m6.where_error.postgres.error": "window functions are not allowed in WHERE",
-  "m6.where_error.sqlite.error": "misuse of window function ROW_NUMBER()"
+  "m6.where_error.sqlite.error": "misuse of window function ROW_NUMBER()",
+  "m7.regex.sqlite.error": "no such function: regexp_replace",
+  "m7.tz_sqlite_error.error": "near \"TIME\": syntax error"
  }
 };

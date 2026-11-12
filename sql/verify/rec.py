@@ -6,6 +6,7 @@ A block in a .sql file looks like this:
     -- @engines duckdb postgres sqlite  which engines run it (default: duckdb)
     -- @error                           the last statement must fail, and the error text is recorded
     -- @as text                         record the rows as text (plans), not as a table
+    -- @setup app_events                run the named setup script (SETUPS below) first, not shown, so that several blocks can share a small table
     SELECT ...;
 
 The text after the header is the SQL that the lesson shows (files[name]). Every statement runs inside a transaction that is rolled
@@ -20,6 +21,18 @@ import engines as E
 import sqlglot
 
 KEYS = ('meta', 'files', 'text', 'tables', 'counts')
+
+# small tables that some lessons create for themselves: one script for every block that names it with  -- @setup <name>
+SETUPS = {
+    'app_events': '''
+CREATE TABLE app_events (event_id INTEGER, payload VARCHAR);
+INSERT INTO app_events VALUES
+  (1, '{"device":"ios","country":"SG","cart":{"items":[{"sku":"ESP-01","qty":2},{"sku":"LAT-01","qty":1}],"coupon":null}}'),
+  (2, '{"device":"android","country":"MY","cart":{"items":[{"sku":"BEA-01","qty":1}],"coupon":"WELCOME"}}'),
+  (3, '{"device":"web","country":"SG","cart":{"items":[]}}'),
+  (4, '{"device":"ios","country":"ID"}');
+''',
+}
 
 
 class Rec:
@@ -227,6 +240,9 @@ def run_block(rec, b):
         key = name + '.' + e if many else name
         last, err = None, None
         with rec.tx(e):
+            if 'setup' in b['opts']:
+                for st in E.split_statements(SETUPS[b['opts']['setup']]):
+                    rec.run(e, st)
             for it in b['items']:
                 if it[0] == 'snap':
                     r = rec.run(e, it[2])
