@@ -146,5 +146,104 @@
     W.structsInfo = { rows: rows, sizes: SIZES, scaled: scaled };
   })();
 
+  /* ====================== Mission 4: the pull order of a pipeline ====================== */
+  (function () {
+    var STAGES = ['read', 'parse', 'decide', 'write'];
+    /* the two traces that pull_trace.py printed: a section for lists, then a section for generators */
+    function traces() {
+      var out = { lists: [], gens: [] }, cur = null;
+      G.text('m4/pull_trace.py').split('\n').forEach(function (l) {
+        if (l === 'with lists') { cur = out.lists; return; }
+        if (l === 'with generators') { cur = out.gens; return; }
+        var m = /^\s+(read|parse|keep|drop|write)\s+(\d+)$/.exec(l);
+        if (!m) throw new Error('unexpected line in the pull trace: ' + l);
+        cur.push({ stage: m[1], id: +m[2] });
+      });
+      return out;
+    }
+    /* what has happened to each order after the first k events, and how many are in flight (read, not yet written or dropped) */
+    function state(events, k) {
+      var by = {}, flight = 0, peak = 0;
+      events.slice(0, k).forEach(function (e) {
+        var o = by[e.id] || (by[e.id] = {});
+        if (e.stage === 'read') o.read = true;
+        if (e.stage === 'parse') o.parse = true;
+        if (e.stage === 'keep') o.decide = 'keep';
+        if (e.stage === 'drop') { o.decide = 'drop'; o.done = true; }
+        if (e.stage === 'write') { o.write = true; o.done = true; }
+        flight = Object.keys(by).filter(function (i) { return by[i].read && !by[i].done; }).length;
+        peak = Math.max(peak, flight);
+      });
+      return { by: by, flight: flight, peak: peak };
+    }
+    W.pull = {
+      steps: function () { return 1; },
+      hint: 'Pick lists or generators, then press Step. Watch the column "orders in flight".',
+      say: function () {
+        return 'The same four orders go through read, parse and keep. With lists, every stage finishes for everyone before the next stage starts. With generators, one order goes all the way through before the next one is read. This is the real order that Python printed. Press Step to replay it, and watch how many orders are in flight at once.';
+      },
+      mood: function () { return 'think'; },
+      render: function (box, s, i, A) {
+        var T = traces(), st = A.local.pl || (A.local.pl = { mode: 'gens', k: 0 }), ev = st.mode === 'gens' ? T.gens : T.lists;
+        if (st.k > ev.length) st.k = ev.length;
+        var S = state(ev, st.k), ids = [1, 2, 3, 4];
+        var h = '<div class="lab"><div class="lab-row"><span class="lab-l">Stages use</span><div class="sel-chips">' +
+          '<button type="button" class="sel-chip' + (st.mode === 'lists' ? ' on' : '') + '" data-act="pl-m" data-v="lists">lists</button>' +
+          '<button type="button" class="sel-chip' + (st.mode === 'gens' ? ' on' : '') + '" data-act="pl-m" data-v="gens">generators</button></div>' +
+          '<button type="button" class="btn-sm primary" data-act="pl-step"' + (st.k >= ev.length ? ' disabled' : '') + '>Step</button><button type="button" class="btn-sm" data-act="pl-back"' + (st.k <= 0 ? ' disabled' : '') + '>Back</button><button type="button" class="btn-sm" data-act="pl-reset">Reset</button></div>' +
+          '<div class="pair"><div><div class="compiled-h">The trace, so far (' + st.k + ' of ' + ev.length + ' lines)</div><ul class="keylist">' +
+          ev.slice(0, st.k).map(function (e, n) { return '<li class="' + (n === st.k - 1 ? 'cp' : '') + '">' + esc(e.stage + ' ' + e.id) + '</li>'; }).join('') + (st.k === 0 ? '<li>nothing has run yet</li>' : '') + '</ul></div>' +
+          '<div><div class="compiled-h">What has happened to each order</div>' +
+          table(['Order'].concat(STAGES), ids.map(function (id) { var o = S.by[id] || {}; return [String(id), o.read ? 'read' : '', o.parse ? 'parsed' : '', o.decide || '', o.write ? 'written' : '']; }), null, function (r, ri, ci) { var v = r[ci]; return ci > 0 && v ? (v === 'drop' ? 'wbad' : 'wgood') : ''; }) + '</div></div>' +
+          '<div class="lab-out"><div class="big ' + (S.flight > 1 ? 'warn' : 'good') + '"><b>' + S.flight + '</b><span>orders in flight now (read, not finished)</span></div><div class="big ' + (S.peak > 1 ? 'bad' : 'good') + '"><b>' + S.peak + '</b><span>most in flight at once so far</span></div></div>' +
+          (st.k >= ev.length ? '<div class="callout tip">' + (st.mode === 'lists' ? 'With lists, all four orders were in flight at once. With four million orders, four million would be.' : 'With generators, at most one order was in flight. The same code on four million orders would hold one too.') + '</div>' : '') + '</div>';
+        box.innerHTML = h;
+        A.bindWidget = function (act, el) {
+          if (act === 'pl-m') { st.mode = el.getAttribute('data-v'); st.k = 0; }
+          if (act === 'pl-step') st.k = Math.min(ev.length, st.k + 1);
+          if (act === 'pl-back') st.k = Math.max(0, st.k - 1);
+          if (act === 'pl-reset') st.k = 0;
+          A.render(true);
+        };
+      }
+    };
+    W.pullInfo = { traces: traces, state: state };
+  })();
+
+  /* ====================== Mission 4: list against generator, peak memory ====================== */
+  (function () {
+    var TARGETS = [1e9, 8e9, 50e9];
+    function data() { return G.counts('m4.genmem'); }
+    function gb(x) { return x >= 1e9 ? fmtN(x / 1e9, 1) + ' GB' : fmtN(x / 1e6, 1) + ' MB'; }
+    /* an estimate for a bigger file: the list grows with the rows, the generator way holds one batch whatever the size */
+    function estimate(fileBytes) {
+      var d = data(), last = d.sizes.length - 1, rows = fileBytes / (d.file_bytes[last] / d.sizes[last]);
+      return { rows: rows, list: rows * d.list[last].peak_bytes / d.sizes[last], generator: d.generator[last].peak_bytes };
+    }
+    W.genmem = {
+      steps: function () { return 1; },
+      hint: 'Pick a file size. The first five were recorded. The last three multiply what was recorded.',
+      say: function () {
+        return 'One job, two ways: read the whole file into a list of rows and then add up the paid ones, or pass the rows through a generator pipeline in batches of 10,000. Both gave the same total. These are the real peaks of memory. The bigger sizes just scale the recorded numbers, so they are estimates.';
+      },
+      mood: function () { return 'wow'; },
+      render: function (box, s, i, A) {
+        var d = data(), st = A.local.gm || (A.local.gm = { i: 2 }), recorded = st.i < d.sizes.length, lp, gp, size, rows, h;
+        if (recorded) { size = d.file_bytes[st.i]; rows = d.sizes[st.i]; lp = d.list[st.i].peak_bytes; gp = d.generator[st.i].peak_bytes; }
+        else { var e = estimate(TARGETS[st.i - d.sizes.length]); size = TARGETS[st.i - d.sizes.length]; rows = Math.round(e.rows); lp = e.list; gp = e.generator; }
+        var max = Math.max(lp, gp);
+        var labels = d.sizes.map(function (n, k) { return fmtN(n) + ' rows (' + bytes(d.file_bytes[k]) + ')'; }).concat(TARGETS.map(function (t) { return bytes(t) + ' file (estimate)'; }));
+        h = '<div class="lab"><div class="sel-chips">' + chips(labels.map(function (x, k) { return k; }), st.i, 'gm-i', function (k) { return labels[k]; }) + '</div><div class="gantt">' +
+          '<div class="lane"><span class="lane-n lane-wide">list of all rows</span><div class="lane-track"><div class="gbar bad" style="width:' + Math.max(1, Math.round(lp / max * 100)) + '%"></div></div><span class="lane-v">' + gb(lp) + '</span></div>' +
+          '<div class="lane"><span class="lane-n lane-wide">generator, batches of 10,000</span><div class="lane-track"><div class="gbar" style="width:' + Math.max(1, Math.round(gp / max * 100)) + '%"></div></div><span class="lane-v">' + gb(gp) + '</span></div></div>' +
+          '<div class="lab-out"><div class="big"><b>' + fmtN(rows) + '</b><span>rows in the file' + (recorded ? '' : ' (estimate)') + '</span></div><div class="big warn"><b>' + fmtN(lp / size, 1) + 'x</b><span>the list needs this many times the file size</span></div><div class="big good"><b>' + fmtN(lp / gp, 0) + 'x</b><span>less memory with the generator</span></div></div>' +
+          '<p class="lab-note">Peaks are bytes that Python allocated and kept (tracemalloc). The estimates multiply the bytes per row of the largest recorded file, and the generator way stays at one batch.</p></div>';
+        box.innerHTML = h;
+        A.bindWidget = function (act, el) { if (act === 'gm-i') { st.i = +el.getAttribute('data-v'); A.render(true); } };
+      }
+    };
+    W.genmemInfo = { data: data, estimate: estimate, targets: TARGETS };
+  })();
+
   /* @@END */
 })();

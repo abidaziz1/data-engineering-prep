@@ -55,7 +55,14 @@ LAB.real = {
   "m3/group_count.py": "\"\"\"Counting, grouping and the top few, with the tools of the standard library.\"\"\"\nimport heapq\nfrom collections import Counter, defaultdict\n\norders = [\n    (\"O-1\", \"SG-01\", \"paid\", 1250), (\"O-2\", \"SG-01\", \"paid\", 475), (\"O-3\", \"KL-01\", \"cancelled\", 3100),\n    (\"O-4\", \"SG-02\", \"paid\", 820), (\"O-5\", \"KL-01\", \"paid\", 1990), (\"O-6\", \"SG-01\", \"refunded\", 250),\n    (\"O-7\", \"KL-01\", \"paid\", 5400), (\"O-8\", \"SG-02\", \"paid\", 610),\n]\n\nprint(\"orders per status:\", Counter(status for _, _, status, _ in orders))\n\nrevenue = defaultdict(int)\nfor _, store, status, cents in orders:\n    if status == \"paid\":\n        revenue[store] += cents\nprint(\"paid revenue per store (cents):\", dict(revenue))\n\nprint(\"two biggest orders:\", heapq.nlargest(2, orders, key=lambda o: o[3]))\nprint(\"stores by revenue, highest first:\", sorted(revenue, key=revenue.get, reverse=True))\nprint(\"sorted by status, then by amount (a stable sort):\")\nfor o in sorted(orders, key=lambda o: (o[2], o[3])):\n    print(\"  \", o)\n",
   "m3/sizes.py": "\"\"\"What things weigh. sys.getsizeof counts one object, not the objects it points to.\"\"\"\nimport sys\n\nfor label, obj in [\n    (\"int 0\", 0), (\"int 1\", 1), (\"int 2**30\", 2**30), (\"int 2**60\", 2**60), (\"float\", 1.5),\n    (\"str ''\", \"\"), (\"str 'a'\", \"a\"), (\"str 'O-0000001'\", \"O-0000001\"), (\"str of 100 characters\", \"x\" * 100),\n    (\"bytes b'abc'\", b\"abc\"), (\"tuple of 3 ints\", (1, 2, 3)), (\"empty list\", []), (\"list of 1000 ints\", list(range(1000))),\n    (\"empty dict\", {}), (\"dict with 1000 keys\", dict.fromkeys(range(1000))), (\"empty set\", set()), (\"set of 1000 ints\", set(range(1000))),\n]:\n    print(f\"{label:<24}{sys.getsizeof(obj):>8} bytes\")\n\nints = list(range(1000))\nprint()\nprint(\"the list of 1000 ints, the list object alone:\", sys.getsizeof(ints), \"bytes\")\nprint(\"the list and the 1000 int objects it points to:\", sys.getsizeof(ints) + sum(sys.getsizeof(i) for i in ints), \"bytes\")\n",
   "m3/latest_per_key.py": "\"\"\"Coding round: keep the newest record for each order, even when an old record arrives late.\"\"\"\n\nevents = [\n    {\"order_id\": \"O-1\", \"status\": \"created\", \"updated_at\": \"2026-03-01T08:00:00Z\"},\n    {\"order_id\": \"O-2\", \"status\": \"created\", \"updated_at\": \"2026-03-01T08:05:00Z\"},\n    {\"order_id\": \"O-1\", \"status\": \"paid\", \"updated_at\": \"2026-03-01T08:07:00Z\"},\n    {\"order_id\": \"O-3\", \"status\": \"created\", \"updated_at\": \"2026-03-01T09:00:00Z\"},\n    {\"order_id\": \"O-2\", \"status\": \"cancelled\", \"updated_at\": \"2026-03-01T08:06:00Z\"},\n    {\"order_id\": \"O-1\", \"status\": \"refunded\", \"updated_at\": \"2026-03-01T07:59:00Z\"},  # arrives last, but is the oldest\n]\n\n\ndef latest_per_key(events, key=\"order_id\", order_by=\"updated_at\"):\n    latest = {}\n    for e in events:\n        k = e[key]\n        if k not in latest or e[order_by] > latest[k][order_by]:\n            latest[k] = e\n    return list(latest.values())\n\n\nresult = latest_per_key(events)\nfor r in sorted(result, key=lambda r: r[\"order_id\"]):\n    print(r[\"order_id\"], r[\"status\"].ljust(10), r[\"updated_at\"])\n\nassert len(result) == 3\nassert {r[\"order_id\"]: r[\"status\"] for r in result} == {\"O-1\": \"paid\", \"O-2\": \"cancelled\", \"O-3\": \"created\"}\nassert latest_per_key([]) == []\nprint(\"tests passed\")\n",
-  "m3/top_k_per_group.py": "\"\"\"Coding round: the two biggest orders for each store, without sorting every order.\"\"\"\nimport heapq\nfrom collections import defaultdict\n\norders = [\n    (\"O-1\", \"SG-01\", 1250), (\"O-2\", \"SG-01\", 475), (\"O-3\", \"KL-01\", 3100), (\"O-4\", \"SG-02\", 820),\n    (\"O-5\", \"KL-01\", 1990), (\"O-6\", \"SG-01\", 250), (\"O-7\", \"KL-01\", 5400), (\"O-8\", \"SG-02\", 610),\n    (\"O-9\", \"SG-01\", 1250),\n]\n\n\ndef top_k_per_group(rows, k):\n    heaps = defaultdict(list)  # a min-heap per store that never holds more than k rows\n    for order_id, store, cents in rows:\n        item = (cents, order_id)\n        if len(heaps[store]) < k:\n            heapq.heappush(heaps[store], item)\n        elif item > heaps[store][0]:\n            heapq.heapreplace(heaps[store], item)\n    return {store: sorted(h, reverse=True) for store, h in heaps.items()}\n\n\nresult = top_k_per_group(orders, 2)\nfor store in sorted(result):\n    print(store, [(oid, cents) for cents, oid in result[store]])\n\nassert result[\"KL-01\"] == [(5400, \"O-7\"), (3100, \"O-3\")]\nassert result[\"SG-02\"] == [(820, \"O-4\"), (610, \"O-8\")]\nassert len(result[\"SG-01\"]) == 2\nprint(\"tests passed\")\n"
+  "m3/top_k_per_group.py": "\"\"\"Coding round: the two biggest orders for each store, without sorting every order.\"\"\"\nimport heapq\nfrom collections import defaultdict\n\norders = [\n    (\"O-1\", \"SG-01\", 1250), (\"O-2\", \"SG-01\", 475), (\"O-3\", \"KL-01\", 3100), (\"O-4\", \"SG-02\", 820),\n    (\"O-5\", \"KL-01\", 1990), (\"O-6\", \"SG-01\", 250), (\"O-7\", \"KL-01\", 5400), (\"O-8\", \"SG-02\", 610),\n    (\"O-9\", \"SG-01\", 1250),\n]\n\n\ndef top_k_per_group(rows, k):\n    heaps = defaultdict(list)  # a min-heap per store that never holds more than k rows\n    for order_id, store, cents in rows:\n        item = (cents, order_id)\n        if len(heaps[store]) < k:\n            heapq.heappush(heaps[store], item)\n        elif item > heaps[store][0]:\n            heapq.heapreplace(heaps[store], item)\n    return {store: sorted(h, reverse=True) for store, h in heaps.items()}\n\n\nresult = top_k_per_group(orders, 2)\nfor store in sorted(result):\n    print(store, [(oid, cents) for cents, oid in result[store]])\n\nassert result[\"KL-01\"] == [(5400, \"O-7\"), (3100, \"O-3\")]\nassert result[\"SG-02\"] == [(820, \"O-4\"), (610, \"O-8\")]\nassert len(result[\"SG-01\"]) == 2\nprint(\"tests passed\")\n",
+  "m4/generator_basics.py": "\"\"\"A generator function makes values one at a time, when something asks for the next one.\"\"\"\n\n\ndef evens(limit):\n    for n in range(0, limit, 2):\n        print(\"  making\", n)\n        yield n\n\n\ngen = evens(6)\nprint(type(gen).__name__, \"- nothing has run yet\")\nprint(\"first:\", next(gen))\nprint(\"second:\", next(gen))\nprint(\"the rest:\", list(gen))\ntry:\n    next(gen)\nexcept StopIteration:\n    print(\"StopIteration: the generator is used up\")\n\nsquares = (n * n for n in range(4))  # a generator expression\nprint(\"sum, then sum again:\", sum(squares), sum(squares))\n",
+  "m4/pull_trace.py": "\"\"\"Four orders through read, parse and keep. Lists do each stage for everyone first. Generators pass one order all the way.\"\"\"\nTOTALS = [150, 80, 220, 40]\n\n\ndef read():\n    for i, cents in enumerate(TOTALS, start=1):\n        print(f\"  read  {i}\")\n        yield i, cents\n\n\ndef parse(rows):\n    for i, cents in rows:\n        print(f\"  parse {i}\")\n        yield {\"id\": i, \"cents\": cents}\n\n\ndef keep(rows):\n    for r in rows:\n        if r[\"cents\"] >= 100:\n            print(f\"  keep  {r['id']}\")\n            yield r\n        else:\n            print(f\"  drop  {r['id']}\")\n\n\nprint(\"with lists\")\nrows = list(read())\nparsed = list(parse(rows))\nkept = list(keep(parsed))\nfor r in kept:\n    print(f\"  write {r['id']}\")\n\nprint(\"with generators\")\nfor r in keep(parse(read())):\n    print(f\"  write {r['id']}\")\n",
+  "m4/itertools_tools.py": "\"\"\"A few tools from itertools, and the one rule of groupby.\"\"\"\nimport itertools\n\nprint(\"batched:\", list(itertools.batched(range(7), 3)))\nprint(\"islice of an endless count:\", list(itertools.islice(itertools.count(1), 5)))\nprint(\"chain:\", list(itertools.chain([\"a\", \"b\"], [\"c\"])))\nprint(\"pairwise:\", list(itertools.pairwise([1, 4, 9, 16])))\n\nrows = [(\"SG-01\", 1250), (\"KL-01\", 3100), (\"SG-01\", 475), (\"KL-01\", 1990)]\nprint(\"groupby, input not sorted:\", [(k, [c for _, c in g]) for k, g in itertools.groupby(rows, key=lambda r: r[0])])\nprint(\"groupby, input sorted:    \", [(k, [c for _, c in g]) for k, g in itertools.groupby(sorted(rows), key=lambda r: r[0])])\n",
+  "m4/generator_close.py": "\"\"\"A generator that holds a resource: what happens when the caller stops early.\"\"\"\nfrom contextlib import closing\n\n\ndef read_lines(name):\n    print(\"open\", name)\n    try:\n        for i in range(1, 6):\n            yield i\n    finally:\n        print(\"close\", name)\n\n\nfor n in read_lines(\"a.csv\"):\n    if n == 3:\n        break\nprint(\"after the loop\")\n\nwith closing(read_lines(\"b.csv\")) as lines:\n    next(lines)\n    print(\"leaving the with block\")\nprint(\"done\")\n",
+  "m4/flatten_json.py": "\"\"\"Coding round: walk nested JSON and yield (path, value) pairs, without building one big list.\"\"\"\n\n\ndef flatten(obj, prefix=\"\"):\n    if isinstance(obj, dict):\n        for key, value in obj.items():\n            yield from flatten(value, f\"{prefix}{key}.\")\n    elif isinstance(obj, list):\n        for i, value in enumerate(obj):\n            yield from flatten(value, f\"{prefix}{i}.\")\n    else:\n        yield prefix.rstrip(\".\"), obj\n\n\norder = {\n    \"order_id\": \"O-1\",\n    \"customer\": {\"id\": \"C-7\", \"tier\": \"gold\"},\n    \"lines\": [{\"sku\": \"LATTE\", \"qty\": 2}, {\"sku\": \"MUFFIN\", \"qty\": 1}],\n    \"note\": None,\n}\nfor path, value in flatten(order):\n    print(f\"{path:<16} {value!r}\")\n\nassert dict(flatten({})) == {}\nassert dict(flatten({\"a\": [1, [2, 3]]})) == {\"a.0\": 1, \"a.1.0\": 2, \"a.1.1\": 3}\nprint(\"tests passed\")\n",
+  "m4/sessionize.py": "\"\"\"Coding round: split each user's events into sessions. A gap of more than 30 minutes starts a new session.\"\"\"\n\n\ndef sessionize(events, gap=30):\n    \"\"\"events: (user, minute) pairs, sorted by user and then by minute. Yield (user, first, last, count).\"\"\"\n    current = None\n    for user, minute in events:\n        if current and current[0] == user and minute - current[2] <= gap:\n            current[2] = minute\n            current[3] += 1\n        else:\n            if current:\n                yield tuple(current)\n            current = [user, minute, minute, 1]\n    if current:\n        yield tuple(current)\n\n\nevents = [(\"C-1\", 5), (\"C-1\", 20), (\"C-1\", 90), (\"C-1\", 100), (\"C-2\", 15), (\"C-3\", 0), (\"C-3\", 30), (\"C-3\", 61)]\nfor user, first, last, count in sessionize(events):\n    print(f\"{user}  minutes {first:>3} to {last:>3}  events: {count}\")\n\nassert list(sessionize([])) == []\nassert list(sessionize([(\"A\", 0), (\"A\", 30)])) == [(\"A\", 0, 30, 2)]\nassert list(sessionize([(\"A\", 0), (\"A\", 31)])) == [(\"A\", 0, 0, 1), (\"A\", 31, 31, 1)]\nprint(\"tests passed\")\n",
+  "m4/pipeline.py": "\"\"\"One pass over a CSV file of orders, in small steps, with the memory that Python used.\"\"\"\nimport csv\nimport itertools\nimport sys\nimport tracemalloc\nfrom decimal import Decimal\n\n\ndef read_rows(path):\n    with open(path, newline=\"\", encoding=\"utf-8\") as f:\n        yield from csv.DictReader(f)\n\n\ndef parse(rows):\n    for r in rows:\n        yield {\"order_id\": r[\"order_id\"], \"store\": r[\"store\"], \"status\": r[\"status\"], \"cents\": int(Decimal(r[\"total\"]) * 100)}\n\n\ndef paid(rows):\n    return (r for r in rows if r[\"status\"] == \"paid\")\n\n\ndef batches(rows, size):\n    return itertools.batched(rows, size)\n\n\ntracemalloc.start()\nrows_in_batches = batches(paid(parse(read_rows(sys.argv[1]))), 10_000)\ntotal_cents = orders = batch_count = 0\nfor batch in rows_in_batches:\n    total_cents += sum(r[\"cents\"] for r in batch)\n    orders += len(batch)\n    batch_count += 1\npeak = tracemalloc.get_traced_memory()[1]\n\nprint(f\"paid orders: {orders:,} in {batch_count} batches\")\nprint(f\"paid revenue: {total_cents / 100:,.2f}\")\nprint(f\"peak memory held by Python: {peak / 1e6:.2f} MB\")\n"
  },
  "text": {
   "m1_fragile_script.py#1": "Traceback (most recent call last):\n  File \"/work/m1_fragile_script/m1_fragile_script.py\", line 13, in <module>\n    r[\"total\"] = float(r[\"total\"])\n                 ~~~~~^^^^^^^^^^^^\nValueError: could not convert string to float: 'n/a'",
@@ -87,7 +94,14 @@ LAB.real = {
   "m3/group_count.py": "orders per status: Counter({'paid': 6, 'cancelled': 1, 'refunded': 1})\npaid revenue per store (cents): {'SG-01': 1725, 'SG-02': 1430, 'KL-01': 7390}\ntwo biggest orders: [('O-7', 'KL-01', 'paid', 5400), ('O-3', 'KL-01', 'cancelled', 3100)]\nstores by revenue, highest first: ['KL-01', 'SG-01', 'SG-02']\nsorted by status, then by amount (a stable sort):\n   ('O-3', 'KL-01', 'cancelled', 3100)\n   ('O-2', 'SG-01', 'paid', 475)\n   ('O-8', 'SG-02', 'paid', 610)\n   ('O-4', 'SG-02', 'paid', 820)\n   ('O-1', 'SG-01', 'paid', 1250)\n   ('O-5', 'KL-01', 'paid', 1990)\n   ('O-7', 'KL-01', 'paid', 5400)\n   ('O-6', 'SG-01', 'refunded', 250)",
   "m3/sizes.py": "int 0                         28 bytes\nint 1                         28 bytes\nint 2**30                     32 bytes\nint 2**60                     36 bytes\nfloat                         24 bytes\nstr ''                        41 bytes\nstr 'a'                       42 bytes\nstr 'O-0000001'               50 bytes\nstr of 100 characters        141 bytes\nbytes b'abc'                  36 bytes\ntuple of 3 ints               72 bytes\nempty list                    56 bytes\nlist of 1000 ints           8056 bytes\nempty dict                    64 bytes\ndict with 1000 keys        36952 bytes\nempty set                    216 bytes\nset of 1000 ints           32984 bytes\n\nthe list of 1000 ints, the list object alone: 8056 bytes\nthe list and the 1000 int objects it points to: 36056 bytes",
   "m3/latest_per_key.py": "O-1 paid       2026-03-01T08:07:00Z\nO-2 cancelled  2026-03-01T08:06:00Z\nO-3 created    2026-03-01T09:00:00Z\ntests passed",
-  "m3/top_k_per_group.py": "KL-01 [('O-7', 5400), ('O-3', 3100)]\nSG-01 [('O-9', 1250), ('O-1', 1250)]\nSG-02 [('O-4', 820), ('O-8', 610)]\ntests passed"
+  "m3/top_k_per_group.py": "KL-01 [('O-7', 5400), ('O-3', 3100)]\nSG-01 [('O-9', 1250), ('O-1', 1250)]\nSG-02 [('O-4', 820), ('O-8', 610)]\ntests passed",
+  "m4/generator_basics.py": "generator - nothing has run yet\n  making 0\nfirst: 0\n  making 2\nsecond: 2\n  making 4\nthe rest: [4]\nStopIteration: the generator is used up\nsum, then sum again: 14 0",
+  "m4/pull_trace.py": "with lists\n  read  1\n  read  2\n  read  3\n  read  4\n  parse 1\n  parse 2\n  parse 3\n  parse 4\n  keep  1\n  drop  2\n  keep  3\n  drop  4\n  write 1\n  write 3\nwith generators\n  read  1\n  parse 1\n  keep  1\n  write 1\n  read  2\n  parse 2\n  drop  2\n  read  3\n  parse 3\n  keep  3\n  write 3\n  read  4\n  parse 4\n  drop  4",
+  "m4/itertools_tools.py": "batched: [(0, 1, 2), (3, 4, 5), (6,)]\nislice of an endless count: [1, 2, 3, 4, 5]\nchain: ['a', 'b', 'c']\npairwise: [(1, 4), (4, 9), (9, 16)]\ngroupby, input not sorted: [('SG-01', [1250]), ('KL-01', [3100]), ('SG-01', [475]), ('KL-01', [1990])]\ngroupby, input sorted:     [('KL-01', [1990, 3100]), ('SG-01', [475, 1250])]",
+  "m4/generator_close.py": "open a.csv\nclose a.csv\nafter the loop\nopen b.csv\nleaving the with block\nclose b.csv\ndone",
+  "m4/flatten_json.py": "order_id         'O-1'\ncustomer.id      'C-7'\ncustomer.tier    'gold'\nlines.0.sku      'LATTE'\nlines.0.qty      2\nlines.1.sku      'MUFFIN'\nlines.1.qty      1\nnote             None\ntests passed",
+  "m4/sessionize.py": "C-1  minutes   5 to  20  events: 2\nC-1  minutes  90 to 100  events: 2\nC-2  minutes  15 to  15  events: 1\nC-3  minutes   0 to  30  events: 2\nC-3  minutes  61 to  61  events: 1\ntests passed",
+  "m4/pipeline.py": "paid orders: 133,273 in 14 batches\npaid revenue: 8,250,382.67\npeak memory held by Python: 7.47 MB"
  },
  "tables": {
   "m3.structs": {
@@ -209,7 +223,14 @@ LAB.real = {
    "m3/group_count.py": 0,
    "m3/sizes.py": 0,
    "m3/latest_per_key.py": 0,
-   "m3/top_k_per_group.py": 0
+   "m3/top_k_per_group.py": 0,
+   "m4/generator_basics.py": 0,
+   "m4/pull_trace.py": 0,
+   "m4/itertools_tools.py": 0,
+   "m4/generator_close.py": 0,
+   "m4/flatten_json.py": 0,
+   "m4/sessionize.py": 0,
+   "m4/pipeline.py": 0
   },
   "m2.specifiers.pandas": {
    "versions": [
@@ -473,6 +494,67 @@ LAB.real = {
      "per_id": 59.7
     }
    ]
+  },
+  "m4.genmem": {
+   "sizes": [
+    50000,
+    100000,
+    200000,
+    400000,
+    800000
+   ],
+   "list": [
+    {
+     "peak_bytes": 28975279,
+     "paid_cents": 206982287
+    },
+    {
+     "peak_bytes": 57705844,
+     "paid_cents": 412039888
+    },
+    {
+     "peak_bytes": 115277472,
+     "paid_cents": 825038267
+    },
+    {
+     "peak_bytes": 230439878,
+     "paid_cents": 1649660308
+    },
+    {
+     "peak_bytes": 460812207,
+     "paid_cents": 3295046208
+    }
+   ],
+   "generator": [
+    {
+     "peak_bytes": 11673654,
+     "paid_cents": 206982287
+    },
+    {
+     "peak_bytes": 11674129,
+     "paid_cents": 412039888
+    },
+    {
+     "peak_bytes": 11679826,
+     "paid_cents": 825038267
+    },
+    {
+     "peak_bytes": 11680003,
+     "paid_cents": 1649660308
+    },
+    {
+     "peak_bytes": 11682787,
+     "paid_cents": 3295046208
+    }
+   ],
+   "file_bytes": [
+    2924229,
+    5849320,
+    11699892,
+    23397748,
+    46796291
+   ],
+   "note": "peak bytes of Python memory (tracemalloc) while adding up the paid orders of a CSV file; both ways give the same total"
   }
  }
 };

@@ -67,5 +67,37 @@
     ]
   };
 
+  /* ------------------------------------------------------------------ */
+  /* 3. A generator pipeline is pulled from the end                      */
+  /* ------------------------------------------------------------------ */
+  function pull(fromX, toX) { return 'M' + fromX + ' 150 C' + fromX + ' 84 ' + toX + ' 84 ' + toX + ' 150'; }
+  S.gen = {
+    w: 1100, h: 340, label: 'A generator pipeline: the for loop at the end asks for the next batch, each stage asks the stage before it, and the file is read one line at a time, so only one batch is in memory',
+    nodes: [
+      { id: 'f', x: 10, y: 150, w: 150, h: 90, t: 'orders.csv', s: 'on disk', c: 'src', k: 'chip' },
+      { id: 's1', x: 200, y: 150, w: 150, h: 90, t: 'read_rows', s: 'one dict', c: 'ing', k: 'chip' },
+      { id: 's2', x: 390, y: 150, w: 150, h: 90, t: 'parse', s: 'types, cents', c: 'stg', k: 'chip' },
+      { id: 's3', x: 580, y: 150, w: 150, h: 90, t: 'paid', s: 'keep paid', c: 'mart', k: 'chip' },
+      { id: 's4', x: 770, y: 150, w: 150, h: 90, t: 'batches', s: '10,000 rows', c: 'con', k: 'chip' },
+      { id: 's5', x: 960, y: 150, w: 130, h: 90, t: 'for loop', s: 'add up', c: 'snap', k: 'chip' }
+    ],
+    edges: [
+      { id: 'd1', a: 'f', b: 's1', d: 'M160 195 H200' },
+      { id: 'd2', a: 's1', b: 's2', d: 'M350 195 H390' },
+      { id: 'd3', a: 's2', b: 's3', d: 'M540 195 H580' },
+      { id: 'd4', a: 's3', b: 's4', d: 'M730 195 H770' },
+      { id: 'd5', a: 's4', b: 's5', d: 'M920 195 H960' },
+      { id: 'p5', a: 's5', b: 's4', d: pull(1025, 845), k: 'ctl', n: 1, bx: 935, by: 100 },
+      { id: 'p4', a: 's4', b: 's3', d: pull(845, 655), k: 'ctl', n: 2, bx: 750, by: 100 },
+      { id: 'p3', a: 's3', b: 's2', d: pull(655, 465), k: 'ctl', n: 3, bx: 560, by: 100 },
+      { id: 'p2', a: 's2', b: 's1', d: pull(465, 275), k: 'ctl', n: 4, bx: 370, by: 100 },
+      { id: 'p1', a: 's1', b: 'f', d: pull(275, 85), k: 'ctl', n: 5, bx: 180, by: 100 }
+    ],
+    tags: [
+      { id: 'tg_one', x: 760, y: 280, t: 'one batch in memory', c: 'mon' },
+      { id: 'tg_file', x: 10, y: 280, t: 'the file is read line by line', c: 'src' }
+    ]
+  };
+
   /* @@END */
 })();
