@@ -1,0 +1,80 @@
+/* Styles for the labs of the SQL for data engineers tutorial. The engine styles are in shared/css/app.css. */
+:root{--blue:#4338CA;--blue-bg:#E0E7FF}
+a.logo{background:#4338CA;letter-spacing:.02em}
+a.logo:hover{background:#3730A3}
+
+/* the bar above a runnable query: the engine's own words instead of the Snowflake ones */
+.wsbar span:nth-child(1) b{font-size:0}.wsbar span:nth-child(1) b::after{content:"User";font-size:1rem}
+.wsbar span:nth-child(2) b{font-size:0}.wsbar span:nth-child(2) b::after{content:"Engine";font-size:1rem}
+.wsbar span:nth-child(3) b{font-size:0}.wsbar span:nth-child(3) b::after{content:"Database";font-size:1rem}
+
+.lab{display:flex;flex-direction:column;gap:.7rem}
+.lab-row{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem .9rem}
+.lab-l{font-weight:800;min-width:8rem}
+.lab-note{font-size:.9rem;font-weight:600;color:var(--ink2);margin:.1rem 0 0}
+.lab button:disabled{opacity:.45}
+.lab-out{display:flex;flex-wrap:wrap;gap:.6rem}
+.lab-out .big{flex:1 1 9rem;background:#fff;border:3px solid var(--ink);border-radius:12px;padding:.4rem .8rem;box-shadow:0 3px 0 var(--ink)}
+.lab-out .big b{display:block;font:800 1.5rem Manrope,sans-serif}
+.lab-out .big span{font-size:.9rem;font-weight:700;color:var(--ink2)}
+.lab-out .big.warn{background:#FEF3C7}
+.lab-out .big.bad{background:#FEE2E2}
+.lab-out .big.good{background:#DCFCE7}
+.lab-h{font:800 1.05rem Manrope,sans-serif;margin:.3rem 0 .1rem}
+.tbl td code{font-size:.96em}
+.tbl td.wbad{background:#FEE2E2;font-weight:800}
+.tbl td.wgood{background:#DCFCE7;font-weight:800}
+.tbl td.wwarn{background:#FEF3C7;font-weight:800}
+.tbl tr.dup td{background:#FEE2E2}
+.tbl tr.old td{color:#64748B;text-decoration:line-through}
+.tbl tr.new td{background:#DCFCE7}
+.tbl tr.inframe td{background:#DBEAFE}
+.tbl tr.cur td{background:#FEF3C7;font-weight:800}
+.tbl tr.gone td{opacity:.35}
+.tbl td.nul{color:#94A3B8;font-style:italic}
+
+/* two panels side by side */
+.pair{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:.8rem}
+.pair .code{margin:0}
+@media (max-width:900px){.pair{grid-template-columns:minmax(0,1fr)}}
+
+/* selector chips */
+.sel-chips{display:flex;flex-wrap:wrap;gap:.45rem}
+.sel-chip{background:#fff;border:3px solid var(--ink);border-radius:12px;padding:.35rem .7rem;font:600 .9rem 'IBM Plex Mono',monospace;cursor:pointer;text-align:left}
+.sel-chip:hover{background:var(--blue-bg)}
+.sel-chip.on{background:#FEF3C7;box-shadow:0 3px 0 var(--ink)}
+.sel-chip.yes{background:#DCFCE7}
+.sel-chip.no{background:#FEE2E2}
+.pill{display:inline-block;border:2px solid var(--ink);border-radius:999px;padding:.05rem .65rem;font:800 .85rem Manrope,sans-serif;letter-spacing:.04em;text-transform:uppercase;background:#fff}
+.pill.good{background:#BBF7D0}.pill.bad{background:#FECACA}.pill.warn{background:#FEF3C7}
+
+/* reasons under a verdict */
+.why{margin:.2rem 0 0;padding-left:1.3rem;display:flex;flex-direction:column;gap:.3rem;font-weight:600}
+
+/* a plan or a log in a box */
+.planbox{margin:0;background:#0F172A;color:#E2E8F0;border:3px solid var(--ink);border-radius:12px;padding:.7rem .9rem;font:600 .88rem/1.5 'IBM Plex Mono',monospace;overflow-x:auto;white-space:pre}
+.planbox .hot{background:#7C2D12;color:#FED7AA;border-radius:4px;padding:0 .2rem}
+
+/* two sessions side by side (the isolation lab) */
+.sessions{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:.7rem}
+.sess{border:3px solid var(--ink);border-radius:12px;background:#fff;padding:.4rem .6rem;display:flex;flex-direction:column;gap:.35rem}
+.sess h4{margin:0;font:800 .95rem Manrope,sans-serif}
+.sess .stmt{font:600 .85rem/1.4 'IBM Plex Mono',monospace;background:#F1F5F9;border-radius:8px;padding:.25rem .45rem;white-space:pre-wrap}
+.sess .stmt.now{background:#FEF3C7;outline:3px solid #F59E0B}
+.sess .stmt.err{background:#FEE2E2}
+.sess .res{font:600 .85rem 'IBM Plex Mono',monospace;color:#0F766E;padding-left:.45rem}
+.sess .res.err{color:#B91C1C}
+@media (max-width:900px){.sessions{grid-template-columns:minmax(0,1fr)}}
+
+/* bars with a number at the end */
+.gantt{display:flex;flex-direction:column;gap:.35rem}
+.lane{display:flex;align-items:center;gap:.6rem}
+.lane-n{min-width:6rem;font-weight:800;font-size:.9rem}
+.lane-track{position:relative;flex:1;height:2.1rem;background:#E2E8F0;border:3px solid var(--ink);border-radius:8px;overflow:hidden}
+.gbar{position:absolute;top:0;bottom:0;background:#FB923C;border-right:2px solid var(--ink);font:700 .85rem 'IBM Plex Mono',monospace;padding:.25rem .3rem;overflow:hidden;white-space:nowrap}
+.gbar.bad{background:#F87171}
+.lane-v{min-width:5.2rem;text-align:right;font:700 .95rem 'IBM Plex Mono',monospace}
+
+/* long identifiers, hex strings and plan lines must wrap on a phone */
+.qtext,.alertbox,.alertbox *,.prompt,.opt .ot,.callout,.clues li,.triage li,.lab-out .big b,.lab-out .big span,.notes li,.answer,.why li{overflow-wrap:anywhere}
+.tbl td,.tbl th{overflow-wrap:anywhere}
