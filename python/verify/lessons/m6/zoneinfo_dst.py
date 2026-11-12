@@ -1,6 +1,12 @@
 """What zoneinfo says about local times around a clock change."""
+import zoneinfo
 from datetime import datetime, timezone
+from pathlib import Path
 from zoneinfo import ZoneInfo
+
+zi = Path(zoneinfo.TZPATH[0]) / "tzdata.zi"
+print("database:", zi.read_text().splitlines()[0] if zi.exists() else "the tzdata package")
+print()
 
 CASES = [
     ("Europe/London", datetime(2026, 3, 29, 1, 30)),   # the clocks go forward at 01:00 and skip an hour

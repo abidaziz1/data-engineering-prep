@@ -9,14 +9,14 @@ LAB.real = {
   "platform": "Linux-6.18.44-fc-v378-x86_64-with-glibc2.39",
   "cpus": 4,
   "uv": "0.11.32",
-  "pandas": "3.0.5",
-  "numpy": "2.5.3",
+  "pandas": "3.1.1",
+  "numpy": "2.5.4",
   "polars": "2.1.0",
   "pyarrow": "26.0.1",
   "duckdb": "2.0.0",
   "sqlalchemy": "2.1.8",
-  "pydantic": "2.13.5",
-  "pydantic_core": "2.46.5",
+  "pydantic": "2.14.3",
+  "pydantic_core": "2.50.4",
   "mypy": "2.4.1",
   "ruff": "0.17.4",
   "pytest": "9.2.0",
@@ -28,17 +28,12 @@ LAB.real = {
   "typer": "0.29.1",
   "psutil": "7.2.2",
   "tzdata": "2026.6",
-  "python-dateutil": "2.9.0.post0",
+  "python-dateutil": "4.0.0",
   "packaging": "26.3",
   "captured": "2026-11-12",
   "python_free_threaded": "3.14.6"
  },
  "files": {
-  "m1_fragile_script.py": "\"\"\"load_orders_v7.py: the script that Brewline runs from cron. It works on the laptop where it was written.\"\"\"\nimport csv\nimport datetime\nimport glob\nimport sqlite3\n\ncon = sqlite3.connect(\"warehouse.db\")\ncon.execute(\"CREATE TABLE IF NOT EXISTS orders (order_id TEXT, customer_id TEXT, total REAL, day TEXT)\")\n\nrows = []\nfor path in glob.glob(\"incoming/*.csv\"):\n    for r in csv.DictReader(open(path)):\n        r[\"total\"] = float(r[\"total\"])\n        r[\"day\"] = str(datetime.date.today())\n        rows.append(r)\n\nfor r in rows:\n    con.execute(\"INSERT INTO orders VALUES (?, ?, ?, ?)\", (r[\"order_id\"], r[\"customer_id\"], r[\"total\"], r[\"day\"]))\ncon.commit()\n\nprint(\"loaded\", len(rows), \"rows\")\nprint(con.execute(\"SELECT count(*), count(DISTINCT order_id), round(sum(total), 2) FROM orders\").fetchone())\nprint(con.execute(\"SELECT count(DISTINCT day) FROM orders\").fetchone())\n",
-  "m1_partial_failure.py": "\"\"\"The same script, one day later: the file from the supplier has a bad value in row 3.\"\"\"\nimport csv\nimport sqlite3\n\ncon = sqlite3.connect(\"warehouse.db\")\ncon.execute(\"CREATE TABLE IF NOT EXISTS orders (order_id TEXT, customer_id TEXT, total REAL)\")\n\nloaded = 0\ntry:\n    for r in csv.DictReader(open(\"incoming/orders_c.csv\")):\n        con.execute(\"INSERT INTO orders VALUES (?, ?, ?)\", (r[\"order_id\"], r[\"customer_id\"], float(r[\"total\"])))\n        con.commit()\n        loaded += 1\nexcept ValueError as e:\n    print(\"stopped:\", e)\n\nprint(\"loaded\", loaded, \"of 4 rows before the stop\")\nprint(con.execute(\"SELECT order_id FROM orders ORDER BY order_id\").fetchall())\n",
-  "m1_hidden_state.py": "\"\"\"A notebook is a set of cells that share one namespace. The order that you press Run in is part of the program.\"\"\"\ncells = {\n    1: \"total = 0\",\n    2: \"total = total + 12.50  # add the first order\",\n    3: \"total = total * 1.09   # add 9 percent tax\",\n}\n\ndef run(order):\n    ns = {}\n    for n in order:\n        exec(cells[n], ns)\n    return round(ns[\"total\"], 2)\n\nprint(\"top to bottom (1, 2, 3):         \", run([1, 2, 3]))\nprint(\"cell 2 pressed twice (1, 2, 2, 3):\", run([1, 2, 2, 3]))\nprint(\"tax before the order (1, 3, 2):  \", run([1, 3, 2]))\n",
-  "m1_safe_rerun.py": "\"\"\"load_orders_v8.py: the same job, written so that running it twice gives the same table.\"\"\"\nimport csv\nimport glob\nimport sqlite3\nfrom decimal import Decimal\n\ncon = sqlite3.connect(\"warehouse.db\")\ncon.execute(\"\"\"CREATE TABLE IF NOT EXISTS orders (\n    order_id TEXT PRIMARY KEY, customer_id TEXT, total_cents INTEGER, ordered_at TEXT)\"\"\")\n\ndef read_orders(pattern):\n    for path in sorted(glob.glob(pattern)):\n        with open(path, newline=\"\", encoding=\"utf-8\") as f:\n            for r in csv.DictReader(f):\n                yield (r[\"order_id\"], r[\"customer_id\"], int(Decimal(r[\"total\"]) * 100), r[\"ordered_at\"])\n\nwith con:  # one transaction: all rows or none\n    con.executemany(\n        \"INSERT INTO orders VALUES (?, ?, ?, ?) \"\n        \"ON CONFLICT(order_id) DO UPDATE SET customer_id = excluded.customer_id, \"\n        \"total_cents = excluded.total_cents, ordered_at = excluded.ordered_at\",\n        read_orders(\"incoming/orders_[ab].csv\"))\n\nprint(con.execute(\"SELECT count(*), count(DISTINCT order_id), sum(total_cents) FROM orders\").fetchone())\n",
-  "m1_versions.py": "\"\"\"What this course ran on.\"\"\"\nimport platform\nimport sys\nfrom importlib.metadata import version\n\nprint(sys.version.split(\" (\")[0], platform.python_implementation(), platform.machine())\nfor name in [\"pandas\", \"polars\", \"pyarrow\", \"duckdb\", \"sqlalchemy\", \"pydantic\", \"pytest\", \"mypy\", \"ruff\"]:\n    print(f\"{name:<11}{version(name)}\")\n",
   "m1/load_orders_v7.py": "\"\"\"load_orders_v7.py: the script that Brewline runs from cron. It works on the laptop where it was written.\"\"\"\nimport csv\nimport datetime\nimport glob\nimport sqlite3\n\ncon = sqlite3.connect(\"warehouse.db\")\ncon.execute(\"CREATE TABLE IF NOT EXISTS orders (order_id TEXT, customer_id TEXT, total REAL, day TEXT)\")\n\nrows = []\nfor path in glob.glob(\"incoming/*.csv\"):\n    for r in csv.DictReader(open(path)):\n        r[\"total\"] = float(r[\"total\"])\n        r[\"day\"] = str(datetime.date.today())\n        rows.append(r)\n\nfor r in rows:\n    con.execute(\"INSERT INTO orders VALUES (?, ?, ?, ?)\", (r[\"order_id\"], r[\"customer_id\"], r[\"total\"], r[\"day\"]))\ncon.commit()\n\nprint(\"loaded\", len(rows), \"rows\")\nprint(con.execute(\"SELECT count(*), count(DISTINCT order_id), round(sum(total), 2) FROM orders\").fetchone())\nprint(con.execute(\"SELECT count(DISTINCT day) FROM orders\").fetchone())\n",
   "m1/partial_failure.py": "\"\"\"The same script, one day later: the file from the supplier has a bad value in row 3.\"\"\"\nimport csv\nimport sqlite3\n\ncon = sqlite3.connect(\"warehouse.db\")\ncon.execute(\"CREATE TABLE IF NOT EXISTS orders (order_id TEXT, customer_id TEXT, total REAL)\")\n\nloaded = 0\ntry:\n    for r in csv.DictReader(open(\"later/orders_c.csv\")):\n        con.execute(\"INSERT INTO orders VALUES (?, ?, ?)\", (r[\"order_id\"], r[\"customer_id\"], float(r[\"total\"])))\n        con.commit()\n        loaded += 1\nexcept ValueError as e:\n    print(\"stopped:\", e)\n\nprint(\"loaded\", loaded, \"of 4 rows before the stop\")\nprint(con.execute(\"SELECT order_id FROM orders ORDER BY order_id\").fetchall())\n",
   "m1/notebook_cells.py": "\"\"\"A notebook is a set of cells that share one namespace. The order that you press Run in is part of the program.\"\"\"\ncells = {\n    1: \"total = 0\",\n    2: \"total = total + 12.50  # add the first order\",\n    3: \"total = total * 1.09   # add 9 percent tax\",\n}\n\ndef run(order):\n    ns = {}\n    for n in order:\n        exec(cells[n], ns)\n    return round(ns[\"total\"], 2)\n\nprint(\"top to bottom (1, 2, 3):         \", run([1, 2, 3]))\nprint(\"cell 2 pressed twice (1, 2, 2, 3):\", run([1, 2, 2, 3]))\nprint(\"tax before the order (1, 3, 2):  \", run([1, 3, 2]))\n",
@@ -63,6 +58,7 @@ LAB.real = {
   "m4/flatten_json.py": "\"\"\"Coding round: walk nested JSON and yield (path, value) pairs, without building one big list.\"\"\"\n\n\ndef flatten(obj, prefix=\"\"):\n    if isinstance(obj, dict):\n        for key, value in obj.items():\n            yield from flatten(value, f\"{prefix}{key}.\")\n    elif isinstance(obj, list):\n        for i, value in enumerate(obj):\n            yield from flatten(value, f\"{prefix}{i}.\")\n    else:\n        yield prefix.rstrip(\".\"), obj\n\n\norder = {\n    \"order_id\": \"O-1\",\n    \"customer\": {\"id\": \"C-7\", \"tier\": \"gold\"},\n    \"lines\": [{\"sku\": \"LATTE\", \"qty\": 2}, {\"sku\": \"MUFFIN\", \"qty\": 1}],\n    \"note\": None,\n}\nfor path, value in flatten(order):\n    print(f\"{path:<16} {value!r}\")\n\nassert dict(flatten({})) == {}\nassert dict(flatten({\"a\": [1, [2, 3]]})) == {\"a.0\": 1, \"a.1.0\": 2, \"a.1.1\": 3}\nprint(\"tests passed\")\n",
   "m4/sessionize.py": "\"\"\"Coding round: split each user's events into sessions. A gap of more than 30 minutes starts a new session.\"\"\"\n\n\ndef sessionize(events, gap=30):\n    \"\"\"events: (user, minute) pairs, sorted by user and then by minute. Yield (user, first, last, count).\"\"\"\n    current = None\n    for user, minute in events:\n        if current and current[0] == user and minute - current[2] <= gap:\n            current[2] = minute\n            current[3] += 1\n        else:\n            if current:\n                yield tuple(current)\n            current = [user, minute, minute, 1]\n    if current:\n        yield tuple(current)\n\n\nevents = [(\"C-1\", 5), (\"C-1\", 20), (\"C-1\", 90), (\"C-1\", 100), (\"C-2\", 15), (\"C-3\", 0), (\"C-3\", 30), (\"C-3\", 61)]\nfor user, first, last, count in sessionize(events):\n    print(f\"{user}  minutes {first:>3} to {last:>3}  events: {count}\")\n\nassert list(sessionize([])) == []\nassert list(sessionize([(\"A\", 0), (\"A\", 30)])) == [(\"A\", 0, 30, 2)]\nassert list(sessionize([(\"A\", 0), (\"A\", 31)])) == [(\"A\", 0, 0, 1), (\"A\", 31, 31, 1)]\nprint(\"tests passed\")\n",
   "m4/pipeline.py": "\"\"\"One pass over a CSV file of orders, in small steps, with the memory that Python used.\"\"\"\nimport csv\nimport itertools\nimport sys\nimport tracemalloc\nfrom decimal import Decimal\n\n\ndef read_rows(path):\n    with open(path, newline=\"\", encoding=\"utf-8\") as f:\n        yield from csv.DictReader(f)\n\n\ndef parse(rows):\n    for r in rows:\n        yield {\"order_id\": r[\"order_id\"], \"store\": r[\"store\"], \"status\": r[\"status\"], \"cents\": int(Decimal(r[\"total\"]) * 100)}\n\n\ndef paid(rows):\n    return (r for r in rows if r[\"status\"] == \"paid\")\n\n\ndef batches(rows, size):\n    return itertools.batched(rows, size)\n\n\ntracemalloc.start()\nrows_in_batches = batches(paid(parse(read_rows(sys.argv[1]))), 10_000)\ntotal_cents = orders = batch_count = 0\nfor batch in rows_in_batches:\n    total_cents += sum(r[\"cents\"] for r in batch)\n    orders += len(batch)\n    batch_count += 1\npeak = tracemalloc.get_traced_memory()[1]\n\nprint(f\"paid orders: {orders:,} in {batch_count} batches\")\nprint(f\"paid revenue: {total_cents / 100:,.2f}\")\nprint(f\"peak memory held by Python: {peak / 1e6:.2f} MB\")\n",
+  "m5/read_csv_safely.py": "\"\"\"The safe way to read a supplier CSV: say the encoding, pass newline=\"\", and let utf-8-sig drop a byte order mark.\"\"\"\nimport csv\n\nwith open(\"supplier.csv\", newline=\"\", encoding=\"utf-8-sig\") as f:\n    rows = list(csv.DictReader(f))\n\nprint(\"rows:\", len(rows), \" columns:\", list(rows[0]))\nprint(\"customer of the first row:\", rows[0][\"customer\"])\nprint(\"note of the second row:\", repr(rows[1][\"note\"]))\nprint(\"total as money:\", sum(float(r[\"total\"]) for r in rows))\n",
   "m5/csv_traps.py": "\"\"\"One supplier file, read two ways. The file has a quoted comma, a quoted line break and a byte order mark.\"\"\"\nimport csv\nimport io\n\nraw = (\n    \"﻿order_id,customer,note,total\\n\"\n    'O-1,\"Ng, Mei\",\"extra shot\",12.50\\n'\n    'O-2,Ravi,\"leave at door\\nring twice\",4.75\\n'\n    \"O-3,Zoë,,31.00\\n\"\n)\nprint(\"bytes in the file:\", len(raw.encode(\"utf-8\")), \"  lines:\", raw.count(\"\\n\"))\n\nprint(\"\\nwith line.split(','):\")\nfor line in raw.splitlines():\n    print(\"  \", len(line.split(\",\")), \"fields:\", line.split(\",\")[:4])\n\nprint(\"\\nwith the csv module:\")\nfor row in csv.DictReader(io.StringIO(raw)):\n    print(\"  \", row)\n\nprint(\"\\nwith the csv module, and the byte order mark removed:\")\nrows = list(csv.DictReader(io.StringIO(raw.lstrip(\"﻿\"))))\nprint(\"  \", [r[\"order_id\"] for r in rows], \"total:\", sum(float(r[\"total\"]) for r in rows))\n",
   "m5/encodings.py": "\"\"\"Text is characters. A file is bytes. An encoding is the rule between them.\"\"\"\nfor text in [\"Zoe\", \"Zoë\", \"café\", \"東京\"]:\n    print(f\"{text!r}\")\n    for enc in [\"utf-8\", \"latin-1\", \"utf-16\"]:\n        try:\n            data = text.encode(enc)\n            print(f\"   {enc:<8} {len(data)} bytes  {data.hex(' ')}\")\n        except UnicodeEncodeError as e:\n            print(f\"   {enc:<8} cannot encode: {e.reason}\")\n\ndata = \"café\".encode(\"utf-8\")\nprint()\nprint(\"the bytes of 'café' in UTF-8, read as latin-1:\", data.decode(\"latin-1\"))\nprint(\"the bytes of 'café' in latin-1, read as UTF-8:\", end=\" \")\ntry:\n    \"café\".encode(\"latin-1\").decode(\"utf-8\")\nexcept UnicodeDecodeError as e:\n    print(\"UnicodeDecodeError:\", e.reason, \"at byte\", e.start)\nprint(\"the same bytes, errors='replace':\", \"café\".encode(\"latin-1\").decode(\"utf-8\", errors=\"replace\"))\nprint(\"a file saved with a byte order mark:\", repr(b\"\\xef\\xbb\\xbforder_id\".decode(\"utf-8\")), \"against\", repr(b\"\\xef\\xbb\\xbforder_id\".decode(\"utf-8-sig\")))\n",
   "m5/json_lines.py": "\"\"\"One JSON document, or one JSON object per line, and a file that was cut off in the middle.\"\"\"\nimport json\n\norders = [{\"order_id\": f\"O-{i}\", \"total\": i * 1.5} for i in range(1, 6)]\n\nwhole = json.dumps(orders)\nlines = \"\\n\".join(json.dumps(o) for o in orders) + \"\\n\"\nprint(\"JSON array:\", len(whole), \"bytes.  JSON Lines:\", len(lines), \"bytes, one object per line\")\n\ncut = 118  # the upload stopped here\nprint(\"\\nthe array, cut at byte\", cut, \":\")\ntry:\n    json.loads(whole[:cut])\nexcept json.JSONDecodeError as e:\n    print(\"  JSONDecodeError:\", e.msg, f\"(line {e.lineno}, column {e.colno})  ->  0 orders readable\")\n\nprint(\"\\nthe JSON Lines file, cut at byte\", cut, \":\")\ngood = bad = 0\nfor line in lines[:cut].split(\"\\n\"):\n    if not line:\n        continue\n    try:\n        json.loads(line)\n        good += 1\n    except json.JSONDecodeError:\n        bad += 1\nprint(\"  readable lines:\", good, \"  broken lines:\", bad, \"(the last one, cut in the middle)\")\nprint(\"  the last bytes of the cut file:\", repr(lines[:cut][-14:]))\n",
@@ -71,24 +67,15 @@ LAB.real = {
   "m5/parquet_tour.py": "\"\"\"What is inside a Parquet file: row groups, types and the minimum and maximum of each column.\"\"\"\nimport datetime as dt\nimport random\nfrom decimal import Decimal\n\nimport pyarrow as pa\nimport pyarrow.dataset as ds\nimport pyarrow.parquet as pq\n\nrng = random.Random(42)  # made-up orders, the same on every machine\nstart = dt.datetime(2026, 3, 1)\nrows = sorted(\n    (f\"O-{i:07d}\", rng.choice([\"SG-01\", \"SG-02\", \"KL-01\", \"JK-01\"]), rng.choice([\"paid\", \"paid\", \"paid\", \"cancelled\"]),\n     Decimal(rng.randint(350, 12000)) / 100, start + dt.timedelta(seconds=rng.randint(0, 31 * 86400 - 1)))\n    for i in range(200_000)\n)\nrows.sort(key=lambda r: r[4])\ntable = pa.table({\n    \"order_id\": [r[0] for r in rows],\n    \"store\": [r[1] for r in rows],\n    \"status\": [r[2] for r in rows],\n    \"total\": pa.array([r[3] for r in rows], pa.decimal128(10, 2)),\n    \"ordered_at\": pa.array([r[4] for r in rows], pa.timestamp(\"us\")),\n})\npq.write_table(table, \"orders.parquet\", row_group_size=50_000, compression=\"zstd\")\n\nf = pq.ParquetFile(\"orders.parquet\")\nprint(\"rows:\", f.metadata.num_rows, \" row groups:\", f.metadata.num_row_groups, \" columns:\", f.metadata.num_columns)\nprint(f.schema_arrow)\nprint()\nprint(\"row group  rows    first order_at        last order_at\")\nfor g in range(f.metadata.num_row_groups):\n    st = f.metadata.row_group(g).column(4).statistics\n    print(f\"{g:>9}  {f.metadata.row_group(g).num_rows:<6}  {st.min}  {st.max}\")\n\ndataset = ds.dataset(\"orders.parquet\")\nflt = ds.field(\"ordered_at\") >= pa.scalar(dt.datetime(2026, 3, 30), pa.timestamp(\"us\"))\nfragment = next(iter(dataset.get_fragments()))\npicked = list(fragment.split_by_row_group(filter=flt))\nprint(f\"\\nrows from 30 March on: the statistics select {len(picked)} of {f.metadata.num_row_groups} row groups to read\")\nprint(\"one column only:\", pq.read_table(\"orders.parquet\", columns=[\"total\"]).num_rows, \"values, without reading the other four\")\n",
   "m5/parse_log.py": "\"\"\"Coding round: turn log lines into dicts, and count the lines that cannot be parsed.\"\"\"\nimport re\n\nPATTERN = re.compile(r\"^(?P<ts>\\S+) (?P<level>[A-Z]+) (?P<job>\\S+) rows=(?P<rows>\\d+) ms=(?P<ms>\\d+)$\")\n\nlines = [\n    \"2026-03-14T02:00:01Z INFO load_orders rows=1200 ms=340\",\n    \"2026-03-14T02:00:05Z WARN load_orders rows=0 ms=12\",\n    \"2026-03-14T02:01:00Z INFO load_stores rows=40 ms=8\",\n    \"this line is not a log line\",\n    \"2026-03-14T02:02:00Z INFO load_orders rows=abc ms=9\",\n]\n\n\ndef parse_log(lines):\n    good, bad = [], 0\n    for line in lines:\n        m = PATTERN.match(line)\n        if not m:\n            bad += 1\n            continue\n        d = m.groupdict()\n        d[\"rows\"], d[\"ms\"] = int(d[\"rows\"]), int(d[\"ms\"])\n        good.append(d)\n    return good, bad\n\n\ngood, bad = parse_log(lines)\nfor d in good:\n    print(d[\"ts\"], d[\"level\"].ljust(4), d[\"job\"].ljust(12), d[\"rows\"], d[\"ms\"])\nprint(\"unparsable lines:\", bad)\n\nassert len(good) == 3 and bad == 2\nassert parse_log([]) == ([], 0)\nprint(\"tests passed\")\n",
   "m5/write_partitions.py": "\"\"\"Coding round: write orders into one folder for each day, so a later job can read a single day.\"\"\"\nimport csv\nimport os\nimport pathlib\nimport tempfile\nfrom collections import defaultdict\n\norders = [\n    (\"O-1\", \"2026-03-14 08:15:00\", 12.5), (\"O-2\", \"2026-03-14 09:02:00\", 4.75), (\"O-3\", \"2026-03-15 00:03:00\", 8.2),\n    (\"O-4\", \"2026-03-15 10:41:00\", 19.9), (\"O-5\", \"2026-03-14 23:58:00\", 31.0),\n]\n\n\ndef write_partitions(rows, root):\n    by_day = defaultdict(list)\n    for order_id, ts, total in rows:\n        by_day[ts[:10]].append((order_id, ts, total))\n    written = {}\n    for day, day_rows in sorted(by_day.items()):\n        folder = pathlib.Path(root) / f\"dt={day}\"\n        folder.mkdir(parents=True, exist_ok=True)\n        fd, tmp = tempfile.mkstemp(dir=folder, suffix=\".tmp\")\n        with os.fdopen(fd, \"w\", newline=\"\") as f:\n            csv.writer(f).writerows(sorted(day_rows))\n        os.replace(tmp, folder / \"part-0000.csv\")\n        written[day] = len(day_rows)\n    return written\n\n\nroot = tempfile.mkdtemp()\nresult = write_partitions(orders, root)\nfor day, n in result.items():\n    print(f\"dt={day}/part-0000.csv  {n} rows\")\nassert write_partitions(orders, root) == result  # running it again changes nothing\nassert sorted(p.name for p in pathlib.Path(root).iterdir()) == [\"dt=2026-03-14\", \"dt=2026-03-15\"]\nprint(\"tests passed\")\n",
-  "m5/read_csv_safely.py": "\"\"\"The safe way to read a supplier CSV: say the encoding, pass newline=\"\", and let utf-8-sig drop a byte order mark.\"\"\"\nimport csv\n\nwith open(\"supplier.csv\", newline=\"\", encoding=\"utf-8-sig\") as f:\n    rows = list(csv.DictReader(f))\n\nprint(\"rows:\", len(rows), \" columns:\", list(rows[0]))\nprint(\"customer of the first row:\", rows[0][\"customer\"])\nprint(\"note of the second row:\", repr(rows[1][\"note\"]))\nprint(\"total as money:\", sum(float(r[\"total\"]) for r in rows))\n",
   "m6/naive_aware.py": "\"\"\"A datetime without a time zone is a clock reading. A datetime with one is a moment.\"\"\"\nimport warnings\nfrom datetime import datetime, timedelta, timezone\n\nnaive = datetime(2026, 3, 14, 8, 15)\naware = datetime(2026, 3, 14, 8, 15, tzinfo=timezone.utc)\nprint(\"naive:\", naive.isoformat(), \" tzinfo:\", naive.tzinfo)\nprint(\"aware:\", aware.isoformat(), \" tzinfo:\", aware.tzinfo)\n\ntry:\n    naive < aware\nexcept TypeError as e:\n    print(\"comparing them:\", e)\nprint(\"naive == aware:\", naive == aware, \"  (== never raises, < does)\")\n\nsingapore = timezone(timedelta(hours=8))\nlocal = datetime(2026, 3, 14, 16, 15, tzinfo=singapore)\nprint(\"16:15 in Singapore is the same moment as 08:15 UTC:\", local == aware)\nprint(\"converted to UTC:\", local.astimezone(timezone.utc).isoformat())\n\nwith warnings.catch_warnings(record=True) as caught:\n    warnings.simplefilter(\"always\")\n    value = datetime.utcnow()\nprint(\"utcnow() returns a naive value:\", value.tzinfo is None)\nprint(\"and warns:\", caught[0].category.__name__, \"-\", str(caught[0].message)[:78])\nprint(\"the replacement:\", datetime.now(timezone.utc).tzinfo)\n",
   "m6/iso_parse.py": "\"\"\"Parsing timestamps, and the epoch mistake that gives a year in the 58,000s.\"\"\"\nfrom datetime import datetime, timezone\n\nfor text in [\"2026-03-14T08:15:00Z\", \"2026-03-14T16:15:00+08:00\", \"2026-03-14 08:15:00\", \"2026-03-14\"]:\n    d = datetime.fromisoformat(text)\n    print(f\"{text:<28} -> {d.isoformat():<28} aware: {d.tzinfo is not None}\")\n\nprint()\nprint(\"strptime, with an offset:\", datetime.strptime(\"14/03/2026 16:15 +0800\", \"%d/%m/%Y %H:%M %z\").isoformat())\n\nseconds = 1_773_476_100\nprint(\"\\nepoch seconds:     \", datetime.fromtimestamp(seconds, timezone.utc).isoformat())\ntry:\n    datetime.fromtimestamp(seconds * 1000, timezone.utc)\nexcept (ValueError, OverflowError) as e:\n    print(\"epoch milliseconds:\", type(e).__name__ + \":\", e)\nprint(\"divide by 1000 first:\", datetime.fromtimestamp(seconds * 1000 / 1000, timezone.utc).isoformat())\n",
-  "m6/zoneinfo_dst.py": "\"\"\"What zoneinfo says about local times around a clock change.\"\"\"\nfrom datetime import datetime, timezone\nfrom zoneinfo import ZoneInfo\n\nCASES = [\n    (\"Europe/London\", datetime(2026, 3, 29, 1, 30)),   # the clocks go forward at 01:00 and skip an hour\n    (\"Europe/London\", datetime(2026, 10, 25, 1, 30)),  # the clocks go back at 02:00 and repeat an hour\n    (\"America/New_York\", datetime(2026, 3, 8, 2, 30)),\n    (\"America/New_York\", datetime(2026, 11, 1, 1, 30)),\n    (\"Asia/Singapore\", datetime(2026, 3, 29, 1, 30)),  # no clock changes\n]\n\n\ndef describe(zone, naive):\n    tz = ZoneInfo(zone)\n    a, b = naive.replace(tzinfo=tz, fold=0), naive.replace(tzinfo=tz, fold=1)\n    back = a.astimezone(timezone.utc).astimezone(tz)\n    if a.utcoffset() != b.utcoffset():\n        kind = \"ambiguous\" if back.replace(tzinfo=None) == naive else \"does not exist\"\n    else:\n        kind = \"exists once\"\n    return kind, a, b\n\n\nfor zone, naive in CASES:\n    kind, a, b = describe(zone, naive)\n    print(f\"{zone:<17} {naive:%Y-%m-%d %H:%M}  {kind}\")\n    print(f\"    fold=0: offset {a.isoformat()[-6:]}  utc {a.astimezone(timezone.utc):%Y-%m-%d %H:%M}\")\n    print(f\"    fold=1: offset {b.isoformat()[-6:]}  utc {b.astimezone(timezone.utc):%Y-%m-%d %H:%M}\")\n",
+  "m6/zoneinfo_dst.py": "\"\"\"What zoneinfo says about local times around a clock change.\"\"\"\nimport zoneinfo\nfrom datetime import datetime, timezone\nfrom pathlib import Path\nfrom zoneinfo import ZoneInfo\n\nzi = Path(zoneinfo.TZPATH[0]) / \"tzdata.zi\"\nprint(\"database:\", zi.read_text().splitlines()[0] if zi.exists() else \"the tzdata package\")\nprint()\n\nCASES = [\n    (\"Europe/London\", datetime(2026, 3, 29, 1, 30)),   # the clocks go forward at 01:00 and skip an hour\n    (\"Europe/London\", datetime(2026, 10, 25, 1, 30)),  # the clocks go back at 02:00 and repeat an hour\n    (\"America/New_York\", datetime(2026, 3, 8, 2, 30)),\n    (\"America/New_York\", datetime(2026, 11, 1, 1, 30)),\n    (\"Asia/Singapore\", datetime(2026, 3, 29, 1, 30)),  # no clock changes\n]\n\n\ndef describe(zone, naive):\n    tz = ZoneInfo(zone)\n    a, b = naive.replace(tzinfo=tz, fold=0), naive.replace(tzinfo=tz, fold=1)\n    back = a.astimezone(timezone.utc).astimezone(tz)\n    if a.utcoffset() != b.utcoffset():\n        kind = \"ambiguous\" if back.replace(tzinfo=None) == naive else \"does not exist\"\n    else:\n        kind = \"exists once\"\n    return kind, a, b\n\n\nfor zone, naive in CASES:\n    kind, a, b = describe(zone, naive)\n    print(f\"{zone:<17} {naive:%Y-%m-%d %H:%M}  {kind}\")\n    print(f\"    fold=0: offset {a.isoformat()[-6:]}  utc {a.astimezone(timezone.utc):%Y-%m-%d %H:%M}\")\n    print(f\"    fold=1: offset {b.isoformat()[-6:]}  utc {b.astimezone(timezone.utc):%Y-%m-%d %H:%M}\")\n",
   "m6/day_buckets.py": "\"\"\"Which day is an order on? It depends on whose clock you ask.\"\"\"\nfrom collections import Counter\nfrom datetime import datetime, timedelta, timezone\nfrom zoneinfo import ZoneInfo\n\nSG = ZoneInfo(\"Asia/Singapore\")\norders = [  # UTC timestamps\n    (\"O-1\", datetime(2026, 3, 14, 3, 0, tzinfo=timezone.utc)),\n    (\"O-2\", datetime(2026, 3, 14, 15, 59, tzinfo=timezone.utc)),\n    (\"O-3\", datetime(2026, 3, 14, 16, 1, tzinfo=timezone.utc)),\n    (\"O-4\", datetime(2026, 3, 14, 22, 30, tzinfo=timezone.utc)),\n    (\"O-5\", datetime(2026, 3, 15, 5, 0, tzinfo=timezone.utc)),\n]\nprint(\"orders per day by the UTC date:       \", dict(Counter(str(t.date()) for _, t in orders)))\nprint(\"orders per day by Singapore's date:   \", dict(Counter(str(t.astimezone(SG).date()) for _, t in orders)))\n\nlondon = ZoneInfo(\"Europe/London\")\nstart = datetime(2026, 3, 29, 0, 0, tzinfo=london)\nend = start + timedelta(days=1)\nprint()\nprint(\"London, 29 March 2026: from\", start.isoformat(), \"to\", end.isoformat())\nprint(\"subtracting the two aware values:     \", end - start)\nprint(\"the same two moments in UTC:          \", end.astimezone(timezone.utc) - start.astimezone(timezone.utc))\n",
   "m6/money.py": "\"\"\"Money in a float, in a Decimal and in whole cents.\"\"\"\nimport math\nfrom decimal import ROUND_DOWN, ROUND_HALF_EVEN, ROUND_HALF_UP, Decimal\n\nprint(\"0.1 + 0.2 =\", 0.1 + 0.2)\nprint(\"0.1 + 0.2 == 0.3:\", 0.1 + 0.2 == 0.3)\nprint(\"the float 0.1 is really:\", Decimal(0.1))\nprint(\"the Decimal from text:   \", Decimal(\"0.1\"))\n\nn = 1_000_000\ntotal = 0.0\nfor _ in range(n):\n    total += 0.10\nprint(f\"\\nadding 0.10 {n:,} times:\")\nprint(\"  float, a loop:      \", total)\nprint(\"  math.fsum:          \", math.fsum([0.10] * n))\nprint(\"  Decimal:            \", sum(Decimal(\"0.10\") for _ in range(n)))\nprint(\"  whole cents (int):  \", sum(10 for _ in range(n)) / 100)\n\nprint(\"\\nrounding a half to 2 places:\")\nprint(\"  round(2.675, 2):\", round(2.675, 2), \"  (the float is a little below 2.675)\")\nfor mode in (ROUND_HALF_EVEN, ROUND_HALF_UP, ROUND_DOWN):\n    print(f\"  Decimal('2.675'), {mode:<15}\", Decimal(\"2.675\").quantize(Decimal(\"0.01\"), rounding=mode))\nprint(\"  round(2.5):\", round(2.5), \"  round(3.5):\", round(3.5), \"  (halves go to the even number)\")\n",
   "m6/normalize_timestamps.py": "\"\"\"Coding round: turn timestamps in mixed formats into one UTC format.\"\"\"\nfrom datetime import datetime, timezone\nfrom zoneinfo import ZoneInfo\n\n\ndef to_utc(value, default_zone):\n    \"\"\"Return an ISO 8601 string in UTC. Numbers are epoch seconds. Text without an offset is in default_zone.\"\"\"\n    if isinstance(value, (int, float)):\n        d = datetime.fromtimestamp(value, timezone.utc)\n    else:\n        d = datetime.fromisoformat(value)\n        if d.tzinfo is None:\n            d = d.replace(tzinfo=ZoneInfo(default_zone))\n    return d.astimezone(timezone.utc).isoformat().replace(\"+00:00\", \"Z\")\n\n\nsamples = [\"2026-03-14T08:15:00Z\", \"2026-03-14T16:15:00+08:00\", \"2026-03-14 16:15:00\", 1_773_476_100]\nfor s in samples:\n    print(f\"{s!s:<28} -> {to_utc(s, 'Asia/Singapore')}\")\n\nassert to_utc(\"2026-03-14T08:15:00Z\", \"Asia/Singapore\") == \"2026-03-14T08:15:00Z\"\nassert to_utc(\"2026-03-14T16:15:00+08:00\", \"Europe/London\") == \"2026-03-14T08:15:00Z\"\nassert to_utc(\"2026-03-14 16:15:00\", \"Asia/Singapore\") == \"2026-03-14T08:15:00Z\"\nassert to_utc(\"2026-07-01 12:00:00\", \"Europe/London\") == \"2026-07-01T11:00:00Z\"  # summer time\nprint(\"tests passed\")\n",
   "m6/local_days.py": "\"\"\"Coding round: count orders for each local day of a store, including the day that has 23 hours.\"\"\"\nfrom collections import Counter\nfrom datetime import datetime, timedelta, timezone\nfrom zoneinfo import ZoneInfo\n\n\ndef orders_per_local_day(utc_times, zone):\n    tz = ZoneInfo(zone)\n    return dict(sorted(Counter(t.astimezone(tz).date().isoformat() for t in utc_times).items()))\n\n\ndef hours_in_local_day(day, zone):\n    tz = ZoneInfo(zone)\n    start = datetime.fromisoformat(day).replace(tzinfo=tz)\n    end = start + timedelta(days=1)  # the next midnight on the wall clock\n    return (end.astimezone(timezone.utc) - start.astimezone(timezone.utc)).total_seconds() / 3600\n\n\ntimes = [datetime(2026, 3, 28, 23, 30, tzinfo=timezone.utc), datetime(2026, 3, 29, 0, 30, tzinfo=timezone.utc),\n         datetime(2026, 3, 29, 22, 59, tzinfo=timezone.utc), datetime(2026, 3, 29, 23, 1, tzinfo=timezone.utc)]\nprint(\"London:   \", orders_per_local_day(times, \"Europe/London\"))\nprint(\"Singapore:\", orders_per_local_day(times, \"Asia/Singapore\"))\nfor day in (\"2026-03-28\", \"2026-03-29\", \"2026-10-25\"):\n    print(f\"hours in {day} in London: {hours_in_local_day(day, 'Europe/London'):g}\")\n\nassert orders_per_local_day(times, \"Europe/London\") == {\"2026-03-28\": 1, \"2026-03-29\": 2, \"2026-03-30\": 1}\nassert hours_in_local_day(\"2026-03-29\", \"Europe/London\") == 23\nassert hours_in_local_day(\"2026-10-25\", \"Europe/London\") == 25\nprint(\"tests passed\")\n"
  },
  "text": {
-  "m1_fragile_script.py#1": "Traceback (most recent call last):\n  File \"/work/m1_fragile_script/m1_fragile_script.py\", line 13, in <module>\n    r[\"total\"] = float(r[\"total\"])\n                 ~~~~~^^^^^^^^^^^^\nValueError: could not convert string to float: 'n/a'",
-  "m1_fragile_script.py#2": "Traceback (most recent call last):\n  File \"/work/m1_fragile_script/m1_fragile_script.py\", line 13, in <module>\n    r[\"total\"] = float(r[\"total\"])\n                 ~~~~~^^^^^^^^^^^^\nValueError: could not convert string to float: 'n/a'",
-  "m1_partial_failure.py#1": "stopped: could not convert string to float: 'n/a'\nloaded 2 of 4 rows before the stop\n[('O-1007',), ('O-1008',)]",
-  "m1_partial_failure.py#2": "stopped: could not convert string to float: 'n/a'\nloaded 2 of 4 rows before the stop\n[('O-1007',), ('O-1007',), ('O-1008',), ('O-1008',)]",
-  "m1_hidden_state.py": "top to bottom (1, 2, 3):          13.63\ncell 2 pressed twice (1, 2, 2, 3): 27.25\ntax before the order (1, 3, 2):   12.5",
-  "m1_safe_rerun.py#1": "(6, 6, 7885)",
-  "m1_safe_rerun.py#2": "(6, 6, 7885)",
-  "m1_versions.py": "3.14.6 CPython x86_64\npandas     3.1.1\npolars     2.1.0\npyarrow    26.0.1\nduckdb     2.0.0\nsqlalchemy 2.1.8\npydantic   2.14.3\npytest     9.2.0\nmypy       2.4.1\nruff       0.17.4",
   "m1/load_orders_v7.py#1": "loaded 6 rows\n(6, 6, 78.85)\n(1,)",
   "m1/load_orders_v7.py#2": "loaded 6 rows\n(12, 6, 157.7)\n(1,)",
   "m1/partial_failure.py#1": "stopped: could not convert string to float: 'n/a'\nloaded 2 of 4 rows before the stop\n[('O-1007',), ('O-1008',)]",
@@ -97,10 +84,10 @@ LAB.real = {
   "m1/load_orders_v8.py#1": "(6, 6, 7885)",
   "m1/load_orders_v8.py#2": "(6, 6, 7885)",
   "m1/versions.py": "3.14.6 CPython x86_64\npandas     3.1.1\npolars     2.1.0\npyarrow    26.0.1\nduckdb     2.0.0\nsqlalchemy 2.1.8\npydantic   2.14.3\npytest     9.2.0\nmypy       2.4.1\nruff       0.17.4",
-  "m2/venv_session": "$ python -m venv .venv\n$ ls .venv\nbin\ninclude\nlib\nlib64\npyvenv.cfg\n$ grep -E \"^(include-system-site-packages|version) \" .venv/pyvenv.cfg\ninclude-system-site-packages = false\nversion = 3.14.6\n$ .venv/bin/python -c \"import sys; print(sys.prefix.endswith('.venv'), sys.prefix != sys.base_prefix)\"\nTrue True\n$ .venv/bin/python -c \"import pandas\"\nTraceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    import pandas\nModuleNotFoundError: No module named 'pandas'\n$ uv pip install --python .venv/bin/python \"pandas>=3,<4\"\nResolved 4 packages in 3ms\nInstalled 4 packages in 22ms\n + numpy==2.5.4\n + pandas==3.1.1\n + python-dateutil==4.0.0\n + tzdata==2026.6\n$ .venv/bin/python -c \"import pandas; print(pandas.__version__)\"\n3.1.1",
-  "m2/uv_session": "$ uv init --package brewline-etl --python 3.14 --author-from none\nInitialized project `brewline-etl` at `/work/m2/uvproj/brewline-etl`\n$ cd brewline-etl && ls -A\n.git\n.gitignore\n.python-version\nREADME.md\npyproject.toml\nsrc\n$ cd brewline-etl && uv add requests \"pandas>=3,<4\"\nUsing CPython 3.14.6\nCreating virtual environment at: .venv\nResolved 10 packages in 7ms\n   Building brewline-etl @ file:///work/m2/uvproj/brewline-etl\n      Built brewline-etl @ file:///work/m2/uvproj/brewline-etl\nPrepared 1 package in 4ms\nInstalled 10 packages in 20ms\n + brewline-etl==0.1.0 (from file:///work/m2/uvproj/brewline-etl)\n + certifi==2026.10.23\n + charset-normalizer==3.5.2\n + idna==3.20\n + numpy==2.5.4\n + pandas==3.1.1\n + python-dateutil==4.0.0\n + requests==2.34.2\n + tzdata==2026.6\n + urllib3==2.8.0\n$ cd brewline-etl && uv tree --depth 1\nbrewline-etl v0.1.0\n├── pandas v3.1.1\n└── requests v2.34.2\nResolved 10 packages in 1ms\n$ cd brewline-etl && uv run python -c \"import requests, pandas; print(requests.__version__, pandas.__version__)\"\n2.34.2 3.1.1\n$ cd brewline-etl && uv add --dev pytest\nResolved 16 packages in 7ms\n   Building brewline-etl @ file:///work/m2/uvproj/brewline-etl\n      Built brewline-etl @ file:///work/m2/uvproj/brewline-etl\nPrepared 1 package in 4ms\nUninstalled 1 package in 1ms\nInstalled 6 packages in 3ms\n ~ brewline-etl==0.1.0 (from file:///work/m2/uvproj/brewline-etl)\n + iniconfig==2.3.1\n + packaging==26.3\n + pluggy==1.7.0\n + pygments==2.21.0\n + pytest==9.2.0",
+  "m2/venv_session": "$ python -m venv .venv\n$ ls .venv\nbin\ninclude\nlib\nlib64\npyvenv.cfg\n$ grep -E \"^(include-system-site-packages|version) \" .venv/pyvenv.cfg\ninclude-system-site-packages = false\nversion = 3.14.6\n$ .venv/bin/python -c \"import sys; print(sys.prefix.endswith('.venv'), sys.prefix != sys.base_prefix)\"\nTrue True\n$ .venv/bin/python -c \"import pandas\"\nTraceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    import pandas\nModuleNotFoundError: No module named 'pandas'\n$ uv pip install --python .venv/bin/python \"pandas>=3,<4\"\nResolved 4 packages in 263ms\nInstalled 4 packages in 101ms\n + numpy==2.5.4\n + pandas==3.1.1\n + python-dateutil==4.0.0\n + tzdata==2026.6\n$ .venv/bin/python -c \"import pandas; print(pandas.__version__)\"\n3.1.1",
+  "m2/uv_session": "$ uv init --package brewline-etl --python 3.14 --author-from none\nInitialized project `brewline-etl` at `/work/m2/uvproj/brewline-etl`\n$ cd brewline-etl && ls -A\n.git\n.gitignore\n.python-version\nREADME.md\npyproject.toml\nsrc\n$ cd brewline-etl && uv add requests \"pandas>=3,<4\"\nUsing CPython 3.14.6\nCreating virtual environment at: .venv\nResolved 10 packages in 144ms\n   Building brewline-etl @ file:///work/m2/uvproj/brewline-etl\n      Built brewline-etl @ file:///work/m2/uvproj/brewline-etl\nPrepared 1 package in 8ms\nInstalled 10 packages in 19ms\n + brewline-etl==0.1.0 (from file:///work/m2/uvproj/brewline-etl)\n + certifi==2026.10.23\n + charset-normalizer==3.5.2\n + idna==3.20\n + numpy==2.5.4\n + pandas==3.1.1\n + python-dateutil==4.0.0\n + requests==2.34.2\n + tzdata==2026.6\n + urllib3==2.8.0\n$ cd brewline-etl && uv tree --depth 1\nbrewline-etl v0.1.0\n├── pandas v3.1.1\n└── requests v2.34.2\nResolved 10 packages in 2ms\n$ cd brewline-etl && uv run python -c \"import requests, pandas; print(requests.__version__, pandas.__version__)\"\n2.34.2 3.1.1\n$ cd brewline-etl && uv add --dev pytest\nResolved 16 packages in 89ms\n   Building brewline-etl @ file:///work/m2/uvproj/brewline-etl\n      Built brewline-etl @ file:///work/m2/uvproj/brewline-etl\nPrepared 1 package in 4ms\nUninstalled 1 package in 0.99ms\nInstalled 6 packages in 12ms\n ~ brewline-etl==0.1.0 (from file:///work/m2/uvproj/brewline-etl)\n + iniconfig==2.3.1\n + packaging==26.3\n + pluggy==1.7.0\n + pygments==2.21.0\n + pytest==9.2.0",
   "m2/python-version": "3.14",
-  "m2/lock_check": "$ uv lock --check\nResolved 17 packages in 7ms\nerror: The lockfile at `uv.lock` needs to be updated, but `--check` was provided.\n\nhint: To update the lockfile, run `uv lock`.\n$ uv sync --locked\nResolved 17 packages in 9ms\nerror: The lockfile at `uv.lock` needs to be updated, but `--locked` was provided.\n\nhint: To update the lockfile, run `uv lock`.\n$ uv lock\nResolved 17 packages in 7ms\nAdded tenacity v9.2.1\n$ uv sync --locked\nResolved 17 packages in 1ms\n   Building brewline-etl @ file:///work/m2/uvproj/brewline-etl\n      Built brewline-etl @ file:///work/m2/uvproj/brewline-etl\nPrepared 1 package in 6ms\nUninstalled 1 package in 1ms\nInstalled 2 packages in 2ms\n ~ brewline-etl==0.1.0 (from file:///work/m2/uvproj/brewline-etl)\n + tenacity==9.2.1",
+  "m2/lock_check": "$ uv lock --check\nResolved 17 packages in 87ms\nerror: The lockfile at `uv.lock` needs to be updated, but `--check` was provided.\n\nhint: To update the lockfile, run `uv lock`.\n$ uv sync --locked\nResolved 17 packages in 9ms\nerror: The lockfile at `uv.lock` needs to be updated, but `--locked` was provided.\n\nhint: To update the lockfile, run `uv lock`.\n$ uv lock\nResolved 17 packages in 9ms\nAdded tenacity v9.2.1\n$ uv sync --locked\nResolved 17 packages in 2ms\n   Building brewline-etl @ file:///work/m2/uvproj/brewline-etl\n      Built brewline-etl @ file:///work/m2/uvproj/brewline-etl\nPrepared 1 package in 4ms\nUninstalled 1 package in 1ms\nInstalled 2 packages in 2ms\n ~ brewline-etl==0.1.0 (from file:///work/m2/uvproj/brewline-etl)\n + tenacity==9.2.1",
   "m2/pandas_versions.py@old": "3.13.18 with pandas 2.3.3\ndtype of a column of strings: object\ndf after changing the column object: [99, 2, 3]\ndtype of parsed timestamps: datetime64[ns]\nchained assignment warned with: ['SettingWithCopyWarning'] and left [1, 2, 3]",
   "m2/pandas_versions.py@new": "3.14.6 with pandas 3.1.1\ndtype of a column of strings: str\ndf after changing the column object: [1, 2, 3]\ndtype of parsed timestamps: datetime64[us]\nchained assignment warned with: ['ChainedAssignmentError'] and left [1, 2, 3]",
   "m3/membership_counts.py": "   1000 ids  list:    1000 comparisons   set: 1 comparison, 1 hash call\n  10000 ids  list:   10000 comparisons   set: 1 comparison, 1 hash call\n 100000 ids  list:  100000 comparisons   set: 1 comparison, 1 hash call",
@@ -118,6 +105,7 @@ LAB.real = {
   "m4/flatten_json.py": "order_id         'O-1'\ncustomer.id      'C-7'\ncustomer.tier    'gold'\nlines.0.sku      'LATTE'\nlines.0.qty      2\nlines.1.sku      'MUFFIN'\nlines.1.qty      1\nnote             None\ntests passed",
   "m4/sessionize.py": "C-1  minutes   5 to  20  events: 2\nC-1  minutes  90 to 100  events: 2\nC-2  minutes  15 to  15  events: 1\nC-3  minutes   0 to  30  events: 2\nC-3  minutes  61 to  61  events: 1\ntests passed",
   "m4/pipeline.py": "paid orders: 133,273 in 14 batches\npaid revenue: 8,250,382.67\npeak memory held by Python: 7.47 MB",
+  "m5/read_csv_safely.py": "rows: 3  columns: ['order_id', 'customer', 'note', 'total']\ncustomer of the first row: Ng, Mei\nnote of the second row: 'leave at door\\nring twice'\ntotal as money: 48.25",
   "m5/csv_traps.py": "bytes in the file: 122   lines: 5\n\nwith line.split(','):\n   4 fields: ['\\ufefforder_id', 'customer', 'note', 'total']\n   5 fields: ['O-1', '\"Ng', ' Mei\"', '\"extra shot\"']\n   3 fields: ['O-2', 'Ravi', '\"leave at door']\n   2 fields: ['ring twice\"', '4.75']\n   4 fields: ['O-3', 'Zoë', '', '31.00']\n\nwith the csv module:\n   {'\\ufefforder_id': 'O-1', 'customer': 'Ng, Mei', 'note': 'extra shot', 'total': '12.50'}\n   {'\\ufefforder_id': 'O-2', 'customer': 'Ravi', 'note': 'leave at door\\nring twice', 'total': '4.75'}\n   {'\\ufefforder_id': 'O-3', 'customer': 'Zoë', 'note': '', 'total': '31.00'}\n\nwith the csv module, and the byte order mark removed:\n   ['O-1', 'O-2', 'O-3'] total: 48.25",
   "m5/encodings.py": "'Zoe'\n   utf-8    3 bytes  5a 6f 65\n   latin-1  3 bytes  5a 6f 65\n   utf-16   8 bytes  ff fe 5a 00 6f 00 65 00\n'Zoë'\n   utf-8    4 bytes  5a 6f c3 ab\n   latin-1  3 bytes  5a 6f eb\n   utf-16   8 bytes  ff fe 5a 00 6f 00 eb 00\n'café'\n   utf-8    5 bytes  63 61 66 c3 a9\n   latin-1  4 bytes  63 61 66 e9\n   utf-16   10 bytes  ff fe 63 00 61 00 66 00 e9 00\n'東京'\n   utf-8    6 bytes  e6 9d b1 e4 ba ac\n   latin-1  cannot encode: ordinal not in range(256)\n   utf-16   6 bytes  ff fe 71 67 ac 4e\n\nthe bytes of 'café' in UTF-8, read as latin-1: cafÃ©\nthe bytes of 'café' in latin-1, read as UTF-8: UnicodeDecodeError: unexpected end of data at byte 3\nthe same bytes, errors='replace': caf�\na file saved with a byte order mark: '\\ufefforder_id' against 'order_id'",
   "m5/json_lines.py": "JSON array: 175 bytes.  JSON Lines: 170 bytes, one object per line\n\nthe array, cut at byte 118 :\n  JSONDecodeError: Expecting value (line 1, column 119)  ->  0 orders readable\n\nthe JSON Lines file, cut at byte 118 :\n  readable lines: 3   broken lines: 1 (the last one, cut in the middle)\n  the last bytes of the cut file: 'order_id\": \"O-'",
@@ -126,10 +114,9 @@ LAB.real = {
   "m5/parquet_tour.py": "rows: 200000  row groups: 4  columns: 5\norder_id: string\nstore: string\nstatus: string\ntotal: decimal128(10, 2)\nordered_at: timestamp[us]\n\nrow group  rows    first order_at        last order_at\n        0  50000   2026-03-01 00:00:05  2026-03-08 18:38:14\n        1  50000   2026-03-08 18:38:16  2026-03-16 13:01:20\n        2  50000   2026-03-16 13:01:22  2026-03-24 06:44:28\n        3  50000   2026-03-24 06:44:36  2026-03-31 23:59:56\n\nrows from 30 March on: the statistics select 1 of 4 row groups to read\none column only: 200000 values, without reading the other four",
   "m5/parse_log.py": "2026-03-14T02:00:01Z INFO load_orders  1200 340\n2026-03-14T02:00:05Z WARN load_orders  0 12\n2026-03-14T02:01:00Z INFO load_stores  40 8\nunparsable lines: 2\ntests passed",
   "m5/write_partitions.py": "dt=2026-03-14/part-0000.csv  3 rows\ndt=2026-03-15/part-0000.csv  2 rows\ntests passed",
-  "m5/read_csv_safely.py": "rows: 3  columns: ['order_id', 'customer', 'note', 'total']\ncustomer of the first row: Ng, Mei\nnote of the second row: 'leave at door\\nring twice'\ntotal as money: 48.25",
   "m6/naive_aware.py": "naive: 2026-03-14T08:15:00  tzinfo: None\naware: 2026-03-14T08:15:00+00:00  tzinfo: UTC\ncomparing them: can't compare offset-naive and offset-aware datetimes\nnaive == aware: False   (== never raises, < does)\n16:15 in Singapore is the same moment as 08:15 UTC: True\nconverted to UTC: 2026-03-14T08:15:00+00:00\nutcnow() returns a naive value: True\nand warns: DeprecationWarning - datetime.datetime.utcnow() is deprecated and scheduled for removal in a future\nthe replacement: UTC",
   "m6/iso_parse.py": "2026-03-14T08:15:00Z         -> 2026-03-14T08:15:00+00:00    aware: True\n2026-03-14T16:15:00+08:00    -> 2026-03-14T16:15:00+08:00    aware: True\n2026-03-14 08:15:00          -> 2026-03-14T08:15:00          aware: False\n2026-03-14                   -> 2026-03-14T00:00:00          aware: False\n\nstrptime, with an offset: 2026-03-14T16:15:00+08:00\n\nepoch seconds:      2026-03-14T08:15:00+00:00\nepoch milliseconds: ValueError: year must be in 1..9999, not 58169\ndivide by 1000 first: 2026-03-14T08:15:00+00:00",
-  "m6/zoneinfo_dst.py": "Europe/London     2026-03-29 01:30  does not exist\n    fold=0: offset +00:00  utc 2026-03-29 01:30\n    fold=1: offset +01:00  utc 2026-03-29 00:30\nEurope/London     2026-10-25 01:30  ambiguous\n    fold=0: offset +01:00  utc 2026-10-25 00:30\n    fold=1: offset +00:00  utc 2026-10-25 01:30\nAmerica/New_York  2026-03-08 02:30  does not exist\n    fold=0: offset -05:00  utc 2026-03-08 07:30\n    fold=1: offset -04:00  utc 2026-03-08 06:30\nAmerica/New_York  2026-11-01 01:30  ambiguous\n    fold=0: offset -04:00  utc 2026-11-01 05:30\n    fold=1: offset -05:00  utc 2026-11-01 06:30\nAsia/Singapore    2026-03-29 01:30  exists once\n    fold=0: offset +08:00  utc 2026-03-28 17:30\n    fold=1: offset +08:00  utc 2026-03-28 17:30",
+  "m6/zoneinfo_dst.py": "database: # version 2026e\n\nEurope/London     2026-03-29 01:30  does not exist\n    fold=0: offset +00:00  utc 2026-03-29 01:30\n    fold=1: offset +01:00  utc 2026-03-29 00:30\nEurope/London     2026-10-25 01:30  ambiguous\n    fold=0: offset +01:00  utc 2026-10-25 00:30\n    fold=1: offset +00:00  utc 2026-10-25 01:30\nAmerica/New_York  2026-03-08 02:30  does not exist\n    fold=0: offset -05:00  utc 2026-03-08 07:30\n    fold=1: offset -04:00  utc 2026-03-08 06:30\nAmerica/New_York  2026-11-01 01:30  ambiguous\n    fold=0: offset -04:00  utc 2026-11-01 05:30\n    fold=1: offset -05:00  utc 2026-11-01 06:30\nAsia/Singapore    2026-03-29 01:30  exists once\n    fold=0: offset +08:00  utc 2026-03-28 17:30\n    fold=1: offset +08:00  utc 2026-03-28 17:30",
   "m6/day_buckets.py": "orders per day by the UTC date:        {'2026-03-14': 4, '2026-03-15': 1}\norders per day by Singapore's date:    {'2026-03-14': 2, '2026-03-15': 3}\n\nLondon, 29 March 2026: from 2026-03-29T00:00:00+00:00 to 2026-03-30T00:00:00+01:00\nsubtracting the two aware values:      1 day, 0:00:00\nthe same two moments in UTC:           23:00:00",
   "m6/money.py": "0.1 + 0.2 = 0.30000000000000004\n0.1 + 0.2 == 0.3: False\nthe float 0.1 is really: 0.1000000000000000055511151231257827021181583404541015625\nthe Decimal from text:    0.1\n\nadding 0.10 1,000,000 times:\n  float, a loop:       100000.00000133288\n  math.fsum:           100000.0\n  Decimal:             100000.00\n  whole cents (int):   100000.0\n\nrounding a half to 2 places:\n  round(2.675, 2): 2.67   (the float is a little below 2.675)\n  Decimal('2.675'), ROUND_HALF_EVEN 2.68\n  Decimal('2.675'), ROUND_HALF_UP   2.68\n  Decimal('2.675'), ROUND_DOWN      2.67\n  round(2.5): 2   round(3.5): 4   (halves go to the even number)",
   "m6/normalize_timestamps.py": "2026-03-14T08:15:00Z         -> 2026-03-14T08:15:00Z\n2026-03-14T16:15:00+08:00    -> 2026-03-14T08:15:00Z\n2026-03-14 16:15:00          -> 2026-03-14T08:15:00Z\n1773476100                   -> 2026-03-14T08:15:00Z\ntests passed",
@@ -176,7 +163,7 @@ LAB.real = {
     ],
     [
      "a dict of lists (one list per column)",
-     54043245,
+     54043277,
      270.2,
      "tracemalloc"
     ],
@@ -209,14 +196,6 @@ LAB.real = {
  },
  "counts": {
   "exit": {
-   "m1_fragile_script.py#1": 1,
-   "m1_fragile_script.py#2": 1,
-   "m1_partial_failure.py#1": 0,
-   "m1_partial_failure.py#2": 0,
-   "m1_hidden_state.py": 0,
-   "m1_safe_rerun.py#1": 0,
-   "m1_safe_rerun.py#2": 0,
-   "m1_versions.py": 0,
    "m1/load_orders_v7.py#1": 0,
    "m1/load_orders_v7.py#2": 0,
    "m1/partial_failure.py#1": 0,
@@ -230,7 +209,7 @@ LAB.real = {
    "m2/venv_session|grep -E \"^(include-system-site-packages|version) \" .venv/pyvenv.cfg": 0,
    "m2/venv_session|.venv/bin/python -c \"import sys; print(sys.prefix.endswith('.venv'), sys.prefix != sys.base_prefix)\"": 0,
    "m2/venv_session|.venv/bin/python -c \"import pandas\"": 1,
-   "m2/venv_session|uv pip install --python .venv/bin/python \"pandas>=3,<4\" 2>&1 | grep -v \"^warning\" | sed -E \"s/ in [0-9.]+m?s/ in Nms/\"": 0,
+   "m2/venv_session|uv pip install --python .venv/bin/python \"pandas>=3,<4\"": 0,
    "m2/venv_session|.venv/bin/python -c \"import pandas; print(pandas.__version__)\"": 0,
    "m2/uv_session|uv init --package brewline-etl --python 3.14 --author-from none": 0,
    "m2/uv_session|cd brewline-etl && ls -A": 0,
@@ -238,16 +217,11 @@ LAB.real = {
    "m2/uv_session|cd brewline-etl && uv tree --depth 1": 0,
    "m2/uv_session|cd brewline-etl && uv run python -c \"import requests, pandas; print(requests.__version__, pandas.__version__)\"": 0,
    "m2/uv_session|cd brewline-etl && uv add --dev pytest": 0,
-   "m2/lock_check|uv lock --check 2>&1 | grep -v \"^warning\"": 0,
-   "m2/lock_check|uv sync --locked 2>&1 | grep -v \"^warning\"": 0,
-   "m2/lock_check|uv lock 2>&1 | grep -v \"^warning\" | sed -E \"s/ in [0-9.]+m?s/ in Nms/\"": 0,
-   "m2/lock_check|uv sync --locked 2>&1 | grep -v \"^warning\" | sed -E \"s/ in [0-9.]+m?s/ in Nms/\"": 0,
-   "m2/pandas_versions.py@old": 0,
-   "m2/pandas_versions.py@new": 0,
-   "m2/venv_session|uv pip install --python .venv/bin/python \"pandas>=3,<4\"": 0,
    "m2/lock_check|uv lock --check": 1,
    "m2/lock_check|uv sync --locked": 0,
    "m2/lock_check|uv lock": 0,
+   "m2/pandas_versions.py@old": 0,
+   "m2/pandas_versions.py@new": 0,
    "m3/membership_counts.py": 0,
    "m3/hashing.py": 0,
    "m3/mutable_default.py": 0,
@@ -263,6 +237,7 @@ LAB.real = {
    "m4/flatten_json.py": 0,
    "m4/sessionize.py": 0,
    "m4/pipeline.py": 0,
+   "m5/read_csv_safely.py": 0,
    "m5/csv_traps.py": 0,
    "m5/encodings.py": 0,
    "m5/json_lines.py": 0,
@@ -271,7 +246,6 @@ LAB.real = {
    "m5/parquet_tour.py": 0,
    "m5/parse_log.py": 0,
    "m5/write_partitions.py": 0,
-   "m5/read_csv_safely.py": 0,
    "m6/naive_aware.py": 0,
    "m6/iso_parse.py": 0,
    "m6/zoneinfo_dst.py": 0,
@@ -477,22 +451,22 @@ LAB.real = {
     1000000
    ],
    "list": [
-    7.8434,
-    81.3152,
-    820.2874,
-    8373.6749
+    8.3679,
+    86.2212,
+    904.062,
+    11695.8265
    ],
    "set": [
-    0.0301,
-    0.0283,
-    0.0307,
-    0.0356
+    0.0333,
+    0.0412,
+    0.0349,
+    0.0315
    ],
    "dict": [
-    0.0311,
-    0.0396,
-    0.0363,
-    0.0367
+    0.0343,
+    0.0409,
+    0.0383,
+    0.0376
    ],
    "lookups": {
     "1000": {
@@ -1026,49 +1000,49 @@ LAB.real = {
      "format": "CSV",
      "file": "orders.csv",
      "bytes": 11699307,
-     "query_ms": 84.61,
+     "query_ms": 53.2,
      "total": 12311029.11
     },
     {
      "format": "CSV, gzip",
      "file": "orders.csv.gz",
      "bytes": 3087406,
-     "query_ms": 134.19,
+     "query_ms": 131.55,
      "total": 12311029.11
     },
     {
      "format": "CSV, zstd",
      "file": "orders.csv.zst",
      "bytes": 3363892,
-     "query_ms": 105.47,
+     "query_ms": 94.75,
      "total": 12311029.11
     },
     {
      "format": "JSON Lines",
      "file": "orders.jsonl",
      "bytes": 30703423,
-     "query_ms": 112.64,
+     "query_ms": 88.76,
      "total": 12311029.11
     },
     {
      "format": "JSON Lines, gzip",
      "file": "orders.jsonl.gz",
      "bytes": 3798380,
-     "query_ms": 193.22,
+     "query_ms": 176.46,
      "total": 12311029.11
     },
     {
      "format": "Parquet, snappy",
      "file": "orders_snappy.parquet",
      "bytes": 4153000,
-     "query_ms": 1.86,
+     "query_ms": 1.57,
      "total": 12311029.11
     },
     {
      "format": "Parquet, zstd",
      "file": "orders_zstd.parquet",
      "bytes": 2900742,
-     "query_ms": 1.59,
+     "query_ms": 1.57,
      "total": 12311029.11
     }
    ],
@@ -1077,7 +1051,13 @@ LAB.real = {
    "note": "bytes of each file, and the median of 5 runs of one DuckDB query over it, on this machine"
   },
   "m6.dst": {
-   "tzdata": null,
+   "database": {
+    "path": "/usr/share/zoneinfo",
+    "version": "2026e",
+    "package": "2026.6",
+    "package_iana": "2026f"
+   },
+   "package_agrees": true,
    "cases": [
     {
      "zone": "Europe/London",

@@ -21,7 +21,8 @@
   G.expect(/0\.1 \+ 0\.2 = 0\.30000000000000004/.test(MONT), '0.1 + 0.2 is 0.30000000000000004');
   var HOURS = /hours in 2026-03-29 in London: (\d+)/.exec(LOCALT)[1], HOURS_AUTUMN = /hours in 2026-10-25 in London: (\d+)/.exec(LOCALT)[1];
   G.expect(HOURS === '23' && HOURS_AUTUMN === '25', 'a London day has 23 hours in March and 25 in October');
-  var TZV = DS.tzdata;
+  var DB = DS.database, TZV = DB.version;
+  G.expect(DB.path === '/usr/share/zoneinfo' && /^\d{4}[a-z]$/.test(TZV) && !!DB.package_iana && DS.package_agrees === true, 'zoneinfo read the operating system copy of the database, and the tzdata package gives the same answers');
 
   function lines(file, a, b) { return G.span(file, a, b); }
   function rowsOf(text, re, fnc) { return text.split('\n').filter(function (l) { return re.test(l); }).map(fnc); }
@@ -47,7 +48,7 @@
       'Say why a **float** is the wrong type for money, and use `Decimal` or whole cents.',
       'Name the **rounding rule** that your code uses.'
     ],
-    say: 'Mission 6 has the two kinds of bug that pass every test and fail in the report: the clock and the cents. The time zone cases come from Python\'s zoneinfo with the time zone database version ' + TZV + ', and the money results come from real float and Decimal arithmetic. A million additions of ten cents is not a million times ten cents, and an hour of 29 March does not exist in London.',
+    say: 'Mission 6 has the two kinds of bug that pass every test and fail in the report: the clock and the cents. The time zone cases come from Python\'s zoneinfo, reading this machine\'s copy of the time zone database (release ' + TZV + '), and the money results come from real float and Decimal arithmetic. A million additions of ten cents is not a million times ten cents, and an hour of 29 March does not exist in London.',
     scenes: [
       B.talk({
         id: 'm6-talk', t: 1, src: 'docs', title: 'Time and money fail quietly',
@@ -137,7 +138,7 @@
 
       B.term({
         id: 'm6-dst', t: 1, src: 'rec', title: 'The hour that does not exist, and the hour that happens twice',
-        say: 'Local times around a clock change, from zoneinfo, with time zone data version ' + TZV + '. Read London, New York and Singapore.',
+        say: 'Local times around a clock change, from zoneinfo, using the operating system\'s time zone database (release ' + TZV + '). Read London, New York and Singapore.',
         lines: function () { return G.plain(DSTT, { cmd: 'python zoneinfo_dst.py' }); },
         after: 'On 29 March 2026 the London clocks jump from 01:00 to 02:00, so **01:30 does not exist**. Python still accepts it, and the two values of `fold` give moments **an hour apart**: 00:30 and 01:30 UTC. On 25 October the clocks go back, so **01:30 happens twice**: at 00:30 UTC and again at 01:30 UTC. New York does the same on other dates. Singapore has no change, so every time exists once.',
         afterKind: 'warn',
@@ -221,7 +222,7 @@
           ['Keep the zone name, such as `Asia/Singapore`, if you need local rules later', 'An offset of +08:00 does not say what the rules will do next year. The name does.', 'Offsets differ across the year in London and New York.'],
           ['Convert to local time only at the edge', 'Reports and screens need a calendar. Joins and sorts do not.', 'Four orders on 14 March by UTC, two by the Singapore calendar.'],
           ['Parse with a real parser, and check units', '`fromisoformat` handles `Z` and offsets since 3.11. An epoch has a unit.', 'Milliseconds read as seconds gave year 58169.'],
-          ['Use `zoneinfo`, not a hand-made offset', 'The standard library reads the IANA database, which is updated when governments change the rules. On systems without the database, the `tzdata` package supplies it.', 'This mission used tzdata ' + TZV + '.']
+          ['Use `zoneinfo`, not a hand-made offset', 'The standard library reads the IANA database, which changes when a government changes the rules. It reads the operating system\'s copy first. Where there is none, as on Windows and in many slim containers, it uses the `tzdata` package from PyPI.', 'This machine\'s copy is release ' + TZV + '. The `tzdata` package here is release ' + DB.package_iana + ', and it gave the same answers for every case.']
         ],
         steps: [
           { upto: 3, say: 'Create, store and name: aware values, UTC at rest, and the zone name when you need it.' },

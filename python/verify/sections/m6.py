@@ -76,8 +76,43 @@ def money():
     return {'sums': sums, 'rounding': rows}
 
 
+def database():
+    """Where zoneinfo reads its rules on this machine, and which release that copy is."""
+    import importlib.metadata as md
+    import os
+    import zoneinfo
+    here = next((p for p in zoneinfo.TZPATH if os.path.exists(os.path.join(p, 'Europe/London'))), None)
+    version = None
+    if here and os.path.exists(os.path.join(here, 'tzdata.zi')):
+        version = open(os.path.join(here, 'tzdata.zi')).readline().strip().replace('# version ', '')
+    out = {'path': here, 'version': version, 'package': None, 'package_iana': None}
+    try:
+        import tzdata
+        out['package'] = md.version('tzdata')
+        out['package_iana'] = tzdata.IANA_VERSION
+    except ImportError:
+        pass
+    return out
+
+
+def cases_from_package():
+    """The same cases, read from the tzdata package only (the operating system's copy is switched off)."""
+    import zoneinfo
+    old = zoneinfo.TZPATH
+    zoneinfo.reset_tzpath(to=[])
+    ZoneInfo.clear_cache()
+    try:
+        return dst_cases()
+    finally:
+        zoneinfo.reset_tzpath(to=list(old))
+        ZoneInfo.clear_cache()
+
+
 def record(rec, work, cache):
     for name in ('naive_aware', 'iso_parse', 'zoneinfo_dst', 'day_buckets', 'money', 'normalize_timestamps', 'local_days'):
         rec.lesson('m6/%s.py' % name)
-    rec.counts('m6.dst', {'tzdata': rec.data['meta'].get('tzdata'), 'cases': dst_cases(), 'note': 'computed with zoneinfo; kind is found with the check from PEP 495: a local time that does not survive a trip through UTC does not exist'})
+    cases = dst_cases()
+    db = database()
+    rec.counts('m6.dst', {'database': db, 'package_agrees': (cases_from_package() == cases) if db['package'] else None, 'cases': cases,
+                          'note': 'computed with zoneinfo; kind is found with the check from PEP 495: a local time that does not survive a trip through UTC does not exist'})
     rec.counts('m6.money', money())

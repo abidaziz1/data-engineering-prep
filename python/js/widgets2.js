@@ -21,7 +21,7 @@
       steps: function () { return 1; },
       hint: 'Pick a zone, then a local time. Compare fold 0 and fold 1.',
       say: function () {
-        return 'Pick a time zone and a local time. Two of the cases are around a clock change: one local time that does not exist, and one that happens twice. These are the real answers from zoneinfo, with the time zone database version that is printed below. Look at the two UTC moments in each case.';
+        return 'Pick a time zone and a local time. Two of the cases are around a clock change: one local time that does not exist, and one that happens twice. These are the real answers from zoneinfo, with the release of the time zone database printed below. Look at the two UTC moments in each case.';
       },
       mood: function () { return 'think'; },
       render: function (box, s, i, A) {
@@ -33,7 +33,7 @@
           '<div class="lab-out"><div class="big ' + (ok ? 'good' : c.kind === 'ambiguous' ? 'warn' : 'bad') + '"><b>' + esc(c.kind) + '</b><span>' + esc(c.local) + ' in ' + esc(c.zone) + ' (' + esc(c.label) + ')</span></div></div>' +
           table(['', 'UTC offset', 'The moment in UTC', 'Back to local time'], [['fold = 0', c.fold0.offset, c.fold0.utc, c.fold0.back], ['fold = 1', c.fold1.offset, c.fold1.utc, c.fold1.back]], null, function (r, ri, ci) { return ci === 3 && r[3] !== c.local ? 'wbad' : ''; }) +
           '<div class="callout ' + (ok ? 'good' : 'warn') + '">' + md(MEANING[c.kind]) + '</div>' +
-          '<p class="lab-note">Time zone database version ' + esc(String(d.tzdata)) + '. A local time that does not come back to itself after a trip through UTC (a red cell) does not exist.</p></div>';
+          '<p class="lab-note">Rules from the operating system\'s time zone database, release ' + esc(String(d.database.version)) + '. A local time that does not come back to itself after a trip through UTC (a red cell) does not exist.</p></div>';
         box.innerHTML = h;
         bindCodes(box);
         A.bindWidget = function (act, el) { var v = el.getAttribute('data-v'); if (act === 'dz-z') { st.zone = v; st.i = Math.min(1, casesOf(v).length - 1); } if (act === 'dz-i') st.i = +v; A.render(true); };
