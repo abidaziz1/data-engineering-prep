@@ -375,5 +375,31 @@
     W.mutantsInfo = { data: data };
   })();
 
+  /* ====================== Mission 13: which setting wins ====================== */
+  (function () {
+    function data() { return G.counts('m13.config'); }
+    var NAMES = ['default', 'config file', 'environment', 'command line'];
+    W.config = {
+      steps: function () { return 1; },
+      hint: 'Switch the layers on and off. The strongest layer that sets a value wins.',
+      say: function () { return 'A job reads its settings from four places. Switch the config file, the environment variable and the command line flags on or off, and see the value that each setting ends up with, and where it came from. These are real results of the lesson\'s load_config function.'; },
+      mood: function () { return 'think'; },
+      render: function (box, s, i, A) {
+        var d = data(), st = A.local.cf || (A.local.cf = [true, true, false]), key = st.map(function (x) { return x ? '1' : '0'; }).join('|'), eff = d.cells[key], h = '<div class="lab">';
+        h += '<div class="lab-row"><span class="lab-l">Layers that are set</span><div class="sel-chips">' + d.layers.map(function (l, k) { return '<button type="button" class="sel-chip' + (st[k] ? ' on' : '') + '" data-act="cf-t" data-v="' + k + '">' + esc(l) + (st[k] ? ': on' : ': off') + '</button>'; }).join('') + '</div></div>';
+        var sets = ['api_url', 'batch_size', 'dry_run'], layerVals = [d.defaults, st[0] ? d.file : {}, st[1] ? d.env : {}, st[2] ? d.args : {}];
+        function short(v) { return String(v).replace(/^https:\/\//, '').replace(/\/orders$/, ''); }
+        var TAG = { 'default': 'default', 'config file': 'file', 'environment': 'env', 'command line': 'flag' };
+        h += table(['Setting', 'default', 'file', 'env', 'flag', 'Result'], sets.map(function (k) {
+          return [k].concat(layerVals.map(function (v) { return v[k] !== undefined ? short(v[k]) : ''; })).concat(['**' + short(eff[k].value) + '** (' + TAG[eff[k].source] + ')']);
+        }), null, function (r, ri, ci) { var win = NAMES.indexOf(eff[sets[ri]].source) + 1; return ci === win ? 'wgood' : ''; }) +
+          '<div class="callout tip">' + md('Each layer overrides the one before it: **default, then config file, then environment, then command line**. The layer that is nearest to the person who runs the job wins, so a flag beats an environment variable, and the environment beats the file. The green cell is the winner. A secret such as the API token is **not** in any layer of this table: it comes from the environment only, and it is never printed. Columns: file is the config file, env is an environment variable, flag is a command line flag.') + '</div></div>';
+        box.innerHTML = h;
+        A.bindWidget = function (act, el) { if (act === 'cf-t') { var k = +el.getAttribute('data-v'); st[k] = !st[k]; } A.render(true); };
+      }
+    };
+    W.configInfo = { data: data };
+  })();
+
   /* @@END */
 })();

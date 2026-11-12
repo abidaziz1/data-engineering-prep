@@ -119,7 +119,12 @@ LAB.real = {
   "m12/hypothesis_demo.py": "\"\"\"A property test: say what must always be true, and let Hypothesis look for an example that breaks it.\"\"\"\nfrom decimal import Decimal\n\nfrom hypothesis import given, settings, strategies as st\n\nfrom orders import to_cents\n\n\ndef dedupe_keep_order(items):\n    return sorted(set(items))  # a bug: it sorts, and does not keep the first-seen order\n\n\n@settings(derandomize=True, max_examples=200)\n@given(st.lists(st.integers(-5, 5)))\ndef test_dedupe_keeps_the_first_seen_order(xs):\n    first_seen = [x for i, x in enumerate(xs) if x not in xs[:i]]\n    assert dedupe_keep_order(xs) == first_seen\n\n\n@settings(derandomize=True, max_examples=200)\n@given(st.integers(min_value=0, max_value=10**9))\ndef test_to_cents_reads_back_what_was_written(cents):\n    assert to_cents(f\"{Decimal(cents) / 100:.2f}\") == cents\n",
   "m12/bad_style.py": "import os, sys\nfrom decimal import *\n\n\ndef load(rows, seen=[]):\n    for r in rows:\n        if r == None:\n            continue\n        try:\n            seen.append(int(r))\n        except:\n            pass\n    return seen\n",
   "m12/logging_basics.py": "\"\"\"Logs that you can search: a level, a name, fields as data, and the traceback of an error. No timestamps, so the output is the same each run.\"\"\"\nimport json\nimport logging\nimport sys\n\n\nclass JsonFormatter(logging.Formatter):\n    def format(self, record):\n        data = {\"level\": record.levelname, \"logger\": record.name, \"message\": record.getMessage()}\n        data.update(getattr(record, \"fields\", {}))\n        if record.exc_info:\n            data[\"error\"] = self.formatException(record.exc_info).splitlines()[-1]\n        return json.dumps(data)\n\n\nhandler = logging.StreamHandler(sys.stdout)\nhandler.setFormatter(JsonFormatter())\nlog = logging.getLogger(\"brewline.load\")\nlog.addHandler(handler)\nlog.setLevel(logging.INFO)\nlog.propagate = False\n\nrun = {\"run_id\": \"2026-03-14\"}\nlog.debug(\"this line is not shown at the level INFO\")\nlog.info(\"extract finished\", extra={\"fields\": dict(run, rows=1200, seconds=4)})\nlog.warning(\"rows rejected\", extra={\"fields\": dict(run, rejected=3, share=0.0025)})\ntry:\n    int(\"12,50\")\nexcept ValueError:\n    log.exception(\"load failed\", extra={\"fields\": run})\n",
-  "m12/parse_amount.py": "\"\"\"Coding round: read a money amount from text, exactly, and refuse anything that is not one.\"\"\"\nfrom decimal import Decimal, InvalidOperation\n\n\ndef parse_amount(text):\n    \"\"\"Return the amount as a Decimal with two places. Accept spaces around the text, a thousands comma in the right places\n    (\"1,250.00\"), and 0 to 2 decimals. Raise ValueError for anything else: \"12,50\", \"1.234\", \"abc\", \"\" and \"1,25.0\".\"\"\"\n    clean = text.strip()\n    whole, _, decimals = clean.partition(\".\")\n    if len(decimals) > 2:\n        raise ValueError(f\"more than two decimals: {text!r}\")\n    groups = whole.split(\",\")\n    if len(groups) > 1 and (not 1 <= len(groups[0]) <= 3 or any(len(g) != 3 for g in groups[1:])):\n        raise ValueError(f\"misplaced comma: {text!r}\")\n    try:\n        return Decimal(\"\".join(groups) + (\".\" + decimals if decimals else \"\")).quantize(Decimal(\"0.01\"))\n    except InvalidOperation:\n        raise ValueError(f\"not an amount: {text!r}\") from None\n\n\nGOOD = [(\"12.50\", \"12.50\"), (\" 7 \", \"7.00\"), (\"1,250.00\", \"1250.00\"), (\"0.5\", \"0.50\"), (\"1,000\", \"1000.00\"), (\"999,999.99\", \"999999.99\")]\nBAD = [\"12,50\", \"1.234\", \"abc\", \"\", \"1,25.0\", \",100\", \"1,2345\"]\nfor text, want in GOOD:\n    assert parse_amount(text) == Decimal(want), (text, parse_amount(text))\nprint(\"amounts read:\", len(GOOD), \"of\", len(GOOD), \"-\", [str(parse_amount(t)) for t, _ in GOOD[:3]], \"...\")\nfor text in BAD:\n    try:\n        parse_amount(text)\n    except ValueError:\n        continue\n    raise AssertionError(f\"{text!r} must be refused\")\nprint(\"amounts refused:\", len(BAD), \"of\", len(BAD), \"-\", BAD[:4], \"...\")\nassert isinstance(parse_amount(\"12.5\"), Decimal) and str(parse_amount(\"12.5\")) == \"12.50\"\nprint(\"the type is Decimal, never float:\", repr(parse_amount(\"12.5\")))\nprint(\"tests passed\")\n"
+  "m12/parse_amount.py": "\"\"\"Coding round: read a money amount from text, exactly, and refuse anything that is not one.\"\"\"\nfrom decimal import Decimal, InvalidOperation\n\n\ndef parse_amount(text):\n    \"\"\"Return the amount as a Decimal with two places. Accept spaces around the text, a thousands comma in the right places\n    (\"1,250.00\"), and 0 to 2 decimals. Raise ValueError for anything else: \"12,50\", \"1.234\", \"abc\", \"\" and \"1,25.0\".\"\"\"\n    clean = text.strip()\n    whole, _, decimals = clean.partition(\".\")\n    if len(decimals) > 2:\n        raise ValueError(f\"more than two decimals: {text!r}\")\n    groups = whole.split(\",\")\n    if len(groups) > 1 and (not 1 <= len(groups[0]) <= 3 or any(len(g) != 3 for g in groups[1:])):\n        raise ValueError(f\"misplaced comma: {text!r}\")\n    try:\n        return Decimal(\"\".join(groups) + (\".\" + decimals if decimals else \"\")).quantize(Decimal(\"0.01\"))\n    except InvalidOperation:\n        raise ValueError(f\"not an amount: {text!r}\") from None\n\n\nGOOD = [(\"12.50\", \"12.50\"), (\" 7 \", \"7.00\"), (\"1,250.00\", \"1250.00\"), (\"0.5\", \"0.50\"), (\"1,000\", \"1000.00\"), (\"999,999.99\", \"999999.99\")]\nBAD = [\"12,50\", \"1.234\", \"abc\", \"\", \"1,25.0\", \",100\", \"1,2345\"]\nfor text, want in GOOD:\n    assert parse_amount(text) == Decimal(want), (text, parse_amount(text))\nprint(\"amounts read:\", len(GOOD), \"of\", len(GOOD), \"-\", [str(parse_amount(t)) for t, _ in GOOD[:3]], \"...\")\nfor text in BAD:\n    try:\n        parse_amount(text)\n    except ValueError:\n        continue\n    raise AssertionError(f\"{text!r} must be refused\")\nprint(\"amounts refused:\", len(BAD), \"of\", len(BAD), \"-\", BAD[:4], \"...\")\nassert isinstance(parse_amount(\"12.5\"), Decimal) and str(parse_amount(\"12.5\")) == \"12.50\"\nprint(\"the type is Decimal, never float:\", repr(parse_amount(\"12.5\")))\nprint(\"tests passed\")\n",
+  "m13/config_precedence.py": "\"\"\"Settings come from four places. The one nearest to the person who runs the job wins, and every value remembers where it came from.\"\"\"\nimport tomllib\n\nDEFAULTS = {\"api_url\": \"https://api.brewline.example/orders\", \"batch_size\": 1000, \"dry_run\": False}\nSECRET = \"BREWLINE_API_TOKEN\"  # a secret is read from the environment only, and never printed\n\n\ndef as_type(default, value):\n    if isinstance(default, bool):\n        return value if isinstance(value, bool) else str(value).lower() in (\"1\", \"true\", \"yes\")\n    return type(default)(value)\n\n\ndef load_config(file_text=None, env=None, args=None):\n    \"\"\"Layers, from weakest to strongest: defaults, a TOML file, BREWLINE_* environment variables, command line flags.\"\"\"\n    config = {key: (value, \"default\") for key, value in DEFAULTS.items()}\n    layers = []\n    if file_text:\n        layers.append((\"config file\", tomllib.loads(file_text)))\n    if env:\n        layers.append((\"environment\", {k.removeprefix(\"BREWLINE_\").lower(): v for k, v in env.items() if k.startswith(\"BREWLINE_\") and k != SECRET}))\n    if args:\n        layers.append((\"command line\", args))\n    for name, values in layers:\n        for key, value in values.items():\n            if key not in DEFAULTS:\n                raise KeyError(f\"unknown setting {key!r} in the {name}\")\n            config[key] = (as_type(DEFAULTS[key], value), name)\n    return config\n\n\ndef api_token(env):\n    token = env.get(SECRET)\n    if not token:\n        raise SystemExit(f\"{SECRET} is not set. Export it, or run with --dry-run.\")\n    return token\n\n\nFILE = 'api_url = \"https://staging.brewline.example/orders\"\\nbatch_size = 500\\n'\nENV = {\"BREWLINE_BATCH_SIZE\": \"200\", \"BREWLINE_API_TOKEN\": \"s3cr3t-token-value\"}\nARGS = {\"batch_size\": 50, \"dry_run\": True}\n\n\ndef show(title, config):\n    print(title)\n    for key, (value, source) in config.items():\n        print(f\"  {key:<11}{value!s:<42}from the {source}\")\n\n\nshow(\"defaults only:\", load_config())\nshow(\"with a config file:\", load_config(FILE))\nshow(\"and an environment variable:\", load_config(FILE, ENV))\nshow(\"and command line flags:\", load_config(FILE, ENV, ARGS))\n\nprint(\"a setting that does not exist:\")\ntry:\n    load_config(FILE, args={\"batchsize\": 5})\nexcept KeyError as err:\n    print(\"  KeyError:\", err)\nprint(\"the token is read from the environment:\", len(api_token(ENV)), \"characters, never printed\")\ntry:\n    api_token({})\nexcept SystemExit as err:\n    print(\"without it:\", err)\n",
+  "m13/load_orders.py": "\"\"\"A command line for the nightly load. typer builds the options, the help text and the checks from the function signature.\"\"\"\nfrom datetime import date\nfrom pathlib import Path\nfrom typing import Annotated\n\nimport typer\n\napp = typer.Typer(add_completion=False, help=\"Load one day of orders.\")\n\n\n@app.command()\ndef load(\n    source: Annotated[Path, typer.Argument(exists=True, dir_okay=False, help=\"The CSV file of orders.\")],\n    day: Annotated[date, typer.Option(help=\"The business day, as YYYY-MM-DD.\")],\n    batch_size: Annotated[int, typer.Option(min=1, help=\"Rows for each commit.\")] = 1000,\n    dry_run: Annotated[bool, typer.Option(help=\"Check the file and print the plan. Write nothing.\")] = False,\n):\n    rows = sum(1 for _ in source.open()) - 1  # the first line is the header\n    plan = f\"{rows} rows from {source.name} for {day}, in batches of {batch_size}\"\n    if dry_run:\n        typer.echo(f\"dry run: would load {plan}\")\n        raise typer.Exit(0)\n    if rows == 0:\n        typer.echo(\"the file has no rows\", err=True)\n        raise typer.Exit(1)\n    typer.echo(f\"loaded {plan}\")\n\n\nif __name__ == \"__main__\":\n    app()\n",
+  "m13/pyproject.toml": "[project]\nname = \"brewline-loader\"\nversion = \"0.1.0\"\ndescription = \"Load one day of Brewline orders\"\nrequires-python = \">=3.12\"\ndependencies = [\"typer>=0.12\"]\n\n[project.scripts]\nbrewline-load = \"brewline_loader.cli:app\"\n\n[build-system]\nrequires = [\"hatchling\"]\nbuild-backend = \"hatchling.build\"\n\n[tool.hatch.build.targets.wheel]\npackages = [\"src/brewline_loader\"]\n\n[tool.pytest.ini_options]\npythonpath = [\"src\"]\n\n[tool.ruff]\nline-length = 140\n",
+  "m13/test_cli.py": "from pathlib import Path\n\nfrom typer.testing import CliRunner\n\nfrom brewline_loader.cli import app\n\nrunner = CliRunner()\n\n\ndef orders_file(folder: Path, rows: int) -> Path:\n    path = folder / \"orders.csv\"\n    path.write_text(\"order_id,total_cents\\n\" + \"\".join(f\"O-{n},{100 + n}\\n\" for n in range(rows)))\n    return path\n\n\ndef test_dry_run_prints_the_plan(tmp_path: Path) -> None:\n    result = runner.invoke(app, [str(orders_file(tmp_path, 3)), \"--day\", \"2026-03-14\", \"--dry-run\"])\n    assert result.exit_code == 0\n    assert \"dry run: would load 3 rows\" in result.output\n\n\ndef test_a_bad_date_is_a_usage_error(tmp_path: Path) -> None:\n    result = runner.invoke(app, [str(orders_file(tmp_path, 3)), \"--day\", \"14-03-2026\"])\n    assert result.exit_code == 2\n\n\ndef test_an_empty_file_fails(tmp_path: Path) -> None:\n    result = runner.invoke(app, [str(orders_file(tmp_path, 0)), \"--day\", \"2026-03-14\"])\n    assert result.exit_code == 1\n",
+  "m13/ci.yml": "name: ci\non:\n  push:\n    branches: [main]\n  pull_request:\n\njobs:\n  checks:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: astral-sh/setup-uv@v5\n      - run: uv sync --locked\n      - run: uv run ruff check .\n      - run: uv run mypy src\n      - run: uv run pytest -q\n      - run: uv build\n"
  },
  "text": {
   "m1/load_orders_v7.py#1": "loaded 6 rows\n(6, 6, 78.85)\n(1,)",
@@ -214,7 +219,11 @@ LAB.real = {
   "m12/ruff": "$ ruff check --select E,F,B --output-format=concise bad_style.py\nbad_style.py:1:1: E401 [*] Multiple imports on one line\nbad_style.py:1:8: F401 [*] `os` imported but unused\nbad_style.py:1:12: F401 [*] `sys` imported but unused\nbad_style.py:2:1: F403 `from decimal import *` used; unable to detect undefined names\nbad_style.py:5:21: B006 Do not use mutable data structures for argument defaults\nbad_style.py:7:17: E711 Comparison to `None` should be `cond is None`\nbad_style.py:11:9: E722 Do not use bare `except`\nFound 7 errors.\n[*] 3 fixable with `--fix` (2 unsafe fixes available with `--fix --unsafe-fixes`).",
   "m12/run_mutants.py": "test_weak.py: 4 of 7 mutants caught\n  survived: is_large: >= becomes >\n  survived: discount: qty >= 10 becomes > 10\n  survived: discount: the cap 5,000 becomes 50,000\ntest_strong.py: 7 of 7 mutants caught",
   "m12/logging_basics.py": "{\"level\": \"INFO\", \"logger\": \"brewline.load\", \"message\": \"extract finished\", \"run_id\": \"2026-03-14\", \"rows\": 1200, \"seconds\": 4}\n{\"level\": \"WARNING\", \"logger\": \"brewline.load\", \"message\": \"rows rejected\", \"run_id\": \"2026-03-14\", \"rejected\": 3, \"share\": 0.0025}\n{\"level\": \"ERROR\", \"logger\": \"brewline.load\", \"message\": \"load failed\", \"run_id\": \"2026-03-14\", \"error\": \"ValueError: invalid literal for int() with base 10: '12,50'\"}",
-  "m12/parse_amount.py": "amounts read: 6 of 6 - ['12.50', '7.00', '1250.00'] ...\namounts refused: 7 of 7 - ['12,50', '1.234', 'abc', ''] ...\nthe type is Decimal, never float: Decimal('12.50')\ntests passed"
+  "m12/parse_amount.py": "amounts read: 6 of 6 - ['12.50', '7.00', '1250.00'] ...\namounts refused: 7 of 7 - ['12,50', '1.234', 'abc', ''] ...\nthe type is Decimal, never float: Decimal('12.50')\ntests passed",
+  "m13/config_precedence.py": "defaults only:\n  api_url    https://api.brewline.example/orders       from the default\n  batch_size 1000                                      from the default\n  dry_run    False                                     from the default\nwith a config file:\n  api_url    https://staging.brewline.example/orders   from the config file\n  batch_size 500                                       from the config file\n  dry_run    False                                     from the default\nand an environment variable:\n  api_url    https://staging.brewline.example/orders   from the config file\n  batch_size 200                                       from the environment\n  dry_run    False                                     from the default\nand command line flags:\n  api_url    https://staging.brewline.example/orders   from the config file\n  batch_size 50                                        from the command line\n  dry_run    True                                      from the command line\na setting that does not exist:\n  KeyError: \"unknown setting 'batchsize' in the command line\"\nthe token is read from the environment: 18 characters, never printed\nwithout it: BREWLINE_API_TOKEN is not set. Export it, or run with --dry-run.",
+  "m13/cli": "$ python load_orders.py --help\n\n Usage: load_orders.py [OPTIONS] {source}\n\n╭─ Arguments ──────────────────────────────────────────────────────────────────────────────────────╮\n│ *    source      <file>  The CSV file of orders. [required]                                      │\n╰──────────────────────────────────────────────────────────────────────────────────────────────────╯\n╭─ Options ────────────────────────────────────────────────────────────────────────────────────────╮\n│ *  --day                           <date>              The business day, as YYYY-MM-DD.          │\n│                                                        [required]                                │\n│    --batch-size                    <int range> [x>=1]  Rows for each commit. [default: 1000]     │\n│    --dry-run       --no-dry-run    <bool>              Check the file and print the plan. Write  │\n│                                                        nothing.                                  │\n│                                                        [default: no-dry-run]                     │\n│    --help                          <bool>              Show this message and exit.               │\n╰──────────────────────────────────────────────────────────────────────────────────────────────────╯\n$ python load_orders.py orders.csv --day 2026-03-14 --dry-run 2>&1; echo \"exit code: $?\"\ndry run: would load 3 rows from orders.csv for 2026-03-14, in batches of 1000\nexit code: 0\n$ python load_orders.py orders.csv --day 2026-03-14 2>&1; echo \"exit code: $?\"\nloaded 3 rows from orders.csv for 2026-03-14, in batches of 1000\nexit code: 0\n$ python load_orders.py orders.csv --day 14-03-2026 2>&1; echo \"exit code: $?\"\nUsage: load_orders.py [OPTIONS] {source}\nTry 'load_orders.py --help' for help.\n╭─ Error ──────────────────────────────────────────────────────────────────────────────────────────╮\n│ Invalid value for '--day': Input should be a valid date or datetime, invalid character in year   │\n╰──────────────────────────────────────────────────────────────────────────────────────────────────╯\nexit code: 2\n$ python load_orders.py missing.csv --day 2026-03-14 2>&1; echo \"exit code: $?\"\nUsage: load_orders.py [OPTIONS] {source}\nTry 'load_orders.py --help' for help.\n╭─ Error ──────────────────────────────────────────────────────────────────────────────────────────╮\n│ Invalid value for 'source': file 'missing.csv' does not exist.                                   │\n╰──────────────────────────────────────────────────────────────────────────────────────────────────╯\nexit code: 2\n$ python load_orders.py empty.csv --day 2026-03-14 2>&1; echo \"exit code: $?\"\nthe file has no rows\nexit code: 1",
+  "m13/checks": "$ ruff check .\nAll checks passed!\n$ mypy src\nSuccess: no issues found in 2 source files\n$ pytest -q\n...                                                                                          [100%]\n3 passed in 0.98s",
+  "m13/build": "$ uv build\nBuilding source distribution...\nBuilding wheel from source distribution...\nSuccessfully built dist/brewline_loader-0.1.0.tar.gz\nSuccessfully built dist/brewline_loader-0.1.0-py3-none-any.whl\n$ python -m zipfile -l dist/brewline_loader-0.1.0-py3-none-any.whl\nFile Name                                             Modified             Size\nbrewline_loader/__init__.py                    2020-02-02 00:00:00           61\nbrewline_loader/cli.py                         2020-02-02 00:00:00         1136\nbrewline_loader-0.1.0.dist-info/METADATA       2020-02-02 00:00:00          151\nbrewline_loader-0.1.0.dist-info/WHEEL          2020-02-02 00:00:00           87\nbrewline_loader-0.1.0.dist-info/entry_points.txt 2020-02-02 00:00:00           58\nbrewline_loader-0.1.0.dist-info/RECORD         2020-02-02 00:00:00          493\n$ uv venv --quiet .demo\n$ uv pip install --quiet --python .demo/bin/python dist/brewline_loader-0.1.0-py3-none-any.whl\n$ .demo/bin/brewline-load --help\n\n Usage: brewline-load [OPTIONS] {source}\n\n╭─ Arguments ──────────────────────────────────────────────────────────────────────────────────────╮\n│ *    source      <file>  The CSV file of orders. [required]                                      │\n╰──────────────────────────────────────────────────────────────────────────────────────────────────╯\n╭─ Options ────────────────────────────────────────────────────────────────────────────────────────╮\n│ *  --day                           <date>              The business day, as YYYY-MM-DD.          │\n│                                                        [required]                                │\n│    --batch-size                    <int range> [x>=1]  Rows for each commit. [default: 1000]     │\n│    --dry-run       --no-dry-run    <bool>              Check the file and print the plan. Write  │\n│                                                        nothing.                                  │\n│                                                        [default: no-dry-run]                     │\n│    --help                          <bool>              Show this message and exit.               │\n╰──────────────────────────────────────────────────────────────────────────────────────────────────╯"
  },
  "tables": {
   "m3.structs": {
@@ -395,7 +404,27 @@ LAB.real = {
    "m12/ruff|/tmp/claude-0/-home-user/a3635923-0dcc-5766-9df4-bde417681138/scratchpad/python/venv/bin/python -m ruff check --select E,F,B --output-format=concise --no-cache bad_style.py": 1,
    "m12/run_mutants.py": 0,
    "m12/logging_basics.py": 0,
-   "m12/parse_amount.py": 0
+   "m12/parse_amount.py": 0,
+   "m13/config_precedence.py": 0,
+   "m13/cli|/tmp/claude-0/-home-user/a3635923-0dcc-5766-9df4-bde417681138/scratchpad/python/venv/bin/python load_orders.py --help": 0,
+   "m13/cli|/tmp/claude-0/-home-user/a3635923-0dcc-5766-9df4-bde417681138/scratchpad/python/venv/bin/python load_orders.py orders.csv --day 2026-03-14 --dry-run; echo \"exit code: $?\"": 0,
+   "m13/cli|/tmp/claude-0/-home-user/a3635923-0dcc-5766-9df4-bde417681138/scratchpad/python/venv/bin/python load_orders.py orders.csv --day 2026-03-14; echo \"exit code: $?\"": 0,
+   "m13/cli|/tmp/claude-0/-home-user/a3635923-0dcc-5766-9df4-bde417681138/scratchpad/python/venv/bin/python load_orders.py orders.csv --day 14-03-2026; echo \"exit code: $?\"": 0,
+   "m13/cli|/tmp/claude-0/-home-user/a3635923-0dcc-5766-9df4-bde417681138/scratchpad/python/venv/bin/python load_orders.py missing.csv --day 2026-03-14; echo \"exit code: $?\"": 0,
+   "m13/cli|/tmp/claude-0/-home-user/a3635923-0dcc-5766-9df4-bde417681138/scratchpad/python/venv/bin/python load_orders.py empty.csv --day 2026-03-14; echo \"exit code: $?\"": 0,
+   "m13/checks|/tmp/claude-0/-home-user/a3635923-0dcc-5766-9df4-bde417681138/scratchpad/python/venv/bin/python -m ruff check --no-cache .": 0,
+   "m13/checks|/tmp/claude-0/-home-user/a3635923-0dcc-5766-9df4-bde417681138/scratchpad/python/venv/bin/python -m mypy --no-incremental src": 0,
+   "m13/checks|/tmp/claude-0/-home-user/a3635923-0dcc-5766-9df4-bde417681138/scratchpad/python/venv/bin/python -m pytest -q -p no:cacheprovider --no-header": 0,
+   "m13/build|/root/.local/bin/uv build": 0,
+   "m13/build|/tmp/claude-0/-home-user/a3635923-0dcc-5766-9df4-bde417681138/scratchpad/python/venv/bin/python -m zipfile -l dist/brewline_loader-0.1.0-py3-none-any.whl": 0,
+   "m13/build|/root/.local/bin/uv venv --quiet .demo": 0,
+   "m13/build|/root/.local/bin/uv pip install --quiet --python .demo/bin/python dist/brewline_loader-0.1.0-py3-none-any.whl": 0,
+   "m13/build|.demo/bin/brewline-load --help": 0,
+   "m13/cli|/tmp/claude-0/-home-user/a3635923-0dcc-5766-9df4-bde417681138/scratchpad/python/venv/bin/python load_orders.py orders.csv --day 2026-03-14 --dry-run 2>&1; echo \"exit code: $?\"": 0,
+   "m13/cli|/tmp/claude-0/-home-user/a3635923-0dcc-5766-9df4-bde417681138/scratchpad/python/venv/bin/python load_orders.py orders.csv --day 2026-03-14 2>&1; echo \"exit code: $?\"": 0,
+   "m13/cli|/tmp/claude-0/-home-user/a3635923-0dcc-5766-9df4-bde417681138/scratchpad/python/venv/bin/python load_orders.py orders.csv --day 14-03-2026 2>&1; echo \"exit code: $?\"": 0,
+   "m13/cli|/tmp/claude-0/-home-user/a3635923-0dcc-5766-9df4-bde417681138/scratchpad/python/venv/bin/python load_orders.py missing.csv --day 2026-03-14 2>&1; echo \"exit code: $?\"": 0,
+   "m13/cli|/tmp/claude-0/-home-user/a3635923-0dcc-5766-9df4-bde417681138/scratchpad/python/venv/bin/python load_orders.py empty.csv --day 2026-03-14 2>&1; echo \"exit code: $?\"": 0
   },
   "m2.specifiers.pandas": {
    "versions": [
@@ -5120,6 +5149,144 @@ LAB.real = {
      "tests": 18
     }
    }
+  },
+  "m13.config": {
+   "layers": [
+    "config file",
+    "environment variable",
+    "command line flags"
+   ],
+   "defaults": {
+    "api_url": "https://api.brewline.example/orders",
+    "batch_size": "1000",
+    "dry_run": "False"
+   },
+   "file": {
+    "api_url": "https://staging.brewline.example/orders",
+    "batch_size": "500"
+   },
+   "env": {
+    "batch_size": "200"
+   },
+   "args": {
+    "batch_size": "50",
+    "dry_run": "True"
+   },
+   "cells": {
+    "0|0|0": {
+     "api_url": {
+      "value": "https://api.brewline.example/orders",
+      "source": "default"
+     },
+     "batch_size": {
+      "value": "1000",
+      "source": "default"
+     },
+     "dry_run": {
+      "value": "False",
+      "source": "default"
+     }
+    },
+    "0|0|1": {
+     "api_url": {
+      "value": "https://api.brewline.example/orders",
+      "source": "default"
+     },
+     "batch_size": {
+      "value": "50",
+      "source": "command line"
+     },
+     "dry_run": {
+      "value": "True",
+      "source": "command line"
+     }
+    },
+    "0|1|0": {
+     "api_url": {
+      "value": "https://api.brewline.example/orders",
+      "source": "default"
+     },
+     "batch_size": {
+      "value": "200",
+      "source": "environment"
+     },
+     "dry_run": {
+      "value": "False",
+      "source": "default"
+     }
+    },
+    "0|1|1": {
+     "api_url": {
+      "value": "https://api.brewline.example/orders",
+      "source": "default"
+     },
+     "batch_size": {
+      "value": "50",
+      "source": "command line"
+     },
+     "dry_run": {
+      "value": "True",
+      "source": "command line"
+     }
+    },
+    "1|0|0": {
+     "api_url": {
+      "value": "https://staging.brewline.example/orders",
+      "source": "config file"
+     },
+     "batch_size": {
+      "value": "500",
+      "source": "config file"
+     },
+     "dry_run": {
+      "value": "False",
+      "source": "default"
+     }
+    },
+    "1|0|1": {
+     "api_url": {
+      "value": "https://staging.brewline.example/orders",
+      "source": "config file"
+     },
+     "batch_size": {
+      "value": "50",
+      "source": "command line"
+     },
+     "dry_run": {
+      "value": "True",
+      "source": "command line"
+     }
+    },
+    "1|1|0": {
+     "api_url": {
+      "value": "https://staging.brewline.example/orders",
+      "source": "config file"
+     },
+     "batch_size": {
+      "value": "200",
+      "source": "environment"
+     },
+     "dry_run": {
+      "value": "False",
+      "source": "default"
+     }
+    },
+    "1|1|1": {
+     "api_url": {
+      "value": "https://staging.brewline.example/orders",
+      "source": "config file"
+     },
+     "batch_size": {
+      "value": "50",
+      "source": "command line"
+     },
+     "dry_run": {
+      "value": "True",
+      "source": "command line"
+     }
+    }
+   },
+   "note": "every case is a call of load_config() from lessons/m13/config_precedence.py with the layers that are switched on"
   }
  }
 };

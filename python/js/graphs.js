@@ -205,5 +205,31 @@
     ]
   };
 
+  /* ------------------------------------------------------------------ */
+  /* 8. The checks that CI runs on every change                          */
+  /* ------------------------------------------------------------------ */
+  S.ci = {
+    w: 1100, h: 340, label: 'The checks of a pull request: a change opens a pull request, then ruff, mypy and pytest run, then the package is built, and any red step stops the merge',
+    nodes: [
+      { id: 'pr', x: 10, y: 125, w: 150, h: 90, t: 'Pull request', s: 'a change', c: 'src', k: 'chip' },
+      { id: 'lint', x: 190, y: 125, w: 150, h: 90, t: 'ruff check', s: 'style and risks', c: 'ing', k: 'chip' },
+      { id: 'types', x: 370, y: 125, w: 150, h: 90, t: 'mypy', s: 'types', c: 'stg', k: 'chip' },
+      { id: 'tests', x: 550, y: 125, w: 150, h: 90, t: 'pytest', s: 'the tests', c: 'qual', k: 'chip' },
+      { id: 'build', x: 730, y: 125, w: 150, h: 90, t: 'uv build', s: 'wheel and sdist', c: 'con', k: 'chip' },
+      { id: 'art', x: 910, y: 125, w: 150, h: 90, t: 'Package', s: 'ready to install', c: 'mart', k: 'chip' }
+    ],
+    edges: [
+      { id: 'k1', a: 'pr', b: 'lint', d: 'M160 170 H190', n: 1, bx: 175, by: 148 },
+      { id: 'k2', a: 'lint', b: 'types', d: 'M340 170 H370', n: 2, bx: 355, by: 148 },
+      { id: 'k3', a: 'types', b: 'tests', d: 'M520 170 H550', n: 3, bx: 535, by: 148 },
+      { id: 'k4', a: 'tests', b: 'build', d: 'M700 170 H730', n: 4, bx: 715, by: 148 },
+      { id: 'k5', a: 'build', b: 'art', d: 'M880 170 H910', n: 5, bx: 895, by: 148 }
+    ],
+    tags: [
+      { id: 'tg_stop', x: 370, y: 262, t: 'any red step stops the merge', c: 'qual' },
+      { id: 'tg_same', x: 10, y: 262, t: 'the same commands that you run on your laptop', c: 'ci' }
+    ]
+  };
+
   /* @@END */
 })();
