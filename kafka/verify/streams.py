@@ -185,7 +185,7 @@ def run(c, rec, app, state):
     wait_count(c, 'channel-counts', n_before[1] + 4, timeout=60)
     time.sleep(2)
     cont2 = final_counts(c)
-    restoring = [re.sub(r'^LOG \w+ ', '', l) for l in log.splitlines() if 'StoreChangelogReader' in l and ('Restoration' in l or 'restor' in l.lower())]
+    restoring = [re.sub(r'store-counts-[0-9a-f]{8}-[0-9a-f-]{27}', 'store-counts-<id>', re.sub(r'^LOG \w+ ', '', l)) for l in log.splitlines() if 'StoreChangelogReader' in l and ('Restoration' in l or 'restor' in l.lower())]
     rec.counts('streams.restart', {'output_records_before_the_restart': n_before[0], 'output_records_after_the_restart': n_restart[0], 'nothing_was_processed_twice': n_before == n_restart,
                                    'count_of_the_window_after_three_new_orders': cont.get(key10), 'count_after_the_state_was_deleted_and_one_more_order': cont2.get(key10),
                                    'the_count_continued_from_the_rebuilt_state': cont.get(key10) is not None and cont2.get(key10) == cont.get(key10) + (1 if ts_iso(T0 + (N + 13) * 1000) == ts_iso(T0 + (N + 10) * 1000) else 0),

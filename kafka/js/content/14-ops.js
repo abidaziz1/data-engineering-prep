@@ -116,8 +116,8 @@
           },
           {
             say: 'What made it safe? Four things. **Clean shutdown**, so leaders move before the broker stops. **`acks=all` with `min.insync.replicas=2`**, so a write is only acknowledged when two copies have it. **Idempotence**, so a retry cannot duplicate a record. And **waiting for the in-sync replicas** before the next broker. Skip the last one and the second restart removes the only other copy.',
-            tabs: [{ layer: 'RECORDED', name: 'The recipe', c: 'raw', cols: ['Step', 'Why'], rows: [['Stop one broker with a clean shutdown', 'its leaders move to other brokers first, without an election after a crash'], ['Wait until it is back and in sync', 'the next stop must not remove the last good copy'], ['Check under-replicated partitions is 0', 'it is the signal that the cluster is whole again'], ['Then the next broker', 'one at a time, the controller last'], ['Producers: acks=all, idempotence, retries', 'so that a leader change is invisible']] }],
-            notes: ['The first rows are what the recording did. The advice to restart the controller last is from documentation.']
+            tabs: [{ layer: 'RECORDED', name: 'The recipe', c: 'raw', cols: ['Step', 'Why'], rows: [['Stop one broker with a clean shutdown', 'its leaders move to other brokers first, without an election after a crash'], ['Wait until it is back and in sync', 'the next stop must not remove the last good copy'], ['Check under-replicated partitions is 0', 'it is the signal that the cluster is whole again'], ['Then the next broker', 'one at a time, as the upgrade notes of the documentation say'], ['Producers: acks=all, idempotence, retries', 'so that a leader change is invisible']] }],
+            notes: ['Recorded: the clean stop of one broker, the wait for the in-sync replicas, the check of under-replicated partitions and the producer settings. The order of an upgrade, brokers one at a time and then **finalize** the new feature level with `kafka-features.sh upgrade` once the behaviour has been checked, is from the upgrade notes in the documentation of the release.']
           }
         ]
       }),

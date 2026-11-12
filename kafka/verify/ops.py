@@ -136,15 +136,15 @@ def run(c, rec):
     tj = os.path.join(d, 'topics.json')
     open(tj, 'w').write(topics_json)
     rc, out, err = c.tool('kafka-reassign-partitions', '--generate', '--topics-to-move-json-file', tj, '--broker-list', '2,3,4')
-    rec.text('ops.reassign_generate', out)
+    rec.text('ops.reassign_generate', norm(out, c))
     plan = json.dumps({'version': 1, 'partitions': [{'topic': 'moving', 'partition': 0, 'replicas': [2, 3, 4], 'log_dirs': ['any', 'any', 'any']}]})
     pj = os.path.join(d, 'plan.json')
     open(pj, 'w').write(plan)
     rc, out, err = c.tool('kafka-reassign-partitions', '--execute', '--reassignment-json-file', pj, '--throttle', '50000000')
-    rec.text('ops.reassign_execute', out)
+    rec.text('ops.reassign_execute', norm(out, c))
     lay = wait_layout(c, 'moving', lambda l: l[0][2] == [2, 3, 4] and sorted(l[0][3]) == [2, 3, 4], timeout=180)
     rc, out, err = c.tool('kafka-reassign-partitions', '--verify', '--reassignment-json-file', pj)
-    rec.text('ops.reassign_verify', out)
+    rec.text('ops.reassign_verify', norm(out, c))
     time.sleep(8)
     on_disk = {n: (c.data_dir(n) / 'moving-0').exists() for n in (1, 2, 3, 4)}
     sizes = {n: sum(f.stat().st_size for f in (c.data_dir(n) / 'moving-0').glob('*.log')) for n in (2, 3, 4) if on_disk[n]}

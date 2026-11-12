@@ -111,3 +111,8 @@ button.rec{cursor:pointer}
   .lane-track{flex-basis:100%}
   .lane-v{min-width:0;text-align:left}
 }
+
+/* long lines in a recorded table wrap, and keep their indentation, instead of running out of the card */
+.layer-tbl .tbl.mono td{white-space:pre-wrap;overflow-wrap:break-word;word-break:normal}
+.layer-tbl .tbl.mono th{white-space:normal}
+.lab .tbl.mono td{white-space:pre-wrap;overflow-wrap:break-word}

@@ -103,7 +103,7 @@
           {
             say: 'This is the count of one store, `s01`, by minute of event time. The minute is the minute in the **record**, not the minute when the application ran. This is **event time**.',
             tabs: [{ layer: 'RECORDED', name: 'Orders of store s01 by minute', c: 'raw', cols: BM.cols, rows: BM.rows }],
-            notes: ['Recorded. The whole run took seconds, and the counts are by the times inside the records. Run the same records again, even a day later, and the counts are the same.']
+            notes: ['Recorded. The records were sent in one burst, and the counts follow the times inside the records, not the time of the run. Send the same records again, even a day later, and the counts are the same.']
           },
           {
             say: 'The second chain counts by **channel**: `app`, `counter`, `web`. A count by a new key needed a repartition. The result is also right, and the values are **8 byte numbers**, because I told that step to write longs.',
