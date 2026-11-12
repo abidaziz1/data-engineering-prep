@@ -139,4 +139,26 @@
       { id: 'tg_win', x: 520, y: 148, t: 'windows see grouped rows', c: 'mart' }
     ]
   });
+  /* ------------------------------------------------------------------ */
+  /* 4. A join that changes the grain                                    */
+  /* ------------------------------------------------------------------ */
+  S.fanout = build({
+    h: 340, cw: 190, dx: 216,
+    label: 'A join that changes the grain. Orders have one row for each order. Payments have one row for each payment. Joining them gives one row for each payment, so an order with two payments appears twice, and a sum of the order total counts it twice.',
+    nodes: [
+      ['f_o', 0, 0, 'orders', 'one row for each order', 'src'],
+      ['f_p', 0, 1, 'payments', 'one row for each payment', 'raw'],
+      ['f_j', 1.7, 0.5, 'joined rows', 'one row for each payment', 'stg'],
+      ['f_s', 3.4, 0.5, 'sum(o.total)', 'order 1002 counted twice', 'int']
+    ],
+    edges: [
+      ['x1', 'f_o', 'f_j', 1],
+      ['x2', 'f_p', 'f_j', 2],
+      ['x3', 'f_j', 'f_s', 3]
+    ],
+    tags: [
+      { id: 'tg_g1', x: 20, y: 290, t: 'grain: one order', c: 'qual' },
+      { id: 'tg_g2', x: 380, y: 232, t: 'grain: one payment', c: 'int' }
+    ]
+  });
 })();

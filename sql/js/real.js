@@ -449,6 +449,336 @@ LAB.real = {
     "FALSE",
     "NULL"
    ]
+  },
+  "m3.fanout": {
+   "combos": [
+    {
+     "items": false,
+     "method": "sum",
+     "payments": false,
+     "result": {
+      "duckdb": [
+       "9",
+       "9",
+       "127.00"
+      ],
+      "postgres": [
+       "9",
+       "9",
+       "127.00"
+      ],
+      "sqlite": [
+       "9",
+       "9",
+       "127.0"
+      ]
+     },
+     "sql": "SELECT count(*) AS rows, count(DISTINCT o.order_id) AS orders, sum(o.total) AS revenue\nFROM orders AS o\nWHERE o.status = 'paid'"
+    },
+    {
+     "items": false,
+     "method": "distinct",
+     "payments": false,
+     "result": {
+      "duckdb": [
+       "9",
+       "9",
+       "127.00"
+      ],
+      "postgres": [
+       "9",
+       "9",
+       "127.00"
+      ],
+      "sqlite": [
+       "9",
+       "9",
+       "127.0"
+      ]
+     },
+     "sql": "SELECT count(*) AS rows, count(DISTINCT o.order_id) AS orders, sum(DISTINCT o.total) AS revenue\nFROM orders AS o\nWHERE o.status = 'paid'"
+    },
+    {
+     "items": false,
+     "method": "preaggregate",
+     "payments": false,
+     "result": {
+      "duckdb": [
+       "9",
+       "9",
+       "127.00"
+      ],
+      "postgres": [
+       "9",
+       "9",
+       "127.00"
+      ],
+      "sqlite": [
+       "9",
+       "9",
+       "127.0"
+      ]
+     },
+     "sql": "SELECT count(*) AS rows, count(DISTINCT o.order_id) AS orders, sum(o.total) AS revenue\nFROM orders AS o\nWHERE o.status = 'paid'"
+    },
+    {
+     "items": false,
+     "method": "sum",
+     "payments": true,
+     "result": {
+      "duckdb": [
+       "10",
+       "9",
+       "145.50"
+      ],
+      "postgres": [
+       "10",
+       "9",
+       "145.50"
+      ],
+      "sqlite": [
+       "10",
+       "9",
+       "145.5"
+      ]
+     },
+     "sql": "SELECT count(*) AS rows, count(DISTINCT o.order_id) AS orders, sum(o.total) AS revenue\nFROM orders AS o\nJOIN payments AS p ON p.order_id = o.order_id\nWHERE o.status = 'paid'"
+    },
+    {
+     "items": false,
+     "method": "distinct",
+     "payments": true,
+     "result": {
+      "duckdb": [
+       "10",
+       "9",
+       "127.00"
+      ],
+      "postgres": [
+       "10",
+       "9",
+       "127.00"
+      ],
+      "sqlite": [
+       "10",
+       "9",
+       "127.0"
+      ]
+     },
+     "sql": "SELECT count(*) AS rows, count(DISTINCT o.order_id) AS orders, sum(DISTINCT o.total) AS revenue\nFROM orders AS o\nJOIN payments AS p ON p.order_id = o.order_id\nWHERE o.status = 'paid'"
+    },
+    {
+     "items": false,
+     "method": "preaggregate",
+     "payments": true,
+     "result": {
+      "duckdb": [
+       "9",
+       "9",
+       "127.00"
+      ],
+      "postgres": [
+       "9",
+       "9",
+       "127.00"
+      ],
+      "sqlite": [
+       "9",
+       "9",
+       "127.0"
+      ]
+     },
+     "sql": "WITH paid_by_order AS (SELECT order_id, sum(amount) AS net_paid FROM payments GROUP BY order_id)\nSELECT count(*) AS rows, count(DISTINCT o.order_id) AS orders, sum(o.total) AS revenue\nFROM orders AS o\nLEFT JOIN paid_by_order AS p ON p.order_id = o.order_id\nWHERE o.status = 'paid'"
+    },
+    {
+     "items": true,
+     "method": "sum",
+     "payments": false,
+     "result": {
+      "duckdb": [
+       "15",
+       "9",
+       "228.00"
+      ],
+      "postgres": [
+       "15",
+       "9",
+       "228.00"
+      ],
+      "sqlite": [
+       "15",
+       "9",
+       "228.0"
+      ]
+     },
+     "sql": "SELECT count(*) AS rows, count(DISTINCT o.order_id) AS orders, sum(o.total) AS revenue\nFROM orders AS o\nJOIN order_items AS i ON i.order_id = o.order_id\nWHERE o.status = 'paid'"
+    },
+    {
+     "items": true,
+     "method": "distinct",
+     "payments": false,
+     "result": {
+      "duckdb": [
+       "15",
+       "9",
+       "127.00"
+      ],
+      "postgres": [
+       "15",
+       "9",
+       "127.00"
+      ],
+      "sqlite": [
+       "15",
+       "9",
+       "127.0"
+      ]
+     },
+     "sql": "SELECT count(*) AS rows, count(DISTINCT o.order_id) AS orders, sum(DISTINCT o.total) AS revenue\nFROM orders AS o\nJOIN order_items AS i ON i.order_id = o.order_id\nWHERE o.status = 'paid'"
+    },
+    {
+     "items": true,
+     "method": "preaggregate",
+     "payments": false,
+     "result": {
+      "duckdb": [
+       "9",
+       "9",
+       "127.00"
+      ],
+      "postgres": [
+       "9",
+       "9",
+       "127.00"
+      ],
+      "sqlite": [
+       "9",
+       "9",
+       "127.0"
+      ]
+     },
+     "sql": "WITH items_by_order AS (SELECT order_id, count(*) AS lines FROM order_items GROUP BY order_id)\nSELECT count(*) AS rows, count(DISTINCT o.order_id) AS orders, sum(o.total) AS revenue\nFROM orders AS o\nLEFT JOIN items_by_order AS i ON i.order_id = o.order_id\nWHERE o.status = 'paid'"
+    },
+    {
+     "items": true,
+     "method": "sum",
+     "payments": true,
+     "result": {
+      "duckdb": [
+       "17",
+       "9",
+       "265.00"
+      ],
+      "postgres": [
+       "17",
+       "9",
+       "265.00"
+      ],
+      "sqlite": [
+       "17",
+       "9",
+       "265.0"
+      ]
+     },
+     "sql": "SELECT count(*) AS rows, count(DISTINCT o.order_id) AS orders, sum(o.total) AS revenue\nFROM orders AS o\nJOIN order_items AS i ON i.order_id = o.order_id\nJOIN payments AS p ON p.order_id = o.order_id\nWHERE o.status = 'paid'"
+    },
+    {
+     "items": true,
+     "method": "distinct",
+     "payments": true,
+     "result": {
+      "duckdb": [
+       "17",
+       "9",
+       "127.00"
+      ],
+      "postgres": [
+       "17",
+       "9",
+       "127.00"
+      ],
+      "sqlite": [
+       "17",
+       "9",
+       "127.0"
+      ]
+     },
+     "sql": "SELECT count(*) AS rows, count(DISTINCT o.order_id) AS orders, sum(DISTINCT o.total) AS revenue\nFROM orders AS o\nJOIN order_items AS i ON i.order_id = o.order_id\nJOIN payments AS p ON p.order_id = o.order_id\nWHERE o.status = 'paid'"
+    },
+    {
+     "items": true,
+     "method": "preaggregate",
+     "payments": true,
+     "result": {
+      "duckdb": [
+       "9",
+       "9",
+       "127.00"
+      ],
+      "postgres": [
+       "9",
+       "9",
+       "127.00"
+      ],
+      "sqlite": [
+       "9",
+       "9",
+       "127.0"
+      ]
+     },
+     "sql": "WITH items_by_order AS (SELECT order_id, count(*) AS lines FROM order_items GROUP BY order_id),\n     paid_by_order AS (SELECT order_id, sum(amount) AS net_paid FROM payments GROUP BY order_id)\nSELECT count(*) AS rows, count(DISTINCT o.order_id) AS orders, sum(o.total) AS revenue\nFROM orders AS o\nLEFT JOIN items_by_order AS i ON i.order_id = o.order_id\nLEFT JOIN paid_by_order AS p ON p.order_id = o.order_id\nWHERE o.status = 'paid'"
+    }
+   ],
+   "truth": "127.00"
+  },
+  "m3.jointypes": {
+   "types": [
+    {
+     "rows": {
+      "duckdb": 11,
+      "postgres": 11,
+      "sqlite": 11
+     },
+     "sql_key": "m3.jointype.inner",
+     "type": "INNER"
+    },
+    {
+     "rows": {
+      "duckdb": 13,
+      "postgres": 13,
+      "sqlite": 13
+     },
+     "sql_key": "m3.jointype.left",
+     "type": "LEFT"
+    },
+    {
+     "rows": {
+      "duckdb": 12,
+      "postgres": 12,
+      "sqlite": 12
+     },
+     "sql_key": "m3.jointype.right",
+     "type": "RIGHT"
+    },
+    {
+     "rows": {
+      "duckdb": 14,
+      "postgres": 14,
+      "sqlite": 14
+     },
+     "sql_key": "m3.jointype.full",
+     "type": "FULL"
+    },
+    {
+     "rows": {
+      "duckdb": 96,
+      "postgres": 96,
+      "sqlite": 96
+     },
+     "sql_key": "m3.jointype.cross",
+     "type": "CROSS"
+    }
+   ]
   }
  },
  "files": {
@@ -493,7 +823,30 @@ LAB.real = {
   "m2.null_order_explicit": "SELECT customer_id, tier\nFROM customers\nORDER BY tier NULLS FIRST, customer_id;\n",
   "m2.nullif": "SELECT 10 / NULLIF(0, 0) AS safe_division,\n       coalesce(10 / NULLIF(0, 0), -1) AS with_default;\n",
   "m2.where_and_or": "SELECT order_id, status, channel, total\nFROM orders\nWHERE channel = 'web' OR channel = 'app' AND status = 'paid'\nORDER BY order_id;\n",
-  "m2.where_and_or_fixed": "SELECT order_id, status, channel, total\nFROM orders\nWHERE status = 'paid' AND (channel = 'web' OR channel = 'app')\nORDER BY order_id;\n"
+  "m2.where_and_or_fixed": "SELECT order_id, status, channel, total\nFROM orders\nWHERE status = 'paid' AND (channel = 'web' OR channel = 'app')\nORDER BY order_id;\n",
+  "m3.ch_country": "SELECT c.country, count(*) AS orders, sum(o.total) AS revenue\nFROM orders AS o\nJOIN customers AS c ON c.customer_id = o.customer_id\nWHERE o.status = 'paid'\n  AND EXISTS (SELECT 1 FROM payments AS p WHERE p.order_id = o.order_id AND p.status = 'ok')\nGROUP BY c.country\nORDER BY revenue DESC;\n",
+  "m3.ch_country_wrong": "SELECT c.country, count(*) AS orders, sum(o.total) AS revenue\nFROM orders AS o\nJOIN customers AS c ON c.customer_id = o.customer_id\nJOIN payments AS p ON p.order_id = o.order_id AND p.status = 'ok'\nWHERE o.status = 'paid'\nGROUP BY c.country\nORDER BY revenue DESC;\n",
+  "m3.ch_paid_by_order": "SELECT o.order_id, o.total, coalesce(sum(p.amount), 0) AS paid\nFROM orders AS o\nLEFT JOIN payments AS p ON p.order_id = o.order_id\nGROUP BY o.order_id, o.total\nORDER BY o.order_id;\n",
+  "m3.distinct_trap": "SELECT count(*)               AS paid_orders,\n       sum(total)             AS plain_sum,\n       sum(DISTINCT total)    AS distinct_sum,\n       count(DISTINCT total)  AS different_totals\nFROM big_orders\nWHERE status = 'paid';\n",
+  "m3.fanout_payments": "SELECT o.order_id, o.total, p.payment_id, p.amount\nFROM orders AS o\nJOIN payments AS p ON p.order_id = o.order_id\nWHERE o.status = 'paid'\nORDER BY o.order_id, p.payment_id;\n",
+  "m3.fanout_sum": "SELECT 'orders only' AS joined_with, count(*) AS rows, sum(o.total) AS revenue\nFROM orders AS o\nWHERE o.status = 'paid'\nUNION ALL\nSELECT 'orders and payments', count(*), sum(o.total)\nFROM orders AS o\nJOIN payments AS p ON p.order_id = o.order_id\nWHERE o.status = 'paid';\n",
+  "m3.grain_counts": "SELECT count(*)                 AS payment_rows,\n       count(DISTINCT order_id) AS orders_paid\nFROM payments;\n",
+  "m3.grain_multi": "SELECT order_id, count(*) AS payments\nFROM payments\nGROUP BY order_id\nHAVING count(*) > 1\nORDER BY order_id;\n",
+  "m3.jointype.cross": "SELECT c.customer_id, c.name, o.order_id, o.status\nFROM customers AS c\nCROSS JOIN orders AS o\nORDER BY c.customer_id NULLS LAST, o.order_id NULLS LAST\n",
+  "m3.jointype.full": "SELECT c.customer_id, c.name, o.order_id, o.status\nFROM customers AS c\nFULL JOIN orders AS o ON o.customer_id = c.customer_id\nORDER BY c.customer_id NULLS LAST, o.order_id NULLS LAST\n",
+  "m3.jointype.inner": "SELECT c.customer_id, c.name, o.order_id, o.status\nFROM customers AS c\nINNER JOIN orders AS o ON o.customer_id = c.customer_id\nORDER BY c.customer_id NULLS LAST, o.order_id NULLS LAST\n",
+  "m3.jointype.left": "SELECT c.customer_id, c.name, o.order_id, o.status\nFROM customers AS c\nLEFT JOIN orders AS o ON o.customer_id = c.customer_id\nORDER BY c.customer_id NULLS LAST, o.order_id NULLS LAST\n",
+  "m3.jointype.right": "SELECT c.customer_id, c.name, o.order_id, o.status\nFROM customers AS c\nRIGHT JOIN orders AS o ON o.customer_id = c.customer_id\nORDER BY c.customer_id NULLS LAST, o.order_id NULLS LAST\n",
+  "m3.lateral": "SELECT c.customer_id, c.name, last_order.order_id, last_order.order_ts, last_order.total\nFROM customers AS c\nCROSS JOIN LATERAL (\n  SELECT o.order_id, o.order_ts, o.total\n  FROM orders AS o\n  WHERE o.customer_id = c.customer_id\n  ORDER BY o.order_ts DESC\n  LIMIT 1\n) AS last_order\nORDER BY c.customer_id;\n",
+  "m3.left_on": "SELECT c.customer_id, c.name, count(o.order_id) AS paid_orders\nFROM customers AS c\nLEFT JOIN orders AS o ON o.customer_id = c.customer_id AND o.status = 'paid'\nGROUP BY c.customer_id, c.name\nORDER BY c.customer_id;\n",
+  "m3.left_where": "SELECT c.customer_id, c.name, count(o.order_id) AS paid_orders\nFROM customers AS c\nLEFT JOIN orders AS o ON o.customer_id = c.customer_id\nWHERE o.status = 'paid'\nGROUP BY c.customer_id, c.name\nORDER BY c.customer_id;\n",
+  "m3.natural": "SELECT count(*) AS rows\nFROM customers\nNATURAL JOIN stores;\n",
+  "m3.onwhere_counts": "SELECT 'filter in ON' AS variant, count(*) AS rows\nFROM customers AS c LEFT JOIN orders AS o ON o.customer_id = c.customer_id AND o.status = 'paid'\nUNION ALL\nSELECT 'filter in WHERE', count(*)\nFROM customers AS c LEFT JOIN orders AS o ON o.customer_id = c.customer_id\nWHERE o.status = 'paid'\nUNION ALL\nSELECT 'no filter', count(*)\nFROM customers AS c LEFT JOIN orders AS o ON o.customer_id = c.customer_id;\n",
+  "m3.preagg_orders": "WITH paid_by_order AS (\n  SELECT order_id, sum(amount) AS net_paid\n  FROM payments\n  GROUP BY order_id\n)\nSELECT o.order_id, o.status, o.total, p.net_paid\nFROM orders AS o\nLEFT JOIN paid_by_order AS p ON p.order_id = o.order_id\nORDER BY o.order_id;\n",
+  "m3.preagg_revenue": "WITH paid_by_order AS (\n  SELECT order_id, sum(amount) AS net_paid\n  FROM payments\n  GROUP BY order_id\n)\nSELECT count(*) AS rows, sum(o.total) AS revenue\nFROM orders AS o\nLEFT JOIN paid_by_order AS p ON p.order_id = o.order_id\nWHERE o.status = 'paid';\n",
+  "m3.range_join": "SELECT i.order_id, i.line_no, i.product_id, CAST(o.order_ts AS DATE) AS order_day,\n       i.unit_price AS charged, h.price AS list_price\nFROM order_items AS i\nJOIN orders AS o ON o.order_id = i.order_id\nJOIN price_history AS h\n  ON h.product_id = i.product_id\n AND CAST(o.order_ts AS DATE) BETWEEN h.valid_from AND h.valid_to\nWHERE i.unit_price <> h.price\nORDER BY i.order_id, i.line_no;\n",
+  "m3.self_join": "SELECT c.category_id, c.name AS category, p.name AS parent\nFROM categories AS c\nLEFT JOIN categories AS p ON p.category_id = c.parent_id\nORDER BY c.category_id;\n",
+  "m3.using": "SELECT customer_id, name, order_id\nFROM customers\nJOIN orders USING (customer_id)\nWHERE order_id < 1004\nORDER BY order_id;\n"
  },
  "meta": {
   "duckdb": "2.0.0",
@@ -3262,6 +3615,1886 @@ LAB.real = {
      "paid",
      "app",
      "16.50"
+    ]
+   ]
+  },
+  "m3.ch_country": {
+   "cols": [
+    "country",
+    "orders",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "SG",
+     "5",
+     "82.00"
+    ],
+    [
+     "AU",
+     "2",
+     "30.50"
+    ],
+    [
+     "MY",
+     "1",
+     "5.00"
+    ]
+   ]
+  },
+  "m3.ch_country_wrong": {
+   "cols": [
+    "country",
+    "orders",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "SG",
+     "6",
+     "100.50"
+    ],
+    [
+     "AU",
+     "2",
+     "30.50"
+    ],
+    [
+     "MY",
+     "1",
+     "5.00"
+    ]
+   ]
+  },
+  "m3.ch_paid_by_order": {
+   "cols": [
+    "order_id",
+    "total",
+    "paid"
+   ],
+   "rows": [
+    [
+     "1001",
+     "11.50",
+     "11.50"
+    ],
+    [
+     "1002",
+     "18.50",
+     "18.50"
+    ],
+    [
+     "1003",
+     "5.00",
+     "5.00"
+    ],
+    [
+     "1004",
+     "26.00",
+     "26.00"
+    ],
+    [
+     "1005",
+     "9.00",
+     "0.00"
+    ],
+    [
+     "1006",
+     "14.00",
+     "14.00"
+    ],
+    [
+     "1007",
+     "7.00",
+     "7.00"
+    ],
+    [
+     "1008",
+     "12.00",
+     "0.00"
+    ],
+    [
+     "1009",
+     "9.50",
+     "9.50"
+    ],
+    [
+     "1010",
+     "19.00",
+     "19.00"
+    ],
+    [
+     "1011",
+     "16.50",
+     "16.50"
+    ],
+    [
+     "1012",
+     "8.00",
+     "0.00"
+    ]
+   ]
+  },
+  "m3.distinct_trap": {
+   "cols": [
+    "paid_orders",
+    "plain_sum",
+    "distinct_sum",
+    "different_totals"
+   ],
+   "rows": [
+    [
+     "27315",
+     "1212532.00",
+     "267.00",
+     "6"
+    ]
+   ]
+  },
+  "m3.fanout_payments": {
+   "cols": [
+    "order_id",
+    "total",
+    "payment_id",
+    "amount"
+   ],
+   "rows": [
+    [
+     "1001",
+     "11.50",
+     "1",
+     "11.50"
+    ],
+    [
+     "1002",
+     "18.50",
+     "2",
+     "10.00"
+    ],
+    [
+     "1002",
+     "18.50",
+     "3",
+     "8.50"
+    ],
+    [
+     "1003",
+     "5.00",
+     "4",
+     "5.00"
+    ],
+    [
+     "1004",
+     "26.00",
+     "5",
+     "26.00"
+    ],
+    [
+     "1006",
+     "14.00",
+     "6",
+     "14.00"
+    ],
+    [
+     "1007",
+     "7.00",
+     "7",
+     "7.00"
+    ],
+    [
+     "1009",
+     "9.50",
+     "10",
+     "9.50"
+    ],
+    [
+     "1010",
+     "19.00",
+     "11",
+     "19.00"
+    ],
+    [
+     "1011",
+     "16.50",
+     "12",
+     "16.50"
+    ]
+   ]
+  },
+  "m3.fanout_sum.duckdb": {
+   "cols": [
+    "joined_with",
+    "rows",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "orders only",
+     "9",
+     "127.00"
+    ],
+    [
+     "orders and payments",
+     "10",
+     "145.50"
+    ]
+   ]
+  },
+  "m3.fanout_sum.postgres": {
+   "cols": [
+    "joined_with",
+    "rows",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "orders only",
+     "9",
+     "127.00"
+    ],
+    [
+     "orders and payments",
+     "10",
+     "145.50"
+    ]
+   ]
+  },
+  "m3.fanout_sum.sqlite": {
+   "cols": [
+    "joined_with",
+    "rows",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "orders only",
+     "9",
+     "127.0"
+    ],
+    [
+     "orders and payments",
+     "10",
+     "145.5"
+    ]
+   ]
+  },
+  "m3.grain_counts": {
+   "cols": [
+    "payment_rows",
+    "orders_paid"
+   ],
+   "rows": [
+    [
+     "12",
+     "10"
+    ]
+   ]
+  },
+  "m3.grain_multi": {
+   "cols": [
+    "order_id",
+    "payments"
+   ],
+   "rows": [
+    [
+     "1002",
+     "2"
+    ],
+    [
+     "1008",
+     "2"
+    ]
+   ]
+  },
+  "m3.jointype.cross": {
+   "cols": [
+    "customer_id",
+    "name",
+    "order_id",
+    "status"
+   ],
+   "rows": [
+    [
+     "1",
+     "Ana Lim",
+     "1001",
+     "paid"
+    ],
+    [
+     "1",
+     "Ana Lim",
+     "1002",
+     "paid"
+    ],
+    [
+     "1",
+     "Ana Lim",
+     "1003",
+     "paid"
+    ],
+    [
+     "1",
+     "Ana Lim",
+     "1004",
+     "paid"
+    ],
+    [
+     "1",
+     "Ana Lim",
+     "1005",
+     "cancelled"
+    ],
+    [
+     "1",
+     "Ana Lim",
+     "1006",
+     "paid"
+    ],
+    [
+     "1",
+     "Ana Lim",
+     "1007",
+     "paid"
+    ],
+    [
+     "1",
+     "Ana Lim",
+     "1008",
+     "refunded"
+    ],
+    [
+     "1",
+     "Ana Lim",
+     "1009",
+     "paid"
+    ],
+    [
+     "1",
+     "Ana Lim",
+     "1010",
+     "paid"
+    ],
+    [
+     "1",
+     "Ana Lim",
+     "1011",
+     "paid"
+    ],
+    [
+     "1",
+     "Ana Lim",
+     "1012",
+     "pending"
+    ],
+    [
+     "2",
+     "Ben Ortiz",
+     "1001",
+     "paid"
+    ],
+    [
+     "2",
+     "Ben Ortiz",
+     "1002",
+     "paid"
+    ],
+    [
+     "2",
+     "Ben Ortiz",
+     "1003",
+     "paid"
+    ],
+    [
+     "2",
+     "Ben Ortiz",
+     "1004",
+     "paid"
+    ],
+    [
+     "2",
+     "Ben Ortiz",
+     "1005",
+     "cancelled"
+    ],
+    [
+     "2",
+     "Ben Ortiz",
+     "1006",
+     "paid"
+    ],
+    [
+     "2",
+     "Ben Ortiz",
+     "1007",
+     "paid"
+    ],
+    [
+     "2",
+     "Ben Ortiz",
+     "1008",
+     "refunded"
+    ],
+    [
+     "2",
+     "Ben Ortiz",
+     "1009",
+     "paid"
+    ],
+    [
+     "2",
+     "Ben Ortiz",
+     "1010",
+     "paid"
+    ],
+    [
+     "2",
+     "Ben Ortiz",
+     "1011",
+     "paid"
+    ],
+    [
+     "2",
+     "Ben Ortiz",
+     "1012",
+     "pending"
+    ],
+    [
+     "3",
+     "Chen Wei",
+     "1001",
+     "paid"
+    ],
+    [
+     "3",
+     "Chen Wei",
+     "1002",
+     "paid"
+    ],
+    [
+     "3",
+     "Chen Wei",
+     "1003",
+     "paid"
+    ],
+    [
+     "3",
+     "Chen Wei",
+     "1004",
+     "paid"
+    ],
+    [
+     "3",
+     "Chen Wei",
+     "1005",
+     "cancelled"
+    ],
+    [
+     "3",
+     "Chen Wei",
+     "1006",
+     "paid"
+    ],
+    [
+     "3",
+     "Chen Wei",
+     "1007",
+     "paid"
+    ],
+    [
+     "3",
+     "Chen Wei",
+     "1008",
+     "refunded"
+    ],
+    [
+     "3",
+     "Chen Wei",
+     "1009",
+     "paid"
+    ],
+    [
+     "3",
+     "Chen Wei",
+     "1010",
+     "paid"
+    ],
+    [
+     "3",
+     "Chen Wei",
+     "1011",
+     "paid"
+    ],
+    [
+     "3",
+     "Chen Wei",
+     "1012",
+     "pending"
+    ],
+    [
+     "4",
+     "Dara Putri",
+     "1001",
+     "paid"
+    ],
+    [
+     "4",
+     "Dara Putri",
+     "1002",
+     "paid"
+    ],
+    [
+     "4",
+     "Dara Putri",
+     "1003",
+     "paid"
+    ],
+    [
+     "4",
+     "Dara Putri",
+     "1004",
+     "paid"
+    ],
+    [
+     "4",
+     "Dara Putri",
+     "1005",
+     "cancelled"
+    ],
+    [
+     "4",
+     "Dara Putri",
+     "1006",
+     "paid"
+    ],
+    [
+     "4",
+     "Dara Putri",
+     "1007",
+     "paid"
+    ],
+    [
+     "4",
+     "Dara Putri",
+     "1008",
+     "refunded"
+    ],
+    [
+     "4",
+     "Dara Putri",
+     "1009",
+     "paid"
+    ],
+    [
+     "4",
+     "Dara Putri",
+     "1010",
+     "paid"
+    ],
+    [
+     "4",
+     "Dara Putri",
+     "1011",
+     "paid"
+    ],
+    [
+     "4",
+     "Dara Putri",
+     "1012",
+     "pending"
+    ],
+    [
+     "5",
+     "Eli Cohen",
+     "1001",
+     "paid"
+    ],
+    [
+     "5",
+     "Eli Cohen",
+     "1002",
+     "paid"
+    ],
+    [
+     "5",
+     "Eli Cohen",
+     "1003",
+     "paid"
+    ],
+    [
+     "5",
+     "Eli Cohen",
+     "1004",
+     "paid"
+    ],
+    [
+     "5",
+     "Eli Cohen",
+     "1005",
+     "cancelled"
+    ],
+    [
+     "5",
+     "Eli Cohen",
+     "1006",
+     "paid"
+    ],
+    [
+     "5",
+     "Eli Cohen",
+     "1007",
+     "paid"
+    ],
+    [
+     "5",
+     "Eli Cohen",
+     "1008",
+     "refunded"
+    ],
+    [
+     "5",
+     "Eli Cohen",
+     "1009",
+     "paid"
+    ],
+    [
+     "5",
+     "Eli Cohen",
+     "1010",
+     "paid"
+    ],
+    [
+     "5",
+     "Eli Cohen",
+     "1011",
+     "paid"
+    ],
+    [
+     "5",
+     "Eli Cohen",
+     "1012",
+     "pending"
+    ],
+    [
+     "6",
+     "Fay Tan",
+     "1001",
+     "paid"
+    ],
+    [
+     "6",
+     "Fay Tan",
+     "1002",
+     "paid"
+    ],
+    [
+     "6",
+     "Fay Tan",
+     "1003",
+     "paid"
+    ],
+    [
+     "6",
+     "Fay Tan",
+     "1004",
+     "paid"
+    ],
+    [
+     "6",
+     "Fay Tan",
+     "1005",
+     "cancelled"
+    ],
+    [
+     "6",
+     "Fay Tan",
+     "1006",
+     "paid"
+    ],
+    [
+     "6",
+     "Fay Tan",
+     "1007",
+     "paid"
+    ],
+    [
+     "6",
+     "Fay Tan",
+     "1008",
+     "refunded"
+    ],
+    [
+     "6",
+     "Fay Tan",
+     "1009",
+     "paid"
+    ],
+    [
+     "6",
+     "Fay Tan",
+     "1010",
+     "paid"
+    ],
+    [
+     "6",
+     "Fay Tan",
+     "1011",
+     "paid"
+    ],
+    [
+     "6",
+     "Fay Tan",
+     "1012",
+     "pending"
+    ],
+    [
+     "7",
+     "Gus Hall",
+     "1001",
+     "paid"
+    ],
+    [
+     "7",
+     "Gus Hall",
+     "1002",
+     "paid"
+    ],
+    [
+     "7",
+     "Gus Hall",
+     "1003",
+     "paid"
+    ],
+    [
+     "7",
+     "Gus Hall",
+     "1004",
+     "paid"
+    ],
+    [
+     "7",
+     "Gus Hall",
+     "1005",
+     "cancelled"
+    ],
+    [
+     "7",
+     "Gus Hall",
+     "1006",
+     "paid"
+    ],
+    [
+     "7",
+     "Gus Hall",
+     "1007",
+     "paid"
+    ],
+    [
+     "7",
+     "Gus Hall",
+     "1008",
+     "refunded"
+    ],
+    [
+     "7",
+     "Gus Hall",
+     "1009",
+     "paid"
+    ],
+    [
+     "7",
+     "Gus Hall",
+     "1010",
+     "paid"
+    ],
+    [
+     "7",
+     "Gus Hall",
+     "1011",
+     "paid"
+    ],
+    [
+     "7",
+     "Gus Hall",
+     "1012",
+     "pending"
+    ],
+    [
+     "8",
+     "Hana Ito",
+     "1001",
+     "paid"
+    ],
+    [
+     "8",
+     "Hana Ito",
+     "1002",
+     "paid"
+    ],
+    [
+     "8",
+     "Hana Ito",
+     "1003",
+     "paid"
+    ],
+    [
+     "8",
+     "Hana Ito",
+     "1004",
+     "paid"
+    ],
+    [
+     "8",
+     "Hana Ito",
+     "1005",
+     "cancelled"
+    ],
+    [
+     "8",
+     "Hana Ito",
+     "1006",
+     "paid"
+    ],
+    [
+     "8",
+     "Hana Ito",
+     "1007",
+     "paid"
+    ],
+    [
+     "8",
+     "Hana Ito",
+     "1008",
+     "refunded"
+    ],
+    [
+     "8",
+     "Hana Ito",
+     "1009",
+     "paid"
+    ],
+    [
+     "8",
+     "Hana Ito",
+     "1010",
+     "paid"
+    ],
+    [
+     "8",
+     "Hana Ito",
+     "1011",
+     "paid"
+    ],
+    [
+     "8",
+     "Hana Ito",
+     "1012",
+     "pending"
+    ]
+   ]
+  },
+  "m3.jointype.full": {
+   "cols": [
+    "customer_id",
+    "name",
+    "order_id",
+    "status"
+   ],
+   "rows": [
+    [
+     "1",
+     "Ana Lim",
+     "1001",
+     "paid"
+    ],
+    [
+     "1",
+     "Ana Lim",
+     "1002",
+     "paid"
+    ],
+    [
+     "1",
+     "Ana Lim",
+     "1007",
+     "paid"
+    ],
+    [
+     "2",
+     "Ben Ortiz",
+     "1003",
+     "paid"
+    ],
+    [
+     "2",
+     "Ben Ortiz",
+     "1012",
+     "pending"
+    ],
+    [
+     "3",
+     "Chen Wei",
+     "1004",
+     "paid"
+    ],
+    [
+     "3",
+     "Chen Wei",
+     "1010",
+     "paid"
+    ],
+    [
+     "4",
+     "Dara Putri",
+     "1005",
+     "cancelled"
+    ],
+    [
+     "5",
+     "Eli Cohen",
+     "1006",
+     "paid"
+    ],
+    [
+     "5",
+     "Eli Cohen",
+     "1011",
+     "paid"
+    ],
+    [
+     "6",
+     "Fay Tan",
+     "NULL",
+     "NULL"
+    ],
+    [
+     "7",
+     "Gus Hall",
+     "1008",
+     "refunded"
+    ],
+    [
+     "8",
+     "Hana Ito",
+     "NULL",
+     "NULL"
+    ],
+    [
+     "NULL",
+     "NULL",
+     "1009",
+     "paid"
+    ]
+   ]
+  },
+  "m3.jointype.inner": {
+   "cols": [
+    "customer_id",
+    "name",
+    "order_id",
+    "status"
+   ],
+   "rows": [
+    [
+     "1",
+     "Ana Lim",
+     "1001",
+     "paid"
+    ],
+    [
+     "1",
+     "Ana Lim",
+     "1002",
+     "paid"
+    ],
+    [
+     "1",
+     "Ana Lim",
+     "1007",
+     "paid"
+    ],
+    [
+     "2",
+     "Ben Ortiz",
+     "1003",
+     "paid"
+    ],
+    [
+     "2",
+     "Ben Ortiz",
+     "1012",
+     "pending"
+    ],
+    [
+     "3",
+     "Chen Wei",
+     "1004",
+     "paid"
+    ],
+    [
+     "3",
+     "Chen Wei",
+     "1010",
+     "paid"
+    ],
+    [
+     "4",
+     "Dara Putri",
+     "1005",
+     "cancelled"
+    ],
+    [
+     "5",
+     "Eli Cohen",
+     "1006",
+     "paid"
+    ],
+    [
+     "5",
+     "Eli Cohen",
+     "1011",
+     "paid"
+    ],
+    [
+     "7",
+     "Gus Hall",
+     "1008",
+     "refunded"
+    ]
+   ]
+  },
+  "m3.jointype.left": {
+   "cols": [
+    "customer_id",
+    "name",
+    "order_id",
+    "status"
+   ],
+   "rows": [
+    [
+     "1",
+     "Ana Lim",
+     "1001",
+     "paid"
+    ],
+    [
+     "1",
+     "Ana Lim",
+     "1002",
+     "paid"
+    ],
+    [
+     "1",
+     "Ana Lim",
+     "1007",
+     "paid"
+    ],
+    [
+     "2",
+     "Ben Ortiz",
+     "1003",
+     "paid"
+    ],
+    [
+     "2",
+     "Ben Ortiz",
+     "1012",
+     "pending"
+    ],
+    [
+     "3",
+     "Chen Wei",
+     "1004",
+     "paid"
+    ],
+    [
+     "3",
+     "Chen Wei",
+     "1010",
+     "paid"
+    ],
+    [
+     "4",
+     "Dara Putri",
+     "1005",
+     "cancelled"
+    ],
+    [
+     "5",
+     "Eli Cohen",
+     "1006",
+     "paid"
+    ],
+    [
+     "5",
+     "Eli Cohen",
+     "1011",
+     "paid"
+    ],
+    [
+     "6",
+     "Fay Tan",
+     "NULL",
+     "NULL"
+    ],
+    [
+     "7",
+     "Gus Hall",
+     "1008",
+     "refunded"
+    ],
+    [
+     "8",
+     "Hana Ito",
+     "NULL",
+     "NULL"
+    ]
+   ]
+  },
+  "m3.jointype.right": {
+   "cols": [
+    "customer_id",
+    "name",
+    "order_id",
+    "status"
+   ],
+   "rows": [
+    [
+     "1",
+     "Ana Lim",
+     "1001",
+     "paid"
+    ],
+    [
+     "1",
+     "Ana Lim",
+     "1002",
+     "paid"
+    ],
+    [
+     "1",
+     "Ana Lim",
+     "1007",
+     "paid"
+    ],
+    [
+     "2",
+     "Ben Ortiz",
+     "1003",
+     "paid"
+    ],
+    [
+     "2",
+     "Ben Ortiz",
+     "1012",
+     "pending"
+    ],
+    [
+     "3",
+     "Chen Wei",
+     "1004",
+     "paid"
+    ],
+    [
+     "3",
+     "Chen Wei",
+     "1010",
+     "paid"
+    ],
+    [
+     "4",
+     "Dara Putri",
+     "1005",
+     "cancelled"
+    ],
+    [
+     "5",
+     "Eli Cohen",
+     "1006",
+     "paid"
+    ],
+    [
+     "5",
+     "Eli Cohen",
+     "1011",
+     "paid"
+    ],
+    [
+     "7",
+     "Gus Hall",
+     "1008",
+     "refunded"
+    ],
+    [
+     "NULL",
+     "NULL",
+     "1009",
+     "paid"
+    ]
+   ]
+  },
+  "m3.lateral.duckdb": {
+   "cols": [
+    "customer_id",
+    "name",
+    "order_id",
+    "order_ts",
+    "total"
+   ],
+   "rows": [
+    [
+     "1",
+     "Ana Lim",
+     "1007",
+     "2026-03-05 08:00:00",
+     "7.00"
+    ],
+    [
+     "2",
+     "Ben Ortiz",
+     "1012",
+     "2026-03-09 15:00:00",
+     "8.00"
+    ],
+    [
+     "3",
+     "Chen Wei",
+     "1010",
+     "2026-03-07 12:30:00",
+     "19.00"
+    ],
+    [
+     "4",
+     "Dara Putri",
+     "1005",
+     "2026-03-04 03:05:00",
+     "9.00"
+    ],
+    [
+     "5",
+     "Eli Cohen",
+     "1011",
+     "2026-03-08 04:45:00",
+     "16.50"
+    ],
+    [
+     "7",
+     "Gus Hall",
+     "1008",
+     "2026-03-06 10:20:00",
+     "12.00"
+    ]
+   ]
+  },
+  "m3.lateral.postgres": {
+   "cols": [
+    "customer_id",
+    "name",
+    "order_id",
+    "order_ts",
+    "total"
+   ],
+   "rows": [
+    [
+     "1",
+     "Ana Lim",
+     "1007",
+     "2026-03-05 08:00:00",
+     "7.00"
+    ],
+    [
+     "2",
+     "Ben Ortiz",
+     "1012",
+     "2026-03-09 15:00:00",
+     "8.00"
+    ],
+    [
+     "3",
+     "Chen Wei",
+     "1010",
+     "2026-03-07 12:30:00",
+     "19.00"
+    ],
+    [
+     "4",
+     "Dara Putri",
+     "1005",
+     "2026-03-04 03:05:00",
+     "9.00"
+    ],
+    [
+     "5",
+     "Eli Cohen",
+     "1011",
+     "2026-03-08 04:45:00",
+     "16.50"
+    ],
+    [
+     "7",
+     "Gus Hall",
+     "1008",
+     "2026-03-06 10:20:00",
+     "12.00"
+    ]
+   ]
+  },
+  "m3.left_on": {
+   "cols": [
+    "customer_id",
+    "name",
+    "paid_orders"
+   ],
+   "rows": [
+    [
+     "1",
+     "Ana Lim",
+     "3"
+    ],
+    [
+     "2",
+     "Ben Ortiz",
+     "1"
+    ],
+    [
+     "3",
+     "Chen Wei",
+     "2"
+    ],
+    [
+     "4",
+     "Dara Putri",
+     "0"
+    ],
+    [
+     "5",
+     "Eli Cohen",
+     "2"
+    ],
+    [
+     "6",
+     "Fay Tan",
+     "0"
+    ],
+    [
+     "7",
+     "Gus Hall",
+     "0"
+    ],
+    [
+     "8",
+     "Hana Ito",
+     "0"
+    ]
+   ]
+  },
+  "m3.left_where": {
+   "cols": [
+    "customer_id",
+    "name",
+    "paid_orders"
+   ],
+   "rows": [
+    [
+     "1",
+     "Ana Lim",
+     "3"
+    ],
+    [
+     "2",
+     "Ben Ortiz",
+     "1"
+    ],
+    [
+     "3",
+     "Chen Wei",
+     "2"
+    ],
+    [
+     "5",
+     "Eli Cohen",
+     "2"
+    ]
+   ]
+  },
+  "m3.natural.duckdb": {
+   "cols": [
+    "rows"
+   ],
+   "rows": [
+    [
+     "0"
+    ]
+   ]
+  },
+  "m3.natural.postgres": {
+   "cols": [
+    "rows"
+   ],
+   "rows": [
+    [
+     "0"
+    ]
+   ]
+  },
+  "m3.natural.sqlite": {
+   "cols": [
+    "rows"
+   ],
+   "rows": [
+    [
+     "0"
+    ]
+   ]
+  },
+  "m3.onwhere_counts.duckdb": {
+   "cols": [
+    "variant",
+    "rows"
+   ],
+   "rows": [
+    [
+     "filter in ON",
+     "12"
+    ],
+    [
+     "filter in WHERE",
+     "8"
+    ],
+    [
+     "no filter",
+     "13"
+    ]
+   ]
+  },
+  "m3.onwhere_counts.postgres": {
+   "cols": [
+    "variant",
+    "rows"
+   ],
+   "rows": [
+    [
+     "filter in ON",
+     "12"
+    ],
+    [
+     "filter in WHERE",
+     "8"
+    ],
+    [
+     "no filter",
+     "13"
+    ]
+   ]
+  },
+  "m3.onwhere_counts.sqlite": {
+   "cols": [
+    "variant",
+    "rows"
+   ],
+   "rows": [
+    [
+     "filter in ON",
+     "12"
+    ],
+    [
+     "filter in WHERE",
+     "8"
+    ],
+    [
+     "no filter",
+     "13"
+    ]
+   ]
+  },
+  "m3.preagg_orders": {
+   "cols": [
+    "order_id",
+    "status",
+    "total",
+    "net_paid"
+   ],
+   "rows": [
+    [
+     "1001",
+     "paid",
+     "11.50",
+     "11.50"
+    ],
+    [
+     "1002",
+     "paid",
+     "18.50",
+     "18.50"
+    ],
+    [
+     "1003",
+     "paid",
+     "5.00",
+     "5.00"
+    ],
+    [
+     "1004",
+     "paid",
+     "26.00",
+     "26.00"
+    ],
+    [
+     "1005",
+     "cancelled",
+     "9.00",
+     "NULL"
+    ],
+    [
+     "1006",
+     "paid",
+     "14.00",
+     "14.00"
+    ],
+    [
+     "1007",
+     "paid",
+     "7.00",
+     "7.00"
+    ],
+    [
+     "1008",
+     "refunded",
+     "12.00",
+     "0.00"
+    ],
+    [
+     "1009",
+     "paid",
+     "9.50",
+     "9.50"
+    ],
+    [
+     "1010",
+     "paid",
+     "19.00",
+     "19.00"
+    ],
+    [
+     "1011",
+     "paid",
+     "16.50",
+     "16.50"
+    ],
+    [
+     "1012",
+     "pending",
+     "8.00",
+     "NULL"
+    ]
+   ]
+  },
+  "m3.preagg_revenue.duckdb": {
+   "cols": [
+    "rows",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "9",
+     "127.00"
+    ]
+   ]
+  },
+  "m3.preagg_revenue.postgres": {
+   "cols": [
+    "rows",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "9",
+     "127.00"
+    ]
+   ]
+  },
+  "m3.preagg_revenue.sqlite": {
+   "cols": [
+    "rows",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "9",
+     "127.0"
+    ]
+   ]
+  },
+  "m3.range_join.duckdb": {
+   "cols": [
+    "order_id",
+    "line_no",
+    "product_id",
+    "order_day",
+    "charged",
+    "list_price"
+   ],
+   "rows": [
+    [
+     "1003",
+     "1",
+     "3",
+     "2026-03-02",
+     "5.00",
+     "4.50"
+    ]
+   ]
+  },
+  "m3.range_join.postgres": {
+   "cols": [
+    "order_id",
+    "line_no",
+    "product_id",
+    "order_day",
+    "charged",
+    "list_price"
+   ],
+   "rows": [
+    [
+     "1003",
+     "1",
+     "3",
+     "2026-03-02",
+     "5.00",
+     "4.50"
+    ]
+   ]
+  },
+  "m3.self_join.duckdb": {
+   "cols": [
+    "category_id",
+    "category",
+    "parent"
+   ],
+   "rows": [
+    [
+     "1",
+     "Menu",
+     "NULL"
+    ],
+    [
+     "2",
+     "Drinks",
+     "Menu"
+    ],
+    [
+     "3",
+     "Coffee",
+     "Drinks"
+    ],
+    [
+     "4",
+     "Espresso drinks",
+     "Coffee"
+    ],
+    [
+     "5",
+     "Cold coffee",
+     "Coffee"
+    ],
+    [
+     "6",
+     "Tea",
+     "Drinks"
+    ],
+    [
+     "7",
+     "Retail",
+     "Menu"
+    ],
+    [
+     "8",
+     "Beans",
+     "Retail"
+    ],
+    [
+     "9",
+     "Merch",
+     "Retail"
+    ]
+   ]
+  },
+  "m3.self_join.postgres": {
+   "cols": [
+    "category_id",
+    "category",
+    "parent"
+   ],
+   "rows": [
+    [
+     "1",
+     "Menu",
+     "NULL"
+    ],
+    [
+     "2",
+     "Drinks",
+     "Menu"
+    ],
+    [
+     "3",
+     "Coffee",
+     "Drinks"
+    ],
+    [
+     "4",
+     "Espresso drinks",
+     "Coffee"
+    ],
+    [
+     "5",
+     "Cold coffee",
+     "Coffee"
+    ],
+    [
+     "6",
+     "Tea",
+     "Drinks"
+    ],
+    [
+     "7",
+     "Retail",
+     "Menu"
+    ],
+    [
+     "8",
+     "Beans",
+     "Retail"
+    ],
+    [
+     "9",
+     "Merch",
+     "Retail"
+    ]
+   ]
+  },
+  "m3.self_join.sqlite": {
+   "cols": [
+    "category_id",
+    "category",
+    "parent"
+   ],
+   "rows": [
+    [
+     "1",
+     "Menu",
+     "NULL"
+    ],
+    [
+     "2",
+     "Drinks",
+     "Menu"
+    ],
+    [
+     "3",
+     "Coffee",
+     "Drinks"
+    ],
+    [
+     "4",
+     "Espresso drinks",
+     "Coffee"
+    ],
+    [
+     "5",
+     "Cold coffee",
+     "Coffee"
+    ],
+    [
+     "6",
+     "Tea",
+     "Drinks"
+    ],
+    [
+     "7",
+     "Retail",
+     "Menu"
+    ],
+    [
+     "8",
+     "Beans",
+     "Retail"
+    ],
+    [
+     "9",
+     "Merch",
+     "Retail"
+    ]
+   ]
+  },
+  "m3.using.duckdb": {
+   "cols": [
+    "customer_id",
+    "name",
+    "order_id"
+   ],
+   "rows": [
+    [
+     "1",
+     "Ana Lim",
+     "1001"
+    ],
+    [
+     "1",
+     "Ana Lim",
+     "1002"
+    ],
+    [
+     "2",
+     "Ben Ortiz",
+     "1003"
+    ]
+   ]
+  },
+  "m3.using.postgres": {
+   "cols": [
+    "customer_id",
+    "name",
+    "order_id"
+   ],
+   "rows": [
+    [
+     "1",
+     "Ana Lim",
+     "1001"
+    ],
+    [
+     "1",
+     "Ana Lim",
+     "1002"
+    ],
+    [
+     "2",
+     "Ben Ortiz",
+     "1003"
+    ]
+   ]
+  },
+  "m3.using.sqlite": {
+   "cols": [
+    "customer_id",
+    "name",
+    "order_id"
+   ],
+   "rows": [
+    [
+     "1",
+     "Ana Lim",
+     "1001"
+    ],
+    [
+     "1",
+     "Ana Lim",
+     "1002"
+    ],
+    [
+     "2",
+     "Ben Ortiz",
+     "1003"
     ]
    ]
   }

@@ -147,6 +147,107 @@
     SQ.info.nulls = { lookup: lookup, ops: opNames, vals: VALS };
   })();
 
+  /* ====================== mission 3: join types and where the filter goes ====================== */
+  (function () {
+    var TYPES = ['INNER', 'LEFT', 'RIGHT', 'FULL', 'CROSS'];
+    var KEEPS = {
+      INNER: 'Only the pairs that match. A customer with no order and an order with no customer are both gone.',
+      LEFT: 'Every customer, with the order columns filled with NULL when there is no match. Orders with no customer are gone.',
+      RIGHT: 'Every order, with the customer columns filled with NULL when there is no match. Customers with no order are gone.',
+      FULL: 'Everything: the matches, the customers with no order and the orders with no customer.',
+      CROSS: 'Every customer paired with every order. No condition. Rows = customers times orders.'
+    };
+    function typeInfo(t) { return G.counts('m3.jointypes').types.filter(function (x) { return x.type === t; })[0]; }
+    function leftOn() { return G.table('m3.left_on'); }
+    function onwhere() { var o = {}; G.on('m3.onwhere_counts', 'duckdb').rows.forEach(function (r) { o[r[0]] = r[1]; }); return o; }
+    W.jointypes = {
+      steps: function () { return 2; },
+      hint: function (s, i) { return i === 0 ? 'Pick a join type.' : 'Move the filter between ON and WHERE.'; },
+      say: function (s, i) {
+        return [
+          'Eight customers and twelve orders. Pick a join type and see which rows survive. The yellow rows are the ones where one side is missing and the engine filled the columns with NULL. DuckDB, PostgreSQL and SQLite returned the same row counts.',
+          'A LEFT JOIN keeps every customer only while the test on the right table stays in the ON clause. If you move that test to WHERE, the NULL rows fail it and the LEFT JOIN turns into an inner join.'
+        ][i];
+      },
+      mood: function () { return 'think'; },
+      render: function (box, s, i, A) {
+        var h = '<div class="lab">';
+        if (i === 0) {
+          var st = A.local.jt || (A.local.jt = { t: 'INNER' }), ti = typeInfo(st.t), tb = G.table(ti.sql_key);
+          var cut = st.t === 'CROSS' ? 14 : 99, rows = tb.rows.slice(0, cut), nulls = function (r) { return r[0] === 'NULL' || r[2] === 'NULL' ? 'dup' : ''; };
+          h += '<div class="sel-chips">' + chips(TYPES, st.t, 'jt-t', function (k) { return k + ' JOIN'; }) + '</div>' +
+            code('join', 'sql', G.file(ti.sql_key)) +
+            '<div class="lab-out"><div class="big"><b>' + ti.rows.duckdb + '</b><span>rows on DuckDB</span></div><div class="big"><b>' + ti.rows.postgres + '</b><span>on PostgreSQL</span></div><div class="big"><b>' + ti.rows.sqlite + '</b><span>on SQLite</span></div></div>' +
+            '<div class="callout tip"><b>Keeps.</b> ' + md(KEEPS[st.t]) + '</div>' +
+            '<h3 class="lab-h">' + (st.t === 'CROSS' ? 'The first 14 of ' + tb.rows.length + ' rows' : 'The ' + tb.rows.length + ' rows') + '</h3>' + table(tb.cols, rows, function (r) { return nulls(r); });
+        } else {
+          var sv = A.local.jw || (A.local.jw = { v: 'filter in ON' }), oc = onwhere();
+          var variants = ['no filter', 'filter in ON', 'filter in WHERE'];
+          var sqlText = {
+            'no filter': 'SELECT c.customer_id, c.name, o.order_id\nFROM customers AS c\nLEFT JOIN orders AS o ON o.customer_id = c.customer_id',
+            'filter in ON': "SELECT c.customer_id, c.name, o.order_id\nFROM customers AS c\nLEFT JOIN orders AS o ON o.customer_id = c.customer_id AND o.status = 'paid'",
+            'filter in WHERE': "SELECT c.customer_id, c.name, o.order_id\nFROM customers AS c\nLEFT JOIN orders AS o ON o.customer_id = c.customer_id\nWHERE o.status = 'paid'"
+          }[sv.v];
+          var perCustomer = sv.v === 'filter in ON' ? leftOn() : sv.v === 'filter in WHERE' ? G.table('m3.left_where') : null;
+          var kept = perCustomer ? perCustomer.rows.length : 8;
+          h += '<div class="sel-chips">' + chips(variants, sv.v, 'jw-v') + '</div>' + code('left join', 'sql', sqlText) +
+            '<div class="lab-out"><div class="big ' + (sv.v === 'filter in WHERE' ? 'bad' : 'good') + '"><b>' + esc(oc[sv.v]) + '</b><span>rows of the join</span></div>' +
+            '<div class="big ' + (sv.v === 'filter in WHERE' ? 'bad' : 'good') + '"><b>' + (sv.v === 'no filter' ? 8 : kept) + '</b><span>customers that are still there</span></div></div>' +
+            (perCustomer ? '<h3 class="lab-h">Paid orders for each customer</h3>' + table(perCustomer.cols, perCustomer.rows, function (r) { return r[2] === '0' ? 'dup' : ''; }) : '<h3 class="lab-h">Without a filter the left join has 13 rows: 8 customers, where 2 have no order at all.</h3>') +
+            '<div class="callout ' + (sv.v === 'filter in WHERE' ? 'bad' : 'tip') + '">' + md(sv.v === 'filter in WHERE' ? 'The customers with no paid order have NULL in `o.status`. `NULL = \'paid\'` is unknown, so WHERE drops them. The LEFT JOIN now behaves like an INNER JOIN.' : sv.v === 'filter in ON' ? 'The test is part of the match. A customer with no paid order still has a row, with NULL order columns. `count(o.order_id)` gives 0 for them.' : 'The plain LEFT JOIN: every customer, and every order of each.') + '</div>';
+        }
+        box.innerHTML = h + '</div>';
+        bindCodes(box);
+        A.bindWidget = function (act, el) { var v = el.getAttribute('data-v'); if (act === 'jt-t') A.local.jt.t = v; if (act === 'jw-v') A.local.jw.v = v; A.render(true); };
+      }
+    };
+    SQ.info.jointypes = { types: TYPES, typeInfo: typeInfo, onwhere: onwhere };
+  })();
+
+  /* ====================== mission 3: the fan-out lab ====================== */
+  (function () {
+    var METHODS = [['sum', 'sum(o.total)'], ['distinct', 'sum(DISTINCT o.total)'], ['preaggregate', 'pre-aggregate, then join']];
+    function combos() { return G.counts('m3.fanout').combos; }
+    function find(items, pay, m) { return combos().filter(function (c) { return c.items === items && c.payments === pay && c.method === m; })[0]; }
+    function truth() { return G.counts('m3.fanout').truth; }
+    function num(x) { return parseFloat(x); }
+    W.fanout = {
+      steps: function () { return 2; },
+      hint: function (s, i) { return i === 0 ? 'Switch the joins and the way you total.' : 'Read all twelve answers.'; },
+      say: function (s, i) {
+        return [
+          'Nine paid orders are worth ' + truth() + '. Join them to their lines or to their payments, and the same query gives other numbers. Switch the joins and the way you total, and watch the rows and the revenue.',
+          'Here are all twelve answers. Every plain sum over a join that multiplies rows is wrong. `sum(DISTINCT)` is right on these nine orders only by luck. Pre-aggregating to the grain of the order is right every time.'
+        ][i];
+      },
+      mood: function () { return 'think'; },
+      render: function (box, s, i, A) {
+        var h = '<div class="lab">';
+        if (i === 0) {
+          var st = A.local.fo || (A.local.fo = { items: false, pay: true, m: 'sum' }), c = find(st.items, st.pay, st.m), r = c.result.duckdb;
+          var good = num(r[2]) === num(truth()), same = ['postgres', 'sqlite'].every(function (e) { return num(c.result[e][2]) === num(r[2]) && c.result[e][0] === r[0]; });
+          h += '<div class="lab-row"><span class="lab-l">Join lines</span><div class="sel-chips">' + chips(['no', 'yes'], st.items ? 'yes' : 'no', 'fo-i') + '</div><span class="lab-l">Join payments</span><div class="sel-chips">' + chips(['no', 'yes'], st.pay ? 'yes' : 'no', 'fo-p') + '</div></div>' +
+            '<div class="lab-row"><span class="lab-l">Total with</span><div class="sel-chips">' + chips(METHODS.map(function (m) { return m[0]; }), st.m, 'fo-m', function (k) { return METHODS.filter(function (m) { return m[0] === k; })[0][1]; }) + '</div></div>' +
+            code('revenue of paid orders', 'sql', c.sql) +
+            '<div class="lab-out"><div class="big"><b>' + r[0] + '</b><span>rows after the joins</span></div><div class="big"><b>' + r[1] + '</b><span>different orders</span></div><div class="big ' + (good ? 'good' : 'bad') + '"><b>' + esc(r[2]) + '</b><span>' + (good ? 'revenue: correct, ' + truth() + ' is the true total' : 'revenue: wrong, the true total is ' + truth()) + '</span></div></div>' +
+            '<div class="callout ' + (good ? 'good' : 'bad') + '">' + md(r[0] !== r[1] ? 'There are **' + r[0] + ' rows for ' + r[1] + ' orders**, so an order appears more than once and its total is added more than once.' : 'There is **one row for each order**, so the sum cannot count an order twice.') + (same ? ' PostgreSQL and SQLite gave the same numbers.' : '') + '</div>';
+        } else {
+          var rows = [];
+          [[false, false], [false, true], [true, false], [true, true]].forEach(function (k) {
+            METHODS.forEach(function (m) { var c2 = find(k[0], k[1], m[0]); rows.push([(k[0] ? 'lines' : '') + (k[0] && k[1] ? ' and ' : '') + (k[1] ? 'payments' : '') || 'orders only', m[1], c2.result.duckdb[0], c2.result.duckdb[2]]); });
+          });
+          var dt = G.table('m3.distinct_trap').rows[0];
+          h += table(['Joined with', 'Total with', 'Rows', 'Revenue'], rows, function (r) { return num(r[3]) === num(truth()) ? '' : 'dup'; }) +
+            '<div class="callout warn"><b>DISTINCT hides duplicates by value, not by row.</b> On the 30,000 big orders, ' + G.n(dt[0]) + ' paid orders have only ' + dt[3] + ' different totals. `sum(DISTINCT total)` returned **' + G.n(dt[2].split('.')[0]) + '**. `sum(total)` returned **' + G.n(dt[1].split('.')[0]) + '**.</div>';
+        }
+        box.innerHTML = h + '</div>';
+        bindCodes(box);
+        A.bindWidget = function (act, el) { var v = el.getAttribute('data-v'); var f = A.local.fo; if (act === 'fo-i') f.items = v === 'yes'; if (act === 'fo-p') f.pay = v === 'yes'; if (act === 'fo-m') f.m = v; A.render(true); };
+      }
+    };
+    SQ.info.fanout = { find: find, truth: truth, methods: METHODS };
+  })();
+
   /* the helpers are shared with part 2 (widgets2.js) */
   SQ.u = { chips: chips, table: table, code: code, bindCodes: bindCodes, pre: pre, ENGINES: ENGINES, ENGINE_LABEL: ENGINE_LABEL };
 })();
