@@ -5604,6 +5604,9 @@ LAB.real = {
   "m13.dq_unique_fail": "SELECT order_id, count(*) AS versions\nFROM orders_raw\nGROUP BY order_id\nHAVING count(*) > 1\nORDER BY order_id;\n",
   "m13.messy": "select o.order_id,c.name,sum(i.qty*i.unit_price) as amt from orders o join customers c on c.customer_id=o.customer_id join order_items i on i.order_id=o.order_id where o.status='paid' group by o.order_id,c.name having sum(i.qty*i.unit_price)>10 order by amt desc\n",
   "m13.pretty": "SELECT\n  o.order_id,\n  c.name,\n  SUM(i.qty * i.unit_price) AS amt\nFROM orders AS o\nJOIN customers AS c\n  ON c.customer_id = o.customer_id\nJOIN order_items AS i\n  ON i.order_id = o.order_id\nWHERE\n  o.status = 'paid'\nGROUP BY\n  o.order_id,\n  c.name\nHAVING\n  SUM(i.qty * i.unit_price) > 10\nORDER BY\n  amt DESC\n",
+  "m14.d_bestday": "WITH r AS (\n  SELECT store_id, day, revenue,\n         RANK() OVER (PARTITION BY store_id ORDER BY revenue DESC) AS rnk,\n         100.0 * revenue / sum(revenue) OVER (PARTITION BY store_id) AS share\n  FROM daily_revenue\n)\nSELECT store_id, day, revenue, round(share, 1) AS share_percent\nFROM r\nWHERE rnk = 1\nORDER BY store_id;\n",
+  "m14.d_span": "SELECT customer_id,\n       count(*) AS orders,\n       CAST(max(order_ts) AS DATE) - CAST(min(order_ts) AS DATE) AS days_between\nFROM orders\nWHERE customer_id IS NOT NULL\nGROUP BY customer_id\nHAVING count(*) >= 2\nORDER BY customer_id;\n",
+  "m14.d_tier": "SELECT coalesce(c.tier, 'none') AS tier, count(DISTINCT o.order_id) AS orders, sum(o.total) AS revenue\nFROM orders AS o\nLEFT JOIN customers AS c ON c.customer_id = o.customer_id\nWHERE o.status = 'paid'\nGROUP BY coalesce(c.tier, 'none')\nORDER BY revenue DESC, tier;\n",
   "m2.avg_null": "SELECT round(avg(customer_id), 3)              AS avg_ignoring_null,\n       round(avg(coalesce(customer_id, 0)), 3) AS avg_null_as_zero,\n       count(*) - count(customer_id)           AS null_customers\nFROM orders;\n",
   "m2.case_null": "SELECT customer_id,\n       tier,\n       CASE tier WHEN 'gold' THEN 'top' WHEN 'silver' THEN 'mid' ELSE 'other' END AS bucket,\n       CASE WHEN tier IS NULL THEN 'unknown' ELSE tier END AS tier_or_unknown\nFROM customers\nORDER BY customer_id;\n",
   "m2.ch_changed": "SELECT c.customer_id, c.tier AS tier_in_customers, d.tier AS tier_in_dimension\nFROM customers AS c\nLEFT JOIN customer_dim AS d ON d.customer_id = c.customer_id AND d.is_current\nWHERE c.tier IS DISTINCT FROM d.tier\nORDER BY c.customer_id;\n",
@@ -10017,6 +10020,202 @@ LAB.real = {
     [
      "1005",
      "2"
+    ]
+   ]
+  },
+  "m14.d_bestday.duckdb": {
+   "cols": [
+    "store_id",
+    "day",
+    "revenue",
+    "share_percent"
+   ],
+   "rows": [
+    [
+     "1",
+     "2026-03-04",
+     "60.00",
+     "25.0"
+    ],
+    [
+     "2",
+     "2026-03-05",
+     "50.00",
+     "29.4"
+    ]
+   ]
+  },
+  "m14.d_bestday.postgres": {
+   "cols": [
+    "store_id",
+    "day",
+    "revenue",
+    "share_percent"
+   ],
+   "rows": [
+    [
+     "1",
+     "2026-03-04",
+     "60.00",
+     "25.0"
+    ],
+    [
+     "2",
+     "2026-03-05",
+     "50.00",
+     "29.4"
+    ]
+   ]
+  },
+  "m14.d_bestday.sqlite": {
+   "cols": [
+    "store_id",
+    "day",
+    "revenue",
+    "share_percent"
+   ],
+   "rows": [
+    [
+     "1",
+     "2026-03-04",
+     "60",
+     "25.0"
+    ],
+    [
+     "2",
+     "2026-03-05",
+     "50",
+     "29.4"
+    ]
+   ]
+  },
+  "m14.d_span.duckdb": {
+   "cols": [
+    "customer_id",
+    "orders",
+    "days_between"
+   ],
+   "rows": [
+    [
+     "1",
+     "3",
+     "4"
+    ],
+    [
+     "2",
+     "2",
+     "7"
+    ],
+    [
+     "3",
+     "2",
+     "5"
+    ],
+    [
+     "5",
+     "2",
+     "4"
+    ]
+   ]
+  },
+  "m14.d_span.postgres": {
+   "cols": [
+    "customer_id",
+    "orders",
+    "days_between"
+   ],
+   "rows": [
+    [
+     "1",
+     "3",
+     "4"
+    ],
+    [
+     "2",
+     "2",
+     "7"
+    ],
+    [
+     "3",
+     "2",
+     "5"
+    ],
+    [
+     "5",
+     "2",
+     "4"
+    ]
+   ]
+  },
+  "m14.d_tier.duckdb": {
+   "cols": [
+    "tier",
+    "orders",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "gold",
+     "5",
+     "67.50"
+    ],
+    [
+     "none",
+     "3",
+     "54.50"
+    ],
+    [
+     "silver",
+     "1",
+     "5.00"
+    ]
+   ]
+  },
+  "m14.d_tier.postgres": {
+   "cols": [
+    "tier",
+    "orders",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "gold",
+     "5",
+     "67.50"
+    ],
+    [
+     "none",
+     "3",
+     "54.50"
+    ],
+    [
+     "silver",
+     "1",
+     "5.00"
+    ]
+   ]
+  },
+  "m14.d_tier.sqlite": {
+   "cols": [
+    "tier",
+    "orders",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "gold",
+     "5",
+     "67.5"
+    ],
+    [
+     "none",
+     "3",
+     "54.5"
+    ],
+    [
+     "silver",
+     "1",
+     "5"
     ]
    ]
   },
