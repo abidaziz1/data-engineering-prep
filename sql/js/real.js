@@ -81,6 +81,1016 @@ LAB.real = {
     }
    ]
   },
+  "m10.deadlock": {
+   "final": [
+    "1, 101",
+    "2, 51"
+   ],
+   "steps": [
+    {
+     "out": "BEGIN",
+     "sql": "BEGIN",
+     "who": "A"
+    },
+    {
+     "out": "UPDATE 1",
+     "sql": "UPDATE acct SET balance = balance + 1 WHERE id = 1",
+     "who": "A"
+    },
+    {
+     "out": "BEGIN",
+     "sql": "BEGIN",
+     "who": "B"
+    },
+    {
+     "out": "UPDATE 1",
+     "sql": "UPDATE acct SET balance = balance + 1 WHERE id = 2",
+     "who": "B"
+    },
+    {
+     "out": "waits for B, then: ERROR: deadlock detected (40P01)",
+     "sql": "UPDATE acct SET balance = balance + 1 WHERE id = 2",
+     "who": "A"
+    },
+    {
+     "out": "UPDATE 1",
+     "sql": "UPDATE acct SET balance = balance + 1 WHERE id = 1",
+     "who": "B"
+    },
+    {
+     "out": "ROLLBACK",
+     "sql": "ROLLBACK",
+     "who": "A"
+    },
+    {
+     "out": "COMMIT",
+     "sql": "COMMIT",
+     "who": "B"
+    }
+   ],
+   "victim": "A"
+  },
+  "m10.deadlock_default": {
+   "postgres": "1s"
+  },
+  "m10.default_level": {
+   "postgres": "read committed"
+  },
+  "m10.dirty": {
+   "final": "100",
+   "steps": [
+    {
+     "out": "BEGIN",
+     "sql": "BEGIN ISOLATION LEVEL READ UNCOMMITTED",
+     "who": "A"
+    },
+    {
+     "out": "read uncommitted",
+     "sql": "SHOW transaction_isolation",
+     "who": "A"
+    },
+    {
+     "out": "BEGIN",
+     "sql": "BEGIN",
+     "who": "B"
+    },
+    {
+     "out": "UPDATE 1",
+     "sql": "UPDATE acct SET balance = 999 WHERE id = 1",
+     "who": "B"
+    },
+    {
+     "out": "100",
+     "sql": "SELECT balance FROM acct WHERE id = 1",
+     "who": "A"
+    },
+    {
+     "out": "ROLLBACK",
+     "sql": "ROLLBACK",
+     "who": "B"
+    },
+    {
+     "out": "COMMIT",
+     "sql": "COMMIT",
+     "who": "A"
+    }
+   ]
+  },
+  "m10.duckdb_conflict": {
+   "steps": [
+    {
+     "out": "UPDATE",
+     "sql": "UPDATE acct SET balance = 110 WHERE id = 1",
+     "who": "A"
+    },
+    {
+     "out": "ERROR: TransactionContext Error: Conflict on update!",
+     "sql": "UPDATE acct SET balance = 120 WHERE id = 1",
+     "who": "B"
+    }
+   ],
+   "version": "2.0.0"
+  },
+  "m10.lab": {
+   "levels": [
+    "read committed",
+    "repeatable read",
+    "serializable"
+   ],
+   "postgres": "16.15",
+   "runs": {
+    "lost|read committed": {
+     "anomaly": true,
+     "final": "120",
+     "steps": [
+      {
+       "out": "BEGIN",
+       "sql": "BEGIN ISOLATION LEVEL READ COMMITTED",
+       "who": "A"
+      },
+      {
+       "out": "100",
+       "sql": "SELECT balance FROM acct WHERE id = 1",
+       "who": "A"
+      },
+      {
+       "out": "BEGIN",
+       "sql": "BEGIN ISOLATION LEVEL READ COMMITTED",
+       "who": "B"
+      },
+      {
+       "out": "100",
+       "sql": "SELECT balance FROM acct WHERE id = 1",
+       "who": "B"
+      },
+      {
+       "out": "UPDATE 1",
+       "sql": "UPDATE acct SET balance = 110 WHERE id = 1",
+       "who": "A"
+      },
+      {
+       "out": "COMMIT",
+       "sql": "COMMIT",
+       "who": "A"
+      },
+      {
+       "out": "UPDATE 1",
+       "sql": "UPDATE acct SET balance = 120 WHERE id = 1",
+       "who": "B"
+      },
+      {
+       "out": "COMMIT",
+       "sql": "COMMIT",
+       "who": "B"
+      }
+     ]
+    },
+    "lost|repeatable read": {
+     "anomaly": false,
+     "final": "110",
+     "steps": [
+      {
+       "out": "BEGIN",
+       "sql": "BEGIN ISOLATION LEVEL REPEATABLE READ",
+       "who": "A"
+      },
+      {
+       "out": "100",
+       "sql": "SELECT balance FROM acct WHERE id = 1",
+       "who": "A"
+      },
+      {
+       "out": "BEGIN",
+       "sql": "BEGIN ISOLATION LEVEL REPEATABLE READ",
+       "who": "B"
+      },
+      {
+       "out": "100",
+       "sql": "SELECT balance FROM acct WHERE id = 1",
+       "who": "B"
+      },
+      {
+       "out": "UPDATE 1",
+       "sql": "UPDATE acct SET balance = 110 WHERE id = 1",
+       "who": "A"
+      },
+      {
+       "out": "COMMIT",
+       "sql": "COMMIT",
+       "who": "A"
+      },
+      {
+       "out": "ERROR: could not serialize access due to concurrent update (40001)",
+       "sql": "UPDATE acct SET balance = 120 WHERE id = 1",
+       "who": "B"
+      },
+      {
+       "out": "ROLLBACK",
+       "sql": "COMMIT",
+       "who": "B"
+      }
+     ]
+    },
+    "lost|serializable": {
+     "anomaly": false,
+     "final": "110",
+     "steps": [
+      {
+       "out": "BEGIN",
+       "sql": "BEGIN ISOLATION LEVEL SERIALIZABLE",
+       "who": "A"
+      },
+      {
+       "out": "100",
+       "sql": "SELECT balance FROM acct WHERE id = 1",
+       "who": "A"
+      },
+      {
+       "out": "BEGIN",
+       "sql": "BEGIN ISOLATION LEVEL SERIALIZABLE",
+       "who": "B"
+      },
+      {
+       "out": "100",
+       "sql": "SELECT balance FROM acct WHERE id = 1",
+       "who": "B"
+      },
+      {
+       "out": "UPDATE 1",
+       "sql": "UPDATE acct SET balance = 110 WHERE id = 1",
+       "who": "A"
+      },
+      {
+       "out": "COMMIT",
+       "sql": "COMMIT",
+       "who": "A"
+      },
+      {
+       "out": "ERROR: could not serialize access due to concurrent update (40001)",
+       "sql": "UPDATE acct SET balance = 120 WHERE id = 1",
+       "who": "B"
+      },
+      {
+       "out": "ROLLBACK",
+       "sql": "COMMIT",
+       "who": "B"
+      }
+     ]
+    },
+    "nonrep|read committed": {
+     "anomaly": true,
+     "final": "150",
+     "steps": [
+      {
+       "out": "BEGIN",
+       "sql": "BEGIN ISOLATION LEVEL READ COMMITTED",
+       "who": "A"
+      },
+      {
+       "out": "100",
+       "sql": "SELECT balance FROM acct WHERE id = 1",
+       "who": "A"
+      },
+      {
+       "out": "UPDATE 1",
+       "sql": "UPDATE acct SET balance = 150 WHERE id = 1",
+       "who": "B"
+      },
+      {
+       "out": "150",
+       "sql": "SELECT balance FROM acct WHERE id = 1",
+       "who": "A"
+      },
+      {
+       "out": "COMMIT",
+       "sql": "COMMIT",
+       "who": "A"
+      }
+     ]
+    },
+    "nonrep|repeatable read": {
+     "anomaly": false,
+     "final": "150",
+     "steps": [
+      {
+       "out": "BEGIN",
+       "sql": "BEGIN ISOLATION LEVEL REPEATABLE READ",
+       "who": "A"
+      },
+      {
+       "out": "100",
+       "sql": "SELECT balance FROM acct WHERE id = 1",
+       "who": "A"
+      },
+      {
+       "out": "UPDATE 1",
+       "sql": "UPDATE acct SET balance = 150 WHERE id = 1",
+       "who": "B"
+      },
+      {
+       "out": "100",
+       "sql": "SELECT balance FROM acct WHERE id = 1",
+       "who": "A"
+      },
+      {
+       "out": "COMMIT",
+       "sql": "COMMIT",
+       "who": "A"
+      }
+     ]
+    },
+    "nonrep|serializable": {
+     "anomaly": false,
+     "final": "150",
+     "steps": [
+      {
+       "out": "BEGIN",
+       "sql": "BEGIN ISOLATION LEVEL SERIALIZABLE",
+       "who": "A"
+      },
+      {
+       "out": "100",
+       "sql": "SELECT balance FROM acct WHERE id = 1",
+       "who": "A"
+      },
+      {
+       "out": "UPDATE 1",
+       "sql": "UPDATE acct SET balance = 150 WHERE id = 1",
+       "who": "B"
+      },
+      {
+       "out": "100",
+       "sql": "SELECT balance FROM acct WHERE id = 1",
+       "who": "A"
+      },
+      {
+       "out": "COMMIT",
+       "sql": "COMMIT",
+       "who": "A"
+      }
+     ]
+    },
+    "phantom|read committed": {
+     "anomaly": true,
+     "final": "3",
+     "steps": [
+      {
+       "out": "BEGIN",
+       "sql": "BEGIN ISOLATION LEVEL READ COMMITTED",
+       "who": "A"
+      },
+      {
+       "out": "2",
+       "sql": "SELECT count(*) FROM acct WHERE balance >= 50",
+       "who": "A"
+      },
+      {
+       "out": "INSERT 0 1",
+       "sql": "INSERT INTO acct VALUES (3, 'Cai', 80)",
+       "who": "B"
+      },
+      {
+       "out": "3",
+       "sql": "SELECT count(*) FROM acct WHERE balance >= 50",
+       "who": "A"
+      },
+      {
+       "out": "COMMIT",
+       "sql": "COMMIT",
+       "who": "A"
+      }
+     ]
+    },
+    "phantom|repeatable read": {
+     "anomaly": false,
+     "final": "3",
+     "steps": [
+      {
+       "out": "BEGIN",
+       "sql": "BEGIN ISOLATION LEVEL REPEATABLE READ",
+       "who": "A"
+      },
+      {
+       "out": "2",
+       "sql": "SELECT count(*) FROM acct WHERE balance >= 50",
+       "who": "A"
+      },
+      {
+       "out": "INSERT 0 1",
+       "sql": "INSERT INTO acct VALUES (3, 'Cai', 80)",
+       "who": "B"
+      },
+      {
+       "out": "2",
+       "sql": "SELECT count(*) FROM acct WHERE balance >= 50",
+       "who": "A"
+      },
+      {
+       "out": "COMMIT",
+       "sql": "COMMIT",
+       "who": "A"
+      }
+     ]
+    },
+    "phantom|serializable": {
+     "anomaly": false,
+     "final": "3",
+     "steps": [
+      {
+       "out": "BEGIN",
+       "sql": "BEGIN ISOLATION LEVEL SERIALIZABLE",
+       "who": "A"
+      },
+      {
+       "out": "2",
+       "sql": "SELECT count(*) FROM acct WHERE balance >= 50",
+       "who": "A"
+      },
+      {
+       "out": "INSERT 0 1",
+       "sql": "INSERT INTO acct VALUES (3, 'Cai', 80)",
+       "who": "B"
+      },
+      {
+       "out": "2",
+       "sql": "SELECT count(*) FROM acct WHERE balance >= 50",
+       "who": "A"
+      },
+      {
+       "out": "COMMIT",
+       "sql": "COMMIT",
+       "who": "A"
+      }
+     ]
+    },
+    "skew|read committed": {
+     "anomaly": true,
+     "final": "0",
+     "steps": [
+      {
+       "out": "BEGIN",
+       "sql": "BEGIN ISOLATION LEVEL READ COMMITTED",
+       "who": "A"
+      },
+      {
+       "out": "2",
+       "sql": "SELECT count(*) FROM oncall WHERE on_call",
+       "who": "A"
+      },
+      {
+       "out": "BEGIN",
+       "sql": "BEGIN ISOLATION LEVEL READ COMMITTED",
+       "who": "B"
+      },
+      {
+       "out": "2",
+       "sql": "SELECT count(*) FROM oncall WHERE on_call",
+       "who": "B"
+      },
+      {
+       "out": "UPDATE 1",
+       "sql": "UPDATE oncall SET on_call = false WHERE name = 'Ana'",
+       "who": "A"
+      },
+      {
+       "out": "COMMIT",
+       "sql": "COMMIT",
+       "who": "A"
+      },
+      {
+       "out": "UPDATE 1",
+       "sql": "UPDATE oncall SET on_call = false WHERE name = 'Ben'",
+       "who": "B"
+      },
+      {
+       "out": "COMMIT",
+       "sql": "COMMIT",
+       "who": "B"
+      }
+     ]
+    },
+    "skew|repeatable read": {
+     "anomaly": true,
+     "final": "0",
+     "steps": [
+      {
+       "out": "BEGIN",
+       "sql": "BEGIN ISOLATION LEVEL REPEATABLE READ",
+       "who": "A"
+      },
+      {
+       "out": "2",
+       "sql": "SELECT count(*) FROM oncall WHERE on_call",
+       "who": "A"
+      },
+      {
+       "out": "BEGIN",
+       "sql": "BEGIN ISOLATION LEVEL REPEATABLE READ",
+       "who": "B"
+      },
+      {
+       "out": "2",
+       "sql": "SELECT count(*) FROM oncall WHERE on_call",
+       "who": "B"
+      },
+      {
+       "out": "UPDATE 1",
+       "sql": "UPDATE oncall SET on_call = false WHERE name = 'Ana'",
+       "who": "A"
+      },
+      {
+       "out": "COMMIT",
+       "sql": "COMMIT",
+       "who": "A"
+      },
+      {
+       "out": "UPDATE 1",
+       "sql": "UPDATE oncall SET on_call = false WHERE name = 'Ben'",
+       "who": "B"
+      },
+      {
+       "out": "COMMIT",
+       "sql": "COMMIT",
+       "who": "B"
+      }
+     ]
+    },
+    "skew|serializable": {
+     "anomaly": false,
+     "final": "1",
+     "steps": [
+      {
+       "out": "BEGIN",
+       "sql": "BEGIN ISOLATION LEVEL SERIALIZABLE",
+       "who": "A"
+      },
+      {
+       "out": "2",
+       "sql": "SELECT count(*) FROM oncall WHERE on_call",
+       "who": "A"
+      },
+      {
+       "out": "BEGIN",
+       "sql": "BEGIN ISOLATION LEVEL SERIALIZABLE",
+       "who": "B"
+      },
+      {
+       "out": "2",
+       "sql": "SELECT count(*) FROM oncall WHERE on_call",
+       "who": "B"
+      },
+      {
+       "out": "UPDATE 1",
+       "sql": "UPDATE oncall SET on_call = false WHERE name = 'Ana'",
+       "who": "A"
+      },
+      {
+       "out": "COMMIT",
+       "sql": "COMMIT",
+       "who": "A"
+      },
+      {
+       "out": "ERROR: could not serialize access due to read/write dependencies among transactions (40001)",
+       "sql": "UPDATE oncall SET on_call = false WHERE name = 'Ben'",
+       "who": "B"
+      },
+      {
+       "out": "ROLLBACK",
+       "sql": "COMMIT",
+       "who": "B"
+      }
+     ]
+    }
+   },
+   "scenarios": [
+    {
+     "final_sql": "SELECT balance FROM acct WHERE id = 1",
+     "id": "nonrep",
+     "question": "Does Ana's balance change between two reads of the same transaction?",
+     "title": "Non-repeatable read"
+    },
+    {
+     "final_sql": "SELECT count(*) FROM acct WHERE balance >= 50",
+     "id": "phantom",
+     "question": "Does a new row appear between two counts of the same transaction?",
+     "title": "Phantom read"
+    },
+    {
+     "final_sql": "SELECT balance FROM acct WHERE id = 1",
+     "id": "lost",
+     "question": "Two sessions read 100 and each adds to it in the application. Is one addition lost?",
+     "title": "Lost update"
+    },
+    {
+     "final_sql": "SELECT count(*) FROM oncall WHERE on_call",
+     "id": "skew",
+     "question": "Two doctors each check that two are on call, then each goes off call. Is anybody left?",
+     "title": "Write skew"
+    }
+   ]
+  },
+  "m10.locks": {
+   "steps": [
+    {
+     "out": "BEGIN",
+     "sql": "BEGIN",
+     "who": "A"
+    },
+    {
+     "out": "1",
+     "sql": "SELECT id FROM jobs WHERE id = 1 FOR UPDATE",
+     "who": "A"
+    },
+    {
+     "out": "BEGIN",
+     "sql": "BEGIN",
+     "who": "B"
+    },
+    {
+     "out": "ERROR: could not obtain lock on row in relation \"jobs\" (55P03)",
+     "sql": "SELECT id FROM jobs WHERE id = 1 FOR UPDATE NOWAIT",
+     "who": "B"
+    },
+    {
+     "out": "ROLLBACK",
+     "sql": "ROLLBACK",
+     "who": "B"
+    },
+    {
+     "out": "BEGIN",
+     "sql": "BEGIN",
+     "who": "B"
+    },
+    {
+     "out": "2",
+     "sql": "SELECT id FROM jobs WHERE state = 'pending' ORDER BY id LIMIT 1 FOR UPDATE SKIP LOCKED",
+     "who": "B"
+    },
+    {
+     "out": "ROLLBACK",
+     "sql": "ROLLBACK",
+     "who": "B"
+    },
+    {
+     "out": "BEGIN",
+     "sql": "BEGIN",
+     "who": "B"
+    },
+    {
+     "out": "SET",
+     "sql": "SET LOCAL lock_timeout = '300ms'",
+     "who": "B"
+    },
+    {
+     "out": "ERROR: canceling statement due to lock timeout (55P03)",
+     "sql": "UPDATE jobs SET state = 'done' WHERE id = 1",
+     "who": "B"
+    },
+    {
+     "out": "ROLLBACK",
+     "sql": "ROLLBACK",
+     "who": "B"
+    },
+    {
+     "out": "COMMIT",
+     "sql": "COMMIT",
+     "who": "A"
+    }
+   ]
+  },
+  "m10.lost_fixes": {
+   "atomic": {
+    "final": "130",
+    "steps": [
+     {
+      "out": "BEGIN",
+      "sql": "BEGIN",
+      "who": "A"
+     },
+     {
+      "out": "UPDATE 1",
+      "sql": "UPDATE acct SET balance = balance + 10 WHERE id = 1",
+      "who": "A"
+     },
+     {
+      "out": "BEGIN",
+      "sql": "BEGIN",
+      "who": "B"
+     },
+     {
+      "out": "COMMIT",
+      "sql": "COMMIT",
+      "who": "A"
+     },
+     {
+      "out": "UPDATE 1",
+      "sql": "UPDATE acct SET balance = balance + 20 WHERE id = 1",
+      "who": "B"
+     },
+     {
+      "out": "COMMIT",
+      "sql": "COMMIT",
+      "who": "B"
+     }
+    ]
+   },
+   "forupdate": {
+    "final": "130",
+    "steps": [
+     {
+      "out": "BEGIN",
+      "sql": "BEGIN",
+      "who": "A"
+     },
+     {
+      "out": "100",
+      "sql": "SELECT balance FROM acct WHERE id = 1 FOR UPDATE",
+      "who": "A"
+     },
+     {
+      "out": "BEGIN",
+      "sql": "BEGIN",
+      "who": "B"
+     },
+     {
+      "out": "UPDATE 1",
+      "sql": "UPDATE acct SET balance = 110 WHERE id = 1",
+      "who": "A"
+     },
+     {
+      "out": "COMMIT",
+      "sql": "COMMIT",
+      "who": "A"
+     },
+     {
+      "out": "waited for A, then: 110",
+      "sql": "SELECT balance FROM acct WHERE id = 1 FOR UPDATE",
+      "who": "B"
+     },
+     {
+      "out": "UPDATE 1",
+      "sql": "UPDATE acct SET balance = 130 WHERE id = 1",
+      "who": "B"
+     },
+     {
+      "out": "COMMIT",
+      "sql": "COMMIT",
+      "who": "B"
+     }
+    ]
+   }
+  },
+  "m10.queue": {
+   "final": [
+    "1, done",
+    "2, done",
+    "3, pending"
+   ],
+   "steps": [
+    {
+     "out": "BEGIN",
+     "sql": "BEGIN",
+     "who": "A"
+    },
+    {
+     "out": "1",
+     "sql": "SELECT id FROM jobs WHERE state = 'pending' ORDER BY id LIMIT 1 FOR UPDATE SKIP LOCKED",
+     "who": "A"
+    },
+    {
+     "out": "BEGIN",
+     "sql": "BEGIN",
+     "who": "B"
+    },
+    {
+     "out": "2",
+     "sql": "SELECT id FROM jobs WHERE state = 'pending' ORDER BY id LIMIT 1 FOR UPDATE SKIP LOCKED",
+     "who": "B"
+    },
+    {
+     "out": "UPDATE 1",
+     "sql": "UPDATE jobs SET state = 'done' WHERE id = 1",
+     "who": "A"
+    },
+    {
+     "out": "UPDATE 1",
+     "sql": "UPDATE jobs SET state = 'done' WHERE id = 2",
+     "who": "B"
+    },
+    {
+     "out": "COMMIT",
+     "sql": "COMMIT",
+     "who": "A"
+    },
+    {
+     "out": "COMMIT",
+     "sql": "COMMIT",
+     "who": "B"
+    }
+   ]
+  },
+  "m10.replace": {
+   "steps": [
+    {
+     "out": "2",
+     "sql": "SELECT count(*) FROM acct",
+     "who": "B"
+    },
+    {
+     "out": "BEGIN",
+     "sql": "BEGIN",
+     "who": "A"
+    },
+    {
+     "out": "DELETE 2",
+     "sql": "DELETE FROM acct",
+     "who": "A"
+    },
+    {
+     "out": "INSERT 0 3",
+     "sql": "INSERT INTO acct VALUES (7, 'Dee', 10), (8, 'Eve', 20), (9, 'Fay', 30)",
+     "who": "A"
+    },
+    {
+     "out": "2",
+     "sql": "SELECT count(*) FROM acct",
+     "who": "B"
+    },
+    {
+     "out": "COMMIT",
+     "sql": "COMMIT",
+     "who": "A"
+    },
+    {
+     "out": "3",
+     "sql": "SELECT count(*) FROM acct",
+     "who": "B"
+    }
+   ]
+  },
+  "m10.savepoint": {
+   "rows_after": "4",
+   "steps": [
+    {
+     "out": "BEGIN",
+     "sql": "BEGIN",
+     "who": "A"
+    },
+    {
+     "out": "INSERT 0 1",
+     "sql": "INSERT INTO acct VALUES (3, 'Cai', 80)",
+     "who": "A"
+    },
+    {
+     "out": "SAVEPOINT",
+     "sql": "SAVEPOINT s1",
+     "who": "A"
+    },
+    {
+     "out": "ERROR: duplicate key value violates unique constraint \"acct_pkey\" (23505)",
+     "sql": "INSERT INTO acct VALUES (1, 'Ana again', 5)",
+     "who": "A"
+    },
+    {
+     "out": "ROLLBACK",
+     "sql": "ROLLBACK TO SAVEPOINT s1",
+     "who": "A"
+    },
+    {
+     "out": "INSERT 0 1",
+     "sql": "INSERT INTO acct VALUES (4, 'Dee', 40)",
+     "who": "A"
+    },
+    {
+     "out": "COMMIT",
+     "sql": "COMMIT",
+     "who": "A"
+    }
+   ]
+  },
+  "m10.skew_retry": {
+   "final": "1",
+   "steps": [
+    {
+     "out": "BEGIN",
+     "sql": "BEGIN ISOLATION LEVEL SERIALIZABLE",
+     "who": "A"
+    },
+    {
+     "out": "2",
+     "sql": "SELECT count(*) FROM oncall WHERE on_call",
+     "who": "A"
+    },
+    {
+     "out": "BEGIN",
+     "sql": "BEGIN ISOLATION LEVEL SERIALIZABLE",
+     "who": "B"
+    },
+    {
+     "out": "2",
+     "sql": "SELECT count(*) FROM oncall WHERE on_call",
+     "who": "B"
+    },
+    {
+     "out": "UPDATE 1",
+     "sql": "UPDATE oncall SET on_call = false WHERE name = 'Ana'",
+     "who": "A"
+    },
+    {
+     "out": "COMMIT",
+     "sql": "COMMIT",
+     "who": "A"
+    },
+    {
+     "out": "ERROR: could not serialize access due to read/write dependencies among transactions (40001)",
+     "sql": "UPDATE oncall SET on_call = false WHERE name = 'Ben'",
+     "who": "B"
+    },
+    {
+     "out": "ROLLBACK",
+     "sql": "ROLLBACK",
+     "who": "B"
+    },
+    {
+     "out": "BEGIN",
+     "sql": "BEGIN ISOLATION LEVEL SERIALIZABLE",
+     "who": "B"
+    },
+    {
+     "out": "1",
+     "sql": "SELECT count(*) FROM oncall WHERE on_call",
+     "who": "B"
+    },
+    {
+     "out": "COMMIT",
+     "sql": "COMMIT",
+     "who": "B"
+    }
+   ]
+  },
+  "m10.sqlite_locked": {
+   "steps": [
+    {
+     "out": "BEGIN",
+     "sql": "BEGIN IMMEDIATE",
+     "who": "A"
+    },
+    {
+     "out": "ERROR: database is locked",
+     "sql": "BEGIN IMMEDIATE",
+     "who": "B"
+    }
+   ],
+   "version": "3.53.1"
+  },
+  "m10.transfer": {
+   "autocommit": {
+    "steps": [
+     {
+      "out": "UPDATE 1",
+      "sql": "UPDATE acct SET balance = balance + 150 WHERE id = 2",
+      "who": "A"
+     },
+     {
+      "out": "ERROR: new row for relation \"acct\" violates check constraint \"acct_balance_check\" (23514)",
+      "sql": "UPDATE acct SET balance = balance - 150 WHERE id = 1",
+      "who": "A"
+     }
+    ],
+    "total_after": "300"
+   },
+   "before": "150",
+   "transaction": {
+    "steps": [
+     {
+      "out": "BEGIN",
+      "sql": "BEGIN",
+      "who": "A"
+     },
+     {
+      "out": "UPDATE 1",
+      "sql": "UPDATE acct SET balance = balance + 150 WHERE id = 2",
+      "who": "A"
+     },
+     {
+      "out": "ERROR: new row for relation \"acct\" violates check constraint \"acct_balance_check\" (23514)",
+      "sql": "UPDATE acct SET balance = balance - 150 WHERE id = 1",
+      "who": "A"
+     },
+     {
+      "out": "ERROR: current transaction is aborted, commands ignored until end of transaction block (25P02)",
+      "sql": "SELECT sum(balance) FROM acct",
+      "who": "A"
+     },
+     {
+      "out": "ROLLBACK",
+      "sql": "COMMIT",
+      "who": "A"
+     }
+    ],
+    "total_after": "150"
+   }
+  },
   "m2.truth": {
    "not": {
     "duckdb": [
@@ -3750,6 +4760,9 @@ LAB.real = {
   "m1.stage.5": "SELECT c.country, count(*) AS orders, sum(o.total) AS revenue, round(avg(o.total), 2) AS avg_order\nFROM orders AS o\nJOIN customers AS c ON c.customer_id = o.customer_id\nWHERE o.status = 'paid'\nGROUP BY c.country\nHAVING sum(o.total) > 10\nORDER BY revenue DESC\n",
   "m1.stage.6": "SELECT c.country, count(*) AS orders, sum(o.total) AS revenue, round(avg(o.total), 2) AS avg_order\nFROM orders AS o\nJOIN customers AS c ON c.customer_id = o.customer_id\nWHERE o.status = 'paid'\nGROUP BY c.country\nHAVING sum(o.total) > 10\nORDER BY revenue DESC\nLIMIT 3\n",
   "m1.where_vs_having_error": "SELECT country, count(*) AS n\nFROM customers\nWHERE count(*) > 1\nGROUP BY country;\n",
+  "m10.ch_incr": "UPDATE acct SET balance = balance + 10 WHERE id = 1;\nSELECT balance FROM acct WHERE id = 1;\n",
+  "m10.ch_skip": "SELECT id\nFROM jobs\nWHERE state = 'pending'\nORDER BY id\nLIMIT 1\nFOR UPDATE SKIP LOCKED;\n",
+  "m10.ch_transfer": "UPDATE acct SET balance = balance - 30 WHERE id = 1;\nUPDATE acct SET balance = balance + 30 WHERE id = 2;\nSELECT id, owner, balance FROM acct ORDER BY id;\n",
   "m2.avg_null": "SELECT round(avg(customer_id), 3)              AS avg_ignoring_null,\n       round(avg(coalesce(customer_id, 0)), 3) AS avg_null_as_zero,\n       count(*) - count(customer_id)           AS null_customers\nFROM orders;\n",
   "m2.case_null": "SELECT customer_id,\n       tier,\n       CASE tier WHEN 'gold' THEN 'top' WHEN 'silver' THEN 'mid' ELSE 'other' END AS bucket,\n       CASE WHEN tier IS NULL THEN 'unknown' ELSE tier END AS tier_or_unknown\nFROM customers\nORDER BY customer_id;\n",
   "m2.ch_changed": "SELECT c.customer_id, c.tier AS tier_in_customers, d.tier AS tier_in_dimension\nFROM customers AS c\nLEFT JOIN customer_dim AS d ON d.customer_id = c.customer_id AND d.is_current\nWHERE c.tier IS DISTINCT FROM d.tier\nORDER BY c.customer_id;\n",
@@ -5583,6 +6596,103 @@ LAB.real = {
      "2",
      "30.50",
      "15.25"
+    ]
+   ]
+  },
+  "m10.ch_incr.duckdb": {
+   "cols": [
+    "balance"
+   ],
+   "rows": [
+    [
+     "110"
+    ]
+   ]
+  },
+  "m10.ch_incr.postgres": {
+   "cols": [
+    "balance"
+   ],
+   "rows": [
+    [
+     "110"
+    ]
+   ]
+  },
+  "m10.ch_incr.sqlite": {
+   "cols": [
+    "balance"
+   ],
+   "rows": [
+    [
+     "110"
+    ]
+   ]
+  },
+  "m10.ch_skip": {
+   "cols": [
+    "id"
+   ],
+   "rows": [
+    [
+     "1"
+    ]
+   ]
+  },
+  "m10.ch_transfer.duckdb": {
+   "cols": [
+    "id",
+    "owner",
+    "balance"
+   ],
+   "rows": [
+    [
+     "1",
+     "Ana",
+     "70"
+    ],
+    [
+     "2",
+     "Ben",
+     "80"
+    ]
+   ]
+  },
+  "m10.ch_transfer.postgres": {
+   "cols": [
+    "id",
+    "owner",
+    "balance"
+   ],
+   "rows": [
+    [
+     "1",
+     "Ana",
+     "70"
+    ],
+    [
+     "2",
+     "Ben",
+     "80"
+    ]
+   ]
+  },
+  "m10.ch_transfer.sqlite": {
+   "cols": [
+    "id",
+    "owner",
+    "balance"
+   ],
+   "rows": [
+    [
+     "1",
+     "Ana",
+     "70"
+    ],
+    [
+     "2",
+     "Ben",
+     "80"
     ]
    ]
   },

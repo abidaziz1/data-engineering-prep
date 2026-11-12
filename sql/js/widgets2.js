@@ -93,4 +93,62 @@
     };
     SQ.info.scd2 = { stages: STAGES, tab: tab };
   })();
+
+  /* ====================== mission 10: two sessions, one table (isolation) ====================== */
+  (function () {
+    var LEVEL_NOTE = {
+      'read committed': 'Each statement sees the rows that were committed when it started. This is the default of PostgreSQL.',
+      'repeatable read': 'The transaction sees one snapshot, taken at its first statement. Later commits of other sessions stay invisible to it.',
+      'serializable': 'Like repeatable read, and the engine also watches for patterns that no one-at-a-time order could produce. It stops one transaction with a serialization failure, and the application retries it.'
+    };
+    function C() { return G.counts('m10.lab'); }
+    W.isolation = {
+      steps: function () { return 1; },
+      hint: 'Pick a problem and an isolation level.',
+      say: function () { return 'Two real PostgreSQL sessions, A and B, ran each script in the order shown. Pick a problem and an isolation level. A red result is an error that the engine raised. The verdict says whether the problem happened.'; },
+      mood: function () { return 'think'; },
+      render: function (box, s, i, A) {
+        var c = C(), st = A.local.iso || (A.local.iso = { sc: 'nonrep', lv: 'read committed' }), run = c.runs[st.sc + '|' + st.lv];
+        var meta = c.scenarios.filter(function (m) { return m.id === st.sc; })[0];
+        var u = SQ.u;
+        var rows = run.steps.map(function (x, k) {
+          var bad = /^ERROR/.test(x.out), cell = '<code>' + esc(x.sql) + '</code><div class="tx-out' + (bad ? ' bad' : '') + '">' + esc(x.out) + '</div>';
+          return '<tr><td>' + (k + 1) + '</td><td>' + (x.who === 'A' ? cell : '') + '</td><td>' + (x.who === 'B' ? cell : '') + '</td></tr>';
+        }).join('');
+        var h = '<div class="lab"><div class="lab-h">Problem</div><div class="sel-chips">' + u.chips(c.scenarios.map(function (m) { return m.id; }), st.sc, 'is-sc', function (k) { return c.scenarios.filter(function (m) { return m.id === k; })[0].title; }) + '</div>' +
+          '<div class="lab-h">Isolation level</div><div class="sel-chips">' + u.chips(c.levels, st.lv, 'is-lv') + '</div>' +
+          '<p class="lab-note"><b>' + esc(meta.question) + '</b> ' + md(LEVEL_NOTE[st.lv]) + '</p>' +
+          '<div class="tbl-wrap"><table class="tbl tx"><thead><tr><th>#</th><th>Session A</th><th>Session B</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+          '<div class="lab-out"><div class="big ' + (run.anomaly ? 'bad' : 'good') + '"><b>' + (run.anomaly ? 'it happened' : 'prevented') + '</b><span>' + esc(meta.title) + ' at ' + esc(st.lv) + '</span></div>' +
+          '<div class="big"><b>' + esc(run.final) + '</b><span>' + esc(meta.final_sql) + '</span></div></div></div>';
+        box.innerHTML = h;
+        A.bindWidget = function (act, el) { var v = el.getAttribute('data-v'); if (act === 'is-sc') st.sc = v; else if (act === 'is-lv') st.lv = v; A.render(true); };
+      }
+    };
+    SQ.info.isolation = { counts: C };
+  })();
+
+  /* ====================== mission 10: a recorded transcript of two sessions ====================== */
+  (function () {
+    W.txlog = {
+      steps: function () { return 1; },
+      hint: 'Read the two columns from top to bottom. The numbers give the order in time.',
+      say: function (s) { return s.text; },
+      mood: function (s) { return s.mood || 'think'; },
+      render: function (box, s, i, A) {
+        var o = G.counts(s.key);
+        if (s.variant) o = o[s.variant];
+        var two = o.steps.some(function (x) { return x.who === 'B'; });
+        var rows = o.steps.map(function (x, k) {
+          var bad = /ERROR/.test(x.out), cell = '<code>' + esc(x.sql) + '</code><div class="tx-out' + (bad ? ' bad' : '') + '">' + esc(x.out) + '</div>';
+          return '<tr><td>' + (k + 1) + '</td><td>' + (x.who === 'A' ? cell : '') + '</td>' + (two ? '<td>' + (x.who === 'B' ? cell : '') + '</td>' : '') + '</tr>';
+        }).join('');
+        var h = '<div class="lab"><div class="tbl-wrap"><table class="tbl tx"><thead><tr><th>#</th><th>Session A</th>' + (two ? '<th>Session B</th>' : '') + '</tr></thead><tbody>' + rows + '</tbody></table></div>' +
+          ((s.tiles || []).length ? '<div class="lab-out">' + s.tiles.map(function (t) { return '<div class="big ' + (t[2] || '') + '"><b>' + esc(t[0]) + '</b><span>' + esc(t[1]) + '</span></div>'; }).join('') + '</div>' : '') +
+          (s.note ? '<p class="lab-note">' + md(s.note) + '</p>' : '') + '</div>';
+        box.innerHTML = h;
+      }
+    };
+    SQ.info.txlog = {};
+  })();
 })();

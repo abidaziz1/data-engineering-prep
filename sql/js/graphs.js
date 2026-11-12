@@ -288,4 +288,28 @@
       { id: 'tg_u2', x: 20, y: 290, t: 'two staging rows with one key are an error, so deduplicate first', c: 'int' }
     ]
   });
+  /* ------------------------------------------------------------------ */
+  /* 10. MVCC: versions and snapshots                                    */
+  /* ------------------------------------------------------------------ */
+  S.mvcc = build({
+    h: 340, cw: 190, dx: 216,
+    label: 'Row versions and snapshots. A writer does not change a row in place. It adds a new version and marks the old one as replaced after the commit. A reader looks at the versions through a snapshot. With REPEATABLE READ the snapshot is taken at the first statement and stays. With READ COMMITTED a new snapshot is taken for each statement.',
+    nodes: [
+      ['v_w', 0, 0.65, 'Writer B', 'UPDATE, then COMMIT', 'src'],
+      ['v_old', 1.2, 0, 'Old version', 'balance 100, still stored', 'raw'],
+      ['v_new', 1.2, 1.3, 'New version', 'balance 150, after COMMIT', 'stg'],
+      ['v_rr', 3, 0, 'REPEATABLE READ', 'snapshot from the first read', 'int'],
+      ['v_rc', 3, 1.3, 'READ COMMITTED', 'a new snapshot each statement', 'mart']
+    ],
+    edges: [
+      ['m1', 'v_w', 'v_old', 1],
+      ['m2', 'v_w', 'v_new', 2],
+      ['m3', 'v_old', 'v_rr', 3],
+      ['m4', 'v_new', 'v_rc', 4]
+    ],
+    tags: [
+      { id: 'tg_v1', x: 20, y: 150, t: 'readers do not block writers, and writers do not block readers', c: 'qual' },
+      { id: 'tg_v2', x: 20, y: 290, t: 'old versions are cleaned up when no session needs them', c: 'int' }
+    ]
+  });
 })();

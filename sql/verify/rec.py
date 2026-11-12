@@ -42,6 +42,14 @@ INSERT INTO incoming VALUES (1, '2026-03-02', 57.50), (2, '2026-03-05', 50.00), 
 CREATE TABLE stock (sku VARCHAR PRIMARY KEY, name VARCHAR, qty INTEGER);
 INSERT INTO stock VALUES ('ESP-01', 'Espresso beans', 40), ('LAT-01', 'Oat milk', 25), ('MUG-01', 'Mug', 8);
 ''',
+    'acct': '''
+CREATE TABLE acct (id INTEGER PRIMARY KEY, owner VARCHAR, balance INTEGER);
+INSERT INTO acct VALUES (1, 'Ana', 100), (2, 'Ben', 50);
+''',
+    'jobs': '''
+CREATE TABLE jobs (id INTEGER PRIMARY KEY, state VARCHAR);
+INSERT INTO jobs VALUES (1, 'pending'), (2, 'pending'), (3, 'pending');
+''',
 }
 
 

@@ -90,3 +90,8 @@ a.logo:hover{background:#3730A3}
 .sx-dot{position:absolute;top:50%;width:8px;height:8px;margin-left:-4px;margin-top:-4px;border-radius:50%;background:var(--ink)}
 .sx-axis{display:flex;justify-content:space-between;font:600 .8rem 'IBM Plex Mono',monospace;color:var(--ink2);margin-left:8.1rem}
 @media (max-width:600px){.sx-row{grid-template-columns:4.5rem minmax(0,1fr)}.sx-axis{margin-left:5.1rem}}
+
+.tx td{vertical-align:top;min-width:12rem}
+.tx td code{display:block;font:600 .85rem 'IBM Plex Mono',monospace;white-space:pre-wrap;overflow-wrap:anywhere}
+.tx-out{margin-top:.2rem;font:700 .85rem 'IBM Plex Mono',monospace;color:var(--ink2);overflow-wrap:anywhere}
+.tx-out.bad{color:#991B1B;background:#FEE2E2;border-radius:6px;padding:.1rem .35rem}
