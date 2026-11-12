@@ -73,7 +73,17 @@ LAB.real = {
   "m6/day_buckets.py": "\"\"\"Which day is an order on? It depends on whose clock you ask.\"\"\"\nfrom collections import Counter\nfrom datetime import datetime, timedelta, timezone\nfrom zoneinfo import ZoneInfo\n\nSG = ZoneInfo(\"Asia/Singapore\")\norders = [  # UTC timestamps\n    (\"O-1\", datetime(2026, 3, 14, 3, 0, tzinfo=timezone.utc)),\n    (\"O-2\", datetime(2026, 3, 14, 15, 59, tzinfo=timezone.utc)),\n    (\"O-3\", datetime(2026, 3, 14, 16, 1, tzinfo=timezone.utc)),\n    (\"O-4\", datetime(2026, 3, 14, 22, 30, tzinfo=timezone.utc)),\n    (\"O-5\", datetime(2026, 3, 15, 5, 0, tzinfo=timezone.utc)),\n]\nprint(\"orders per day by the UTC date:       \", dict(Counter(str(t.date()) for _, t in orders)))\nprint(\"orders per day by Singapore's date:   \", dict(Counter(str(t.astimezone(SG).date()) for _, t in orders)))\n\nlondon = ZoneInfo(\"Europe/London\")\nstart = datetime(2026, 3, 29, 0, 0, tzinfo=london)\nend = start + timedelta(days=1)\nprint()\nprint(\"London, 29 March 2026: from\", start.isoformat(), \"to\", end.isoformat())\nprint(\"subtracting the two aware values:     \", end - start)\nprint(\"the same two moments in UTC:          \", end.astimezone(timezone.utc) - start.astimezone(timezone.utc))\n",
   "m6/money.py": "\"\"\"Money in a float, in a Decimal and in whole cents.\"\"\"\nimport math\nfrom decimal import ROUND_DOWN, ROUND_HALF_EVEN, ROUND_HALF_UP, Decimal\n\nprint(\"0.1 + 0.2 =\", 0.1 + 0.2)\nprint(\"0.1 + 0.2 == 0.3:\", 0.1 + 0.2 == 0.3)\nprint(\"the float 0.1 is really:\", Decimal(0.1))\nprint(\"the Decimal from text:   \", Decimal(\"0.1\"))\n\nn = 1_000_000\ntotal = 0.0\nfor _ in range(n):\n    total += 0.10\nprint(f\"\\nadding 0.10 {n:,} times:\")\nprint(\"  float, a loop:      \", total)\nprint(\"  math.fsum:          \", math.fsum([0.10] * n))\nprint(\"  Decimal:            \", sum(Decimal(\"0.10\") for _ in range(n)))\nprint(\"  whole cents (int):  \", sum(10 for _ in range(n)) / 100)\n\nprint(\"\\nrounding a half to 2 places:\")\nprint(\"  round(2.675, 2):\", round(2.675, 2), \"  (the float is a little below 2.675)\")\nfor mode in (ROUND_HALF_EVEN, ROUND_HALF_UP, ROUND_DOWN):\n    print(f\"  Decimal('2.675'), {mode:<15}\", Decimal(\"2.675\").quantize(Decimal(\"0.01\"), rounding=mode))\nprint(\"  round(2.5):\", round(2.5), \"  round(3.5):\", round(3.5), \"  (halves go to the even number)\")\n",
   "m6/normalize_timestamps.py": "\"\"\"Coding round: turn timestamps in mixed formats into one UTC format.\"\"\"\nfrom datetime import datetime, timezone\nfrom zoneinfo import ZoneInfo\n\n\ndef to_utc(value, default_zone):\n    \"\"\"Return an ISO 8601 string in UTC. Numbers are epoch seconds. Text without an offset is in default_zone.\"\"\"\n    if isinstance(value, (int, float)):\n        d = datetime.fromtimestamp(value, timezone.utc)\n    else:\n        d = datetime.fromisoformat(value)\n        if d.tzinfo is None:\n            d = d.replace(tzinfo=ZoneInfo(default_zone))\n    return d.astimezone(timezone.utc).isoformat().replace(\"+00:00\", \"Z\")\n\n\nsamples = [\"2026-03-14T08:15:00Z\", \"2026-03-14T16:15:00+08:00\", \"2026-03-14 16:15:00\", 1_773_476_100]\nfor s in samples:\n    print(f\"{s!s:<28} -> {to_utc(s, 'Asia/Singapore')}\")\n\nassert to_utc(\"2026-03-14T08:15:00Z\", \"Asia/Singapore\") == \"2026-03-14T08:15:00Z\"\nassert to_utc(\"2026-03-14T16:15:00+08:00\", \"Europe/London\") == \"2026-03-14T08:15:00Z\"\nassert to_utc(\"2026-03-14 16:15:00\", \"Asia/Singapore\") == \"2026-03-14T08:15:00Z\"\nassert to_utc(\"2026-07-01 12:00:00\", \"Europe/London\") == \"2026-07-01T11:00:00Z\"  # summer time\nprint(\"tests passed\")\n",
-  "m6/local_days.py": "\"\"\"Coding round: count orders for each local day of a store, including the day that has 23 hours.\"\"\"\nfrom collections import Counter\nfrom datetime import datetime, timedelta, timezone\nfrom zoneinfo import ZoneInfo\n\n\ndef orders_per_local_day(utc_times, zone):\n    tz = ZoneInfo(zone)\n    return dict(sorted(Counter(t.astimezone(tz).date().isoformat() for t in utc_times).items()))\n\n\ndef hours_in_local_day(day, zone):\n    tz = ZoneInfo(zone)\n    start = datetime.fromisoformat(day).replace(tzinfo=tz)\n    end = start + timedelta(days=1)  # the next midnight on the wall clock\n    return (end.astimezone(timezone.utc) - start.astimezone(timezone.utc)).total_seconds() / 3600\n\n\ntimes = [datetime(2026, 3, 28, 23, 30, tzinfo=timezone.utc), datetime(2026, 3, 29, 0, 30, tzinfo=timezone.utc),\n         datetime(2026, 3, 29, 22, 59, tzinfo=timezone.utc), datetime(2026, 3, 29, 23, 1, tzinfo=timezone.utc)]\nprint(\"London:   \", orders_per_local_day(times, \"Europe/London\"))\nprint(\"Singapore:\", orders_per_local_day(times, \"Asia/Singapore\"))\nfor day in (\"2026-03-28\", \"2026-03-29\", \"2026-10-25\"):\n    print(f\"hours in {day} in London: {hours_in_local_day(day, 'Europe/London'):g}\")\n\nassert orders_per_local_day(times, \"Europe/London\") == {\"2026-03-28\": 1, \"2026-03-29\": 2, \"2026-03-30\": 1}\nassert hours_in_local_day(\"2026-03-29\", \"Europe/London\") == 23\nassert hours_in_local_day(\"2026-10-25\", \"Europe/London\") == 25\nprint(\"tests passed\")\n"
+  "m6/local_days.py": "\"\"\"Coding round: count orders for each local day of a store, including the day that has 23 hours.\"\"\"\nfrom collections import Counter\nfrom datetime import datetime, timedelta, timezone\nfrom zoneinfo import ZoneInfo\n\n\ndef orders_per_local_day(utc_times, zone):\n    tz = ZoneInfo(zone)\n    return dict(sorted(Counter(t.astimezone(tz).date().isoformat() for t in utc_times).items()))\n\n\ndef hours_in_local_day(day, zone):\n    tz = ZoneInfo(zone)\n    start = datetime.fromisoformat(day).replace(tzinfo=tz)\n    end = start + timedelta(days=1)  # the next midnight on the wall clock\n    return (end.astimezone(timezone.utc) - start.astimezone(timezone.utc)).total_seconds() / 3600\n\n\ntimes = [datetime(2026, 3, 28, 23, 30, tzinfo=timezone.utc), datetime(2026, 3, 29, 0, 30, tzinfo=timezone.utc),\n         datetime(2026, 3, 29, 22, 59, tzinfo=timezone.utc), datetime(2026, 3, 29, 23, 1, tzinfo=timezone.utc)]\nprint(\"London:   \", orders_per_local_day(times, \"Europe/London\"))\nprint(\"Singapore:\", orders_per_local_day(times, \"Asia/Singapore\"))\nfor day in (\"2026-03-28\", \"2026-03-29\", \"2026-10-25\"):\n    print(f\"hours in {day} in London: {hours_in_local_day(day, 'Europe/London'):g}\")\n\nassert orders_per_local_day(times, \"Europe/London\") == {\"2026-03-28\": 1, \"2026-03-29\": 2, \"2026-03-30\": 1}\nassert hours_in_local_day(\"2026-03-29\", \"Europe/London\") == 23\nassert hours_in_local_day(\"2026-10-25\", \"Europe/London\") == 25\nprint(\"tests passed\")\n",
+  "m7/exceptions_tour.py": "\"\"\"try, except, else and finally: which block runs when, and what `raise ... from` keeps.\"\"\"\n\n\ndef parse_total(text):\n    print(f\"  parsing {text!r}\")\n    try:\n        value = float(text)\n    except ValueError as err:\n        raise ValueError(f\"order total {text!r} is not a number\") from err\n    else:\n        print(\"  else: no error, so this runs\")\n        return value\n    finally:\n        print(\"  finally: this runs either way\")\n\n\nprint(\"a good value:\")\nprint(\"  result:\", parse_total(\"12.50\"))\n\nprint(\"a bad value:\")\ntry:\n    parse_total(\"12,50\")\nexcept ValueError as err:\n    print(\"  caught:\", err)\n    print(\"  the cause:\", repr(err.__cause__))\n\nprint(\"a value of the wrong type:\")\ntry:\n    parse_total(None)\nexcept TypeError as err:\n    print(\"  the ValueError handler did not catch it, the caller did:\", type(err).__name__)\n",
+  "m7/raise_from.py": "\"\"\"What a traceback looks like when one error causes another. Read it from the bottom.\"\"\"\n\n\ndef to_cents(text):\n    try:\n        return round(float(text) * 100)\n    except ValueError as err:\n        raise ValueError(f\"order total {text!r} is not a number\") from err\n\n\nprint(to_cents(\"12.50\"))\nprint(to_cents(\"12,50\"))\n",
+  "m7/swallowed.py": "\"\"\"A loader that catches everything. It reports success while it drops rows.\"\"\"\nROWS = [(\"O-1\", \"12.50\"), (\"O-2\", \"4.75\"), (\"O-3\", \"8,20\"), (\"O-4\", \"19.90\"), (\"O-5\", \"\"), (\"O-6\", \"31.00\")]\n\n\ndef load(rows):\n    loaded = []\n    for order_id, total in rows:\n        try:\n            loaded.append((order_id, float(total)))\n        except Exception:\n            pass\n    return loaded\n\n\nloaded = load(ROWS)\nprint(f\"loaded {len(loaded)} of {len(ROWS)} rows\")\nprint(\"status: success\")\n",
+  "m7/fail_loud.py": "\"\"\"The same loader, with the bad rows counted and an exit code that tells the truth.\"\"\"\nimport sys\n\nROWS = [(\"O-1\", \"12.50\"), (\"O-2\", \"4.75\"), (\"O-3\", \"8,20\"), (\"O-4\", \"19.90\"), (\"O-5\", \"\"), (\"O-6\", \"31.00\")]\nMAX_BAD = 0.05  # more than 5 percent bad rows fails the run\n\n\ndef load(rows):\n    loaded, bad = [], []\n    for order_id, total in rows:\n        try:\n            loaded.append((order_id, float(total)))\n        except ValueError as err:\n            bad.append((order_id, total, str(err)))\n    return loaded, bad\n\n\nloaded, bad = load(ROWS)\nprint(f\"loaded {len(loaded)} of {len(ROWS)} rows\")\nfor order_id, total, why in bad:\n    print(f\"  rejected {order_id}: {why}\")\nif len(bad) / len(ROWS) > MAX_BAD:\n    print(f\"status: failed, {len(bad)} of {len(ROWS)} rows rejected (limit {MAX_BAD:.0%})\")\n    sys.exit(1)\nprint(\"status: success\")\n",
+  "m7/retry_backoff.py": "\"\"\"A retry loop with exponential backoff and full jitter.\nTime and randomness are passed in, so this file runs in a fraction of a second and a test never waits.\"\"\"\nimport random\n\n\nclass Transient(Exception):\n    \"\"\"A failure that a second try can fix: a timeout, a 429, a 503.\"\"\"\n\n\ndef delay_for(attempt, base=0.5, cap=8.0, rng=random):\n    \"\"\"Full jitter: a random wait between 0 and min(cap, base * 2 ** (attempt - 1)).\"\"\"\n    return rng.uniform(0, min(cap, base * 2 ** (attempt - 1)))\n\n\ndef retry(fn, *, attempts=5, sleep, rng):\n    for attempt in range(1, attempts + 1):\n        try:\n            return fn()\n        except Transient as err:\n            if attempt == attempts:\n                raise\n            wait = delay_for(attempt, rng=rng)\n            print(f\"  attempt {attempt} failed ({err}); waiting {wait:.2f} s\")\n            sleep(wait)\n\n\nclass Flaky:\n    \"\"\"Fails the first `failures` calls, then works.\"\"\"\n\n    def __init__(self, failures):\n        self.failures, self.calls = failures, 0\n\n    def __call__(self):\n        self.calls += 1\n        if self.calls <= self.failures:\n            raise Transient(\"503 from the API\")\n        return \"orders page 1\"\n\n\nslept = []\nprint(\"an API that fails 3 times, then works:\")\napi = Flaky(3)\nprint(\"  result:\", retry(api, sleep=slept.append, rng=random.Random(7)), \"after\", api.calls, \"calls\")\nprint(f\"  total wait: {sum(slept):.2f} s (a fake clock, so nothing really waited)\")\n\nprint(\"an API that fails every time:\")\nslept.clear()\ntry:\n    retry(Flaky(99), sleep=slept.append, rng=random.Random(7))\nexcept Transient as err:\n    print(\"  gave up after\", len(slept) + 1, \"calls with:\", err)\n\nprint(\"the most a wait can last, by attempt:\", [min(8.0, 0.5 * 2 ** n) for n in range(5)])\n",
+  "m7/tenacity_retry.py": "\"\"\"The same idea with the tenacity library, and a failure that must not be retried.\"\"\"\nimport logging\nimport random\nimport sys\n\nfrom tenacity import before_sleep_log, retry, retry_if_exception_type, stop_after_attempt, wait_random_exponential\n\nlogging.basicConfig(stream=sys.stdout, level=logging.WARNING, format=\"%(levelname)s %(message)s\")\nlog = logging.getLogger(\"loader\")\nrandom.seed(3)\n\n\nclass Transient(Exception):\n    pass\n\n\ncalls = {\"n\": 0}\n\n\n@retry(\n    retry=retry_if_exception_type(Transient),\n    stop=stop_after_attempt(5),\n    wait=wait_random_exponential(multiplier=0.01, max=0.05),  # full jitter, with small waits so that this file runs fast\n    before_sleep=before_sleep_log(log, logging.WARNING),\n    reraise=True,\n)\ndef fetch_page(kind):\n    calls[\"n\"] += 1\n    if kind == \"bad request\":\n        raise ValueError(\"400 Bad Request\")\n    if calls[\"n\"] <= 2:\n        raise Transient(\"429 Too Many Requests\")\n    return \"page 1\"\n\n\nprint(\"result:\", fetch_page(\"fine\"), \"after\", calls[\"n\"], \"calls\")\n\ncalls[\"n\"] = 0\ntry:\n    fetch_page(\"bad request\")\nexcept ValueError as err:\n    print(\"a ValueError is not in the retry list, so it stopped after\", calls[\"n\"], \"call:\", err)\n",
+  "m7/load_strategies.py": "\"\"\"Five ways to load one day of orders, and what each does when the job runs twice, crashes or sees a changed file.\"\"\"\nimport sqlite3\n\nDAY = \"2026-03-14\"\nFILE = [(\"O-1\", 1250), (\"O-2\", 475), (\"O-3\", 820), (\"O-4\", 1990), (\"O-5\", 3100), (\"O-6\", 640)]  # cents\nCORRECTED = [(\"O-1\", 1250), (\"O-2\", 475), (\"O-3\", 920), (\"O-4\", 1990), (\"O-5\", 3100), (\"O-6\", 640)]\nCANCELLED = FILE[:5]  # O-6 is gone from the source file\n\n\nclass Crash(Exception):\n    pass\n\n\ndef new_db(with_key):\n    db = sqlite3.connect(\":memory:\", isolation_level=None)  # autocommit: we say BEGIN and COMMIT ourselves\n    db.execute(f\"CREATE TABLE orders (order_id TEXT {'PRIMARY KEY' if with_key else ''}, day TEXT, total_cents INTEGER)\")\n    return db\n\n\nINSERT = \"INSERT INTO orders VALUES (?, ?, ?)\"\nUPSERT = INSERT + \" ON CONFLICT (order_id) DO UPDATE SET total_cents = excluded.total_cents\"\n\n\ndef write(db, rows, sql, crash):\n    for i, (order_id, cents) in enumerate(rows):\n        if crash and i == 3:\n            raise Crash(\"the job died after 3 rows\")\n        db.execute(sql, (order_id, DAY, cents))\n\n\ndef append(db, rows, crash):                  # a table with no key\n    write(db, rows, INSERT, crash)\n\n\ndef insert_key(db, rows, crash):              # a table with a primary key\n    write(db, rows, INSERT, crash)\n\n\ndef delete_insert(db, rows, crash):           # no transaction: every statement commits on its own\n    db.execute(\"DELETE FROM orders WHERE day = ?\", (DAY,))\n    write(db, rows, INSERT, crash)\n\n\ndef delete_insert_tx(db, rows, crash):        # one transaction: all of it, or none of it\n    db.execute(\"BEGIN\")\n    try:\n        db.execute(\"DELETE FROM orders WHERE day = ?\", (DAY,))\n        write(db, rows, INSERT, crash)\n        db.execute(\"COMMIT\")\n    except Exception:\n        db.execute(\"ROLLBACK\")\n        raise\n\n\ndef upsert(db, rows, crash):                  # a key, and ON CONFLICT DO UPDATE\n    write(db, rows, UPSERT, crash)\n\n\nSTRATEGIES = {\n    \"append\": (append, False),\n    \"insert with a key\": (insert_key, True),\n    \"delete, then insert\": (delete_insert, True),\n    \"delete, then insert, in a transaction\": (delete_insert_tx, True),\n    \"upsert\": (upsert, True),\n}\nSCENARIOS = {  # what happens to the job, in order\n    \"run once\": [(\"run\", FILE)],\n    \"run twice\": [(\"run\", FILE), (\"run\", FILE)],\n    \"crash, then run again\": [(\"crash\", FILE), (\"run\", FILE)],\n    \"the source corrects O-3\": [(\"run\", FILE), (\"run\", CORRECTED)],\n    \"the source drops O-6\": [(\"run\", FILE), (\"run\", CANCELLED)],\n}\nTRUTH = {\"run once\": FILE, \"run twice\": FILE, \"crash, then run again\": FILE, \"the source corrects O-3\": CORRECTED, \"the source drops O-6\": CANCELLED}\n\n\ndef state(db):\n    return db.execute(\"SELECT order_id, total_cents FROM orders ORDER BY order_id, total_cents\").fetchall()\n\n\ndef play(strategy, scenario):\n    fn, with_key = STRATEGIES[strategy]\n    db = new_db(with_key)\n    runs = []\n    for kind, rows in SCENARIOS[scenario]:\n        try:\n            fn(db, rows, kind == \"crash\")\n            outcome = \"finished\"\n        except Crash as err:\n            outcome = f\"crashed: {err}\"\n        except sqlite3.IntegrityError as err:\n            outcome = f\"failed: {err}\"\n        runs.append({\"outcome\": outcome, \"rows\": len(state(db)), \"cents\": sum(c for _, c in state(db))})\n    final = state(db)\n    want = sorted(TRUTH[scenario])\n    return {\"runs\": runs, \"final\": final, \"right\": final == want, \"want_rows\": len(want), \"want_cents\": sum(c for _, c in want)}\n\n\nif __name__ == \"__main__\":\n    for scenario in SCENARIOS:\n        print(scenario)\n        for strategy in STRATEGIES:\n            r = play(strategy, scenario)\n            last = r[\"runs\"][-1]\n            verdict = \"right\" if r[\"right\"] else \"WRONG\"\n            print(f\"  {strategy:<40} {last['rows']} rows, {last['cents'] / 100:7.2f}  {verdict}\")\n",
+  "m7/watermark.py": "\"\"\"An incremental load with a watermark: what it loses when it is saved too early, and when a row arrives late.\"\"\"\nimport sqlite3\nfrom datetime import datetime, timedelta\n\nCOLS = \"order_id TEXT PRIMARY KEY, total_cents INTEGER, updated_at TEXT\"\nUPSERT = (\"INSERT INTO orders VALUES (?, ?, ?) ON CONFLICT (order_id) DO UPDATE \"\n          \"SET total_cents = excluded.total_cents, updated_at = excluded.updated_at\")\n\n\ndef make(*rows):\n    src = sqlite3.connect(\":memory:\", isolation_level=None)\n    dst = sqlite3.connect(\":memory:\", isolation_level=None)\n    for db in (src, dst):\n        db.execute(f\"CREATE TABLE orders ({COLS})\")\n    src.executemany(\"INSERT INTO orders VALUES (?, ?, ?)\", rows)\n    return src, dst, {\"watermark\": \"2026-03-14 00:00\"}\n\n\ndef rows(n):\n    return f\"{n} row\" + (\"\" if n == 1 else \"s\")\n\n\ndef count(db):\n    return db.execute(\"SELECT count(*) FROM orders\").fetchone()[0]\n\n\ndef load(src, dst, state, overlap=0, save_first=False, crash=False):\n    since = datetime.fromisoformat(state[\"watermark\"]) - timedelta(minutes=overlap)\n    rows = src.execute(\"SELECT * FROM orders WHERE updated_at > ? ORDER BY updated_at\", (f\"{since:%Y-%m-%d %H:%M}\",)).fetchall()\n    if rows and save_first:\n        state[\"watermark\"] = rows[-1][2]  # saved before the rows are written\n    if crash:\n        raise RuntimeError(\"the job died before writing\")\n    dst.executemany(UPSERT, rows)\n    if rows and not save_first:\n        state[\"watermark\"] = max(state[\"watermark\"], rows[-1][2])  # saved after the rows are written\n    return len(rows)\n\n\nprint(\"1. the watermark is saved first, then the job dies\")\nsrc, dst, state = make((\"O-1\", 1250, \"2026-03-14 08:00\"), (\"O-2\", 475, \"2026-03-14 08:05\"), (\"O-3\", 820, \"2026-03-14 08:10\"))\ntry:\n    load(src, dst, state, save_first=True, crash=True)\nexcept RuntimeError as err:\n    print(\"   run 1:\", err, \"| watermark is now\", state[\"watermark\"])\nprint(\"   run 2 reads\", rows(load(src, dst, state, save_first=True)) + \"; the target has\", count(dst), \"of 3\")\n\nprint(\"2. the watermark is saved after the rows are written\")\nsrc, dst, state = make((\"O-1\", 1250, \"2026-03-14 08:00\"), (\"O-2\", 475, \"2026-03-14 08:05\"), (\"O-3\", 820, \"2026-03-14 08:10\"))\ntry:\n    load(src, dst, state, crash=True)\nexcept RuntimeError as err:\n    print(\"   run 1:\", err, \"| watermark is still\", state[\"watermark\"])\nprint(\"   run 2 reads\", rows(load(src, dst, state)) + \"; the target has\", count(dst), \"of 3\")\n\nprint(\"3. a row arrives late: a slow writer commits updated_at 08:07 after the load has passed 08:10\")\nfor overlap in (0, 15):\n    src, dst, state = make((\"O-1\", 1250, \"2026-03-14 08:00\"), (\"O-3\", 820, \"2026-03-14 08:10\"))\n    load(src, dst, state, overlap=overlap)\n    src.execute(\"INSERT INTO orders VALUES ('O-4', 640, '2026-03-14 08:07')\")  # late, with an old timestamp\n    src.execute(\"INSERT INTO orders VALUES ('O-5', 3100, '2026-03-14 08:20')\")\n    n = load(src, dst, state, overlap=overlap)\n    print(f\"   overlap {overlap:>2} min: run 2 reads {rows(n)}; the target has {count(dst)} of 4\")\n",
+  "m7/idempotent_load.py": "\"\"\"Coding round: load one day of orders so that running it twice, or after a crash, leaves the same table.\"\"\"\nimport sqlite3\n\n\ndef load_day(db, day, rows):\n    \"\"\"Replace the orders of `day` with `rows`, a list of (order_id, total_cents). All or nothing. Returns the rows written.\"\"\"\n    db.execute(\"BEGIN\")\n    try:\n        db.execute(\"DELETE FROM orders WHERE day = ?\", (day,))\n        db.executemany(\"INSERT INTO orders (order_id, day, total_cents) VALUES (?, ?, ?)\", [(i, day, c) for i, c in rows])\n        db.execute(\"COMMIT\")\n    except Exception:\n        db.execute(\"ROLLBACK\")\n        raise\n    return len(rows)\n\n\ndef table(db):\n    return db.execute(\"SELECT order_id, day, total_cents FROM orders ORDER BY day, order_id\").fetchall()\n\n\ndb = sqlite3.connect(\":memory:\", isolation_level=None)\ndb.execute(\"CREATE TABLE orders (order_id TEXT PRIMARY KEY, day TEXT NOT NULL, total_cents INTEGER NOT NULL)\")\nmonday = [(\"O-1\", 1250), (\"O-2\", 475)]\ntuesday = [(\"O-3\", 820), (\"O-4\", 1990), (\"O-5\", 3100)]\n\nload_day(db, \"2026-03-09\", monday)\nload_day(db, \"2026-03-10\", tuesday)\nonce = table(db)\nprint(\"Monday and Tuesday loaded:\", len(once), \"rows\")\n\nload_day(db, \"2026-03-10\", tuesday)\nassert table(db) == once, \"the second run changed the table\"\nprint(\"Tuesday loaded again:\", len(table(db)), \"rows, the same table\")\n\ntry:\n    load_day(db, \"2026-03-10\", [(\"O-3\", 820), (\"O-4\", None)])  # None breaks NOT NULL halfway through\nexcept sqlite3.IntegrityError as err:\n    print(\"a run that fails halfway:\", err)\nassert table(db) == once, \"a failed run changed the table\"\nprint(\"after the failed run:\", len(table(db)), \"rows, the same table\")\n\nload_day(db, \"2026-03-10\", [(\"O-3\", 920), (\"O-4\", 1990)])  # the source corrected O-3 and dropped O-5\nafter = table(db)\nassert [r for r in after if r[1] == \"2026-03-09\"] == [r for r in once if r[1] == \"2026-03-09\"], \"Monday changed\"\nassert [r[0] for r in after if r[1] == \"2026-03-10\"] == [\"O-3\", \"O-4\"], \"Tuesday did not follow the file\"\nprint(\"a corrected Tuesday:\", len(after), \"rows, Monday untouched\")\nprint(\"tests passed\")\n",
+  "m7/call_with_retry.py": "\"\"\"Coding round: a retry function that retries only what is worth retrying, and that tests can run without waiting.\"\"\"\nimport random\n\n\nclass Transient(Exception):\n    pass\n\n\ndef call_with_retry(fn, *, retry_on=(Transient,), attempts=4, base=0.5, cap=8.0, sleep, rng):\n    \"\"\"Call fn(). On an exception in retry_on, wait a random time between 0 and min(cap, base * 2 ** (n - 1)) and try again.\n    Give up after `attempts` calls and raise the last error. Any other exception is raised at once.\"\"\"\n    for attempt in range(1, attempts + 1):\n        try:\n            return fn()\n        except retry_on:\n            if attempt == attempts:\n                raise\n            sleep(rng.uniform(0, min(cap, base * 2 ** (attempt - 1))))\n\n\nclass Upper:\n    \"\"\"A stand-in for random: always picks the top of the range, so the waits are the bounds themselves.\"\"\"\n    def uniform(self, a, b):\n        return b\n\n\nclass Script:\n    \"\"\"A function that raises the given errors, one for each call, then returns \"ok\".\"\"\"\n    def __init__(self, *errors):\n        self.errors, self.calls = list(errors), 0\n\n    def __call__(self):\n        self.calls += 1\n        if self.errors:\n            raise self.errors.pop(0)\n        return \"ok\"\n\n\nwaits = []\nfn = Script(Transient(\"503\"), Transient(\"503\"))\nassert call_with_retry(fn, sleep=waits.append, rng=random.Random(7)) == \"ok\" and fn.calls == 3\nassert len(waits) == 2 and 0 <= waits[0] <= 0.5 and 0 <= waits[1] <= 1.0\nprint(\"fails twice, then works:\", fn.calls, \"calls, waits\", [round(w, 2) for w in waits])\n\nwaits = []\nfn = Script(ValueError(\"400\"))\ntry:\n    call_with_retry(fn, sleep=waits.append, rng=random.Random(7))\n    raise AssertionError(\"a ValueError must not be swallowed\")\nexcept ValueError:\n    pass\nassert fn.calls == 1 and waits == []\nprint(\"a ValueError is not retried:\", fn.calls, \"call, no waits\")\n\nwaits = []\nfn = Script(*[Transient(f\"503 #{i}\") for i in range(10)])\ntry:\n    call_with_retry(fn, sleep=waits.append, rng=random.Random(7))\n    raise AssertionError(\"it must give up\")\nexcept Transient as err:\n    assert str(err) == \"503 #3\" and fn.calls == 4 and len(waits) == 3\nprint(\"always fails: gave up after\", fn.calls, \"calls, with the last error\")\n\nwaits = []\nfn = Script(*[Transient(\"503\") for _ in range(7)])\nassert call_with_retry(fn, attempts=8, sleep=waits.append, rng=Upper()) == \"ok\"\nassert waits == [0.5, 1.0, 2.0, 4.0, 8.0, 8.0, 8.0], waits\nprint(\"the longest waits, with the cap at 8 s:\", waits)\nprint(\"tests passed\")\n"
  },
  "text": {
   "m1/load_orders_v7.py#1": "loaded 6 rows\n(6, 6, 78.85)\n(1,)",
@@ -120,7 +130,18 @@ LAB.real = {
   "m6/day_buckets.py": "orders per day by the UTC date:        {'2026-03-14': 4, '2026-03-15': 1}\norders per day by Singapore's date:    {'2026-03-14': 2, '2026-03-15': 3}\n\nLondon, 29 March 2026: from 2026-03-29T00:00:00+00:00 to 2026-03-30T00:00:00+01:00\nsubtracting the two aware values:      1 day, 0:00:00\nthe same two moments in UTC:           23:00:00",
   "m6/money.py": "0.1 + 0.2 = 0.30000000000000004\n0.1 + 0.2 == 0.3: False\nthe float 0.1 is really: 0.1000000000000000055511151231257827021181583404541015625\nthe Decimal from text:    0.1\n\nadding 0.10 1,000,000 times:\n  float, a loop:       100000.00000133288\n  math.fsum:           100000.0\n  Decimal:             100000.00\n  whole cents (int):   100000.0\n\nrounding a half to 2 places:\n  round(2.675, 2): 2.67   (the float is a little below 2.675)\n  Decimal('2.675'), ROUND_HALF_EVEN 2.68\n  Decimal('2.675'), ROUND_HALF_UP   2.68\n  Decimal('2.675'), ROUND_DOWN      2.67\n  round(2.5): 2   round(3.5): 4   (halves go to the even number)",
   "m6/normalize_timestamps.py": "2026-03-14T08:15:00Z         -> 2026-03-14T08:15:00Z\n2026-03-14T16:15:00+08:00    -> 2026-03-14T08:15:00Z\n2026-03-14 16:15:00          -> 2026-03-14T08:15:00Z\n1773476100                   -> 2026-03-14T08:15:00Z\ntests passed",
-  "m6/local_days.py": "London:    {'2026-03-28': 1, '2026-03-29': 2, '2026-03-30': 1}\nSingapore: {'2026-03-29': 2, '2026-03-30': 2}\nhours in 2026-03-28 in London: 24\nhours in 2026-03-29 in London: 23\nhours in 2026-10-25 in London: 25\ntests passed"
+  "m6/local_days.py": "London:    {'2026-03-28': 1, '2026-03-29': 2, '2026-03-30': 1}\nSingapore: {'2026-03-29': 2, '2026-03-30': 2}\nhours in 2026-03-28 in London: 24\nhours in 2026-03-29 in London: 23\nhours in 2026-10-25 in London: 25\ntests passed",
+  "m7/exceptions_tour.py": "a good value:\n  parsing '12.50'\n  else: no error, so this runs\n  finally: this runs either way\n  result: 12.5\na bad value:\n  parsing '12,50'\n  finally: this runs either way\n  caught: order total '12,50' is not a number\n  the cause: ValueError(\"could not convert string to float: '12,50'\")\na value of the wrong type:\n  parsing None\n  finally: this runs either way\n  the ValueError handler did not catch it, the caller did: TypeError",
+  "m7/raise_from.py": "1250\nTraceback (most recent call last):\n  File \"raise_from.py\", line 6, in to_cents\n    return round(float(text) * 100)\n                 ~~~~~^^^^^^\nValueError: could not convert string to float: '12,50'\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"raise_from.py\", line 12, in <module>\n    print(to_cents(\"12,50\"))\n          ~~~~~~~~^^^^^^^^^\n  File \"raise_from.py\", line 8, in to_cents\n    raise ValueError(f\"order total {text!r} is not a number\") from err\nValueError: order total '12,50' is not a number",
+  "m7/swallowed.py": "loaded 4 of 6 rows\nstatus: success",
+  "m7/fail_loud.py": "loaded 4 of 6 rows\n  rejected O-3: could not convert string to float: '8,20'\n  rejected O-5: could not convert string to float: ''\nstatus: failed, 2 of 6 rows rejected (limit 5%)",
+  "m7/retry_backoff.py": "an API that fails 3 times, then works:\n  attempt 1 failed (503 from the API); waiting 0.16 s\n  attempt 2 failed (503 from the API); waiting 0.15 s\n  attempt 3 failed (503 from the API); waiting 1.30 s\n  result: orders page 1 after 4 calls\n  total wait: 1.61 s (a fake clock, so nothing really waited)\nan API that fails every time:\n  attempt 1 failed (503 from the API); waiting 0.16 s\n  attempt 2 failed (503 from the API); waiting 0.15 s\n  attempt 3 failed (503 from the API); waiting 1.30 s\n  attempt 4 failed (503 from the API); waiting 0.29 s\n  gave up after 5 calls with: 503 from the API\nthe most a wait can last, by attempt: [0.5, 1.0, 2.0, 4.0, 8.0]",
+  "m7/tenacity_retry.py": "WARNING Retrying __main__.fetch_page in 0.00238 seconds as it raised Transient: 429 Too Many Requests.\nWARNING Retrying __main__.fetch_page in 0.0109 seconds as it raised Transient: 429 Too Many Requests.\nresult: page 1 after 3 calls\na ValueError is not in the retry list, so it stopped after 1 call: 400 Bad Request",
+  "m7/load_strategies.py": "run once\n  append                                   6 rows,   82.75  right\n  insert with a key                        6 rows,   82.75  right\n  delete, then insert                      6 rows,   82.75  right\n  delete, then insert, in a transaction    6 rows,   82.75  right\n  upsert                                   6 rows,   82.75  right\nrun twice\n  append                                   12 rows,  165.50  WRONG\n  insert with a key                        6 rows,   82.75  right\n  delete, then insert                      6 rows,   82.75  right\n  delete, then insert, in a transaction    6 rows,   82.75  right\n  upsert                                   6 rows,   82.75  right\ncrash, then run again\n  append                                   9 rows,  108.20  WRONG\n  insert with a key                        3 rows,   25.45  WRONG\n  delete, then insert                      6 rows,   82.75  right\n  delete, then insert, in a transaction    6 rows,   82.75  right\n  upsert                                   6 rows,   82.75  right\nthe source corrects O-3\n  append                                   12 rows,  166.50  WRONG\n  insert with a key                        6 rows,   82.75  WRONG\n  delete, then insert                      6 rows,   83.75  right\n  delete, then insert, in a transaction    6 rows,   83.75  right\n  upsert                                   6 rows,   83.75  right\nthe source drops O-6\n  append                                   11 rows,  159.10  WRONG\n  insert with a key                        6 rows,   82.75  WRONG\n  delete, then insert                      5 rows,   76.35  right\n  delete, then insert, in a transaction    5 rows,   76.35  right\n  upsert                                   6 rows,   82.75  WRONG",
+  "m7/watermark.py": "1. the watermark is saved first, then the job dies\n   run 1: the job died before writing | watermark is now 2026-03-14 08:10\n   run 2 reads 0 rows; the target has 0 of 3\n2. the watermark is saved after the rows are written\n   run 1: the job died before writing | watermark is still 2026-03-14 00:00\n   run 2 reads 3 rows; the target has 3 of 3\n3. a row arrives late: a slow writer commits updated_at 08:07 after the load has passed 08:10\n   overlap  0 min: run 2 reads 1 row; the target has 3 of 4\n   overlap 15 min: run 2 reads 4 rows; the target has 4 of 4",
+  "m7/idempotent_load.py": "Monday and Tuesday loaded: 5 rows\nTuesday loaded again: 5 rows, the same table\na run that fails halfway: NOT NULL constraint failed: orders.total_cents\nafter the failed run: 5 rows, the same table\na corrected Tuesday: 4 rows, Monday untouched\ntests passed",
+  "m7/call_with_retry.py": "fails twice, then works: 3 calls, waits [0.16, 0.15]\na ValueError is not retried: 1 call, no waits\nalways fails: gave up after 4 calls, with the last error\nthe longest waits, with the cap at 8 s: [0.5, 1.0, 2.0, 4.0, 8.0, 8.0, 8.0]\ntests passed",
+  "m7/exit_codes": "$ python swallowed.py; echo \"exit code: $?\"\nloaded 4 of 6 rows\nstatus: success\nexit code: 0\n$ python fail_loud.py; echo \"exit code: $?\"\nloaded 4 of 6 rows\n  rejected O-3: could not convert string to float: '8,20'\n  rejected O-5: could not convert string to float: ''\nstatus: failed, 2 of 6 rows rejected (limit 5%)\nexit code: 1"
  },
  "tables": {
   "m3.structs": {
@@ -252,7 +273,19 @@ LAB.real = {
    "m6/day_buckets.py": 0,
    "m6/money.py": 0,
    "m6/normalize_timestamps.py": 0,
-   "m6/local_days.py": 0
+   "m6/local_days.py": 0,
+   "m7/exceptions_tour.py": 0,
+   "m7/raise_from.py": 1,
+   "m7/swallowed.py": 0,
+   "m7/fail_loud.py": 1,
+   "m7/retry_backoff.py": 0,
+   "m7/tenacity_retry.py": 0,
+   "m7/load_strategies.py": 0,
+   "m7/watermark.py": 0,
+   "m7/idempotent_load.py": 0,
+   "m7/call_with_retry.py": 0,
+   "m7/exit_codes|/tmp/claude-0/-home-user/a3635923-0dcc-5766-9df4-bde417681138/scratchpad/python/venv/bin/python swallowed.py; echo \"exit code: $?\"": 0,
+   "m7/exit_codes|/tmp/claude-0/-home-user/a3635923-0dcc-5766-9df4-bde417681138/scratchpad/python/venv/bin/python fail_loud.py; echo \"exit code: $?\"": 0
   },
   "m2.specifiers.pandas": {
    "versions": [
@@ -1401,6 +1434,2693 @@ LAB.real = {
      "down": "0.12"
     }
    ]
+  },
+  "m7.idem": {
+   "strategies": [
+    "append",
+    "insert with a key",
+    "delete, then insert",
+    "delete, then insert, in a transaction",
+    "upsert"
+   ],
+   "scenarios": [
+    "run once",
+    "run twice",
+    "crash, then run again",
+    "the source corrects O-3",
+    "the source drops O-6"
+   ],
+   "cells": {
+    "append": {
+     "run once": {
+      "runs": [
+       {
+        "outcome": "finished",
+        "rows": 6,
+        "cents": 8275
+       }
+      ],
+      "final": [
+       [
+        "O-1",
+        1250
+       ],
+       [
+        "O-2",
+        475
+       ],
+       [
+        "O-3",
+        820
+       ],
+       [
+        "O-4",
+        1990
+       ],
+       [
+        "O-5",
+        3100
+       ],
+       [
+        "O-6",
+        640
+       ]
+      ],
+      "right": true,
+      "want_rows": 6,
+      "want_cents": 8275
+     },
+     "run twice": {
+      "runs": [
+       {
+        "outcome": "finished",
+        "rows": 6,
+        "cents": 8275
+       },
+       {
+        "outcome": "finished",
+        "rows": 12,
+        "cents": 16550
+       }
+      ],
+      "final": [
+       [
+        "O-1",
+        1250
+       ],
+       [
+        "O-1",
+        1250
+       ],
+       [
+        "O-2",
+        475
+       ],
+       [
+        "O-2",
+        475
+       ],
+       [
+        "O-3",
+        820
+       ],
+       [
+        "O-3",
+        820
+       ],
+       [
+        "O-4",
+        1990
+       ],
+       [
+        "O-4",
+        1990
+       ],
+       [
+        "O-5",
+        3100
+       ],
+       [
+        "O-5",
+        3100
+       ],
+       [
+        "O-6",
+        640
+       ],
+       [
+        "O-6",
+        640
+       ]
+      ],
+      "right": false,
+      "want_rows": 6,
+      "want_cents": 8275
+     },
+     "crash, then run again": {
+      "runs": [
+       {
+        "outcome": "crashed: the job died after 3 rows",
+        "rows": 3,
+        "cents": 2545
+       },
+       {
+        "outcome": "finished",
+        "rows": 9,
+        "cents": 10820
+       }
+      ],
+      "final": [
+       [
+        "O-1",
+        1250
+       ],
+       [
+        "O-1",
+        1250
+       ],
+       [
+        "O-2",
+        475
+       ],
+       [
+        "O-2",
+        475
+       ],
+       [
+        "O-3",
+        820
+       ],
+       [
+        "O-3",
+        820
+       ],
+       [
+        "O-4",
+        1990
+       ],
+       [
+        "O-5",
+        3100
+       ],
+       [
+        "O-6",
+        640
+       ]
+      ],
+      "right": false,
+      "want_rows": 6,
+      "want_cents": 8275
+     },
+     "the source corrects O-3": {
+      "runs": [
+       {
+        "outcome": "finished",
+        "rows": 6,
+        "cents": 8275
+       },
+       {
+        "outcome": "finished",
+        "rows": 12,
+        "cents": 16650
+       }
+      ],
+      "final": [
+       [
+        "O-1",
+        1250
+       ],
+       [
+        "O-1",
+        1250
+       ],
+       [
+        "O-2",
+        475
+       ],
+       [
+        "O-2",
+        475
+       ],
+       [
+        "O-3",
+        820
+       ],
+       [
+        "O-3",
+        920
+       ],
+       [
+        "O-4",
+        1990
+       ],
+       [
+        "O-4",
+        1990
+       ],
+       [
+        "O-5",
+        3100
+       ],
+       [
+        "O-5",
+        3100
+       ],
+       [
+        "O-6",
+        640
+       ],
+       [
+        "O-6",
+        640
+       ]
+      ],
+      "right": false,
+      "want_rows": 6,
+      "want_cents": 8375
+     },
+     "the source drops O-6": {
+      "runs": [
+       {
+        "outcome": "finished",
+        "rows": 6,
+        "cents": 8275
+       },
+       {
+        "outcome": "finished",
+        "rows": 11,
+        "cents": 15910
+       }
+      ],
+      "final": [
+       [
+        "O-1",
+        1250
+       ],
+       [
+        "O-1",
+        1250
+       ],
+       [
+        "O-2",
+        475
+       ],
+       [
+        "O-2",
+        475
+       ],
+       [
+        "O-3",
+        820
+       ],
+       [
+        "O-3",
+        820
+       ],
+       [
+        "O-4",
+        1990
+       ],
+       [
+        "O-4",
+        1990
+       ],
+       [
+        "O-5",
+        3100
+       ],
+       [
+        "O-5",
+        3100
+       ],
+       [
+        "O-6",
+        640
+       ]
+      ],
+      "right": false,
+      "want_rows": 5,
+      "want_cents": 7635
+     }
+    },
+    "insert with a key": {
+     "run once": {
+      "runs": [
+       {
+        "outcome": "finished",
+        "rows": 6,
+        "cents": 8275
+       }
+      ],
+      "final": [
+       [
+        "O-1",
+        1250
+       ],
+       [
+        "O-2",
+        475
+       ],
+       [
+        "O-3",
+        820
+       ],
+       [
+        "O-4",
+        1990
+       ],
+       [
+        "O-5",
+        3100
+       ],
+       [
+        "O-6",
+        640
+       ]
+      ],
+      "right": true,
+      "want_rows": 6,
+      "want_cents": 8275
+     },
+     "run twice": {
+      "runs": [
+       {
+        "outcome": "finished",
+        "rows": 6,
+        "cents": 8275
+       },
+       {
+        "outcome": "failed: UNIQUE constraint failed: orders.order_id",
+        "rows": 6,
+        "cents": 8275
+       }
+      ],
+      "final": [
+       [
+        "O-1",
+        1250
+       ],
+       [
+        "O-2",
+        475
+       ],
+       [
+        "O-3",
+        820
+       ],
+       [
+        "O-4",
+        1990
+       ],
+       [
+        "O-5",
+        3100
+       ],
+       [
+        "O-6",
+        640
+       ]
+      ],
+      "right": true,
+      "want_rows": 6,
+      "want_cents": 8275
+     },
+     "crash, then run again": {
+      "runs": [
+       {
+        "outcome": "crashed: the job died after 3 rows",
+        "rows": 3,
+        "cents": 2545
+       },
+       {
+        "outcome": "failed: UNIQUE constraint failed: orders.order_id",
+        "rows": 3,
+        "cents": 2545
+       }
+      ],
+      "final": [
+       [
+        "O-1",
+        1250
+       ],
+       [
+        "O-2",
+        475
+       ],
+       [
+        "O-3",
+        820
+       ]
+      ],
+      "right": false,
+      "want_rows": 6,
+      "want_cents": 8275
+     },
+     "the source corrects O-3": {
+      "runs": [
+       {
+        "outcome": "finished",
+        "rows": 6,
+        "cents": 8275
+       },
+       {
+        "outcome": "failed: UNIQUE constraint failed: orders.order_id",
+        "rows": 6,
+        "cents": 8275
+       }
+      ],
+      "final": [
+       [
+        "O-1",
+        1250
+       ],
+       [
+        "O-2",
+        475
+       ],
+       [
+        "O-3",
+        820
+       ],
+       [
+        "O-4",
+        1990
+       ],
+       [
+        "O-5",
+        3100
+       ],
+       [
+        "O-6",
+        640
+       ]
+      ],
+      "right": false,
+      "want_rows": 6,
+      "want_cents": 8375
+     },
+     "the source drops O-6": {
+      "runs": [
+       {
+        "outcome": "finished",
+        "rows": 6,
+        "cents": 8275
+       },
+       {
+        "outcome": "failed: UNIQUE constraint failed: orders.order_id",
+        "rows": 6,
+        "cents": 8275
+       }
+      ],
+      "final": [
+       [
+        "O-1",
+        1250
+       ],
+       [
+        "O-2",
+        475
+       ],
+       [
+        "O-3",
+        820
+       ],
+       [
+        "O-4",
+        1990
+       ],
+       [
+        "O-5",
+        3100
+       ],
+       [
+        "O-6",
+        640
+       ]
+      ],
+      "right": false,
+      "want_rows": 5,
+      "want_cents": 7635
+     }
+    },
+    "delete, then insert": {
+     "run once": {
+      "runs": [
+       {
+        "outcome": "finished",
+        "rows": 6,
+        "cents": 8275
+       }
+      ],
+      "final": [
+       [
+        "O-1",
+        1250
+       ],
+       [
+        "O-2",
+        475
+       ],
+       [
+        "O-3",
+        820
+       ],
+       [
+        "O-4",
+        1990
+       ],
+       [
+        "O-5",
+        3100
+       ],
+       [
+        "O-6",
+        640
+       ]
+      ],
+      "right": true,
+      "want_rows": 6,
+      "want_cents": 8275
+     },
+     "run twice": {
+      "runs": [
+       {
+        "outcome": "finished",
+        "rows": 6,
+        "cents": 8275
+       },
+       {
+        "outcome": "finished",
+        "rows": 6,
+        "cents": 8275
+       }
+      ],
+      "final": [
+       [
+        "O-1",
+        1250
+       ],
+       [
+        "O-2",
+        475
+       ],
+       [
+        "O-3",
+        820
+       ],
+       [
+        "O-4",
+        1990
+       ],
+       [
+        "O-5",
+        3100
+       ],
+       [
+        "O-6",
+        640
+       ]
+      ],
+      "right": true,
+      "want_rows": 6,
+      "want_cents": 8275
+     },
+     "crash, then run again": {
+      "runs": [
+       {
+        "outcome": "crashed: the job died after 3 rows",
+        "rows": 3,
+        "cents": 2545
+       },
+       {
+        "outcome": "finished",
+        "rows": 6,
+        "cents": 8275
+       }
+      ],
+      "final": [
+       [
+        "O-1",
+        1250
+       ],
+       [
+        "O-2",
+        475
+       ],
+       [
+        "O-3",
+        820
+       ],
+       [
+        "O-4",
+        1990
+       ],
+       [
+        "O-5",
+        3100
+       ],
+       [
+        "O-6",
+        640
+       ]
+      ],
+      "right": true,
+      "want_rows": 6,
+      "want_cents": 8275
+     },
+     "the source corrects O-3": {
+      "runs": [
+       {
+        "outcome": "finished",
+        "rows": 6,
+        "cents": 8275
+       },
+       {
+        "outcome": "finished",
+        "rows": 6,
+        "cents": 8375
+       }
+      ],
+      "final": [
+       [
+        "O-1",
+        1250
+       ],
+       [
+        "O-2",
+        475
+       ],
+       [
+        "O-3",
+        920
+       ],
+       [
+        "O-4",
+        1990
+       ],
+       [
+        "O-5",
+        3100
+       ],
+       [
+        "O-6",
+        640
+       ]
+      ],
+      "right": true,
+      "want_rows": 6,
+      "want_cents": 8375
+     },
+     "the source drops O-6": {
+      "runs": [
+       {
+        "outcome": "finished",
+        "rows": 6,
+        "cents": 8275
+       },
+       {
+        "outcome": "finished",
+        "rows": 5,
+        "cents": 7635
+       }
+      ],
+      "final": [
+       [
+        "O-1",
+        1250
+       ],
+       [
+        "O-2",
+        475
+       ],
+       [
+        "O-3",
+        820
+       ],
+       [
+        "O-4",
+        1990
+       ],
+       [
+        "O-5",
+        3100
+       ]
+      ],
+      "right": true,
+      "want_rows": 5,
+      "want_cents": 7635
+     }
+    },
+    "delete, then insert, in a transaction": {
+     "run once": {
+      "runs": [
+       {
+        "outcome": "finished",
+        "rows": 6,
+        "cents": 8275
+       }
+      ],
+      "final": [
+       [
+        "O-1",
+        1250
+       ],
+       [
+        "O-2",
+        475
+       ],
+       [
+        "O-3",
+        820
+       ],
+       [
+        "O-4",
+        1990
+       ],
+       [
+        "O-5",
+        3100
+       ],
+       [
+        "O-6",
+        640
+       ]
+      ],
+      "right": true,
+      "want_rows": 6,
+      "want_cents": 8275
+     },
+     "run twice": {
+      "runs": [
+       {
+        "outcome": "finished",
+        "rows": 6,
+        "cents": 8275
+       },
+       {
+        "outcome": "finished",
+        "rows": 6,
+        "cents": 8275
+       }
+      ],
+      "final": [
+       [
+        "O-1",
+        1250
+       ],
+       [
+        "O-2",
+        475
+       ],
+       [
+        "O-3",
+        820
+       ],
+       [
+        "O-4",
+        1990
+       ],
+       [
+        "O-5",
+        3100
+       ],
+       [
+        "O-6",
+        640
+       ]
+      ],
+      "right": true,
+      "want_rows": 6,
+      "want_cents": 8275
+     },
+     "crash, then run again": {
+      "runs": [
+       {
+        "outcome": "crashed: the job died after 3 rows",
+        "rows": 0,
+        "cents": 0
+       },
+       {
+        "outcome": "finished",
+        "rows": 6,
+        "cents": 8275
+       }
+      ],
+      "final": [
+       [
+        "O-1",
+        1250
+       ],
+       [
+        "O-2",
+        475
+       ],
+       [
+        "O-3",
+        820
+       ],
+       [
+        "O-4",
+        1990
+       ],
+       [
+        "O-5",
+        3100
+       ],
+       [
+        "O-6",
+        640
+       ]
+      ],
+      "right": true,
+      "want_rows": 6,
+      "want_cents": 8275
+     },
+     "the source corrects O-3": {
+      "runs": [
+       {
+        "outcome": "finished",
+        "rows": 6,
+        "cents": 8275
+       },
+       {
+        "outcome": "finished",
+        "rows": 6,
+        "cents": 8375
+       }
+      ],
+      "final": [
+       [
+        "O-1",
+        1250
+       ],
+       [
+        "O-2",
+        475
+       ],
+       [
+        "O-3",
+        920
+       ],
+       [
+        "O-4",
+        1990
+       ],
+       [
+        "O-5",
+        3100
+       ],
+       [
+        "O-6",
+        640
+       ]
+      ],
+      "right": true,
+      "want_rows": 6,
+      "want_cents": 8375
+     },
+     "the source drops O-6": {
+      "runs": [
+       {
+        "outcome": "finished",
+        "rows": 6,
+        "cents": 8275
+       },
+       {
+        "outcome": "finished",
+        "rows": 5,
+        "cents": 7635
+       }
+      ],
+      "final": [
+       [
+        "O-1",
+        1250
+       ],
+       [
+        "O-2",
+        475
+       ],
+       [
+        "O-3",
+        820
+       ],
+       [
+        "O-4",
+        1990
+       ],
+       [
+        "O-5",
+        3100
+       ]
+      ],
+      "right": true,
+      "want_rows": 5,
+      "want_cents": 7635
+     }
+    },
+    "upsert": {
+     "run once": {
+      "runs": [
+       {
+        "outcome": "finished",
+        "rows": 6,
+        "cents": 8275
+       }
+      ],
+      "final": [
+       [
+        "O-1",
+        1250
+       ],
+       [
+        "O-2",
+        475
+       ],
+       [
+        "O-3",
+        820
+       ],
+       [
+        "O-4",
+        1990
+       ],
+       [
+        "O-5",
+        3100
+       ],
+       [
+        "O-6",
+        640
+       ]
+      ],
+      "right": true,
+      "want_rows": 6,
+      "want_cents": 8275
+     },
+     "run twice": {
+      "runs": [
+       {
+        "outcome": "finished",
+        "rows": 6,
+        "cents": 8275
+       },
+       {
+        "outcome": "finished",
+        "rows": 6,
+        "cents": 8275
+       }
+      ],
+      "final": [
+       [
+        "O-1",
+        1250
+       ],
+       [
+        "O-2",
+        475
+       ],
+       [
+        "O-3",
+        820
+       ],
+       [
+        "O-4",
+        1990
+       ],
+       [
+        "O-5",
+        3100
+       ],
+       [
+        "O-6",
+        640
+       ]
+      ],
+      "right": true,
+      "want_rows": 6,
+      "want_cents": 8275
+     },
+     "crash, then run again": {
+      "runs": [
+       {
+        "outcome": "crashed: the job died after 3 rows",
+        "rows": 3,
+        "cents": 2545
+       },
+       {
+        "outcome": "finished",
+        "rows": 6,
+        "cents": 8275
+       }
+      ],
+      "final": [
+       [
+        "O-1",
+        1250
+       ],
+       [
+        "O-2",
+        475
+       ],
+       [
+        "O-3",
+        820
+       ],
+       [
+        "O-4",
+        1990
+       ],
+       [
+        "O-5",
+        3100
+       ],
+       [
+        "O-6",
+        640
+       ]
+      ],
+      "right": true,
+      "want_rows": 6,
+      "want_cents": 8275
+     },
+     "the source corrects O-3": {
+      "runs": [
+       {
+        "outcome": "finished",
+        "rows": 6,
+        "cents": 8275
+       },
+       {
+        "outcome": "finished",
+        "rows": 6,
+        "cents": 8375
+       }
+      ],
+      "final": [
+       [
+        "O-1",
+        1250
+       ],
+       [
+        "O-2",
+        475
+       ],
+       [
+        "O-3",
+        920
+       ],
+       [
+        "O-4",
+        1990
+       ],
+       [
+        "O-5",
+        3100
+       ],
+       [
+        "O-6",
+        640
+       ]
+      ],
+      "right": true,
+      "want_rows": 6,
+      "want_cents": 8375
+     },
+     "the source drops O-6": {
+      "runs": [
+       {
+        "outcome": "finished",
+        "rows": 6,
+        "cents": 8275
+       },
+       {
+        "outcome": "finished",
+        "rows": 6,
+        "cents": 8275
+       }
+      ],
+      "final": [
+       [
+        "O-1",
+        1250
+       ],
+       [
+        "O-2",
+        475
+       ],
+       [
+        "O-3",
+        820
+       ],
+       [
+        "O-4",
+        1990
+       ],
+       [
+        "O-5",
+        3100
+       ],
+       [
+        "O-6",
+        640
+       ]
+      ],
+      "right": false,
+      "want_rows": 5,
+      "want_cents": 7635
+     }
+    }
+   },
+   "truth": {
+    "run once": [
+     [
+      "O-1",
+      1250
+     ],
+     [
+      "O-2",
+      475
+     ],
+     [
+      "O-3",
+      820
+     ],
+     [
+      "O-4",
+      1990
+     ],
+     [
+      "O-5",
+      3100
+     ],
+     [
+      "O-6",
+      640
+     ]
+    ],
+    "run twice": [
+     [
+      "O-1",
+      1250
+     ],
+     [
+      "O-2",
+      475
+     ],
+     [
+      "O-3",
+      820
+     ],
+     [
+      "O-4",
+      1990
+     ],
+     [
+      "O-5",
+      3100
+     ],
+     [
+      "O-6",
+      640
+     ]
+    ],
+    "crash, then run again": [
+     [
+      "O-1",
+      1250
+     ],
+     [
+      "O-2",
+      475
+     ],
+     [
+      "O-3",
+      820
+     ],
+     [
+      "O-4",
+      1990
+     ],
+     [
+      "O-5",
+      3100
+     ],
+     [
+      "O-6",
+      640
+     ]
+    ],
+    "the source corrects O-3": [
+     [
+      "O-1",
+      1250
+     ],
+     [
+      "O-2",
+      475
+     ],
+     [
+      "O-3",
+      920
+     ],
+     [
+      "O-4",
+      1990
+     ],
+     [
+      "O-5",
+      3100
+     ],
+     [
+      "O-6",
+      640
+     ]
+    ],
+    "the source drops O-6": [
+     [
+      "O-1",
+      1250
+     ],
+     [
+      "O-2",
+      475
+     ],
+     [
+      "O-3",
+      820
+     ],
+     [
+      "O-4",
+      1990
+     ],
+     [
+      "O-5",
+      3100
+     ]
+    ]
+   },
+   "sql": {
+    "append": "INSERT INTO orders VALUES (?, ?, ?)",
+    "insert with a key": "INSERT INTO orders VALUES (?, ?, ?)",
+    "upsert": "INSERT INTO orders VALUES (?, ?, ?) ON CONFLICT (order_id) DO UPDATE SET total_cents = excluded.total_cents"
+   },
+   "note": "every cell is a run of the functions in lessons/m7/load_strategies.py against SQLite (an in-memory database), with crash = an exception after 3 rows"
+  },
+  "m7.retry": {
+   "policies": [
+    "at once",
+    "fixed 1 s",
+    "exponential",
+    "exponential with full jitter"
+   ],
+   "one": {
+    "at once": {
+     "1": {
+      "waits": [
+       0.0
+      ],
+      "total": 0.0
+     },
+     "2": {
+      "waits": [
+       0.0,
+       0.0
+      ],
+      "total": 0.0
+     },
+     "3": {
+      "waits": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "total": 0.0
+     },
+     "4": {
+      "waits": [
+       0.0,
+       0.0,
+       0.0,
+       0.0
+      ],
+      "total": 0.0
+     }
+    },
+    "fixed 1 s": {
+     "1": {
+      "waits": [
+       1.0
+      ],
+      "total": 1.0
+     },
+     "2": {
+      "waits": [
+       1.0,
+       1.0
+      ],
+      "total": 2.0
+     },
+     "3": {
+      "waits": [
+       1.0,
+       1.0,
+       1.0
+      ],
+      "total": 3.0
+     },
+     "4": {
+      "waits": [
+       1.0,
+       1.0,
+       1.0,
+       1.0
+      ],
+      "total": 4.0
+     }
+    },
+    "exponential": {
+     "1": {
+      "waits": [
+       0.5
+      ],
+      "total": 0.5
+     },
+     "2": {
+      "waits": [
+       0.5,
+       1.0
+      ],
+      "total": 1.5
+     },
+     "3": {
+      "waits": [
+       0.5,
+       1.0,
+       2.0
+      ],
+      "total": 3.5
+     },
+     "4": {
+      "waits": [
+       0.5,
+       1.0,
+       2.0,
+       4.0
+      ],
+      "total": 7.5
+     }
+    },
+    "exponential with full jitter": {
+     "1": {
+      "waits": [
+       0.162
+      ],
+      "total": 0.162
+     },
+     "2": {
+      "waits": [
+       0.162,
+       0.151
+      ],
+      "total": 0.313
+     },
+     "3": {
+      "waits": [
+       0.162,
+       0.151,
+       1.302
+      ],
+      "total": 1.615
+     },
+     "4": {
+      "waits": [
+       0.162,
+       0.151,
+       1.302,
+       0.29
+      ],
+      "total": 1.904
+     }
+    }
+   },
+   "storm": {
+    "at once": {
+     "requests": 330,
+     "succeeded": 10,
+     "gave_up": 40,
+     "rejected": 320,
+     "last_second": 0,
+     "peak": 330,
+     "retry_burst": 280,
+     "finished_at": 0.0,
+     "per_second": [
+      [
+       10,
+       320
+      ]
+     ],
+     "per_tenth": [
+      [
+       10,
+       320
+      ]
+     ]
+    },
+    "fixed 1 s": {
+     "requests": 150,
+     "succeeded": 50,
+     "gave_up": 0,
+     "rejected": 100,
+     "last_second": 4,
+     "peak": 50,
+     "retry_burst": 40,
+     "finished_at": 4.0,
+     "per_second": [
+      [
+       10,
+       40
+      ],
+      [
+       10,
+       30
+      ],
+      [
+       10,
+       20
+      ],
+      [
+       10,
+       10
+      ],
+      [
+       10,
+       0
+      ]
+     ],
+     "per_tenth": [
+      [
+       10,
+       40
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       10,
+       30
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       10,
+       20
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       10,
+       10
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       10,
+       0
+      ]
+     ]
+    },
+    "exponential": {
+     "requests": 190,
+     "succeeded": 50,
+     "gave_up": 0,
+     "rejected": 140,
+     "last_second": 15,
+     "peak": 90,
+     "retry_burst": 40,
+     "finished_at": 15.5,
+     "per_second": [
+      [
+       10,
+       80
+      ],
+      [
+       10,
+       30
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       10,
+       20
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       10,
+       10
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       10,
+       0
+      ]
+     ],
+     "per_tenth": [
+      [
+       10,
+       40
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       40
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       10,
+       30
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       10,
+       20
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       10,
+       10
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       10,
+       0
+      ]
+     ]
+    },
+    "exponential with full jitter": {
+     "requests": 196,
+     "succeeded": 50,
+     "gave_up": 0,
+     "rejected": 146,
+     "last_second": 7,
+     "peak": 127,
+     "retry_burst": 14,
+     "finished_at": 7.45,
+     "per_second": [
+      [
+       10,
+       117
+      ],
+      [
+       10,
+       25
+      ],
+      [
+       10,
+       4
+      ],
+      [
+       4,
+       0
+      ],
+      [
+       9,
+       0
+      ],
+      [
+       4,
+       0
+      ],
+      [
+       2,
+       0
+      ],
+      [
+       1,
+       0
+      ]
+     ],
+     "per_tenth": [
+      [
+       10,
+       50
+      ],
+      [
+       0,
+       4
+      ],
+      [
+       0,
+       13
+      ],
+      [
+       0,
+       14
+      ],
+      [
+       0,
+       13
+      ],
+      [
+       0,
+       3
+      ],
+      [
+       0,
+       5
+      ],
+      [
+       0,
+       7
+      ],
+      [
+       0,
+       6
+      ],
+      [
+       0,
+       2
+      ],
+      [
+       6,
+       0
+      ],
+      [
+       4,
+       0
+      ],
+      [
+       0,
+       9
+      ],
+      [
+       0,
+       4
+      ],
+      [
+       0,
+       1
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       5
+      ],
+      [
+       0,
+       4
+      ],
+      [
+       0,
+       2
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       2,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       4,
+       0
+      ],
+      [
+       1,
+       0
+      ],
+      [
+       1,
+       0
+      ],
+      [
+       1,
+       0
+      ],
+      [
+       1,
+       4
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       1,
+       0
+      ],
+      [
+       1,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       1,
+       0
+      ],
+      [
+       1,
+       0
+      ],
+      [
+       2,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       2,
+       0
+      ],
+      [
+       1,
+       0
+      ],
+      [
+       2,
+       0
+      ],
+      [
+       2,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       2,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       2,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       1,
+       0
+      ],
+      [
+       1,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ],
+      [
+       1,
+       0
+      ]
+     ]
+    }
+   },
+   "setup": {
+    "clients": 50,
+    "capacity": 10,
+    "attempts": 8,
+    "seed": 11
+   },
+   "note": "a simulation: the delay function is the one in lessons/m7/retry_backoff.py, time is a number, and there is no network. Each whole second the service accepts 10 requests and answers 429 to the rest."
   }
  }
 };

@@ -78,5 +78,139 @@
     W.moneyInfo = { data: data };
   })();
 
+  /* ====================== Mission 7: waiting between retries ====================== */
+  (function () {
+    function data() { return G.counts('m7.retry'); }
+    var CODE = {
+      'at once': 'wait = 0',
+      'fixed 1 s': 'wait = 1.0',
+      'exponential': 'wait = min(8.0, 0.5 * 2 ** (attempt - 1))',
+      'exponential with full jitter': 'wait = random.uniform(0, min(8.0, 0.5 * 2 ** (attempt - 1)))'
+    };
+    function stat(label, value, cls) { return '<div class="big ' + (cls || '') + '"><b>' + esc(String(value)) + '</b><span>' + esc(label) + '</span></div>'; }
+    function chart(p) {
+      var d = data(), s = d.storm[p], n = Math.max.apply(null, d.policies.map(function (q) { return d.storm[q].per_tenth.length; }));
+      var top = Math.max.apply(null, s.per_tenth.map(function (b) { return b[0] + b[1]; })), bars = '';
+      for (var k = 0; k < n; k++) {
+        var b = s.per_tenth[k] || [0, 0];
+        bars += '<span class="rb">' + (b[0] + b[1] ? '<i class="rj" style="height:' + (b[1] / top * 100).toFixed(2) + '%"></i><i class="ok" style="height:' + (b[0] / top * 100).toFixed(2) + '%"></i>' : '') + '</span>';
+      }
+      return '<div class="rchart" role="img" aria-label="Requests to the service in each 100 ms, for the policy ' + esc(p) + '">' + bars + '</div>' +
+        '<div class="raxis"><span>0 s</span><span>each bar is 100 ms, the tallest holds ' + top + ' requests</span><span>' + (n / 10).toFixed(1) + ' s</span></div>' +
+        '<div class="rkey"><i class="ok"></i> accepted <i class="rj"></i> answered 429</div>';
+    }
+    function words(p) {
+      var d = data(), s = d.storm[p], f = d.storm['fixed 1 s'];
+      if (p === 'at once') return 'Retrying at once sent **' + s.requests + '** requests for **' + s.succeeded + '** successes, and **' + s.gave_up + '** clients gave up after ' + d.setup.attempts + ' tries. All of it happened inside one second, so the service never had a quiet moment.';
+      if (p === 'fixed 1 s') return 'Every client waits the same second, so the herd comes back together: up to **' + s.retry_burst + '** retries arrive in the same 100 ms. Everyone is served after **' + s.finished_at + ' s**, with **' + s.requests + '** requests in total.';
+      if (p === 'exponential') return 'The waits grow, so the herd comes back less often, but still in lockstep: up to **' + s.retry_burst + '** retries in 100 ms. The last client got through after **' + s.finished_at + ' s**, and the service handled **' + s.requests + '** requests.';
+      return 'The retries are spread out: at most **' + s.retry_burst + '** retries in any 100 ms, against **' + f.retry_burst + '** for a fixed wait. The price is **' + s.requests + '** requests in total (a fixed wait needed ' + f.requests + ') and **' + s.finished_at + ' s** to finish.';
+    }
+    W.retry = {
+      steps: function () { return 2; },
+      hint: function (s, i) { return i === 0 ? 'Pick a wait policy and how many times the API fails before it works.' : 'Pick a policy. The same fifty clients, the same service.'; },
+      say: function (s, i) {
+        return [
+          'Pick how a client waits between tries, and how many times the API fails before it works. These waits are real results from the retry function of the lesson, run with a fake clock, so nothing really slept.',
+          'Now fifty clients start together against a service that accepts ten requests in each second and answers 429 to the rest. This is a simulation: the delay function is the one from the lesson, time is a number and there is no network. Pick a policy and read the bars.'
+        ][i];
+      },
+      mood: function (s, i, A) { var st = A && A.local.rt; return i === 1 && st && st.sp === 'at once' ? 'oops' : 'think'; },
+      render: function (box, s, i, A) {
+        var d = data(), st = A.local.rt || (A.local.rt = { p: 'exponential with full jitter', k: 3, sp: 'at once' }), h = '<div class="lab">';
+        if (i === 0) {
+          var r = d.one[st.p][String(st.k)], rows = [], run = 0;
+          r.waits.forEach(function (w, n) { run += w; rows.push(['try ' + (n + 1), 'fails with a 503', secs(w), secs(run)]); });
+          rows.push(['try ' + (r.waits.length + 1), 'works', '', secs(run)]);
+          h += '<div class="lab-row"><span class="lab-l">Policy</span><div class="sel-chips">' + chips(d.policies, st.p, 'rt-p') + '</div></div>' +
+            '<div class="lab-row"><span class="lab-l">API fails</span><div class="sel-chips">' + chips([1, 2, 3, 4], st.k, 'rt-k', function (k) { return k + (k === 1 ? ' time' : ' times'); }) + '</div></div>' +
+            code('python', 'python', CODE[st.p]) +
+            table(['Try', 'Result', 'Wait before the next try', 'Waited in total'], rows, function (x) { return x[1] === 'works' ? 'new' : ''; }) +
+            '<div class="lab-out">' + stat('waited in total', secs(r.total), st.p === 'at once' ? 'bad' : 'good') + stat('calls made', r.waits.length + 1, '') + '</div>' +
+            '<div class="callout tip">' + md(st.p === 'at once' ? 'No wait at all: the client asks again before the service had any time to recover. Four failures cost four more requests in the same instant.' : st.p === 'exponential with full jitter' ? 'The wait is a random number between 0 and a limit that doubles each time: 0.5, 1, 2, 4 and so on, up to 8 seconds. It is random, so it can be short. Run it with another failure count: the first waits do not change, because the same random numbers are drawn in the same order.' : st.p === 'exponential' ? 'The limit is the wait: 0.5, 1, 2, 4 seconds, up to a cap of 8. Every client that failed at the same moment waits the same time, which is the problem the next step shows.' : 'The same wait every time. Simple, and every client that failed together comes back together.') + '</div>';
+        } else {
+          var m = d.storm[st.sp];
+          h += '<div class="lab-row"><span class="lab-l">Policy</span><div class="sel-chips">' + chips(d.policies, st.sp, 'rt-sp') + '</div></div>' +
+            '<div class="lab-out">' + stat('requests sent', m.requests, '') + stat('served', m.succeeded + ' of ' + d.setup.clients, m.succeeded === d.setup.clients ? 'good' : 'bad') + stat('gave up', m.gave_up, m.gave_up ? 'bad' : 'good') + stat('last one served at', m.finished_at + ' s', '') + stat('biggest burst of retries, in 100 ms', m.retry_burst, m.retry_burst > 20 ? 'warn' : 'good') + '</div>' +
+            chart(st.sp) +
+            '<div class="callout ' + (st.sp === 'at once' ? 'warn' : 'tip') + '">' + md(words(st.sp)) + '</div>' +
+            '<p class="lab-note">Simulation: ' + d.setup.clients + ' clients, a service that accepts ' + d.setup.capacity + ' requests in each whole second, ' + d.setup.attempts + ' tries at most. Run once, with a fixed random seed. Backoff and jitter protect a service that is down or recovering. A client that knows the limit does better with a rate limiter than with guesses.</p>';
+        }
+        box.innerHTML = h + '</div>';
+        bindCodes(box);
+        A.bindWidget = function (act, el) { var v = el.getAttribute('data-v'); if (act === 'rt-p') st.p = v; if (act === 'rt-k') st.k = +v; if (act === 'rt-sp') st.sp = v; A.render(true); };
+      }
+    };
+    W.retryInfo = { data: data };
+  })();
+
+  /* ====================== Mission 7: loading the same day twice ====================== */
+  (function () {
+    function data() { return G.counts('m7.idem'); }
+    function fnSrc(file, name) {
+      var L = file.split('\n'), a = -1;
+      for (var k = 0; k < L.length; k++) if (L[k].indexOf('def ' + name + '(') === 0) { a = k; break; }
+      if (a < 0) throw new Error('no function ' + name + ' in load_strategies.py');
+      var b = a + 1; while (b < L.length && L[b] !== '') b++;
+      return L.slice(a, b).join('\n').replace(/ {2,}#/, '  #');
+    }
+    function constLines(file, re) { return file.split('\n').filter(function (l) { return re.test(l); }); }
+    var FN = { 'append': 'append', 'insert with a key': 'insert_key', 'delete, then insert': 'delete_insert', 'delete, then insert, in a transaction': 'delete_insert_tx', 'upsert': 'upsert' };
+    var WHY = {
+      'append': 'A table with no key cannot tell a second copy of an order from the first, so every rerun adds the rows again.',
+      'insert with a key': 'The primary key blocks duplicates, and it blocks the rerun too: the job fails on the first row that is already there. Safe from doubling, and unable to repair or correct a day.',
+      'delete, then insert': 'The rerun repairs the day, because it deletes the day first. Every statement commits on its own, so a crash in the middle leaves a partial day that a reader can see.',
+      'delete, then insert, in a transaction': 'All of it happens, or none of it. A crash rolls back, so a reader never sees a partial day, and a rerun leaves the same table.',
+      'upsert': 'Rows are matched by key, so reruns and corrections work. A row that disappeared from the source stays in the target, because nothing deletes it.'
+    };
+    var SCEN = {
+      'run once': 'The job runs once, as planned.',
+      'run twice': 'The scheduler retried the job after a timeout, although the first run had finished.',
+      'crash, then run again': 'The job dies after it has written 3 rows, and then runs again from the start.',
+      'the source corrects O-3': 'A later file has a corrected total for O-3 (8.20 becomes 9.20), and the same day is loaded again.',
+      'the source drops O-6': 'A later file no longer has O-6, which was cancelled, and the same day is loaded again.'
+    };
+    function money(c) { return fmtN(c / 100, 2); }
+    W.idem = {
+      steps: function () { return 2; },
+      hint: function (s, i) { return i === 0 ? 'Pick a way to load and a thing that goes wrong. Read the table at the end.' : 'The whole grid: five ways to load, five things that go wrong.'; },
+      say: function (s, i) {
+        return [
+          'Pick one way to load the day and one thing that goes wrong. Each result is a real run of the functions from the lesson against SQLite. Compare the final table with what the file says.',
+          'The whole grid at once. Each cell is the final state of the table. Look for the rows that stay right in every column.'
+        ][i];
+      },
+      mood: function (s, i, A) { var st = A && A.local.id, d = data(); return i === 0 && st && !d.cells[st.s][st.c].right ? 'oops' : 'think'; },
+      render: function (box, s, i, A) {
+        var d = data(), st = A.local.id || (A.local.id = { s: d.strategies[3], c: d.scenarios[2] }), file = G.file('m7/load_strategies.py'), h = '<div class="lab">';
+        if (i === 0) {
+          var c = d.cells[st.s][st.c], dupes = {};
+          c.final.forEach(function (r) { dupes[r[0]] = (dupes[r[0]] || 0) + 1; });
+          var consts = constLines(file, st.s === 'upsert' ? /^(INSERT|UPSERT) = / : /^INSERT = /).join('\n'), src = consts + '\n\n' + fnSrc(file, 'write') + '\n\n' + fnSrc(file, FN[st.s]);
+          var runs = c.runs.map(function (r, n) { return ['run ' + (n + 1), r.outcome, r.rows, money(r.cents)]; });
+          var crash0 = c.runs[0];
+          h += '<div class="lab-row"><span class="lab-l">Load by</span><div class="sel-chips">' + chips(d.strategies, st.s, 'id-s') + '</div></div>' +
+            '<div class="lab-row"><span class="lab-l">What happens</span><div class="sel-chips">' + chips(d.scenarios, st.c, 'id-c') + '</div></div>' +
+            '<p class="lab-note">' + esc(SCEN[st.c]) + '</p>' +
+            code('load_strategies.py', 'python', src) +
+            table(['Run', 'What happened', 'Rows after it', 'Total after it'], runs, null, function (r, ri, ci) { return ci === 1 && /^(crashed|failed)/.test(String(r[1])) ? 'wbad' : ''; }) +
+            '<div class="lab-out"><div class="big ' + (c.right ? 'good' : 'bad') + '"><b>' + (c.right ? 'right' : 'wrong') + '</b><span>' + c.final.length + ' rows, ' + money(c.final.reduce(function (a, r) { return a + r[1]; }, 0)) + '. The file says ' + c.want_rows + ' rows, ' + money(c.want_cents) + '.</span></div></div>' +
+            table(['order_id', 'total'], c.final.map(function (r) { return [r[0], money(r[1])]; }), null, function (r, ri, ci) { return dupes[r[0]] > 1 ? 'wbad' : ''; }) +
+            '<div class="callout ' + (c.right ? 'tip' : 'warn') + '">' + md(WHY[st.s] + (st.c === 'crash, then run again' && crash0.rows !== 0 && crash0.rows !== c.want_rows ? ' Right after the crash the table held **' + crash0.rows + '** rows.' : st.c === 'crash, then run again' && st.s === 'delete, then insert, in a transaction' ? ' Right after the crash the table held **' + crash0.rows + '** rows, as it did before the run.' : '')) + '</div>';
+        } else {
+          var cols = ['Load by'].concat(d.scenarios);
+          h += table(cols, d.strategies.map(function (sn) {
+            return [sn].concat(d.scenarios.map(function (sc) { var c2 = d.cells[sn][sc]; return (c2.right ? 'right' : 'wrong') + ', ' + c2.final.length + ' rows'; }));
+          }), null, function (r, ri, ci) { return ci === 0 ? '' : /^right/.test(String(r[ci])) ? 'wgood' : 'wbad'; }) +
+            '<div class="callout tip">' + md('Read down a column and across a row. **Delete then insert** and **delete then insert in a transaction** end right in every column, **upsert** misses a row that the source dropped, a plain **append** is wrong in four columns, and a **primary key** with a plain INSERT cannot rerun at all. The two delete variants differ in the crash column: after the crash the first left **' + d.cells['delete, then insert']['crash, then run again'].runs[0].rows + '** rows in the table, the second left **' + d.cells['delete, then insert, in a transaction']['crash, then run again'].runs[0].rows + '**, the table as it was.') + '</div>';
+        }
+        box.innerHTML = h + '</div>';
+        bindCodes(box);
+        A.bindWidget = function (act, el) { var v = el.getAttribute('data-v'); if (act === 'id-s') st.s = v; if (act === 'id-c') st.c = v; A.render(true); };
+      }
+    };
+    W.idemInfo = { data: data, fnSrc: fnSrc };
+  })();
+
   /* @@END */
 })();

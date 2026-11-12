@@ -124,3 +124,14 @@ a.logo:hover{background:#25527A}
 .sq{display:inline-block;width:13px;height:13px;border:2px solid var(--ink);border-radius:3px;background:#FB923C}
 .sq.w1{background:#60A5FA}.sq.w2{background:#4ADE80}.sq.w3{background:#FACC15}
 .sq-more{font:700 .8rem 'IBM Plex Mono',monospace;margin-left:.3rem;align-self:center}
+
+/* mission 7: the retry chart and the idempotency grid */
+.rchart{display:flex;align-items:flex-end;gap:1px;height:150px;background:#fff;border:3px solid var(--ink);border-radius:12px;padding:.5rem .6rem 0;box-shadow:0 3px 0 var(--ink);margin-top:.6rem}
+.rchart .rb{flex:1 1 0;min-width:1px;max-width:14px;height:100%;display:flex;flex-direction:column;justify-content:flex-end}
+.rchart .rb i{display:block;width:100%}
+.rchart .rb .ok,.rkey .ok{background:#22C55E}
+.rchart .rb .rj,.rkey .rj{background:#EF4444}
+.raxis{display:flex;justify-content:space-between;gap:.5rem;font:700 .8rem 'IBM Plex Mono',monospace;color:var(--ink2);padding:.2rem .3rem 0}
+.rkey{font:700 .85rem Manrope,sans-serif;color:var(--ink2);padding:.15rem .3rem .4rem}
+.rkey i{display:inline-block;width:.9rem;height:.9rem;border:2px solid var(--ink);border-radius:3px;vertical-align:-.15rem;margin:0 .2rem 0 .6rem}
+.tbl td.wgood{background:#DCFCE7;font-weight:800}

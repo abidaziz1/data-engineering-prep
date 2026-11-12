@@ -99,5 +99,32 @@
     ]
   };
 
+  /* ------------------------------------------------------------------ */
+  /* 4. A retry loop                                                     */
+  /* ------------------------------------------------------------------ */
+  S.retry = {
+    w: 1100, h: 340, label: 'A retry loop: the job calls the API, the answer is sorted into worth retrying, success or stop, a retryable failure waits a random, growing time and calls again, and a failure that will not change stops the job',
+    nodes: [
+      { id: 'job', x: 10, y: 60, w: 170, h: 90, t: 'Your job', s: 'calls the API', c: 'ing', k: 'chip' },
+      { id: 'api', x: 300, y: 60, w: 170, h: 90, t: 'The API', s: '200, 429, 503, 400', c: 'src', k: 'chip' },
+      { id: 'chk', x: 590, y: 60, w: 170, h: 90, t: 'Sort the answer', s: 'retry, use or stop', c: 'stg', k: 'chip' },
+      { id: 'ok', x: 880, y: 60, w: 200, h: 90, t: 'Use the data', s: 'the page, the rows', c: 'mart', k: 'chip' },
+      { id: 'wait', x: 590, y: 210, w: 170, h: 84, t: 'Wait', s: 'random, growing', c: 'con', k: 'chip' },
+      { id: 'stop', x: 880, y: 210, w: 200, h: 84, t: 'Stop and raise', s: 'the run fails, loudly', c: 'mon', k: 'chip' }
+    ],
+    edges: [
+      { id: 'e1', a: 'job', b: 'api', d: 'M180 105 H300', n: 1, bx: 240, by: 80, label: 'request', lx: 240, ly: 62 },
+      { id: 'e2', a: 'api', b: 'chk', d: 'M470 105 H590', n: 2, bx: 530, by: 80, label: 'answer', lx: 530, ly: 62 },
+      { id: 'e3', a: 'chk', b: 'ok', d: 'M760 105 H880', n: 5, bx: 820, by: 80, label: '200', lx: 820, ly: 62 },
+      { id: 'e4', a: 'chk', b: 'wait', d: 'M675 150 V210', n: 3, bx: 675, by: 180, label: '429, 503, timeout', lx: 545, ly: 182 },
+      { id: 'e5', a: 'wait', b: 'job', d: 'M590 252 H95 V150', n: 4, bx: 345, by: 252, label: 'call again', lx: 345, ly: 278 },
+      { id: 'e6', a: 'chk', b: 'stop', d: 'M730 150 V182 H980 V210', n: 6, bx: 855, by: 182, label: '400, 404', lx: 855, ly: 164 }
+    ],
+    tags: [
+      { id: 'tg_jitter', x: 590, y: 304, t: 'random, so clients do not retry together', c: 'mon' },
+      { id: 'tg_budget', x: 880, y: 304, t: 'give up after a few tries', c: 'snap' }
+    ]
+  };
+
   /* @@END */
 })();
