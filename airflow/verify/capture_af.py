@@ -802,25 +802,40 @@ def sec_backfill():
     f, t = frm.isoformat() + 'T00:00:00+00:00', to.isoformat() + 'T23:59:59+00:00'
     rc, dry = st.cli('backfill', 'create', '--dag-id', 'brewline_backfill_demo', '--from-date', f, '--to-date', t, '--dry-run')
     rc, real = st.cli('backfill', 'create', '--dag-id', 'brewline_backfill_demo', '--from-date', f, '--to-date', t, '--max-active-runs', '2')
+    # a second backfill for the same DAG while the first is running is refused
+    rc_busy, busy = st.cli('backfill', 'create', '--dag-id', 'brewline_backfill_demo', '--from-date', f, '--to-date', t)
+    busy_line = next((ln.strip() for ln in busy.splitlines() if ln.startswith('airflow.models.backfill.AlreadyRunningBackfill')), '')
     for _ in range(90):
         runs = [r for r in st.runs('brewline_backfill_demo') if r[1] == 'backfill']
         if len(runs) >= 3 and all(r[2] in ('success', 'failed') for r in runs):
             break
         time.sleep(1)
     n_before = len([r for r in st.runs('brewline_backfill_demo') if r[1] == 'backfill'])
+    def backfill_done():
+        # Airflow allows one running backfill per DAG. A backfill is running until the scheduler marks it completed.
+        for _ in range(90):
+            _, r = st.sql('SELECT count(*) FROM backfill WHERE dag_id = ? AND completed_at IS NULL', ('brewline_backfill_demo',))
+            if r and r[0][0] == 0:
+                return True
+            time.sleep(1)
+        return False
+    backfill_done()
     rc, again = st.cli('backfill', 'create', '--dag-id', 'brewline_backfill_demo', '--from-date', f, '--to-date', t, '--reprocess-behavior', 'none')
-    time.sleep(4)
-    _, cn0 = st.sql("SELECT run_id, clear_number FROM dag_run WHERE dag_id = 'brewline_backfill_demo' AND run_type = 'backfill' ORDER BY run_after")
+    backfill_done()
+    _, cn0 = st.sql("SELECT run_id, try_number FROM task_instance WHERE dag_id = 'brewline_backfill_demo' AND task_id = 'load' AND working_set = 1 AND run_id LIKE 'backfill%' ORDER BY run_id")
     rc, comp = st.cli('backfill', 'create', '--dag-id', 'brewline_backfill_demo', '--from-date', f, '--to-date', t, '--reprocess-behavior', 'completed')
-    time.sleep(12)
-    _, cn1 = st.sql("SELECT run_id, clear_number FROM dag_run WHERE dag_id = 'brewline_backfill_demo' AND run_type = 'backfill' ORDER BY run_after")
+    if rc != 0:
+        print('backfill completed call failed: rc=%s %s' % (rc, comp[-500:]), file=sys.stderr)
+    backfill_done()
+    time.sleep(6)
+    _, cn1 = st.sql("SELECT run_id, try_number FROM task_instance WHERE dag_id = 'brewline_backfill_demo' AND task_id = 'load' AND working_set = 1 AND run_id LIKE 'backfill%' ORDER BY run_id")
     runs_after = st.runs('brewline_backfill_demo')
     n_after = len([r for r in runs_after if r[1] == 'backfill'])
     _, bf = st.sql('SELECT dag_id, from_date, to_date, max_active_runs, reprocess_behavior FROM backfill ORDER BY id')
     counts('af.backfill', {'window': [norm(f, shift=True), norm(t, shift=True)],
                            'created': [{'run_id': norm(r[0], shift=True), 'type': r[1], 'state': r[2], 'logical_date': norm(str(r[3]), shift=True)} for r in runs_after if r[1] == 'backfill'],
                            'backfill_rows': [[a, norm(str(b), shift=True), norm(str(c), shift=True), d, e] for a, b, c, d, e in bf],
-                           'runs_after_first_call': n_before, 'runs_after_second_call': n_after, 'clear_numbers_after_none': [r[1] for r in cn0], 'clear_numbers_after_completed': [r[1] for r in cn1]})
+                           'second_backfill_while_running': {'exit_code': rc_busy, 'error': norm(busy_line)}, 'runs_after_first_call': n_before, 'runs_after_second_call': n_after, 'tries_after_none': [r[1] for r in cn0], 'tries_after_completed': [r[1] for r in cn1]})
     text('af.backfill_dry_run', norm(clean_console(dry, keep=('creating dag run', 'Created', 'Dry', 'dry')), shift=True) or norm(dry[-600:], shift=True))
     text('af.backfill_create', norm(clean_console(real, keep=('creating dag run', 'Created')), shift=True))
 

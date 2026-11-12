@@ -64,7 +64,8 @@ eq(BF.created.length, 3, 'the recorded backfill created three runs');
 eq(CU.backfill(['success', 'success', 'success'], 'none'), ['keep', 'keep', 'keep'], 'a second backfill with none creates nothing');
 eq(BF.runs_after_second_call - BF.runs_after_first_call, 0, 'the recorded second call with none created no run');
 eq(CU.backfill(['success', 'success', 'success'], 'completed'), ['rerun', 'rerun', 'rerun'], 'completed clears finished runs');
-if (BF.clear_numbers_after_completed) ok(BF.clear_numbers_after_completed.every((n, k) => n > BF.clear_numbers_after_none[k]), 'the recorded completed call raised the clear number of every run');
+ok(BF.tries_after_completed.length === 3 && BF.tries_after_completed.every((n, k) => n > BF.tries_after_none[k]), 'the recorded completed call gave the task of every run another try');
+ok(/AlreadyRunningBackfill: Another backfill is running/.test(BF.second_backfill_while_running.error) && BF.second_backfill_while_running.exit_code !== 0, 'a second backfill for the same DAG is refused while the first one runs');
 eq(CU.backfill(['success', 'failed', 'none'], 'failed'), ['keep', 'rerun', 'create'], 'failed reruns only the failed run');
 
 // ---- idempotent loads: replay the four runs --------------------------------------------------------------------------------------------
