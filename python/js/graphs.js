@@ -38,7 +38,7 @@
   };
 
   /* ------------------------------------------------------------------ */
-  /* 2. From project files to a run that you can repeat                  */
+  /* 2. Project files, then a run you can repeat                */
   /* ------------------------------------------------------------------ */
   S.env = {
     w: 1100, h: 440, label: 'A repeatable run: pyproject.toml says what you ask for, uv lock asks PyPI and writes uv.lock with exact versions and hashes, uv sync installs exactly those into .venv on every machine, and uv run starts the job in that environment',

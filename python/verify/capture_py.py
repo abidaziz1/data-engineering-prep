@@ -14,6 +14,11 @@ Timings: every timing is a median of several runs on one machine, and the record
 """
 import argparse, contextlib, datetime, hashlib, importlib, importlib.metadata as md, json, os, pathlib, platform, re, shutil, statistics, subprocess, sys, tempfile, textwrap, time
 
+if sys.version_info[:2] != (3, 14) and not os.environ.get('PY_CAPTURE_ANY_PYTHON'):
+    # The lessons teach Python 3.14, and a few messages differ in 3.13 (for example the datetime errors).
+    sys.exit('capture_py.py records Python 3.14 (this is %s). Run it with the interpreter of an environment that has the packages in '
+             'requirements-py.txt, or set PY_CAPTURE_ANY_PYTHON=1 to record with this one.' % sys.version.split()[0])
+
 HERE = pathlib.Path(__file__).resolve().parent
 ROOT = HERE.parent
 LESSONS = HERE / 'lessons'

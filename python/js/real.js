@@ -9,14 +9,14 @@ LAB.real = {
   "platform": "Linux-6.18.44-fc-v378-x86_64-with-glibc2.39",
   "cpus": 4,
   "uv": "0.11.32",
-  "pandas": "3.1.1",
-  "numpy": "2.5.4",
+  "pandas": "3.0.5",
+  "numpy": "2.5.3",
   "polars": "2.1.0",
   "pyarrow": "26.0.1",
   "duckdb": "2.0.0",
   "sqlalchemy": "2.1.8",
-  "pydantic": "2.14.3",
-  "pydantic_core": "2.50.4",
+  "pydantic": "2.13.5",
+  "pydantic_core": "2.46.5",
   "mypy": "2.4.1",
   "ruff": "0.17.4",
   "pytest": "9.2.0",
@@ -28,7 +28,7 @@ LAB.real = {
   "typer": "0.29.1",
   "psutil": "7.2.2",
   "tzdata": "2026.6",
-  "python-dateutil": "4.0.0",
+  "python-dateutil": "2.9.0.post0",
   "packaging": "26.3",
   "captured": "2026-11-12",
   "python_free_threaded": "3.14.6"
@@ -71,7 +71,14 @@ LAB.real = {
   "m5/parquet_tour.py": "\"\"\"What is inside a Parquet file: row groups, types and the minimum and maximum of each column.\"\"\"\nimport datetime as dt\nimport random\nfrom decimal import Decimal\n\nimport pyarrow as pa\nimport pyarrow.dataset as ds\nimport pyarrow.parquet as pq\n\nrng = random.Random(42)  # made-up orders, the same on every machine\nstart = dt.datetime(2026, 3, 1)\nrows = sorted(\n    (f\"O-{i:07d}\", rng.choice([\"SG-01\", \"SG-02\", \"KL-01\", \"JK-01\"]), rng.choice([\"paid\", \"paid\", \"paid\", \"cancelled\"]),\n     Decimal(rng.randint(350, 12000)) / 100, start + dt.timedelta(seconds=rng.randint(0, 31 * 86400 - 1)))\n    for i in range(200_000)\n)\nrows.sort(key=lambda r: r[4])\ntable = pa.table({\n    \"order_id\": [r[0] for r in rows],\n    \"store\": [r[1] for r in rows],\n    \"status\": [r[2] for r in rows],\n    \"total\": pa.array([r[3] for r in rows], pa.decimal128(10, 2)),\n    \"ordered_at\": pa.array([r[4] for r in rows], pa.timestamp(\"us\")),\n})\npq.write_table(table, \"orders.parquet\", row_group_size=50_000, compression=\"zstd\")\n\nf = pq.ParquetFile(\"orders.parquet\")\nprint(\"rows:\", f.metadata.num_rows, \" row groups:\", f.metadata.num_row_groups, \" columns:\", f.metadata.num_columns)\nprint(f.schema_arrow)\nprint()\nprint(\"row group  rows    first order_at        last order_at\")\nfor g in range(f.metadata.num_row_groups):\n    st = f.metadata.row_group(g).column(4).statistics\n    print(f\"{g:>9}  {f.metadata.row_group(g).num_rows:<6}  {st.min}  {st.max}\")\n\ndataset = ds.dataset(\"orders.parquet\")\nflt = ds.field(\"ordered_at\") >= pa.scalar(dt.datetime(2026, 3, 30), pa.timestamp(\"us\"))\nfragment = next(iter(dataset.get_fragments()))\npicked = list(fragment.split_by_row_group(filter=flt))\nprint(f\"\\nrows from 30 March on: the statistics select {len(picked)} of {f.metadata.num_row_groups} row groups to read\")\nprint(\"one column only:\", pq.read_table(\"orders.parquet\", columns=[\"total\"]).num_rows, \"values, without reading the other four\")\n",
   "m5/parse_log.py": "\"\"\"Coding round: turn log lines into dicts, and count the lines that cannot be parsed.\"\"\"\nimport re\n\nPATTERN = re.compile(r\"^(?P<ts>\\S+) (?P<level>[A-Z]+) (?P<job>\\S+) rows=(?P<rows>\\d+) ms=(?P<ms>\\d+)$\")\n\nlines = [\n    \"2026-03-14T02:00:01Z INFO load_orders rows=1200 ms=340\",\n    \"2026-03-14T02:00:05Z WARN load_orders rows=0 ms=12\",\n    \"2026-03-14T02:01:00Z INFO load_stores rows=40 ms=8\",\n    \"this line is not a log line\",\n    \"2026-03-14T02:02:00Z INFO load_orders rows=abc ms=9\",\n]\n\n\ndef parse_log(lines):\n    good, bad = [], 0\n    for line in lines:\n        m = PATTERN.match(line)\n        if not m:\n            bad += 1\n            continue\n        d = m.groupdict()\n        d[\"rows\"], d[\"ms\"] = int(d[\"rows\"]), int(d[\"ms\"])\n        good.append(d)\n    return good, bad\n\n\ngood, bad = parse_log(lines)\nfor d in good:\n    print(d[\"ts\"], d[\"level\"].ljust(4), d[\"job\"].ljust(12), d[\"rows\"], d[\"ms\"])\nprint(\"unparsable lines:\", bad)\n\nassert len(good) == 3 and bad == 2\nassert parse_log([]) == ([], 0)\nprint(\"tests passed\")\n",
   "m5/write_partitions.py": "\"\"\"Coding round: write orders into one folder for each day, so a later job can read a single day.\"\"\"\nimport csv\nimport os\nimport pathlib\nimport tempfile\nfrom collections import defaultdict\n\norders = [\n    (\"O-1\", \"2026-03-14 08:15:00\", 12.5), (\"O-2\", \"2026-03-14 09:02:00\", 4.75), (\"O-3\", \"2026-03-15 00:03:00\", 8.2),\n    (\"O-4\", \"2026-03-15 10:41:00\", 19.9), (\"O-5\", \"2026-03-14 23:58:00\", 31.0),\n]\n\n\ndef write_partitions(rows, root):\n    by_day = defaultdict(list)\n    for order_id, ts, total in rows:\n        by_day[ts[:10]].append((order_id, ts, total))\n    written = {}\n    for day, day_rows in sorted(by_day.items()):\n        folder = pathlib.Path(root) / f\"dt={day}\"\n        folder.mkdir(parents=True, exist_ok=True)\n        fd, tmp = tempfile.mkstemp(dir=folder, suffix=\".tmp\")\n        with os.fdopen(fd, \"w\", newline=\"\") as f:\n            csv.writer(f).writerows(sorted(day_rows))\n        os.replace(tmp, folder / \"part-0000.csv\")\n        written[day] = len(day_rows)\n    return written\n\n\nroot = tempfile.mkdtemp()\nresult = write_partitions(orders, root)\nfor day, n in result.items():\n    print(f\"dt={day}/part-0000.csv  {n} rows\")\nassert write_partitions(orders, root) == result  # running it again changes nothing\nassert sorted(p.name for p in pathlib.Path(root).iterdir()) == [\"dt=2026-03-14\", \"dt=2026-03-15\"]\nprint(\"tests passed\")\n",
-  "m5/read_csv_safely.py": "\"\"\"The safe way to read a supplier CSV: say the encoding, pass newline=\"\", and let utf-8-sig drop a byte order mark.\"\"\"\nimport csv\n\nwith open(\"supplier.csv\", newline=\"\", encoding=\"utf-8-sig\") as f:\n    rows = list(csv.DictReader(f))\n\nprint(\"rows:\", len(rows), \" columns:\", list(rows[0]))\nprint(\"customer of the first row:\", rows[0][\"customer\"])\nprint(\"note of the second row:\", repr(rows[1][\"note\"]))\nprint(\"total as money:\", sum(float(r[\"total\"]) for r in rows))\n"
+  "m5/read_csv_safely.py": "\"\"\"The safe way to read a supplier CSV: say the encoding, pass newline=\"\", and let utf-8-sig drop a byte order mark.\"\"\"\nimport csv\n\nwith open(\"supplier.csv\", newline=\"\", encoding=\"utf-8-sig\") as f:\n    rows = list(csv.DictReader(f))\n\nprint(\"rows:\", len(rows), \" columns:\", list(rows[0]))\nprint(\"customer of the first row:\", rows[0][\"customer\"])\nprint(\"note of the second row:\", repr(rows[1][\"note\"]))\nprint(\"total as money:\", sum(float(r[\"total\"]) for r in rows))\n",
+  "m6/naive_aware.py": "\"\"\"A datetime without a time zone is a clock reading. A datetime with one is a moment.\"\"\"\nimport warnings\nfrom datetime import datetime, timedelta, timezone\n\nnaive = datetime(2026, 3, 14, 8, 15)\naware = datetime(2026, 3, 14, 8, 15, tzinfo=timezone.utc)\nprint(\"naive:\", naive.isoformat(), \" tzinfo:\", naive.tzinfo)\nprint(\"aware:\", aware.isoformat(), \" tzinfo:\", aware.tzinfo)\n\ntry:\n    naive < aware\nexcept TypeError as e:\n    print(\"comparing them:\", e)\nprint(\"naive == aware:\", naive == aware, \"  (== never raises, < does)\")\n\nsingapore = timezone(timedelta(hours=8))\nlocal = datetime(2026, 3, 14, 16, 15, tzinfo=singapore)\nprint(\"16:15 in Singapore is the same moment as 08:15 UTC:\", local == aware)\nprint(\"converted to UTC:\", local.astimezone(timezone.utc).isoformat())\n\nwith warnings.catch_warnings(record=True) as caught:\n    warnings.simplefilter(\"always\")\n    value = datetime.utcnow()\nprint(\"utcnow() returns a naive value:\", value.tzinfo is None)\nprint(\"and warns:\", caught[0].category.__name__, \"-\", str(caught[0].message)[:78])\nprint(\"the replacement:\", datetime.now(timezone.utc).tzinfo)\n",
+  "m6/iso_parse.py": "\"\"\"Parsing timestamps, and the epoch mistake that gives a year in the 58,000s.\"\"\"\nfrom datetime import datetime, timezone\n\nfor text in [\"2026-03-14T08:15:00Z\", \"2026-03-14T16:15:00+08:00\", \"2026-03-14 08:15:00\", \"2026-03-14\"]:\n    d = datetime.fromisoformat(text)\n    print(f\"{text:<28} -> {d.isoformat():<28} aware: {d.tzinfo is not None}\")\n\nprint()\nprint(\"strptime, with an offset:\", datetime.strptime(\"14/03/2026 16:15 +0800\", \"%d/%m/%Y %H:%M %z\").isoformat())\n\nseconds = 1_773_476_100\nprint(\"\\nepoch seconds:     \", datetime.fromtimestamp(seconds, timezone.utc).isoformat())\ntry:\n    datetime.fromtimestamp(seconds * 1000, timezone.utc)\nexcept (ValueError, OverflowError) as e:\n    print(\"epoch milliseconds:\", type(e).__name__ + \":\", e)\nprint(\"divide by 1000 first:\", datetime.fromtimestamp(seconds * 1000 / 1000, timezone.utc).isoformat())\n",
+  "m6/zoneinfo_dst.py": "\"\"\"What zoneinfo says about local times around a clock change.\"\"\"\nfrom datetime import datetime, timezone\nfrom zoneinfo import ZoneInfo\n\nCASES = [\n    (\"Europe/London\", datetime(2026, 3, 29, 1, 30)),   # the clocks go forward at 01:00 and skip an hour\n    (\"Europe/London\", datetime(2026, 10, 25, 1, 30)),  # the clocks go back at 02:00 and repeat an hour\n    (\"America/New_York\", datetime(2026, 3, 8, 2, 30)),\n    (\"America/New_York\", datetime(2026, 11, 1, 1, 30)),\n    (\"Asia/Singapore\", datetime(2026, 3, 29, 1, 30)),  # no clock changes\n]\n\n\ndef describe(zone, naive):\n    tz = ZoneInfo(zone)\n    a, b = naive.replace(tzinfo=tz, fold=0), naive.replace(tzinfo=tz, fold=1)\n    back = a.astimezone(timezone.utc).astimezone(tz)\n    if a.utcoffset() != b.utcoffset():\n        kind = \"ambiguous\" if back.replace(tzinfo=None) == naive else \"does not exist\"\n    else:\n        kind = \"exists once\"\n    return kind, a, b\n\n\nfor zone, naive in CASES:\n    kind, a, b = describe(zone, naive)\n    print(f\"{zone:<17} {naive:%Y-%m-%d %H:%M}  {kind}\")\n    print(f\"    fold=0: offset {a.isoformat()[-6:]}  utc {a.astimezone(timezone.utc):%Y-%m-%d %H:%M}\")\n    print(f\"    fold=1: offset {b.isoformat()[-6:]}  utc {b.astimezone(timezone.utc):%Y-%m-%d %H:%M}\")\n",
+  "m6/day_buckets.py": "\"\"\"Which day is an order on? It depends on whose clock you ask.\"\"\"\nfrom collections import Counter\nfrom datetime import datetime, timedelta, timezone\nfrom zoneinfo import ZoneInfo\n\nSG = ZoneInfo(\"Asia/Singapore\")\norders = [  # UTC timestamps\n    (\"O-1\", datetime(2026, 3, 14, 3, 0, tzinfo=timezone.utc)),\n    (\"O-2\", datetime(2026, 3, 14, 15, 59, tzinfo=timezone.utc)),\n    (\"O-3\", datetime(2026, 3, 14, 16, 1, tzinfo=timezone.utc)),\n    (\"O-4\", datetime(2026, 3, 14, 22, 30, tzinfo=timezone.utc)),\n    (\"O-5\", datetime(2026, 3, 15, 5, 0, tzinfo=timezone.utc)),\n]\nprint(\"orders per day by the UTC date:       \", dict(Counter(str(t.date()) for _, t in orders)))\nprint(\"orders per day by Singapore's date:   \", dict(Counter(str(t.astimezone(SG).date()) for _, t in orders)))\n\nlondon = ZoneInfo(\"Europe/London\")\nstart = datetime(2026, 3, 29, 0, 0, tzinfo=london)\nend = start + timedelta(days=1)\nprint()\nprint(\"London, 29 March 2026: from\", start.isoformat(), \"to\", end.isoformat())\nprint(\"subtracting the two aware values:     \", end - start)\nprint(\"the same two moments in UTC:          \", end.astimezone(timezone.utc) - start.astimezone(timezone.utc))\n",
+  "m6/money.py": "\"\"\"Money in a float, in a Decimal and in whole cents.\"\"\"\nimport math\nfrom decimal import ROUND_DOWN, ROUND_HALF_EVEN, ROUND_HALF_UP, Decimal\n\nprint(\"0.1 + 0.2 =\", 0.1 + 0.2)\nprint(\"0.1 + 0.2 == 0.3:\", 0.1 + 0.2 == 0.3)\nprint(\"the float 0.1 is really:\", Decimal(0.1))\nprint(\"the Decimal from text:   \", Decimal(\"0.1\"))\n\nn = 1_000_000\ntotal = 0.0\nfor _ in range(n):\n    total += 0.10\nprint(f\"\\nadding 0.10 {n:,} times:\")\nprint(\"  float, a loop:      \", total)\nprint(\"  math.fsum:          \", math.fsum([0.10] * n))\nprint(\"  Decimal:            \", sum(Decimal(\"0.10\") for _ in range(n)))\nprint(\"  whole cents (int):  \", sum(10 for _ in range(n)) / 100)\n\nprint(\"\\nrounding a half to 2 places:\")\nprint(\"  round(2.675, 2):\", round(2.675, 2), \"  (the float is a little below 2.675)\")\nfor mode in (ROUND_HALF_EVEN, ROUND_HALF_UP, ROUND_DOWN):\n    print(f\"  Decimal('2.675'), {mode:<15}\", Decimal(\"2.675\").quantize(Decimal(\"0.01\"), rounding=mode))\nprint(\"  round(2.5):\", round(2.5), \"  round(3.5):\", round(3.5), \"  (halves go to the even number)\")\n",
+  "m6/normalize_timestamps.py": "\"\"\"Coding round: turn timestamps in mixed formats into one UTC format.\"\"\"\nfrom datetime import datetime, timezone\nfrom zoneinfo import ZoneInfo\n\n\ndef to_utc(value, default_zone):\n    \"\"\"Return an ISO 8601 string in UTC. Numbers are epoch seconds. Text without an offset is in default_zone.\"\"\"\n    if isinstance(value, (int, float)):\n        d = datetime.fromtimestamp(value, timezone.utc)\n    else:\n        d = datetime.fromisoformat(value)\n        if d.tzinfo is None:\n            d = d.replace(tzinfo=ZoneInfo(default_zone))\n    return d.astimezone(timezone.utc).isoformat().replace(\"+00:00\", \"Z\")\n\n\nsamples = [\"2026-03-14T08:15:00Z\", \"2026-03-14T16:15:00+08:00\", \"2026-03-14 16:15:00\", 1_773_476_100]\nfor s in samples:\n    print(f\"{s!s:<28} -> {to_utc(s, 'Asia/Singapore')}\")\n\nassert to_utc(\"2026-03-14T08:15:00Z\", \"Asia/Singapore\") == \"2026-03-14T08:15:00Z\"\nassert to_utc(\"2026-03-14T16:15:00+08:00\", \"Europe/London\") == \"2026-03-14T08:15:00Z\"\nassert to_utc(\"2026-03-14 16:15:00\", \"Asia/Singapore\") == \"2026-03-14T08:15:00Z\"\nassert to_utc(\"2026-07-01 12:00:00\", \"Europe/London\") == \"2026-07-01T11:00:00Z\"  # summer time\nprint(\"tests passed\")\n",
+  "m6/local_days.py": "\"\"\"Coding round: count orders for each local day of a store, including the day that has 23 hours.\"\"\"\nfrom collections import Counter\nfrom datetime import datetime, timedelta, timezone\nfrom zoneinfo import ZoneInfo\n\n\ndef orders_per_local_day(utc_times, zone):\n    tz = ZoneInfo(zone)\n    return dict(sorted(Counter(t.astimezone(tz).date().isoformat() for t in utc_times).items()))\n\n\ndef hours_in_local_day(day, zone):\n    tz = ZoneInfo(zone)\n    start = datetime.fromisoformat(day).replace(tzinfo=tz)\n    end = start + timedelta(days=1)  # the next midnight on the wall clock\n    return (end.astimezone(timezone.utc) - start.astimezone(timezone.utc)).total_seconds() / 3600\n\n\ntimes = [datetime(2026, 3, 28, 23, 30, tzinfo=timezone.utc), datetime(2026, 3, 29, 0, 30, tzinfo=timezone.utc),\n         datetime(2026, 3, 29, 22, 59, tzinfo=timezone.utc), datetime(2026, 3, 29, 23, 1, tzinfo=timezone.utc)]\nprint(\"London:   \", orders_per_local_day(times, \"Europe/London\"))\nprint(\"Singapore:\", orders_per_local_day(times, \"Asia/Singapore\"))\nfor day in (\"2026-03-28\", \"2026-03-29\", \"2026-10-25\"):\n    print(f\"hours in {day} in London: {hours_in_local_day(day, 'Europe/London'):g}\")\n\nassert orders_per_local_day(times, \"Europe/London\") == {\"2026-03-28\": 1, \"2026-03-29\": 2, \"2026-03-30\": 1}\nassert hours_in_local_day(\"2026-03-29\", \"Europe/London\") == 23\nassert hours_in_local_day(\"2026-10-25\", \"Europe/London\") == 25\nprint(\"tests passed\")\n"
  },
  "text": {
   "m1_fragile_script.py#1": "Traceback (most recent call last):\n  File \"/work/m1_fragile_script/m1_fragile_script.py\", line 13, in <module>\n    r[\"total\"] = float(r[\"total\"])\n                 ~~~~~^^^^^^^^^^^^\nValueError: could not convert string to float: 'n/a'",
@@ -119,7 +126,14 @@ LAB.real = {
   "m5/parquet_tour.py": "rows: 200000  row groups: 4  columns: 5\norder_id: string\nstore: string\nstatus: string\ntotal: decimal128(10, 2)\nordered_at: timestamp[us]\n\nrow group  rows    first order_at        last order_at\n        0  50000   2026-03-01 00:00:05  2026-03-08 18:38:14\n        1  50000   2026-03-08 18:38:16  2026-03-16 13:01:20\n        2  50000   2026-03-16 13:01:22  2026-03-24 06:44:28\n        3  50000   2026-03-24 06:44:36  2026-03-31 23:59:56\n\nrows from 30 March on: the statistics select 1 of 4 row groups to read\none column only: 200000 values, without reading the other four",
   "m5/parse_log.py": "2026-03-14T02:00:01Z INFO load_orders  1200 340\n2026-03-14T02:00:05Z WARN load_orders  0 12\n2026-03-14T02:01:00Z INFO load_stores  40 8\nunparsable lines: 2\ntests passed",
   "m5/write_partitions.py": "dt=2026-03-14/part-0000.csv  3 rows\ndt=2026-03-15/part-0000.csv  2 rows\ntests passed",
-  "m5/read_csv_safely.py": "rows: 3  columns: ['order_id', 'customer', 'note', 'total']\ncustomer of the first row: Ng, Mei\nnote of the second row: 'leave at door\\nring twice'\ntotal as money: 48.25"
+  "m5/read_csv_safely.py": "rows: 3  columns: ['order_id', 'customer', 'note', 'total']\ncustomer of the first row: Ng, Mei\nnote of the second row: 'leave at door\\nring twice'\ntotal as money: 48.25",
+  "m6/naive_aware.py": "naive: 2026-03-14T08:15:00  tzinfo: None\naware: 2026-03-14T08:15:00+00:00  tzinfo: UTC\ncomparing them: can't compare offset-naive and offset-aware datetimes\nnaive == aware: False   (== never raises, < does)\n16:15 in Singapore is the same moment as 08:15 UTC: True\nconverted to UTC: 2026-03-14T08:15:00+00:00\nutcnow() returns a naive value: True\nand warns: DeprecationWarning - datetime.datetime.utcnow() is deprecated and scheduled for removal in a future\nthe replacement: UTC",
+  "m6/iso_parse.py": "2026-03-14T08:15:00Z         -> 2026-03-14T08:15:00+00:00    aware: True\n2026-03-14T16:15:00+08:00    -> 2026-03-14T16:15:00+08:00    aware: True\n2026-03-14 08:15:00          -> 2026-03-14T08:15:00          aware: False\n2026-03-14                   -> 2026-03-14T00:00:00          aware: False\n\nstrptime, with an offset: 2026-03-14T16:15:00+08:00\n\nepoch seconds:      2026-03-14T08:15:00+00:00\nepoch milliseconds: ValueError: year must be in 1..9999, not 58169\ndivide by 1000 first: 2026-03-14T08:15:00+00:00",
+  "m6/zoneinfo_dst.py": "Europe/London     2026-03-29 01:30  does not exist\n    fold=0: offset +00:00  utc 2026-03-29 01:30\n    fold=1: offset +01:00  utc 2026-03-29 00:30\nEurope/London     2026-10-25 01:30  ambiguous\n    fold=0: offset +01:00  utc 2026-10-25 00:30\n    fold=1: offset +00:00  utc 2026-10-25 01:30\nAmerica/New_York  2026-03-08 02:30  does not exist\n    fold=0: offset -05:00  utc 2026-03-08 07:30\n    fold=1: offset -04:00  utc 2026-03-08 06:30\nAmerica/New_York  2026-11-01 01:30  ambiguous\n    fold=0: offset -04:00  utc 2026-11-01 05:30\n    fold=1: offset -05:00  utc 2026-11-01 06:30\nAsia/Singapore    2026-03-29 01:30  exists once\n    fold=0: offset +08:00  utc 2026-03-28 17:30\n    fold=1: offset +08:00  utc 2026-03-28 17:30",
+  "m6/day_buckets.py": "orders per day by the UTC date:        {'2026-03-14': 4, '2026-03-15': 1}\norders per day by Singapore's date:    {'2026-03-14': 2, '2026-03-15': 3}\n\nLondon, 29 March 2026: from 2026-03-29T00:00:00+00:00 to 2026-03-30T00:00:00+01:00\nsubtracting the two aware values:      1 day, 0:00:00\nthe same two moments in UTC:           23:00:00",
+  "m6/money.py": "0.1 + 0.2 = 0.30000000000000004\n0.1 + 0.2 == 0.3: False\nthe float 0.1 is really: 0.1000000000000000055511151231257827021181583404541015625\nthe Decimal from text:    0.1\n\nadding 0.10 1,000,000 times:\n  float, a loop:       100000.00000133288\n  math.fsum:           100000.0\n  Decimal:             100000.00\n  whole cents (int):   100000.0\n\nrounding a half to 2 places:\n  round(2.675, 2): 2.67   (the float is a little below 2.675)\n  Decimal('2.675'), ROUND_HALF_EVEN 2.68\n  Decimal('2.675'), ROUND_HALF_UP   2.68\n  Decimal('2.675'), ROUND_DOWN      2.67\n  round(2.5): 2   round(3.5): 4   (halves go to the even number)",
+  "m6/normalize_timestamps.py": "2026-03-14T08:15:00Z         -> 2026-03-14T08:15:00Z\n2026-03-14T16:15:00+08:00    -> 2026-03-14T08:15:00Z\n2026-03-14 16:15:00          -> 2026-03-14T08:15:00Z\n1773476100                   -> 2026-03-14T08:15:00Z\ntests passed",
+  "m6/local_days.py": "London:    {'2026-03-28': 1, '2026-03-29': 2, '2026-03-30': 1}\nSingapore: {'2026-03-29': 2, '2026-03-30': 2}\nhours in 2026-03-28 in London: 24\nhours in 2026-03-29 in London: 23\nhours in 2026-10-25 in London: 25\ntests passed"
  },
  "tables": {
   "m3.structs": {
@@ -257,7 +271,14 @@ LAB.real = {
    "m5/parquet_tour.py": 0,
    "m5/parse_log.py": 0,
    "m5/write_partitions.py": 0,
-   "m5/read_csv_safely.py": 0
+   "m5/read_csv_safely.py": 0,
+   "m6/naive_aware.py": 0,
+   "m6/iso_parse.py": 0,
+   "m6/zoneinfo_dst.py": 0,
+   "m6/day_buckets.py": 0,
+   "m6/money.py": 0,
+   "m6/normalize_timestamps.py": 0,
+   "m6/local_days.py": 0
   },
   "m2.specifiers.pandas": {
    "versions": [
@@ -1054,6 +1075,352 @@ LAB.real = {
    "query": "SELECT sum(total) FROM <the file>",
    "runs": 5,
    "note": "bytes of each file, and the median of 5 runs of one DuckDB query over it, on this machine"
+  },
+  "m6.dst": {
+   "tzdata": null,
+   "cases": [
+    {
+     "zone": "Europe/London",
+     "local": "2026-06-15 12:00",
+     "label": "an ordinary noon",
+     "hint": "regular",
+     "fold0": {
+      "offset": "+01:00",
+      "utc": "2026-06-15 11:00",
+      "back": "2026-06-15 12:00"
+     },
+     "fold1": {
+      "offset": "+01:00",
+      "utc": "2026-06-15 11:00",
+      "back": "2026-06-15 12:00"
+     },
+     "kind": "exists once"
+    },
+    {
+     "zone": "Europe/London",
+     "local": "2026-03-29 01:30",
+     "label": "clocks go forward",
+     "hint": "gap",
+     "fold0": {
+      "offset": "+00:00",
+      "utc": "2026-03-29 01:30",
+      "back": "2026-03-29 02:30"
+     },
+     "fold1": {
+      "offset": "+01:00",
+      "utc": "2026-03-29 00:30",
+      "back": "2026-03-29 00:30"
+     },
+     "kind": "does not exist"
+    },
+    {
+     "zone": "Europe/London",
+     "local": "2026-10-25 01:30",
+     "label": "clocks go back",
+     "hint": "ambiguous",
+     "fold0": {
+      "offset": "+01:00",
+      "utc": "2026-10-25 00:30",
+      "back": "2026-10-25 01:30"
+     },
+     "fold1": {
+      "offset": "+00:00",
+      "utc": "2026-10-25 01:30",
+      "back": "2026-10-25 01:30"
+     },
+     "kind": "ambiguous"
+    },
+    {
+     "zone": "America/New_York",
+     "local": "2026-06-15 12:00",
+     "label": "an ordinary noon",
+     "hint": "regular",
+     "fold0": {
+      "offset": "-04:00",
+      "utc": "2026-06-15 16:00",
+      "back": "2026-06-15 12:00"
+     },
+     "fold1": {
+      "offset": "-04:00",
+      "utc": "2026-06-15 16:00",
+      "back": "2026-06-15 12:00"
+     },
+     "kind": "exists once"
+    },
+    {
+     "zone": "America/New_York",
+     "local": "2026-03-08 02:30",
+     "label": "clocks go forward",
+     "hint": "gap",
+     "fold0": {
+      "offset": "-05:00",
+      "utc": "2026-03-08 07:30",
+      "back": "2026-03-08 03:30"
+     },
+     "fold1": {
+      "offset": "-04:00",
+      "utc": "2026-03-08 06:30",
+      "back": "2026-03-08 01:30"
+     },
+     "kind": "does not exist"
+    },
+    {
+     "zone": "America/New_York",
+     "local": "2026-11-01 01:30",
+     "label": "clocks go back",
+     "hint": "ambiguous",
+     "fold0": {
+      "offset": "-04:00",
+      "utc": "2026-11-01 05:30",
+      "back": "2026-11-01 01:30"
+     },
+     "fold1": {
+      "offset": "-05:00",
+      "utc": "2026-11-01 06:30",
+      "back": "2026-11-01 01:30"
+     },
+     "kind": "ambiguous"
+    },
+    {
+     "zone": "Asia/Singapore",
+     "local": "2026-06-15 12:00",
+     "label": "an ordinary noon",
+     "hint": "regular",
+     "fold0": {
+      "offset": "+08:00",
+      "utc": "2026-06-15 04:00",
+      "back": "2026-06-15 12:00"
+     },
+     "fold1": {
+      "offset": "+08:00",
+      "utc": "2026-06-15 04:00",
+      "back": "2026-06-15 12:00"
+     },
+     "kind": "exists once"
+    },
+    {
+     "zone": "Asia/Kolkata",
+     "local": "2026-06-15 12:00",
+     "label": "an ordinary noon",
+     "hint": "regular",
+     "fold0": {
+      "offset": "+05:30",
+      "utc": "2026-06-15 06:30",
+      "back": "2026-06-15 12:00"
+     },
+     "fold1": {
+      "offset": "+05:30",
+      "utc": "2026-06-15 06:30",
+      "back": "2026-06-15 12:00"
+     },
+     "kind": "exists once"
+    },
+    {
+     "zone": "Australia/Sydney",
+     "local": "2026-06-15 12:00",
+     "label": "an ordinary noon",
+     "hint": "regular",
+     "fold0": {
+      "offset": "+10:00",
+      "utc": "2026-06-15 02:00",
+      "back": "2026-06-15 12:00"
+     },
+     "fold1": {
+      "offset": "+10:00",
+      "utc": "2026-06-15 02:00",
+      "back": "2026-06-15 12:00"
+     },
+     "kind": "exists once"
+    },
+    {
+     "zone": "Australia/Sydney",
+     "local": "2026-04-05 02:30",
+     "label": "clocks go back",
+     "hint": "ambiguous",
+     "fold0": {
+      "offset": "+11:00",
+      "utc": "2026-04-04 15:30",
+      "back": "2026-04-05 02:30"
+     },
+     "fold1": {
+      "offset": "+10:00",
+      "utc": "2026-04-04 16:30",
+      "back": "2026-04-05 02:30"
+     },
+     "kind": "ambiguous"
+    },
+    {
+     "zone": "Australia/Sydney",
+     "local": "2026-10-04 02:30",
+     "label": "clocks go forward",
+     "hint": "gap",
+     "fold0": {
+      "offset": "+10:00",
+      "utc": "2026-10-03 16:30",
+      "back": "2026-10-04 03:30"
+     },
+     "fold1": {
+      "offset": "+11:00",
+      "utc": "2026-10-03 15:30",
+      "back": "2026-10-04 01:30"
+     },
+     "kind": "does not exist"
+    },
+    {
+     "zone": "Australia/Lord_Howe",
+     "local": "2026-06-15 12:00",
+     "label": "an ordinary noon",
+     "hint": "regular",
+     "fold0": {
+      "offset": "+10:30",
+      "utc": "2026-06-15 01:30",
+      "back": "2026-06-15 12:00"
+     },
+     "fold1": {
+      "offset": "+10:30",
+      "utc": "2026-06-15 01:30",
+      "back": "2026-06-15 12:00"
+     },
+     "kind": "exists once"
+    },
+    {
+     "zone": "Australia/Lord_Howe",
+     "local": "2026-04-05 01:45",
+     "label": "clocks go back",
+     "hint": "ambiguous",
+     "fold0": {
+      "offset": "+11:00",
+      "utc": "2026-04-04 14:45",
+      "back": "2026-04-05 01:45"
+     },
+     "fold1": {
+      "offset": "+10:30",
+      "utc": "2026-04-04 15:15",
+      "back": "2026-04-05 01:45"
+     },
+     "kind": "ambiguous"
+    },
+    {
+     "zone": "Australia/Lord_Howe",
+     "local": "2026-10-04 02:15",
+     "label": "clocks go forward",
+     "hint": "gap",
+     "fold0": {
+      "offset": "+10:30",
+      "utc": "2026-10-03 15:45",
+      "back": "2026-10-04 02:45"
+     },
+     "fold1": {
+      "offset": "+11:00",
+      "utc": "2026-10-03 15:15",
+      "back": "2026-10-04 01:45"
+     },
+     "kind": "does not exist"
+    }
+   ],
+   "note": "computed with zoneinfo; kind is found with the check from PEP 495: a local time that does not survive a trip through UTC does not exist"
+  },
+  "m6.money": {
+   "sums": [
+    {
+     "n": 10,
+     "float": "0.9999999999999999",
+     "fsum": "1.0",
+     "decimal": "1.00",
+     "cents": "100",
+     "float_error": "-1.1102230246251565e-16"
+    },
+    {
+     "n": 100,
+     "float": "9.99999999999998",
+     "fsum": "10.0",
+     "decimal": "10.00",
+     "cents": "1000",
+     "float_error": "-1.9539925233402755e-14"
+    },
+    {
+     "n": 1000,
+     "float": "99.9999999999986",
+     "fsum": "100.0",
+     "decimal": "100.00",
+     "cents": "10000",
+     "float_error": "-1.4068746168049984e-12"
+    },
+    {
+     "n": 100000,
+     "float": "10000.000000018848",
+     "fsum": "10000.0",
+     "decimal": "10000.00",
+     "cents": "1000000",
+     "float_error": "1.8848368199542165e-08"
+    },
+    {
+     "n": 1000000,
+     "float": "100000.00000133288",
+     "fsum": "100000.0",
+     "decimal": "100000.00",
+     "cents": "10000000",
+     "float_error": "1.3328826753422618e-06"
+    }
+   ],
+   "rounding": [
+    {
+     "value": "0.5",
+     "places": 0,
+     "round": "0.0",
+     "half_even": "0",
+     "half_up": "1",
+     "down": "0"
+    },
+    {
+     "value": "1.5",
+     "places": 0,
+     "round": "2.0",
+     "half_even": "2",
+     "half_up": "2",
+     "down": "1"
+    },
+    {
+     "value": "2.5",
+     "places": 0,
+     "round": "2.0",
+     "half_even": "2",
+     "half_up": "3",
+     "down": "2"
+    },
+    {
+     "value": "-2.5",
+     "places": 0,
+     "round": "-2.0",
+     "half_even": "-2",
+     "half_up": "-3",
+     "down": "-2"
+    },
+    {
+     "value": "2.675",
+     "places": 2,
+     "round": "2.67",
+     "half_even": "2.68",
+     "half_up": "2.68",
+     "down": "2.67"
+    },
+    {
+     "value": "1.005",
+     "places": 2,
+     "round": "1.0",
+     "half_even": "1.00",
+     "half_up": "1.01",
+     "down": "1.00"
+    },
+    {
+     "value": "0.125",
+     "places": 2,
+     "round": "0.12",
+     "half_even": "0.12",
+     "half_up": "0.13",
+     "down": "0.12"
+    }
+   ]
   }
  }
 };
