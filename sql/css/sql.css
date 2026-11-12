@@ -78,3 +78,5 @@ a.logo:hover{background:#3730A3}
 /* long identifiers, hex strings and plan lines must wrap on a phone */
 .qtext,.alertbox,.alertbox *,.prompt,.opt .ot,.callout,.clues li,.triage li,.lab-out .big b,.lab-out .big span,.notes li,.answer,.why li{overflow-wrap:anywhere}
 .tbl td,.tbl th{overflow-wrap:anywhere}
+
+.nowrap .tbl td,.nowrap .tbl th{white-space:nowrap}

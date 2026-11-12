@@ -432,6 +432,37 @@
     SQ.info.frame = { compute: compute, check: check, rows: withGroups, key: key, MODES: MODES, STARTS: STARTS, ENDS: ENDS };
   })();
 
+  /* ====================== mission 7: the time zone bucket lab ====================== */
+  (function () {
+    var TZ_LABEL = { 'UTC': 'UTC', 'Asia/Singapore': 'Singapore, UTC+8', 'Australia/Sydney': 'Sydney, UTC+11 in March', 'America/Los_Angeles': 'Los Angeles, UTC-8 until 8 March, then UTC-7' };
+    var UNIT_LABEL = { day: 'day', week: 'week, from Monday', month: 'month' };
+    function C() { return G.counts('m7.buckets'); }
+    function engines(list) { return list.map(function (e) { return ENGINE_LABEL[e]; }).join(', '); }
+    W.bucket = {
+      steps: function () { return 1; },
+      hint: 'Pick a time zone and a bucket size.',
+      say: function () { return 'Twelve orders, stored in UTC. Pick the time zone of the report and the size of the bucket. The green rows land in another bucket than they do in UTC. The recorder ran every setting on DuckDB and PostgreSQL, and on SQLite where it could add fixed hours.'; },
+      mood: function () { return 'think'; },
+      render: function (box, s, i, A) {
+        var c = C(), st = A.local.bk || (A.local.bk = { tz: 'Asia/Singapore', unit: 'day' });
+        var cur = c.combos[st.tz + '|' + st.unit], base = c.combos['UTC|' + st.unit];
+        var moved = cur.buckets.filter(function (b, k) { return b !== base.buckets[k]; }).length;
+        var rows = c.orders.map(function (o, k) { return [o[0], o[1], o[4], c.local[st.tz][k], cur.buckets[k]]; });
+        var h = '<div class="lab"><div class="lab-h">Time zone of the report</div><div class="sel-chips">' + chips(c.tzs, st.tz, 'bk-tz', function (k) { return TZ_LABEL[k]; }) + '</div>' +
+          '<div class="lab-h">Bucket</div><div class="sel-chips">' + chips(c.units, st.unit, 'bk-unit', function (k) { return UNIT_LABEL[k]; }) + '</div>' +
+          code('the query that ran', 'sql', cur.sql, null) +
+          '<div class="nowrap">' + table(['order', 'store', 'UTC time', 'local time', st.unit + ' bucket'], rows, function (r, k) { return cur.buckets[k] !== base.buckets[k] ? 'new' : ''; }) + '</div>' +
+          '<h3 class="lab-h">Orders and revenue for each ' + st.unit + '</h3><div class="nowrap">' + table(['bucket', 'orders', 'revenue'], cur.groups) + '</div>' +
+          '<div class="lab-out"><div class="big"><b>' + cur.groups.length + '</b><span>buckets</span></div><div class="big ' + (moved ? 'warn' : 'good') + '"><b>' + moved + '</b><span>' + (moved ? 'orders land in another bucket than in UTC' : 'orders move compared with UTC') + '</span></div></div>' +
+          '<p class="lab-note">Engines that returned exactly this: ' + engines(cur.engines) + '.' + (cur.engines.length < 3 ? ' SQLite has no time zone names. It can only add a fixed number of hours, so it cannot run this setting.' : '') + '</p></div>';
+        box.innerHTML = h;
+        bindCodes(box);
+        A.bindWidget = function (act, el) { var v = el.getAttribute('data-v'); if (act === 'bk-tz') st.tz = v; else if (act === 'bk-unit') st.unit = v; A.render(true); };
+      }
+    };
+    SQ.info.bucket = { counts: C };
+  })();
+
   /* the helpers are shared with part 2 (widgets2.js) */
   SQ.u = { chips: chips, table: table, code: code, bindCodes: bindCodes, pre: pre, ENGINES: ENGINES, ENGINE_LABEL: ENGINE_LABEL };
 })();

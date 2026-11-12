@@ -2365,6 +2365,719 @@ LAB.real = {
     "60.00"
    ],
    "row_n": 1
+  },
+  "m7.buckets": {
+   "combos": {
+    "America/Los_Angeles|day": {
+     "buckets": [
+      "2026-02-28",
+      "2026-03-03",
+      "2026-03-02",
+      "2026-03-02",
+      "2026-03-03",
+      "2026-03-04",
+      "2026-03-05",
+      "2026-03-06",
+      "2026-03-06",
+      "2026-03-07",
+      "2026-03-07",
+      "2026-03-09"
+     ],
+     "engines": [
+      "duckdb",
+      "postgres"
+     ],
+     "groups": [
+      [
+       "2026-02-28",
+       "1",
+       "11.50"
+      ],
+      [
+       "2026-03-02",
+       "2",
+       "31.00"
+      ],
+      [
+       "2026-03-03",
+       "2",
+       "27.50"
+      ],
+      [
+       "2026-03-04",
+       "1",
+       "14.00"
+      ],
+      [
+       "2026-03-05",
+       "1",
+       "7.00"
+      ],
+      [
+       "2026-03-06",
+       "2",
+       "21.50"
+      ],
+      [
+       "2026-03-07",
+       "2",
+       "35.50"
+      ],
+      [
+       "2026-03-09",
+       "1",
+       "8.00"
+      ]
+     ],
+     "sql": "SELECT order_id,\n       CAST(date_trunc('day',\n                       (order_ts AT TIME ZONE 'UTC') AT TIME ZONE 'America/Los_Angeles') AS DATE) AS bucket\nFROM orders\nORDER BY order_id"
+    },
+    "America/Los_Angeles|month": {
+     "buckets": [
+      "2026-02-01",
+      "2026-03-01",
+      "2026-03-01",
+      "2026-03-01",
+      "2026-03-01",
+      "2026-03-01",
+      "2026-03-01",
+      "2026-03-01",
+      "2026-03-01",
+      "2026-03-01",
+      "2026-03-01",
+      "2026-03-01"
+     ],
+     "engines": [
+      "duckdb",
+      "postgres"
+     ],
+     "groups": [
+      [
+       "2026-02-01",
+       "1",
+       "11.50"
+      ],
+      [
+       "2026-03-01",
+       "11",
+       "144.50"
+      ]
+     ],
+     "sql": "SELECT order_id,\n       CAST(date_trunc('month',\n                       (order_ts AT TIME ZONE 'UTC') AT TIME ZONE 'America/Los_Angeles') AS DATE) AS bucket\nFROM orders\nORDER BY order_id"
+    },
+    "America/Los_Angeles|week": {
+     "buckets": [
+      "2026-02-23",
+      "2026-03-02",
+      "2026-03-02",
+      "2026-03-02",
+      "2026-03-02",
+      "2026-03-02",
+      "2026-03-02",
+      "2026-03-02",
+      "2026-03-02",
+      "2026-03-02",
+      "2026-03-02",
+      "2026-03-09"
+     ],
+     "engines": [
+      "duckdb",
+      "postgres"
+     ],
+     "groups": [
+      [
+       "2026-02-23",
+       "1",
+       "11.50"
+      ],
+      [
+       "2026-03-02",
+       "10",
+       "136.50"
+      ],
+      [
+       "2026-03-09",
+       "1",
+       "8.00"
+      ]
+     ],
+     "sql": "SELECT order_id,\n       CAST(date_trunc('week',\n                       (order_ts AT TIME ZONE 'UTC') AT TIME ZONE 'America/Los_Angeles') AS DATE) AS bucket\nFROM orders\nORDER BY order_id"
+    },
+    "Asia/Singapore|day": {
+     "buckets": [
+      "2026-03-01",
+      "2026-03-03",
+      "2026-03-03",
+      "2026-03-03",
+      "2026-03-04",
+      "2026-03-05",
+      "2026-03-05",
+      "2026-03-06",
+      "2026-03-06",
+      "2026-03-07",
+      "2026-03-08",
+      "2026-03-09"
+     ],
+     "engines": [
+      "duckdb",
+      "postgres",
+      "sqlite"
+     ],
+     "groups": [
+      [
+       "2026-03-01",
+       "1",
+       "11.50"
+      ],
+      [
+       "2026-03-03",
+       "3",
+       "49.50"
+      ],
+      [
+       "2026-03-04",
+       "1",
+       "9.00"
+      ],
+      [
+       "2026-03-05",
+       "2",
+       "21.00"
+      ],
+      [
+       "2026-03-06",
+       "2",
+       "21.50"
+      ],
+      [
+       "2026-03-07",
+       "1",
+       "19.00"
+      ],
+      [
+       "2026-03-08",
+       "1",
+       "16.50"
+      ],
+      [
+       "2026-03-09",
+       "1",
+       "8.00"
+      ]
+     ],
+     "sql": "SELECT order_id,\n       CAST(date_trunc('day',\n                       (order_ts AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Singapore') AS DATE) AS bucket\nFROM orders\nORDER BY order_id"
+    },
+    "Asia/Singapore|month": {
+     "buckets": [
+      "2026-03-01",
+      "2026-03-01",
+      "2026-03-01",
+      "2026-03-01",
+      "2026-03-01",
+      "2026-03-01",
+      "2026-03-01",
+      "2026-03-01",
+      "2026-03-01",
+      "2026-03-01",
+      "2026-03-01",
+      "2026-03-01"
+     ],
+     "engines": [
+      "duckdb",
+      "postgres",
+      "sqlite"
+     ],
+     "groups": [
+      [
+       "2026-03-01",
+       "12",
+       "156.00"
+      ]
+     ],
+     "sql": "SELECT order_id,\n       CAST(date_trunc('month',\n                       (order_ts AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Singapore') AS DATE) AS bucket\nFROM orders\nORDER BY order_id"
+    },
+    "Asia/Singapore|week": {
+     "buckets": [
+      "2026-02-23",
+      "2026-03-02",
+      "2026-03-02",
+      "2026-03-02",
+      "2026-03-02",
+      "2026-03-02",
+      "2026-03-02",
+      "2026-03-02",
+      "2026-03-02",
+      "2026-03-02",
+      "2026-03-02",
+      "2026-03-09"
+     ],
+     "engines": [
+      "duckdb",
+      "postgres",
+      "sqlite"
+     ],
+     "groups": [
+      [
+       "2026-02-23",
+       "1",
+       "11.50"
+      ],
+      [
+       "2026-03-02",
+       "10",
+       "136.50"
+      ],
+      [
+       "2026-03-09",
+       "1",
+       "8.00"
+      ]
+     ],
+     "sql": "SELECT order_id,\n       CAST(date_trunc('week',\n                       (order_ts AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Singapore') AS DATE) AS bucket\nFROM orders\nORDER BY order_id"
+    },
+    "Australia/Sydney|day": {
+     "buckets": [
+      "2026-03-01",
+      "2026-03-03",
+      "2026-03-03",
+      "2026-03-03",
+      "2026-03-04",
+      "2026-03-05",
+      "2026-03-05",
+      "2026-03-06",
+      "2026-03-06",
+      "2026-03-07",
+      "2026-03-08",
+      "2026-03-10"
+     ],
+     "engines": [
+      "duckdb",
+      "postgres"
+     ],
+     "groups": [
+      [
+       "2026-03-01",
+       "1",
+       "11.50"
+      ],
+      [
+       "2026-03-03",
+       "3",
+       "49.50"
+      ],
+      [
+       "2026-03-04",
+       "1",
+       "9.00"
+      ],
+      [
+       "2026-03-05",
+       "2",
+       "21.00"
+      ],
+      [
+       "2026-03-06",
+       "2",
+       "21.50"
+      ],
+      [
+       "2026-03-07",
+       "1",
+       "19.00"
+      ],
+      [
+       "2026-03-08",
+       "1",
+       "16.50"
+      ],
+      [
+       "2026-03-10",
+       "1",
+       "8.00"
+      ]
+     ],
+     "sql": "SELECT order_id,\n       CAST(date_trunc('day',\n                       (order_ts AT TIME ZONE 'UTC') AT TIME ZONE 'Australia/Sydney') AS DATE) AS bucket\nFROM orders\nORDER BY order_id"
+    },
+    "Australia/Sydney|month": {
+     "buckets": [
+      "2026-03-01",
+      "2026-03-01",
+      "2026-03-01",
+      "2026-03-01",
+      "2026-03-01",
+      "2026-03-01",
+      "2026-03-01",
+      "2026-03-01",
+      "2026-03-01",
+      "2026-03-01",
+      "2026-03-01",
+      "2026-03-01"
+     ],
+     "engines": [
+      "duckdb",
+      "postgres"
+     ],
+     "groups": [
+      [
+       "2026-03-01",
+       "12",
+       "156.00"
+      ]
+     ],
+     "sql": "SELECT order_id,\n       CAST(date_trunc('month',\n                       (order_ts AT TIME ZONE 'UTC') AT TIME ZONE 'Australia/Sydney') AS DATE) AS bucket\nFROM orders\nORDER BY order_id"
+    },
+    "Australia/Sydney|week": {
+     "buckets": [
+      "2026-02-23",
+      "2026-03-02",
+      "2026-03-02",
+      "2026-03-02",
+      "2026-03-02",
+      "2026-03-02",
+      "2026-03-02",
+      "2026-03-02",
+      "2026-03-02",
+      "2026-03-02",
+      "2026-03-02",
+      "2026-03-09"
+     ],
+     "engines": [
+      "duckdb",
+      "postgres"
+     ],
+     "groups": [
+      [
+       "2026-02-23",
+       "1",
+       "11.50"
+      ],
+      [
+       "2026-03-02",
+       "10",
+       "136.50"
+      ],
+      [
+       "2026-03-09",
+       "1",
+       "8.00"
+      ]
+     ],
+     "sql": "SELECT order_id,\n       CAST(date_trunc('week',\n                       (order_ts AT TIME ZONE 'UTC') AT TIME ZONE 'Australia/Sydney') AS DATE) AS bucket\nFROM orders\nORDER BY order_id"
+    },
+    "UTC|day": {
+     "buckets": [
+      "2026-03-01",
+      "2026-03-03",
+      "2026-03-02",
+      "2026-03-02",
+      "2026-03-04",
+      "2026-03-04",
+      "2026-03-05",
+      "2026-03-06",
+      "2026-03-06",
+      "2026-03-07",
+      "2026-03-08",
+      "2026-03-09"
+     ],
+     "engines": [
+      "duckdb",
+      "postgres",
+      "sqlite"
+     ],
+     "groups": [
+      [
+       "2026-03-01",
+       "1",
+       "11.50"
+      ],
+      [
+       "2026-03-02",
+       "2",
+       "31.00"
+      ],
+      [
+       "2026-03-03",
+       "1",
+       "18.50"
+      ],
+      [
+       "2026-03-04",
+       "2",
+       "23.00"
+      ],
+      [
+       "2026-03-05",
+       "1",
+       "7.00"
+      ],
+      [
+       "2026-03-06",
+       "2",
+       "21.50"
+      ],
+      [
+       "2026-03-07",
+       "1",
+       "19.00"
+      ],
+      [
+       "2026-03-08",
+       "1",
+       "16.50"
+      ],
+      [
+       "2026-03-09",
+       "1",
+       "8.00"
+      ]
+     ],
+     "sql": "SELECT order_id,\n       CAST(date_trunc('day',\n                       (order_ts AT TIME ZONE 'UTC') AT TIME ZONE 'UTC') AS DATE) AS bucket\nFROM orders\nORDER BY order_id"
+    },
+    "UTC|month": {
+     "buckets": [
+      "2026-03-01",
+      "2026-03-01",
+      "2026-03-01",
+      "2026-03-01",
+      "2026-03-01",
+      "2026-03-01",
+      "2026-03-01",
+      "2026-03-01",
+      "2026-03-01",
+      "2026-03-01",
+      "2026-03-01",
+      "2026-03-01"
+     ],
+     "engines": [
+      "duckdb",
+      "postgres",
+      "sqlite"
+     ],
+     "groups": [
+      [
+       "2026-03-01",
+       "12",
+       "156.00"
+      ]
+     ],
+     "sql": "SELECT order_id,\n       CAST(date_trunc('month',\n                       (order_ts AT TIME ZONE 'UTC') AT TIME ZONE 'UTC') AS DATE) AS bucket\nFROM orders\nORDER BY order_id"
+    },
+    "UTC|week": {
+     "buckets": [
+      "2026-02-23",
+      "2026-03-02",
+      "2026-03-02",
+      "2026-03-02",
+      "2026-03-02",
+      "2026-03-02",
+      "2026-03-02",
+      "2026-03-02",
+      "2026-03-02",
+      "2026-03-02",
+      "2026-03-02",
+      "2026-03-09"
+     ],
+     "engines": [
+      "duckdb",
+      "postgres",
+      "sqlite"
+     ],
+     "groups": [
+      [
+       "2026-02-23",
+       "1",
+       "11.50"
+      ],
+      [
+       "2026-03-02",
+       "10",
+       "136.50"
+      ],
+      [
+       "2026-03-09",
+       "1",
+       "8.00"
+      ]
+     ],
+     "sql": "SELECT order_id,\n       CAST(date_trunc('week',\n                       (order_ts AT TIME ZONE 'UTC') AT TIME ZONE 'UTC') AS DATE) AS bucket\nFROM orders\nORDER BY order_id"
+    }
+   },
+   "local": {
+    "America/Los_Angeles": [
+     "2026-02-28 18:15:00",
+     "2026-03-03 01:40:00",
+     "2026-03-02 08:30:00",
+     "2026-03-02 15:50:00",
+     "2026-03-03 19:05:00",
+     "2026-03-04 13:10:00",
+     "2026-03-05 00:00:00",
+     "2026-03-06 02:20:00",
+     "2026-03-06 03:00:00",
+     "2026-03-07 04:30:00",
+     "2026-03-07 20:45:00",
+     "2026-03-09 08:00:00"
+    ],
+    "Asia/Singapore": [
+     "2026-03-01 10:15:00",
+     "2026-03-03 17:40:00",
+     "2026-03-03 00:30:00",
+     "2026-03-03 07:50:00",
+     "2026-03-04 11:05:00",
+     "2026-03-05 05:10:00",
+     "2026-03-05 16:00:00",
+     "2026-03-06 18:20:00",
+     "2026-03-06 19:00:00",
+     "2026-03-07 20:30:00",
+     "2026-03-08 12:45:00",
+     "2026-03-09 23:00:00"
+    ],
+    "Australia/Sydney": [
+     "2026-03-01 13:15:00",
+     "2026-03-03 20:40:00",
+     "2026-03-03 03:30:00",
+     "2026-03-03 10:50:00",
+     "2026-03-04 14:05:00",
+     "2026-03-05 08:10:00",
+     "2026-03-05 19:00:00",
+     "2026-03-06 21:20:00",
+     "2026-03-06 22:00:00",
+     "2026-03-07 23:30:00",
+     "2026-03-08 15:45:00",
+     "2026-03-10 02:00:00"
+    ],
+    "UTC": [
+     "2026-03-01 02:15:00",
+     "2026-03-03 09:40:00",
+     "2026-03-02 16:30:00",
+     "2026-03-02 23:50:00",
+     "2026-03-04 03:05:00",
+     "2026-03-04 21:10:00",
+     "2026-03-05 08:00:00",
+     "2026-03-06 10:20:00",
+     "2026-03-06 11:00:00",
+     "2026-03-07 12:30:00",
+     "2026-03-08 04:45:00",
+     "2026-03-09 15:00:00"
+    ]
+   },
+   "orders": [
+    [
+     "1001",
+     "1",
+     "paid",
+     "11.50",
+     "2026-03-01 02:15:00"
+    ],
+    [
+     "1002",
+     "1",
+     "paid",
+     "18.50",
+     "2026-03-03 09:40:00"
+    ],
+    [
+     "1003",
+     "2",
+     "paid",
+     "5.00",
+     "2026-03-02 16:30:00"
+    ],
+    [
+     "1004",
+     "1",
+     "paid",
+     "26.00",
+     "2026-03-02 23:50:00"
+    ],
+    [
+     "1005",
+     "3",
+     "cancelled",
+     "9.00",
+     "2026-03-04 03:05:00"
+    ],
+    [
+     "1006",
+     "4",
+     "paid",
+     "14.00",
+     "2026-03-04 21:10:00"
+    ],
+    [
+     "1007",
+     "1",
+     "paid",
+     "7.00",
+     "2026-03-05 08:00:00"
+    ],
+    [
+     "1008",
+     "4",
+     "refunded",
+     "12.00",
+     "2026-03-06 10:20:00"
+    ],
+    [
+     "1009",
+     "2",
+     "paid",
+     "9.50",
+     "2026-03-06 11:00:00"
+    ],
+    [
+     "1010",
+     "1",
+     "paid",
+     "19.00",
+     "2026-03-07 12:30:00"
+    ],
+    [
+     "1011",
+     "4",
+     "paid",
+     "16.50",
+     "2026-03-08 04:45:00"
+    ],
+    [
+     "1012",
+     "2",
+     "pending",
+     "8.00",
+     "2026-03-09 15:00:00"
+    ]
+   ],
+   "tzs": [
+    "UTC",
+    "Asia/Singapore",
+    "Australia/Sydney",
+    "America/Los_Angeles"
+   ],
+   "units": [
+    "day",
+    "week",
+    "month"
+   ]
+  },
+  "m7.plan.rows": {
+   "duckdb": [
+    331,
+    331
+   ],
+   "postgres": [
+    331,
+    331
+   ]
+  },
+  "m7.session_tz": {
+   "duckdb": {
+    "America/Los_Angeles": "2026-02-28 18:15:00-08",
+    "Asia/Singapore": "2026-03-01 10:15:00+08",
+    "UTC": "2026-03-01 02:15:00+00"
+   },
+   "postgres": {
+    "America/Los_Angeles": "2026-02-28 18:15:00-08",
+    "Asia/Singapore": "2026-03-01 10:15:00+08",
+    "UTC": "2026-03-01 02:15:00+00"
+   }
   }
  },
  "files": {
@@ -2509,6 +3222,8 @@ LAB.real = {
   "m7.arrays_duckdb": "SELECT i.order_id,\n       list(p.name ORDER BY i.line_no) AS products,\n       len(list(p.name)) AS lines,\n       list_contains(list(p.name), 'Latte') AS has_latte\nFROM order_items AS i\nJOIN products AS p ON p.product_id = i.product_id\nWHERE i.order_id IN (1001, 1002, 1011)\nGROUP BY i.order_id\nORDER BY i.order_id;\n",
   "m7.arrays_postgres": "SELECT i.order_id,\n       array_agg(p.name ORDER BY i.line_no) AS products,\n       cardinality(array_agg(p.name)) AS lines,\n       'Latte' = ANY(array_agg(p.name)) AS has_latte\nFROM order_items AS i\nJOIN products AS p ON p.product_id = i.product_id\nWHERE i.order_id IN (1001, 1002, 1011)\nGROUP BY i.order_id\nORDER BY i.order_id;\n",
   "m7.arrays_sqlite": "SELECT order_id,\n       json_group_array(name) AS products,\n       count(*) AS lines,\n       max(name = 'Latte') AS has_latte\nFROM (\n  SELECT i.order_id, p.name\n  FROM order_items AS i\n  JOIN products AS p ON p.product_id = i.product_id\n  WHERE i.order_id IN (1001, 1002, 1011)\n  ORDER BY i.order_id, i.line_no\n)\nGROUP BY order_id\nORDER BY order_id;\n",
+  "m7.bug_json": "SELECT count(DISTINCT e.event_id) AS sessions\nFROM app_events AS e\nCROSS JOIN LATERAL jsonb_array_elements(e.payload::jsonb #> '{cart,items}') AS j(item);\n",
+  "m7.bug_json_fix": "SELECT count(DISTINCT e.event_id) AS sessions\nFROM app_events AS e\nLEFT JOIN LATERAL jsonb_array_elements(e.payload::jsonb #> '{cart,items}') AS j(item) ON true;\n",
   "m7.bytes": "SELECT 'Zoë' AS s, length('Zoë') AS chars, octet_length('Zoë') AS bytes;\n",
   "m7.bytes_duckdb": "SELECT 'Zoë' AS s, length('Zoë') AS chars, strlen('Zoë') AS bytes;\n",
   "m7.ch_domain": "SELECT coalesce(split_part(email, '@', 2), 'unknown') AS domain, count(*) AS customers\nFROM customers\nGROUP BY coalesce(split_part(email, '@', 2), 'unknown')\nORDER BY customers DESC, domain;\n",
@@ -2520,6 +3235,8 @@ LAB.real = {
   "m7.collation_nocase": "WITH w(word) AS (\n  VALUES ('banana'), ('Banana'), ('apple'), ('Éclair'), ('cherry'), ('Apple')\n)\nSELECT word FROM w ORDER BY word COLLATE NOCASE, word;\n",
   "m7.domain": "SELECT customer_id, email, split_part(email, '@', 2) AS domain\nFROM customers\nORDER BY customer_id;\n",
   "m7.domain_sqlite": "SELECT customer_id, email, substr(email, instr(email, '@') + 1) AS domain\nFROM customers\nORDER BY customer_id;\n",
+  "m7.dst_fall": "WITH RECURSIVE h(utc) AS (\n  SELECT TIMESTAMP '2026-11-01 07:00:00'\n  UNION ALL\n  SELECT utc + INTERVAL '1 hour' FROM h WHERE utc < TIMESTAMP '2026-11-01 11:00:00'\n)\nSELECT utc, (utc AT TIME ZONE 'UTC') AT TIME ZONE 'America/Los_Angeles' AS los_angeles\nFROM h\nORDER BY utc;\n",
+  "m7.dst_spring": "WITH RECURSIVE h(utc) AS (\n  SELECT TIMESTAMP '2026-03-08 08:00:00'\n  UNION ALL\n  SELECT utc + INTERVAL '1 hour' FROM h WHERE utc < TIMESTAMP '2026-03-08 12:00:00'\n)\nSELECT utc, (utc AT TIME ZONE 'UTC') AT TIME ZONE 'America/Los_Angeles' AS los_angeles\nFROM h\nORDER BY utc;\n",
   "m7.fmt": "SELECT strftime(order_ts, '%Y-%m-%d %H:%M') AS minute_text,\n       strftime(order_ts, '%Y-%m') AS month_text\nFROM orders\nWHERE order_id = 1001;\n",
   "m7.fmt_postgres": "SELECT to_char(order_ts, 'YYYY-MM-DD HH24:MI') AS minute_text,\n       to_char(order_ts, 'YYYY-MM') AS month_text\nFROM orders\nWHERE order_id = 1001;\n",
   "m7.fmt_sqlite": "SELECT strftime('%Y-%m-%d %H:%M', order_ts) AS minute_text,\n       strftime('%Y-%m', order_ts) AS month_text\nFROM orders\nWHERE order_id = 1001;\n",
@@ -2537,6 +3254,9 @@ LAB.real = {
   "m7.month_end_sqlite": "SELECT date('2026-01-31', '+1 month') AS plus_one_month,\n       date('2026-03-31', '-1 month') AS minus_one_month;\n",
   "m7.parts": "SELECT order_id, order_ts,\n       extract(isodow FROM order_ts) AS isodow,\n       extract(dow FROM order_ts) AS dow,\n       extract(week FROM order_ts) AS iso_week\nFROM orders\nWHERE order_id IN (1001, 1002, 1011)\nORDER BY order_id;\n",
   "m7.parts_sqlite": "SELECT order_id, order_ts,\n       CAST(strftime('%u', order_ts) AS INTEGER) AS isodow,\n       CAST(strftime('%w', order_ts) AS INTEGER) AS dow,\n       CAST(strftime('%V', order_ts) AS INTEGER) AS iso_week,\n       CAST(strftime('%W', order_ts) AS INTEGER) AS week_monday_first\nFROM orders\nWHERE order_id IN (1001, 1002, 1011)\nORDER BY order_id;\n",
+  "m7.pg_locale": "SELECT datcollate AS collation_of_the_database\nFROM pg_database\nWHERE datname = current_database();\n",
+  "m7.plan.func": "SELECT count(*) FROM big_orders WHERE CAST(order_ts AS DATE) = DATE '2026-02-10'\n",
+  "m7.plan.range": "SELECT count(*) FROM big_orders\nWHERE order_ts >= TIMESTAMP '2026-02-10 00:00:00' AND order_ts < TIMESTAMP '2026-02-11 00:00:00'\n",
   "m7.regex": "SELECT name, regexp_replace(name, '[aeiou]', '*', 'g') AS masked\nFROM customers\nORDER BY customer_id;\n",
   "m7.shift": "SELECT order_id, order_ts,\n       order_ts + INTERVAL '7 days' AS refund_deadline,\n       CAST(order_ts AS DATE) + 7 AS refund_deadline_day\nFROM orders\nWHERE order_id IN (1001, 1004)\nORDER BY order_id;\n",
   "m7.strings": "SELECT customer_id, name,\n       upper(name) AS shouted,\n       length(name) AS chars,\n       substr(name, 1, 3) AS first3,\n       replace(lower(name), ' ', '.') AS handle\nFROM customers\nORDER BY customer_id;\n",
@@ -13708,6 +14428,26 @@ LAB.real = {
     ]
    ]
   },
+  "m7.bug_json": {
+   "cols": [
+    "sessions"
+   ],
+   "rows": [
+    [
+     "2"
+    ]
+   ]
+  },
+  "m7.bug_json_fix": {
+   "cols": [
+    "sessions"
+   ],
+   "rows": [
+    [
+     "4"
+    ]
+   ]
+  },
   "m7.bytes.postgres": {
    "cols": [
     "s",
@@ -14310,6 +15050,118 @@ LAB.real = {
     ]
    ]
   },
+  "m7.dst_fall.duckdb": {
+   "cols": [
+    "utc",
+    "los_angeles"
+   ],
+   "rows": [
+    [
+     "2026-11-01 07:00:00",
+     "2026-11-01 00:00:00"
+    ],
+    [
+     "2026-11-01 08:00:00",
+     "2026-11-01 01:00:00"
+    ],
+    [
+     "2026-11-01 09:00:00",
+     "2026-11-01 01:00:00"
+    ],
+    [
+     "2026-11-01 10:00:00",
+     "2026-11-01 02:00:00"
+    ],
+    [
+     "2026-11-01 11:00:00",
+     "2026-11-01 03:00:00"
+    ]
+   ]
+  },
+  "m7.dst_fall.postgres": {
+   "cols": [
+    "utc",
+    "los_angeles"
+   ],
+   "rows": [
+    [
+     "2026-11-01 07:00:00",
+     "2026-11-01 00:00:00"
+    ],
+    [
+     "2026-11-01 08:00:00",
+     "2026-11-01 01:00:00"
+    ],
+    [
+     "2026-11-01 09:00:00",
+     "2026-11-01 01:00:00"
+    ],
+    [
+     "2026-11-01 10:00:00",
+     "2026-11-01 02:00:00"
+    ],
+    [
+     "2026-11-01 11:00:00",
+     "2026-11-01 03:00:00"
+    ]
+   ]
+  },
+  "m7.dst_spring.duckdb": {
+   "cols": [
+    "utc",
+    "los_angeles"
+   ],
+   "rows": [
+    [
+     "2026-03-08 08:00:00",
+     "2026-03-08 00:00:00"
+    ],
+    [
+     "2026-03-08 09:00:00",
+     "2026-03-08 01:00:00"
+    ],
+    [
+     "2026-03-08 10:00:00",
+     "2026-03-08 03:00:00"
+    ],
+    [
+     "2026-03-08 11:00:00",
+     "2026-03-08 04:00:00"
+    ],
+    [
+     "2026-03-08 12:00:00",
+     "2026-03-08 05:00:00"
+    ]
+   ]
+  },
+  "m7.dst_spring.postgres": {
+   "cols": [
+    "utc",
+    "los_angeles"
+   ],
+   "rows": [
+    [
+     "2026-03-08 08:00:00",
+     "2026-03-08 00:00:00"
+    ],
+    [
+     "2026-03-08 09:00:00",
+     "2026-03-08 01:00:00"
+    ],
+    [
+     "2026-03-08 10:00:00",
+     "2026-03-08 03:00:00"
+    ],
+    [
+     "2026-03-08 11:00:00",
+     "2026-03-08 04:00:00"
+    ],
+    [
+     "2026-03-08 12:00:00",
+     "2026-03-08 05:00:00"
+    ]
+   ]
+  },
   "m7.fmt": {
    "cols": [
     "minute_text",
@@ -14827,6 +15679,16 @@ LAB.real = {
      "0",
      "10",
      "9"
+    ]
+   ]
+  },
+  "m7.pg_locale": {
+   "cols": [
+    "collation_of_the_database"
+   ],
+   "rows": [
+    [
+     "C.UTF-8"
     ]
    ]
   },
@@ -15561,6 +16423,10 @@ LAB.real = {
   "m6.where_error.duckdb.error": "Binder Error: WHERE clause cannot contain window functions!",
   "m6.where_error.postgres.error": "window functions are not allowed in WHERE",
   "m6.where_error.sqlite.error": "misuse of window function ROW_NUMBER()",
+  "m7.plan.duck_func": "UNGROUPED_AGGREGATE   (aggregates: count_star(), rows 1)\n  SCAN big_orders   (filter: ((order_ts >= '2026-02-10 00:00:00'::TIMESTAMP) AND (order_ts < '2026-02-11 00:00:00'::TIMESTAMP)), scanned 30000, rows 331)",
+  "m7.plan.duck_range": "UNGROUPED_AGGREGATE   (aggregates: count_star(), rows 1)\n  SCAN big_orders   (filter: ((order_ts >= '2026-02-10 00:00:00'::TIMESTAMP) AND (order_ts < '2026-02-11 00:00:00'::TIMESTAMP)), scanned 30000, rows 331)",
+  "m7.plan.pg_func": "Aggregate (actual rows=1 loops=1)\n  ->  Seq Scan on big_orders (actual rows=331 loops=1)\n        Filter: ((order_ts)::date = '2026-02-10'::date)\n        Rows Removed by Filter: 29669",
+  "m7.plan.pg_range": "Aggregate (actual rows=1 loops=1)\n  ->  Bitmap Heap Scan on big_orders (actual rows=331 loops=1)\n        Recheck Cond: ((order_ts >= '2026-02-10 00:00:00'::timestamp without time zone) AND (order_ts < '2026-02-11 00:00:00'::timestamp without time zone))\n        Heap Blocks: exact=19\n        ->  Bitmap Index Scan on big_orders_ts (actual rows=331 loops=1)\n              Index Cond: ((order_ts >= '2026-02-10 00:00:00'::timestamp without time zone) AND (order_ts < '2026-02-11 00:00:00'::timestamp without time zone))",
   "m7.regex.sqlite.error": "no such function: regexp_replace",
   "m7.tz_sqlite_error.error": "near \"TIME\": syntax error"
  }

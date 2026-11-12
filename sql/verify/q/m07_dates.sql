@@ -370,3 +370,45 @@ FROM orders AS o
 JOIN store_tz AS z ON z.store_id = o.store_id
 GROUP BY z.store_id, CAST((o.order_ts AT TIME ZONE 'UTC') AT TIME ZONE z.tz AS DATE)
 ORDER BY z.store_id, local_day;
+
+-- @name m7.dst_spring
+-- @engines duckdb postgres
+WITH RECURSIVE h(utc) AS (
+  SELECT TIMESTAMP '2026-03-08 08:00:00'
+  UNION ALL
+  SELECT utc + INTERVAL '1 hour' FROM h WHERE utc < TIMESTAMP '2026-03-08 12:00:00'
+)
+SELECT utc, (utc AT TIME ZONE 'UTC') AT TIME ZONE 'America/Los_Angeles' AS los_angeles
+FROM h
+ORDER BY utc;
+
+-- @name m7.dst_fall
+-- @engines duckdb postgres
+WITH RECURSIVE h(utc) AS (
+  SELECT TIMESTAMP '2026-11-01 07:00:00'
+  UNION ALL
+  SELECT utc + INTERVAL '1 hour' FROM h WHERE utc < TIMESTAMP '2026-11-01 11:00:00'
+)
+SELECT utc, (utc AT TIME ZONE 'UTC') AT TIME ZONE 'America/Los_Angeles' AS los_angeles
+FROM h
+ORDER BY utc;
+
+-- @name m7.bug_json
+-- @engines postgres
+-- @setup app_events
+SELECT count(DISTINCT e.event_id) AS sessions
+FROM app_events AS e
+CROSS JOIN LATERAL jsonb_array_elements(e.payload::jsonb #> '{cart,items}') AS j(item);
+
+-- @name m7.bug_json_fix
+-- @engines postgres
+-- @setup app_events
+SELECT count(DISTINCT e.event_id) AS sessions
+FROM app_events AS e
+LEFT JOIN LATERAL jsonb_array_elements(e.payload::jsonb #> '{cart,items}') AS j(item) ON true;
+
+-- @name m7.pg_locale
+-- @engines postgres
+SELECT datcollate AS collation_of_the_database
+FROM pg_database
+WHERE datname = current_database();
