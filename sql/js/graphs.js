@@ -362,4 +362,30 @@
       { id: 'tg_x2', x: 20, y: 350, t: 'every fact row has exactly one key for each dimension', c: 'int' }
     ]
   });
+  /* ------------------------------------------------------------------ */
+  /* 13. Where data quality checks sit                                   */
+  /* ------------------------------------------------------------------ */
+  S.dq = build({
+    h: 400, cw: 190, dx: 216,
+    label: 'Where data quality checks sit. Checks run at each layer where a problem can enter: on the source tables (not null, accepted values), in staging (unique keys, duplicates), after joins (foreign keys, no fan-out), on the marts (totals reconcile to the source) and on the dashboards (fresh data, normal volume). A failed check raises an alert or stops the load before the problem moves on.',
+    nodes: [
+      ['d_src', 0, 0, 'Source tables', 'not null, accepted values', 'src'],
+      ['d_stg', 1, 0, 'Staging', 'unique keys, duplicates', 'raw'],
+      ['d_int', 2, 0, 'After joins', 'foreign keys, fan-out', 'stg'],
+      ['d_mart', 3, 0, 'Marts', 'totals reconcile', 'mart'],
+      ['d_dash', 4, 0, 'Dashboards', 'fresh, normal volume', 'int'],
+      ['d_alert', 2, 1.3, 'Alert or stop', 'a failed check blocks the load', 'qual']
+    ],
+    edges: [
+      ['c1', 'd_src', 'd_stg', 1],
+      ['c2', 'd_stg', 'd_int', 2],
+      ['c3', 'd_int', 'd_mart', 3],
+      ['c4', 'd_mart', 'd_dash', 4],
+      ['c5', 'd_int', 'd_alert', 5]
+    ],
+    tags: [
+      { id: 'tg_d1', x: 20, y: 150, t: 'check where the problem can enter', c: 'qual' },
+      { id: 'tg_d2', x: 20, y: 350, t: 'a check returns the number of bad rows: 0 passes', c: 'int' }
+    ]
+  });
 })();

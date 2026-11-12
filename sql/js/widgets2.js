@@ -213,4 +213,36 @@
     };
     SQ.info.grain = { grains: GRAINS, tab: t };
   })();
+
+  /* ====================== mission 13: the translator lab ====================== */
+  (function () {
+    var LABEL = { snowflake: 'Snowflake', bigquery: 'BigQuery', redshift: 'Redshift', mysql: 'MySQL', tsql: 'SQL Server', oracle: 'Oracle', spark: 'Spark SQL', postgres: 'PostgreSQL', sqlite: 'SQLite', duckdb: 'DuckDB' };
+    function C() { return G.counts('m13.translate'); }
+    function status(it, t, run) {
+      if (run.indexOf(t) >= 0) {
+        if (it.ran === 'same') return ['ran here: same rows as the original', 'good'];
+        if (it.ran === 'different') return ['ran here: DIFFERENT rows ' + JSON.stringify(it.rows), 'bad'];
+        return ['ran here: ERROR ' + it.error, 'bad'];
+      }
+      return ['translated, not run: no ' + LABEL[t] + ' engine was available', 'warn'];
+    }
+    W.translator = {
+      steps: function () { return 1; },
+      hint: 'Pick a query and a target dialect.',
+      say: function () { return 'One DuckDB query, rewritten by sqlglot for ten dialects. DuckDB, PostgreSQL and SQLite were run here, and the rows were compared with the original. The seven others are text only: translated, not run. Look for the yellow notes where sqlglot says it cannot express something exactly.'; },
+      mood: function () { return 'think'; },
+      render: function (box, s, i, A) {
+        var u = SQ.u, c = C(), st = A.local.tr || (A.local.tr = { q: 'weekly', t: 'postgres' }), q = c.results[st.q], it = q.targets[st.t], sv = status(it, st.t, c.run_on);
+        var h = '<div class="lab"><div class="lab-h">Query</div><div class="sel-chips">' + u.chips(c.queries, st.q, 'tr-q', function (k) { return c.results[k].title; }) + '</div>' +
+          '<div class="lab-h">Target dialect</div><div class="sel-chips">' + u.chips(c.targets, st.t, 'tr-t', function (k) { return LABEL[k]; }) + '</div>' +
+          '<div class="pair"><div>' + u.code('the DuckDB query', 'sql', q.source, null) + '</div><div>' + u.code('translated for ' + LABEL[st.t], 'sql', it.sql, null) + '</div></div>' +
+          '<div class="lab-out"><div class="big ' + sv[1] + '"><b>' + (sv[1] === 'warn' ? 'not run' : sv[1] === 'good' ? 'same rows' : 'check') + '</b><span>' + esc(sv[0]) + '</span></div></div>' +
+          (it.warning ? '<div class="callout warn"><b>sqlglot says:</b> ' + esc(it.warning) + '. The translation is not exact.</div>' : '') + '</div>';
+        box.innerHTML = h;
+        u.bindCodes(box);
+        A.bindWidget = function (act, el) { var v = el.getAttribute('data-v'); if (act === 'tr-q') st.q = v; else if (act === 'tr-t') st.t = v; A.render(true); };
+      }
+    };
+    SQ.info.translator = { counts: C };
+  })();
 })();

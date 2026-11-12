@@ -1359,6 +1359,545 @@ LAB.real = {
    "pending": 285,
    "refunded": 900
   },
+  "m13.engine_errors": {
+   "duckdb": "Parser Error: syntax error at or near \"BY\"",
+   "postgres": "syntax error at end of input",
+   "sqlite": "incomplete input"
+  },
+  "m13.parse_error": {
+   "error": "no error",
+   "sql": "SELECT order_id, total FROM orders WHERE status = 'paid' GROUP BY"
+  },
+  "m13.top_error": {
+   "errors": {
+    "duckdb": "Parser Error: syntax error at or near \"3\"",
+    "postgres": "syntax error at or near \"3\"",
+    "sqlite": "near \"3\": syntax error"
+   },
+   "sql": "SELECT\nTOP 3\n  order_id,\n  total\nFROM orders\nWHERE\n  status = 'paid'\nORDER BY\n  total DESC"
+  },
+  "m13.translate": {
+   "queries": [
+    "weekly",
+    "top3",
+    "label",
+    "ilike",
+    "qualify",
+    "collect",
+    "interval",
+    "iff",
+    "trycast"
+   ],
+   "results": {
+    "collect": {
+     "original": [
+      [
+       "1",
+       "[1001, 1002, 1007]"
+      ],
+      [
+       "2",
+       "[1003, 1012]"
+      ],
+      [
+       "3",
+       "[1004, 1010]"
+      ],
+      [
+       "4",
+       "[1005]"
+      ]
+     ],
+     "source": "SELECT customer_id, list(order_id ORDER BY order_id) AS orders FROM orders WHERE customer_id IS NOT NULL GROUP BY customer_id ORDER BY customer_id",
+     "targets": {
+      "bigquery": {
+       "sql": "SELECT\n  customer_id,\n  ARRAY_AGG(order_id ORDER BY order_id) AS orders\nFROM orders\nWHERE\n  NOT customer_id IS NULL\nGROUP BY\n  customer_id\nORDER BY\n  customer_id NULLS LAST",
+       "warning": "'NULLS LAST' translation not supported for aggregate function ARRAY_AGG with  sort order"
+      },
+      "duckdb": {
+       "ran": "same",
+       "sql": "SELECT\n  customer_id,\n  ARRAY_AGG(order_id ORDER BY order_id) AS orders\nFROM orders\nWHERE\n  NOT customer_id IS NULL\nGROUP BY\n  customer_id\nORDER BY\n  customer_id"
+      },
+      "mysql": {
+       "sql": "SELECT\n  customer_id,\n  GROUP_CONCAT(order_id ORDER BY CASE WHEN order_id IS NULL THEN 1 ELSE 0 END, order_id) AS orders\nFROM orders\nWHERE\n  NOT customer_id IS NULL\nGROUP BY\n  customer_id\nORDER BY\n  CASE WHEN customer_id IS NULL THEN 1 ELSE 0 END, customer_id"
+      },
+      "oracle": {
+       "sql": "SELECT\n  customer_id,\n  ARRAY_AGG(order_id ORDER BY order_id) AS orders\nFROM orders\nWHERE\n  NOT customer_id IS NULL\nGROUP BY\n  customer_id\nORDER BY\n  customer_id"
+      },
+      "postgres": {
+       "ran": "same",
+       "sql": "SELECT\n  customer_id,\n  ARRAY_AGG(order_id ORDER BY order_id) AS orders\nFROM orders\nWHERE\n  NOT customer_id IS NULL\nGROUP BY\n  customer_id\nORDER BY\n  customer_id"
+      },
+      "redshift": {
+       "sql": "SELECT\n  customer_id,\n  ARRAY_AGG(order_id ORDER BY order_id) AS orders\nFROM orders\nWHERE\n  NOT customer_id IS NULL\nGROUP BY\n  customer_id\nORDER BY\n  customer_id"
+      },
+      "snowflake": {
+       "sql": "SELECT\n  customer_id,\n  ARRAY_AGG(order_id) WITHIN GROUP (ORDER BY\n    order_id) AS orders\nFROM orders\nWHERE\n  NOT customer_id IS NULL\nGROUP BY\n  customer_id\nORDER BY\n  customer_id"
+      },
+      "spark": {
+       "sql": "SELECT\n  customer_id,\n  COLLECT_LIST(order_id) AS orders\nFROM orders\nWHERE\n  NOT customer_id IS NULL\nGROUP BY\n  customer_id\nORDER BY\n  customer_id NULLS LAST"
+      },
+      "sqlite": {
+       "error": "no such function: ARRAY_AGG",
+       "ran": "error",
+       "sql": "SELECT\n  customer_id,\n  ARRAY_AGG(order_id ORDER BY order_id NULLS LAST) AS orders\nFROM orders\nWHERE\n  NOT customer_id IS NULL\nGROUP BY\n  customer_id\nORDER BY\n  customer_id NULLS LAST"
+      },
+      "tsql": {
+       "sql": "SELECT\n  customer_id,\n  ARRAY_AGG(order_id ORDER BY CASE WHEN order_id IS NULL THEN 1 ELSE 0 END, order_id) AS orders\nFROM orders\nWHERE\n  NOT customer_id IS NULL\nGROUP BY\n  customer_id\nORDER BY\n  CASE WHEN customer_id IS NULL THEN 1 ELSE 0 END, customer_id"
+      }
+     },
+     "title": "Collect the orders of a customer"
+    },
+    "iff": {
+     "original": [
+      [
+       "1001",
+       "small"
+      ],
+      [
+       "1002",
+       "big"
+      ],
+      [
+       "1003",
+       "small"
+      ],
+      [
+       "1004",
+       "big"
+      ]
+     ],
+     "source": "SELECT order_id, if(total >= 15, 'big', 'small') AS size FROM orders ORDER BY order_id",
+     "targets": {
+      "bigquery": {
+       "sql": "SELECT\n  order_id,\n  IF(total >= 15, 'big', 'small') AS size\nFROM orders\nORDER BY\n  order_id NULLS LAST"
+      },
+      "duckdb": {
+       "ran": "same",
+       "sql": "SELECT\n  order_id,\n  CASE WHEN total >= 15 THEN 'big' ELSE 'small' END AS size\nFROM orders\nORDER BY\n  order_id"
+      },
+      "mysql": {
+       "sql": "SELECT\n  order_id,\n  IF(total >= 15, 'big', 'small') AS size\nFROM orders\nORDER BY\n  CASE WHEN order_id IS NULL THEN 1 ELSE 0 END, order_id"
+      },
+      "oracle": {
+       "sql": "SELECT\n  order_id,\n  CASE WHEN total >= 15 THEN 'big' ELSE 'small' END AS size\nFROM orders\nORDER BY\n  order_id"
+      },
+      "postgres": {
+       "ran": "same",
+       "sql": "SELECT\n  order_id,\n  CASE WHEN total >= 15 THEN 'big' ELSE 'small' END AS size\nFROM orders\nORDER BY\n  order_id"
+      },
+      "redshift": {
+       "sql": "SELECT\n  order_id,\n  CASE WHEN total >= 15 THEN 'big' ELSE 'small' END AS size\nFROM orders\nORDER BY\n  order_id"
+      },
+      "snowflake": {
+       "sql": "SELECT\n  order_id,\n  IFF(total >= 15, 'big', 'small') AS size\nFROM orders\nORDER BY\n  order_id"
+      },
+      "spark": {
+       "sql": "SELECT\n  order_id,\n  IF(total >= 15, 'big', 'small') AS size\nFROM orders\nORDER BY\n  order_id NULLS LAST"
+      },
+      "sqlite": {
+       "ran": "same",
+       "sql": "SELECT\n  order_id,\n  IIF(total >= 15, 'big', 'small') AS size\nFROM orders\nORDER BY\n  order_id NULLS LAST"
+      },
+      "tsql": {
+       "sql": "SELECT\n  order_id,\n  IIF(total >= 15, 'big', 'small') AS size\nFROM orders\nORDER BY\n  CASE WHEN order_id IS NULL THEN 1 ELSE 0 END, order_id"
+      }
+     },
+     "title": "A conditional value"
+    },
+    "ilike": {
+     "original": [
+      [
+       "1001"
+      ],
+      [
+       "1004"
+      ],
+      [
+       "1006"
+      ],
+      [
+       "1008"
+      ]
+     ],
+     "source": "SELECT order_id FROM orders WHERE channel ILIKE 'W%' ORDER BY order_id",
+     "targets": {
+      "bigquery": {
+       "sql": "SELECT\n  order_id\nFROM orders\nWHERE\n  LOWER(channel) LIKE LOWER('W%')\nORDER BY\n  order_id NULLS LAST"
+      },
+      "duckdb": {
+       "ran": "same",
+       "sql": "SELECT\n  order_id\nFROM orders\nWHERE\n  channel ILIKE 'W%'\nORDER BY\n  order_id"
+      },
+      "mysql": {
+       "sql": "SELECT\n  order_id\nFROM orders\nWHERE\n  LOWER(channel) LIKE LOWER('W%')\nORDER BY\n  CASE WHEN order_id IS NULL THEN 1 ELSE 0 END, order_id"
+      },
+      "oracle": {
+       "sql": "SELECT\n  order_id\nFROM orders\nWHERE\n  LOWER(channel) LIKE LOWER('W%')\nORDER BY\n  order_id"
+      },
+      "postgres": {
+       "ran": "same",
+       "sql": "SELECT\n  order_id\nFROM orders\nWHERE\n  channel ILIKE 'W%'\nORDER BY\n  order_id"
+      },
+      "redshift": {
+       "sql": "SELECT\n  order_id\nFROM orders\nWHERE\n  channel ILIKE 'W%'\nORDER BY\n  order_id"
+      },
+      "snowflake": {
+       "sql": "SELECT\n  order_id\nFROM orders\nWHERE\n  channel ILIKE 'W%'\nORDER BY\n  order_id"
+      },
+      "spark": {
+       "sql": "SELECT\n  order_id\nFROM orders\nWHERE\n  channel ILIKE 'W%'\nORDER BY\n  order_id NULLS LAST"
+      },
+      "sqlite": {
+       "ran": "same",
+       "sql": "SELECT\n  order_id\nFROM orders\nWHERE\n  LOWER(channel) LIKE LOWER('W%')\nORDER BY\n  order_id NULLS LAST"
+      },
+      "tsql": {
+       "sql": "SELECT\n  order_id\nFROM orders\nWHERE\n  channel ILIKE 'W%'\nORDER BY\n  CASE WHEN order_id IS NULL THEN 1 ELSE 0 END, order_id"
+      }
+     },
+     "title": "Case-insensitive match"
+    },
+    "interval": {
+     "original": [
+      [
+       "1001",
+       "2026-03-08 02:15:00"
+      ],
+      [
+       "1004",
+       "2026-03-09 23:50:00"
+      ]
+     ],
+     "source": "SELECT order_id, order_ts + INTERVAL 7 DAY AS refund_deadline FROM orders WHERE order_id IN (1001, 1004) ORDER BY order_id",
+     "targets": {
+      "bigquery": {
+       "sql": "SELECT\n  order_id,\n  order_ts + INTERVAL '7' DAY AS refund_deadline\nFROM orders\nWHERE\n  order_id IN (1001, 1004)\nORDER BY\n  order_id NULLS LAST"
+      },
+      "duckdb": {
+       "ran": "same",
+       "sql": "SELECT\n  order_id,\n  order_ts + INTERVAL '7' DAY AS refund_deadline\nFROM orders\nWHERE\n  order_id IN (1001, 1004)\nORDER BY\n  order_id"
+      },
+      "mysql": {
+       "sql": "SELECT\n  order_id,\n  order_ts + INTERVAL '7' DAY AS refund_deadline\nFROM orders\nWHERE\n  order_id IN (1001, 1004)\nORDER BY\n  CASE WHEN order_id IS NULL THEN 1 ELSE 0 END, order_id"
+      },
+      "oracle": {
+       "sql": "SELECT\n  order_id,\n  order_ts + INTERVAL '7' DAY AS refund_deadline\nFROM orders\nWHERE\n  order_id IN (1001, 1004)\nORDER BY\n  order_id"
+      },
+      "postgres": {
+       "ran": "same",
+       "sql": "SELECT\n  order_id,\n  order_ts + INTERVAL '7 DAY' AS refund_deadline\nFROM orders\nWHERE\n  order_id IN (1001, 1004)\nORDER BY\n  order_id"
+      },
+      "redshift": {
+       "sql": "SELECT\n  order_id,\n  order_ts + INTERVAL '7 DAY' AS refund_deadline\nFROM orders\nWHERE\n  order_id IN (1001, 1004)\nORDER BY\n  order_id"
+      },
+      "snowflake": {
+       "sql": "SELECT\n  order_id,\n  order_ts + INTERVAL '7 DAY' AS refund_deadline\nFROM orders\nWHERE\n  order_id IN (1001, 1004)\nORDER BY\n  order_id"
+      },
+      "spark": {
+       "sql": "SELECT\n  order_id,\n  order_ts + INTERVAL '7' DAY AS refund_deadline\nFROM orders\nWHERE\n  order_id IN (1001, 1004)\nORDER BY\n  order_id NULLS LAST"
+      },
+      "sqlite": {
+       "error": "near \"DAY\": syntax error",
+       "ran": "error",
+       "sql": "SELECT\n  order_id,\n  order_ts + INTERVAL '7' DAY AS refund_deadline\nFROM orders\nWHERE\n  order_id IN (1001, 1004)\nORDER BY\n  order_id NULLS LAST"
+      },
+      "tsql": {
+       "sql": "SELECT\n  order_id,\n  order_ts + INTERVAL '7' DAY AS refund_deadline\nFROM orders\nWHERE\n  order_id IN (1001, 1004)\nORDER BY\n  CASE WHEN order_id IS NULL THEN 1 ELSE 0 END, order_id"
+      }
+     },
+     "title": "Add 7 days"
+    },
+    "label": {
+     "original": [
+      [
+       "Ana Lim <ana@example.com>"
+      ],
+      [
+       "Ben Ortiz <none>"
+      ],
+      [
+       "Chen Wei <chen@example.com>"
+      ],
+      [
+       "Dara Putri <dara@example.com>"
+      ]
+     ],
+     "source": "SELECT name || ' <' || coalesce(email, 'none') || '>' AS label FROM customers ORDER BY customer_id",
+     "targets": {
+      "bigquery": {
+       "sql": "SELECT\n  name || ' <' || COALESCE(email, 'none') || '>' AS label\nFROM customers\nORDER BY\n  customer_id NULLS LAST"
+      },
+      "duckdb": {
+       "ran": "same",
+       "sql": "SELECT\n  name || ' <' || COALESCE(email, 'none') || '>' AS label\nFROM customers\nORDER BY\n  customer_id"
+      },
+      "mysql": {
+       "sql": "SELECT\n  CONCAT(name, ' <', COALESCE(email, 'none'), '>') AS label\nFROM customers\nORDER BY\n  CASE WHEN customer_id IS NULL THEN 1 ELSE 0 END, customer_id"
+      },
+      "oracle": {
+       "sql": "SELECT\n  name || ' <' || COALESCE(email, 'none') || '>' AS label\nFROM customers\nORDER BY\n  customer_id"
+      },
+      "postgres": {
+       "ran": "same",
+       "sql": "SELECT\n  name || ' <' || COALESCE(email, 'none') || '>' AS label\nFROM customers\nORDER BY\n  customer_id"
+      },
+      "redshift": {
+       "sql": "SELECT\n  name || ' <' || COALESCE(email, 'none') || '>' AS label\nFROM customers\nORDER BY\n  customer_id"
+      },
+      "snowflake": {
+       "sql": "SELECT\n  name || ' <' || COALESCE(email, 'none') || '>' AS label\nFROM customers\nORDER BY\n  customer_id"
+      },
+      "spark": {
+       "sql": "SELECT\n  name || ' <' || COALESCE(email, 'none') || '>' AS label\nFROM customers\nORDER BY\n  customer_id NULLS LAST"
+      },
+      "sqlite": {
+       "ran": "same",
+       "sql": "SELECT\n  name || ' <' || COALESCE(email, 'none') || '>' AS label\nFROM customers\nORDER BY\n  customer_id NULLS LAST"
+      },
+      "tsql": {
+       "sql": "SELECT\n  name + ' <' + COALESCE(email, 'none') + '>' AS label\nFROM customers\nORDER BY\n  CASE WHEN customer_id IS NULL THEN 1 ELSE 0 END, customer_id"
+      }
+     },
+     "title": "Join strings, with a default"
+    },
+    "qualify": {
+     "original": [
+      [
+       "1",
+       "1004",
+       "26"
+      ],
+      [
+       "2",
+       "1009",
+       "9.5"
+      ],
+      [
+       "4",
+       "1011",
+       "16.5"
+      ]
+     ],
+     "source": "SELECT store_id, order_id, total FROM orders WHERE status = 'paid' QUALIFY row_number() OVER (PARTITION BY store_id ORDER BY total DESC) = 1 ORDER BY store_id",
+     "targets": {
+      "bigquery": {
+       "sql": "SELECT\n  store_id,\n  order_id,\n  total\nFROM orders\nWHERE\n  status = 'paid'\nQUALIFY\n  ROW_NUMBER() OVER (PARTITION BY store_id ORDER BY total DESC) = 1\nORDER BY\n  store_id NULLS LAST"
+      },
+      "duckdb": {
+       "ran": "same",
+       "sql": "SELECT\n  store_id,\n  order_id,\n  total\nFROM orders\nWHERE\n  status = 'paid'\nQUALIFY\n  ROW_NUMBER() OVER (PARTITION BY store_id ORDER BY total DESC) = 1\nORDER BY\n  store_id"
+      },
+      "mysql": {
+       "sql": "SELECT\n  store_id,\n  order_id,\n  total\nFROM (\n  SELECT\n    store_id,\n    order_id,\n    total,\n    ROW_NUMBER() OVER (PARTITION BY store_id ORDER BY total DESC) AS _w\n  FROM orders\n  WHERE\n    status = 'paid'\n  ORDER BY\n    CASE WHEN store_id IS NULL THEN 1 ELSE 0 END, store_id\n) AS _t\nWHERE\n  _w = 1"
+      },
+      "oracle": {
+       "sql": "SELECT\n  store_id,\n  order_id,\n  total\nFROM (\n  SELECT\n    store_id,\n    order_id,\n    total,\n    ROW_NUMBER() OVER (PARTITION BY store_id ORDER BY total DESC NULLS LAST) AS _w\n  FROM orders\n  WHERE\n    status = 'paid'\n  ORDER BY\n    store_id\n) _t\nWHERE\n  _w = 1"
+      },
+      "postgres": {
+       "ran": "same",
+       "sql": "SELECT\n  store_id,\n  order_id,\n  total\nFROM (\n  SELECT\n    store_id,\n    order_id,\n    total,\n    ROW_NUMBER() OVER (PARTITION BY store_id ORDER BY total DESC NULLS LAST) AS _w\n  FROM orders\n  WHERE\n    status = 'paid'\n  ORDER BY\n    store_id\n) AS _t\nWHERE\n  _w = 1"
+      },
+      "redshift": {
+       "sql": "SELECT\n  store_id,\n  order_id,\n  total\nFROM orders\nWHERE\n  status = 'paid'\nQUALIFY\n  ROW_NUMBER() OVER (PARTITION BY store_id ORDER BY total DESC NULLS LAST) = 1\nORDER BY\n  store_id"
+      },
+      "snowflake": {
+       "sql": "SELECT\n  store_id,\n  order_id,\n  total\nFROM orders\nWHERE\n  status = 'paid'\nQUALIFY\n  ROW_NUMBER() OVER (PARTITION BY store_id ORDER BY total DESC NULLS LAST) = 1\nORDER BY\n  store_id"
+      },
+      "spark": {
+       "sql": "SELECT\n  store_id,\n  order_id,\n  total\nFROM (\n  SELECT\n    store_id,\n    order_id,\n    total,\n    ROW_NUMBER() OVER (PARTITION BY store_id ORDER BY total DESC) AS _w\n  FROM orders\n  WHERE\n    status = 'paid'\n  ORDER BY\n    store_id NULLS LAST\n) AS _t\nWHERE\n  _w = 1"
+      },
+      "sqlite": {
+       "ran": "same",
+       "sql": "SELECT\n  store_id,\n  order_id,\n  total\nFROM (\n  SELECT\n    store_id,\n    order_id,\n    total,\n    ROW_NUMBER() OVER (PARTITION BY store_id ORDER BY total DESC) AS _w\n  FROM orders\n  WHERE\n    status = 'paid'\n  ORDER BY\n    store_id NULLS LAST\n) AS _t\nWHERE\n  _w = 1"
+      },
+      "tsql": {
+       "sql": "SELECT\n  store_id,\n  order_id,\n  total\nFROM (\n  SELECT\n    store_id AS store_id,\n    order_id AS order_id,\n    total AS total,\n    ROW_NUMBER() OVER (PARTITION BY store_id ORDER BY total DESC) AS _w\n  FROM orders\n  WHERE\n    status = 'paid'\n  ORDER BY\n    CASE WHEN store_id IS NULL THEN 1 ELSE 0 END, store_id\n) AS _t\nWHERE\n  _w = 1"
+      }
+     },
+     "title": "The biggest paid order of each store"
+    },
+    "top3": {
+     "original": [
+      [
+       "1004",
+       "26"
+      ],
+      [
+       "1010",
+       "19"
+      ],
+      [
+       "1002",
+       "18.5"
+      ]
+     ],
+     "source": "SELECT order_id, total FROM orders WHERE status = 'paid' ORDER BY total DESC LIMIT 3",
+     "targets": {
+      "bigquery": {
+       "sql": "SELECT\n  order_id,\n  total\nFROM orders\nWHERE\n  status = 'paid'\nORDER BY\n  total DESC\nLIMIT 3"
+      },
+      "duckdb": {
+       "ran": "same",
+       "sql": "SELECT\n  order_id,\n  total\nFROM orders\nWHERE\n  status = 'paid'\nORDER BY\n  total DESC\nLIMIT 3"
+      },
+      "mysql": {
+       "sql": "SELECT\n  order_id,\n  total\nFROM orders\nWHERE\n  status = 'paid'\nORDER BY\n  total DESC\nLIMIT 3"
+      },
+      "oracle": {
+       "sql": "SELECT\n  order_id,\n  total\nFROM orders\nWHERE\n  status = 'paid'\nORDER BY\n  total DESC NULLS LAST\nFETCH FIRST 3 ROWS ONLY"
+      },
+      "postgres": {
+       "ran": "same",
+       "sql": "SELECT\n  order_id,\n  total\nFROM orders\nWHERE\n  status = 'paid'\nORDER BY\n  total DESC NULLS LAST\nLIMIT 3"
+      },
+      "redshift": {
+       "sql": "SELECT\n  order_id,\n  total\nFROM orders\nWHERE\n  status = 'paid'\nORDER BY\n  total DESC NULLS LAST\nLIMIT 3"
+      },
+      "snowflake": {
+       "sql": "SELECT\n  order_id,\n  total\nFROM orders\nWHERE\n  status = 'paid'\nORDER BY\n  total DESC NULLS LAST\nLIMIT 3"
+      },
+      "spark": {
+       "sql": "SELECT\n  order_id,\n  total\nFROM orders\nWHERE\n  status = 'paid'\nORDER BY\n  total DESC\nLIMIT 3"
+      },
+      "sqlite": {
+       "ran": "same",
+       "sql": "SELECT\n  order_id,\n  total\nFROM orders\nWHERE\n  status = 'paid'\nORDER BY\n  total DESC\nLIMIT 3"
+      },
+      "tsql": {
+       "sql": "SELECT\nTOP 3\n  order_id,\n  total\nFROM orders\nWHERE\n  status = 'paid'\nORDER BY\n  total DESC"
+      }
+     },
+     "title": "The three biggest paid orders"
+    },
+    "trycast": {
+     "original": [
+      [
+       "NULL",
+       "12"
+      ]
+     ],
+     "source": "SELECT try_cast('12x' AS INTEGER) AS bad_number, try_cast('12' AS INTEGER) AS good_number",
+     "targets": {
+      "bigquery": {
+       "sql": "SELECT\n  SAFE_CAST('12x' AS INT64) AS bad_number,\n  SAFE_CAST('12' AS INT64) AS good_number"
+      },
+      "duckdb": {
+       "ran": "same",
+       "sql": "SELECT\n  TRY_CAST('12x' AS INT) AS bad_number,\n  TRY_CAST('12' AS INT) AS good_number"
+      },
+      "mysql": {
+       "sql": "SELECT\n  CAST('12x' AS SIGNED) AS bad_number,\n  CAST('12' AS SIGNED) AS good_number"
+      },
+      "oracle": {
+       "sql": "SELECT\n  TRY_CAST('12x' AS INT) AS bad_number,\n  TRY_CAST('12' AS INT) AS good_number"
+      },
+      "postgres": {
+       "error": "invalid input syntax for type integer: \"12x\"",
+       "ran": "error",
+       "sql": "SELECT\n  CAST('12x' AS INT) AS bad_number,\n  CAST('12' AS INT) AS good_number"
+      },
+      "redshift": {
+       "sql": "SELECT\n  TRY_CAST('12x' AS INTEGER) AS bad_number,\n  TRY_CAST('12' AS INTEGER) AS good_number"
+      },
+      "snowflake": {
+       "sql": "SELECT\n  TRY_CAST('12x' AS INT) AS bad_number,\n  TRY_CAST('12' AS INT) AS good_number"
+      },
+      "spark": {
+       "sql": "SELECT\n  TRY_CAST('12x' AS INT) AS bad_number,\n  TRY_CAST('12' AS INT) AS good_number"
+      },
+      "sqlite": {
+       "ran": "different",
+       "rows": [
+        [
+         "12",
+         "12"
+        ]
+       ],
+       "sql": "SELECT\n  CAST('12x' AS INTEGER) AS bad_number,\n  CAST('12' AS INTEGER) AS good_number"
+      },
+      "tsql": {
+       "sql": "SELECT\n  TRY_CAST('12x' AS INTEGER) AS bad_number,\n  TRY_CAST('12' AS INTEGER) AS good_number"
+      }
+     },
+     "title": "A cast that may fail"
+    },
+    "weekly": {
+     "original": [
+      [
+       "2026-02-23 00:00:00",
+       "1"
+      ],
+      [
+       "2026-03-02 00:00:00",
+       "10"
+      ],
+      [
+       "2026-03-09 00:00:00",
+       "1"
+      ]
+     ],
+     "source": "SELECT date_trunc('week', order_ts) AS week_start, count(*) AS orders FROM orders GROUP BY 1 ORDER BY 1",
+     "targets": {
+      "bigquery": {
+       "sql": "SELECT\n  TIMESTAMP_TRUNC(order_ts, WEEK) AS week_start,\n  COUNT(*) AS orders\nFROM orders\nGROUP BY\n  1\nORDER BY\n  1 NULLS LAST"
+      },
+      "duckdb": {
+       "ran": "same",
+       "sql": "SELECT\n  DATE_TRUNC('WEEK', order_ts) AS week_start,\n  COUNT(*) AS orders\nFROM orders\nGROUP BY\n  1\nORDER BY\n  1"
+      },
+      "mysql": {
+       "sql": "SELECT\n  DATE_ADD(\n    '0000-01-01 00:00:00',\n    INTERVAL (TIMESTAMPDIFF(WEEK, '0000-01-01 00:00:00', order_ts)) WEEK\n  ) AS week_start,\n  COUNT(*) AS orders\nFROM orders\nGROUP BY\n  1\nORDER BY\n  1",
+       "warning": "'NULLS LAST' translation not supported with positional ordering"
+      },
+      "oracle": {
+       "sql": "SELECT\n  TIMESTAMP_TRUNC(order_ts, WEEK) AS week_start,\n  COUNT(*) AS orders\nFROM orders\nGROUP BY\n  1\nORDER BY\n  1"
+      },
+      "postgres": {
+       "ran": "same",
+       "sql": "SELECT\n  DATE_TRUNC('WEEK', order_ts) AS week_start,\n  COUNT(*) AS orders\nFROM orders\nGROUP BY\n  1\nORDER BY\n  1"
+      },
+      "redshift": {
+       "sql": "SELECT\n  DATE_TRUNC('WEEK', order_ts) AS week_start,\n  COUNT(*) AS orders\nFROM orders\nGROUP BY\n  1\nORDER BY\n  1"
+      },
+      "snowflake": {
+       "sql": "SELECT\n  DATE_TRUNC('WEEK', order_ts) AS week_start,\n  COUNT(*) AS orders\nFROM orders\nGROUP BY\n  1\nORDER BY\n  1"
+      },
+      "spark": {
+       "sql": "SELECT\n  DATE_TRUNC('WEEK', order_ts) AS week_start,\n  COUNT(*) AS orders\nFROM orders\nGROUP BY\n  1\nORDER BY\n  1 NULLS LAST"
+      },
+      "sqlite": {
+       "error": "no such column: WEEK",
+       "ran": "error",
+       "sql": "SELECT\n  TIMESTAMP_TRUNC(order_ts, WEEK) AS week_start,\n  COUNT(*) AS orders\nFROM orders\nGROUP BY\n  1\nORDER BY\n  1 NULLS LAST"
+      },
+      "tsql": {
+       "sql": "SELECT\n  DATETRUNC(WEEK, order_ts) AS week_start,\n  COUNT_BIG(*) AS orders\nFROM orders\nGROUP BY\n  1\nORDER BY\n  1",
+       "warning": "'NULLS LAST' translation not supported with positional ordering"
+      }
+     },
+     "title": "Orders for each week"
+    }
+   },
+   "run_on": [
+    "duckdb",
+    "postgres",
+    "sqlite"
+   ],
+   "sqlglot": "30.31.0",
+   "targets": [
+    "snowflake",
+    "bigquery",
+    "redshift",
+    "mysql",
+    "tsql",
+    "oracle",
+    "spark",
+    "postgres",
+    "sqlite",
+    "duckdb"
+   ]
+  },
   "m2.truth": {
    "not": {
     "duckdb": [
@@ -5056,6 +5595,15 @@ LAB.real = {
   "m12.reconcile": "SELECT (SELECT sum(total) FROM orders) AS orders_total,\n       (SELECT sum(line_amount) FROM fact_sales) AS fact_total,\n       (SELECT count(*) FROM (\n          SELECT o.order_id\n          FROM orders AS o\n          JOIN (SELECT order_id, sum(line_amount) AS lines_total FROM fact_sales GROUP BY order_id) AS f ON f.order_id = o.order_id\n          WHERE f.lines_total <> o.total\n        ) AS t) AS orders_that_differ;\n",
   "m12.unknown_customer": "SELECT c.customer, count(DISTINCT f.order_id) AS orders, sum(f.line_amount) AS revenue\nFROM fact_sales AS f\nJOIN dim_customer AS c ON c.customer_key = f.customer_key\nWHERE f.status = 'paid'\nGROUP BY c.customer\nORDER BY revenue DESC;\n",
   "m12.wide_anomaly": "CREATE TABLE orders_wide AS\nSELECT o.order_id, c.customer_id, c.name, c.country, o.total\nFROM orders AS o\nJOIN customers AS c ON c.customer_id = o.customer_id;\nUPDATE orders_wide SET country = 'MY' WHERE order_id = 1001;\nSELECT name, count(DISTINCT country) AS countries, count(*) AS rows_for_customer\nFROM orders_wide\nGROUP BY name\nHAVING count(DISTINCT country) > 1;\n",
+  "m13.ch_accepted": "SELECT status, count(*) AS rows_with_status\nFROM orders\nWHERE status NOT IN ('paid', 'cancelled', 'refunded')\nGROUP BY status\nORDER BY status;\n",
+  "m13.ch_not_null": "SELECT count(*) AS bad_rows\nFROM customers\nWHERE email IS NULL OR country IS NULL;\n",
+  "m13.dq": "SELECT 'orders: order_id is unique' AS check_name, count(*) - count(DISTINCT order_id) AS bad_rows FROM orders\nUNION ALL\nSELECT 'orders: customer_id is not null', count(*) FROM orders WHERE customer_id IS NULL\nUNION ALL\nSELECT 'orders: status is an accepted value', count(*) FROM orders WHERE status NOT IN ('paid', 'cancelled', 'refunded', 'pending')\nUNION ALL\nSELECT 'orders: the customer exists', count(*)\nFROM orders AS o LEFT JOIN customers AS c ON c.customer_id = o.customer_id\nWHERE o.customer_id IS NOT NULL AND c.customer_id IS NULL\nUNION ALL\nSELECT 'orders: total equals the sum of its lines', count(*)\nFROM (SELECT o.order_id FROM orders AS o JOIN order_items AS i ON i.order_id = o.order_id\n      GROUP BY o.order_id, o.total HAVING sum(i.qty * i.unit_price) <> o.total) AS t\nUNION ALL\nSELECT 'orders_raw: one row for each order', count(*) - count(DISTINCT order_id) FROM orders_raw\nUNION ALL\nSELECT 'customers: email is present', count(*) FROM customers WHERE email IS NULL\nUNION ALL\nSELECT 'payments: a paid order has a payment', count(*)\nFROM orders AS o\nWHERE o.status = 'paid' AND NOT EXISTS (SELECT 1 FROM payments AS p WHERE p.order_id = o.order_id AND p.status = 'ok')\nUNION ALL\nSELECT 'order_items: price equals the list price that day', count(*)\nFROM order_items AS i\nJOIN orders AS o ON o.order_id = i.order_id\nJOIN price_history AS ph ON ph.product_id = i.product_id AND date(o.order_ts) BETWEEN ph.valid_from AND ph.valid_to\nWHERE i.unit_price <> ph.price\nUNION ALL\nSELECT 'orders: the newest order is less than 3 days old on 10 March', CASE WHEN max(order_ts) >= '2026-03-07' THEN 0 ELSE 1 END FROM orders\nUNION ALL\nSELECT 'orders: the row count is between 10 and 20', CASE WHEN count(*) BETWEEN 10 AND 20 THEN 0 ELSE 1 END FROM orders\nORDER BY 1;\n",
+  "m13.dq_anti_join": "SELECT o.order_id, o.customer_id\nFROM orders AS o\nLEFT JOIN customers AS c ON c.customer_id = o.customer_id\nWHERE c.customer_id IS NULL\nORDER BY o.order_id;\n",
+  "m13.dq_count_bug": "SELECT count(customer_id) AS bad_rows\nFROM orders\nWHERE customer_id IS NULL;\n",
+  "m13.dq_count_right": "SELECT count(*) AS bad_rows\nFROM orders\nWHERE customer_id IS NULL;\n",
+  "m13.dq_unique_fail": "SELECT order_id, count(*) AS versions\nFROM orders_raw\nGROUP BY order_id\nHAVING count(*) > 1\nORDER BY order_id;\n",
+  "m13.messy": "select o.order_id,c.name,sum(i.qty*i.unit_price) as amt from orders o join customers c on c.customer_id=o.customer_id join order_items i on i.order_id=o.order_id where o.status='paid' group by o.order_id,c.name having sum(i.qty*i.unit_price)>10 order by amt desc\n",
+  "m13.pretty": "SELECT\n  o.order_id,\n  c.name,\n  SUM(i.qty * i.unit_price) AS amt\nFROM orders AS o\nJOIN customers AS c\n  ON c.customer_id = o.customer_id\nJOIN order_items AS i\n  ON i.order_id = o.order_id\nWHERE\n  o.status = 'paid'\nGROUP BY\n  o.order_id,\n  c.name\nHAVING\n  SUM(i.qty * i.unit_price) > 10\nORDER BY\n  amt DESC\n",
   "m2.avg_null": "SELECT round(avg(customer_id), 3)              AS avg_ignoring_null,\n       round(avg(coalesce(customer_id, 0)), 3) AS avg_null_as_zero,\n       count(*) - count(customer_id)           AS null_customers\nFROM orders;\n",
   "m2.case_null": "SELECT customer_id,\n       tier,\n       CASE tier WHEN 'gold' THEN 'top' WHEN 'silver' THEN 'mid' ELSE 'other' END AS bucket,\n       CASE WHEN tier IS NULL THEN 'unknown' ELSE tier END AS tier_or_unknown\nFROM customers\nORDER BY customer_id;\n",
   "m2.ch_changed": "SELECT c.customer_id, c.tier AS tier_in_customers, d.tier AS tier_in_dimension\nFROM customers AS c\nLEFT JOIN customer_dim AS d ON d.customer_id = c.customer_id AND d.is_current\nWHERE c.tier IS DISTINCT FROM d.tier\nORDER BY c.customer_id;\n",
@@ -9079,6 +9627,396 @@ LAB.real = {
      "Ana Lim",
      "2",
      "3"
+    ]
+   ]
+  },
+  "m13.ch_accepted.duckdb": {
+   "cols": [
+    "status",
+    "rows_with_status"
+   ],
+   "rows": [
+    [
+     "pending",
+     "1"
+    ]
+   ]
+  },
+  "m13.ch_accepted.postgres": {
+   "cols": [
+    "status",
+    "rows_with_status"
+   ],
+   "rows": [
+    [
+     "pending",
+     "1"
+    ]
+   ]
+  },
+  "m13.ch_accepted.sqlite": {
+   "cols": [
+    "status",
+    "rows_with_status"
+   ],
+   "rows": [
+    [
+     "pending",
+     "1"
+    ]
+   ]
+  },
+  "m13.ch_not_null.duckdb": {
+   "cols": [
+    "bad_rows"
+   ],
+   "rows": [
+    [
+     "2"
+    ]
+   ]
+  },
+  "m13.ch_not_null.postgres": {
+   "cols": [
+    "bad_rows"
+   ],
+   "rows": [
+    [
+     "2"
+    ]
+   ]
+  },
+  "m13.ch_not_null.sqlite": {
+   "cols": [
+    "bad_rows"
+   ],
+   "rows": [
+    [
+     "2"
+    ]
+   ]
+  },
+  "m13.dq.duckdb": {
+   "cols": [
+    "check_name",
+    "bad_rows"
+   ],
+   "rows": [
+    [
+     "customers: email is present",
+     "2"
+    ],
+    [
+     "order_items: price equals the list price that day",
+     "1"
+    ],
+    [
+     "orders: customer_id is not null",
+     "1"
+    ],
+    [
+     "orders: order_id is unique",
+     "0"
+    ],
+    [
+     "orders: status is an accepted value",
+     "0"
+    ],
+    [
+     "orders: the customer exists",
+     "0"
+    ],
+    [
+     "orders: the newest order is less than 3 days old on 10 March",
+     "0"
+    ],
+    [
+     "orders: the row count is between 10 and 20",
+     "0"
+    ],
+    [
+     "orders: total equals the sum of its lines",
+     "0"
+    ],
+    [
+     "orders_raw: one row for each order",
+     "4"
+    ],
+    [
+     "payments: a paid order has a payment",
+     "0"
+    ]
+   ]
+  },
+  "m13.dq.postgres": {
+   "cols": [
+    "check_name",
+    "bad_rows"
+   ],
+   "rows": [
+    [
+     "customers: email is present",
+     "2"
+    ],
+    [
+     "order_items: price equals the list price that day",
+     "1"
+    ],
+    [
+     "orders: customer_id is not null",
+     "1"
+    ],
+    [
+     "orders: order_id is unique",
+     "0"
+    ],
+    [
+     "orders: status is an accepted value",
+     "0"
+    ],
+    [
+     "orders: the customer exists",
+     "0"
+    ],
+    [
+     "orders: the newest order is less than 3 days old on 10 March",
+     "0"
+    ],
+    [
+     "orders: the row count is between 10 and 20",
+     "0"
+    ],
+    [
+     "orders: total equals the sum of its lines",
+     "0"
+    ],
+    [
+     "orders_raw: one row for each order",
+     "4"
+    ],
+    [
+     "payments: a paid order has a payment",
+     "0"
+    ]
+   ]
+  },
+  "m13.dq.sqlite": {
+   "cols": [
+    "check_name",
+    "bad_rows"
+   ],
+   "rows": [
+    [
+     "customers: email is present",
+     "2"
+    ],
+    [
+     "order_items: price equals the list price that day",
+     "1"
+    ],
+    [
+     "orders: customer_id is not null",
+     "1"
+    ],
+    [
+     "orders: order_id is unique",
+     "0"
+    ],
+    [
+     "orders: status is an accepted value",
+     "0"
+    ],
+    [
+     "orders: the customer exists",
+     "0"
+    ],
+    [
+     "orders: the newest order is less than 3 days old on 10 March",
+     "0"
+    ],
+    [
+     "orders: the row count is between 10 and 20",
+     "0"
+    ],
+    [
+     "orders: total equals the sum of its lines",
+     "0"
+    ],
+    [
+     "orders_raw: one row for each order",
+     "4"
+    ],
+    [
+     "payments: a paid order has a payment",
+     "0"
+    ]
+   ]
+  },
+  "m13.dq_anti_join.duckdb": {
+   "cols": [
+    "order_id",
+    "customer_id"
+   ],
+   "rows": [
+    [
+     "1009",
+     "NULL"
+    ]
+   ]
+  },
+  "m13.dq_anti_join.postgres": {
+   "cols": [
+    "order_id",
+    "customer_id"
+   ],
+   "rows": [
+    [
+     "1009",
+     "NULL"
+    ]
+   ]
+  },
+  "m13.dq_anti_join.sqlite": {
+   "cols": [
+    "order_id",
+    "customer_id"
+   ],
+   "rows": [
+    [
+     "1009",
+     "NULL"
+    ]
+   ]
+  },
+  "m13.dq_count_bug.duckdb": {
+   "cols": [
+    "bad_rows"
+   ],
+   "rows": [
+    [
+     "0"
+    ]
+   ]
+  },
+  "m13.dq_count_bug.postgres": {
+   "cols": [
+    "bad_rows"
+   ],
+   "rows": [
+    [
+     "0"
+    ]
+   ]
+  },
+  "m13.dq_count_bug.sqlite": {
+   "cols": [
+    "bad_rows"
+   ],
+   "rows": [
+    [
+     "0"
+    ]
+   ]
+  },
+  "m13.dq_count_right.duckdb": {
+   "cols": [
+    "bad_rows"
+   ],
+   "rows": [
+    [
+     "1"
+    ]
+   ]
+  },
+  "m13.dq_count_right.postgres": {
+   "cols": [
+    "bad_rows"
+   ],
+   "rows": [
+    [
+     "1"
+    ]
+   ]
+  },
+  "m13.dq_count_right.sqlite": {
+   "cols": [
+    "bad_rows"
+   ],
+   "rows": [
+    [
+     "1"
+    ]
+   ]
+  },
+  "m13.dq_unique_fail.duckdb": {
+   "cols": [
+    "order_id",
+    "versions"
+   ],
+   "rows": [
+    [
+     "1001",
+     "2"
+    ],
+    [
+     "1002",
+     "2"
+    ],
+    [
+     "1004",
+     "2"
+    ],
+    [
+     "1005",
+     "2"
+    ]
+   ]
+  },
+  "m13.dq_unique_fail.postgres": {
+   "cols": [
+    "order_id",
+    "versions"
+   ],
+   "rows": [
+    [
+     "1001",
+     "2"
+    ],
+    [
+     "1002",
+     "2"
+    ],
+    [
+     "1004",
+     "2"
+    ],
+    [
+     "1005",
+     "2"
+    ]
+   ]
+  },
+  "m13.dq_unique_fail.sqlite": {
+   "cols": [
+    "order_id",
+    "versions"
+   ],
+   "rows": [
+    [
+     "1001",
+     "2"
+    ],
+    [
+     "1002",
+     "2"
+    ],
+    [
+     "1004",
+     "2"
+    ],
+    [
+     "1005",
+     "2"
     ]
    ]
   },
