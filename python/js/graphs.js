@@ -180,5 +180,30 @@
     ]
   };
 
+  /* ------------------------------------------------------------------ */
+  /* 7. Validate at the boundary, quarantine what fails                  */
+  /* ------------------------------------------------------------------ */
+  S.validate = {
+    w: 1100, h: 340, label: 'Validating at the boundary: every row of the raw file is checked, valid rows go on to the clean table, invalid rows go to a quarantine table with the reason, the count of bad rows is compared with a limit, and over the limit the run fails',
+    nodes: [
+      { id: 'raw', x: 10, y: 125, w: 170, h: 90, t: 'Raw file', s: 'every value is text', c: 'src', k: 'chip' },
+      { id: 'val', x: 260, y: 125, w: 190, h: 90, t: 'Validate each row', s: 'types, ranges, keys', c: 'stg', k: 'chip' },
+      { id: 'good', x: 560, y: 40, w: 200, h: 80, t: 'Clean table', s: 'typed rows only', c: 'mart', k: 'chip' },
+      { id: 'q', x: 560, y: 210, w: 200, h: 80, t: 'Quarantine', s: 'the row and the reason', c: 'mon', k: 'chip' },
+      { id: 'chk', x: 860, y: 210, w: 210, h: 80, t: 'Limit check', s: 'share of bad rows', c: 'snap', k: 'chip' }
+    ],
+    edges: [
+      { id: 'v1', a: 'raw', b: 'val', d: 'M180 170 H260', n: 1, bx: 220, by: 148 },
+      { id: 'v2', a: 'val', b: 'good', d: 'M450 150 C500 150 510 80 560 80', n: 2, bx: 505, by: 110, label: 'valid', lx: 470, ly: 78 },
+      { id: 'v3', a: 'val', b: 'q', d: 'M450 190 C500 190 510 250 560 250', n: 3, bx: 505, by: 220, label: 'invalid', lx: 470, ly: 262 },
+      { id: 'v4', a: 'q', b: 'chk', d: 'M760 250 H860', n: 4, bx: 810, by: 228, label: 'count', lx: 810, ly: 278 },
+      { id: 'v5', a: 'chk', b: 'good', d: 'M965 210 V80 H760', n: 5, bx: 965, by: 140, label: 'under the limit: load', lx: 862, ly: 62 }
+    ],
+    tags: [
+      { id: 'tg_fail', x: 860, y: 304, t: 'over the limit: the run fails', c: 'qual' },
+      { id: 'tg_fix', x: 560, y: 304, t: 'a person fixes it, and replays it', c: 'ci' }
+    ]
+  };
+
   /* @@END */
 })();

@@ -316,5 +316,34 @@
     W.concInfo = { data: data };
   })();
 
+  /* ====================== Mission 11: validate or quarantine ====================== */
+  (function () {
+    function data() { return G.counts('m11.validate'); }
+    var MODEL_WORDS = {
+      'lax': 'The default. Text is converted when it can be (the text "1250" becomes the integer 1250), and a column that is not in the model is ignored.',
+      'strict': 'Strict mode refuses to convert. Every value of a CSV file is text, so every integer and every date fails. Use it for data that already has types, such as JSON numbers, not for a CSV.',
+      'forbid extra columns': 'Lax conversion, and a column that is not in the model is an error. O-6 has a `coupon` column that the model does not know, so one more row fails.'
+    };
+    W.validate = {
+      steps: function () { return 1; },
+      hint: 'Pick a model and a policy. Compare what is loaded with what was dropped.',
+      say: function () { return 'Ten rows from a CSV file, so every value is text. Pick how strict the model is, and what the job does with a bad row. These are real runs of the lesson\'s validate function with pydantic. Watch the last policy: it ends in success.'; },
+      mood: function (s, i, A) { var st = A && A.local.vd, d = data(); return st && d.cells[st.m][st.p].dropped ? 'oops' : 'think'; },
+      render: function (box, s, i, A) {
+        var d = data(), st = A.local.vd || (A.local.vd = { m: 'lax', p: d.policies[1] }), model = d.models[st.m], cell = d.cells[st.m][st.p], why = {}, h = '<div class="lab">';
+        model.quarantine.forEach(function (q) { why[q.line] = q.why; });
+        h += '<div class="lab-row"><span class="lab-l">Model</span><div class="sel-chips">' + chips(Object.keys(d.models), st.m, 'vd-m') + '</div></div>' +
+          '<div class="lab-row"><span class="lab-l">Bad rows</span><div class="sel-chips">' + chips(d.policies, st.p, 'vd-p') + '</div></div>' +
+          '<p class="lab-note">' + esc(MODEL_WORDS[st.m]) + '</p>' +
+          table(['Line', 'order_id', 'store', 'qty', 'total_cents', 'Result'], d.rows.map(function (r, k) { var ln = k + 2; return [ln, r.order_id, r.store, r.qty, r.total_cents, why[ln] ? why[ln] : 'valid']; }), null, function (r, ri, ci) { return ci === 5 ? (r[5] === 'valid' ? 'wgood' : 'wbad') : ''; }) +
+          '<div class="lab-out"><div class="big ' + (cell.loaded ? 'good' : 'bad') + '"><b>' + cell.loaded + '</b><span>rows loaded</span></div><div class="big ' + (cell.quarantined ? 'warn' : '') + '"><b>' + cell.quarantined + '</b><span>in quarantine</span></div><div class="big ' + (cell.dropped ? 'bad' : '') + '"><b>' + cell.dropped + '</b><span>dropped</span></div></div>' +
+          '<div class="callout ' + (cell.dropped || /^failed/.test(cell.status) ? 'warn' : 'tip') + '">' + md('**' + esc(cell.status) + '.** ' + (cell.dropped ? 'Rows that nobody looks at are rows that nobody can fix. A dropped row leaves no trace, and the table is quietly smaller than the file.' : /^failed/.test(cell.status) ? 'The run stops and nothing is committed, so the table keeps yesterday\'s data and the alert says why. The quarantine list tells a person where to look.' : 'The good rows are loaded, and every bad row is kept with its line number and the reason, so a person can fix the data and replay it.')) + '</div></div>';
+        box.innerHTML = h;
+        A.bindWidget = function (act, el) { var v = el.getAttribute('data-v'); if (act === 'vd-m') st.m = v; if (act === 'vd-p') st.p = v; A.render(true); };
+      }
+    };
+    W.validateInfo = { data: data };
+  })();
+
   /* @@END */
 })();

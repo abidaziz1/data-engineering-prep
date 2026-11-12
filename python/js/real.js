@@ -104,7 +104,13 @@ LAB.real = {
   "m10/pandas_memory.py": "\"\"\"The memory of one table, with the default types and with smaller ones. One million made-up orders.\"\"\"\nimport numpy as np\nimport pandas as pd\n\nrng = np.random.default_rng(7)\nn = 1_000_000\ndf = pd.DataFrame({\n    \"order_id\": np.arange(n),\n    \"store\": rng.choice([\"London\", \"Singapore\", \"Sydney\", \"Mumbai\", \"Dubai\", \"Paris\", \"Tokyo\", \"Lagos\"], n),\n    \"status\": rng.choice([\"paid\", \"refunded\", \"cancelled\"], n),\n    \"qty\": rng.integers(1, 10, n),\n    \"total_cents\": rng.integers(300, 4000, n),\n})\nsmall = df.astype({\"order_id\": \"int32\", \"store\": \"category\", \"status\": \"category\", \"qty\": \"int8\", \"total_cents\": \"int32\"})\nbefore, after = df.memory_usage(deep=True), small.memory_usage(deep=True)\n\nprint(f\"{'column':<13}{'default type':<14}{'MB':>7}   {'smaller type':<14}{'MB':>7}\")\nfor col in df.columns:\n    print(f\"{col:<13}{str(df[col].dtype):<14}{before[col] / 1e6:>7.1f}   {str(small[col].dtype):<14}{after[col] / 1e6:>7.1f}\")\nprint(f\"{'total':<13}{'':<14}{before.sum() / 1e6:>7.1f}   {'':<14}{after.sum() / 1e6:>7.1f}\")\nassert df[\"total_cents\"].sum() == small[\"total_cents\"].sum() and (df[\"store\"] == small[\"store\"].astype(str)).all()\nprint(\"same sums and values after the change\")\n",
   "m10/threaded_fetch.py": "\"\"\"Coding round: do many slow calls at once, keep the order, and keep going when one call fails.\"\"\"\nimport time\nfrom concurrent.futures import ThreadPoolExecutor\n\n\ndef fetch_all(fetch, urls, workers=10):\n    \"\"\"Call fetch(url) for every url in a thread pool. Return a list in the order of `urls` with one item for each:\n    (\"ok\", result) when the call worked, or (\"error\", \"ExceptionName: message\") when it raised.\"\"\"\n    def one(url):\n        try:\n            return (\"ok\", fetch(url))\n        except Exception as err:\n            return (\"error\", f\"{type(err).__name__}: {err}\")\n    with ThreadPoolExecutor(workers) as pool:\n        return list(pool.map(one, urls))\n\n\ndef slow(url):\n    time.sleep(0.1)  # stands in for a network call\n    if url.endswith(\"/7\"):\n        raise TimeoutError(\"read timed out\")\n    return url.upper()\n\n\nurls = [f\"/orders/{n}\" for n in range(20)]\nt0 = time.perf_counter()\ngot = fetch_all(slow, urls, workers=10)\ntook = time.perf_counter() - t0\nassert [g[1] for g in got if g[0] == \"ok\"] == [u.upper() for u in urls if not u.endswith(\"/7\")], \"results in the order of the urls\"\nassert got[7] == (\"error\", \"TimeoutError: read timed out\") and len([g for g in got if g[0] == \"error\"]) == 1\nprint(\"20 calls of 0.1 s with 10 workers:\", \"finished in under a second\" if took < 1.0 else \"TOO SLOW\", \"-\", len(got), \"results\")\nassert took < 1.0, took\nprint(\"order kept:\", got[0], got[19])\nprint(\"one failure kept, the other 19 worked:\", got[7])\nassert fetch_all(slow, []) == []\nprint(\"no urls:\", fetch_all(slow, []))\nprint(\"tests passed\")\n",
   "m10/concurrency.py": "\"\"\"Eight jobs, done one after another and at once. The waiting jobs sleep 0.25 s, which stands in for a network call.\nThe computing jobs add up numbers. Each time is the median of 3 runs on this machine.\"\"\"\nimport asyncio\nimport os\nimport statistics\nimport sys\nimport time\nfrom concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor\n\n\ndef wait_job(_):\n    time.sleep(0.25)\n\n\nasync def wait_async(_):\n    await asyncio.sleep(0.25)\n\n\ndef cpu_job(_):\n    total = 0\n    for i in range(3_000_000):\n        total += i * i % 7\n    return total\n\n\ndef one_after_another(fn):\n    return [fn(i) for i in range(8)]\n\n\ndef with_threads(fn):\n    with ThreadPoolExecutor(8) as pool:\n        return list(pool.map(fn, range(8)))\n\n\ndef with_processes(fn):\n    with ProcessPoolExecutor(4) as pool:\n        return list(pool.map(fn, range(8)))\n\n\ndef with_asyncio():\n    async def main():\n        await asyncio.gather(*(wait_async(i) for i in range(8)))\n    asyncio.run(main())\n\n\ndef seconds(run, repeats=3):\n    took = []\n    for _ in range(repeats):\n        t0 = time.perf_counter()\n        run()\n        took.append(time.perf_counter() - t0)\n    return statistics.median(took)\n\n\nif __name__ == \"__main__\":\n    print(f\"GIL enabled: {sys._is_gil_enabled()}, cores: {os.cpu_count()}\")\n    print(\"eight jobs that wait 0.25 s\")\n    for name, run in ((\"one after another\", lambda: one_after_another(wait_job)), (\"8 threads\", lambda: with_threads(wait_job)),\n                      (\"4 processes\", lambda: with_processes(wait_job)), (\"asyncio\", with_asyncio)):\n        print(f\"  {name:<20}{seconds(run):>6.2f} s\")\n    print(\"eight jobs that compute\")\n    for name, run in ((\"one after another\", lambda: one_after_another(cpu_job)), (\"8 threads\", lambda: with_threads(cpu_job)), (\"4 processes\", lambda: with_processes(cpu_job))):\n        print(f\"  {name:<20}{seconds(run):>6.2f} s\")\n",
-  "m10/concurrency.py@free": "\"\"\"Eight jobs, done one after another and at once. The waiting jobs sleep 0.25 s, which stands in for a network call.\nThe computing jobs add up numbers. Each time is the median of 3 runs on this machine.\"\"\"\nimport asyncio\nimport os\nimport statistics\nimport sys\nimport time\nfrom concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor\n\n\ndef wait_job(_):\n    time.sleep(0.25)\n\n\nasync def wait_async(_):\n    await asyncio.sleep(0.25)\n\n\ndef cpu_job(_):\n    total = 0\n    for i in range(3_000_000):\n        total += i * i % 7\n    return total\n\n\ndef one_after_another(fn):\n    return [fn(i) for i in range(8)]\n\n\ndef with_threads(fn):\n    with ThreadPoolExecutor(8) as pool:\n        return list(pool.map(fn, range(8)))\n\n\ndef with_processes(fn):\n    with ProcessPoolExecutor(4) as pool:\n        return list(pool.map(fn, range(8)))\n\n\ndef with_asyncio():\n    async def main():\n        await asyncio.gather(*(wait_async(i) for i in range(8)))\n    asyncio.run(main())\n\n\ndef seconds(run, repeats=3):\n    took = []\n    for _ in range(repeats):\n        t0 = time.perf_counter()\n        run()\n        took.append(time.perf_counter() - t0)\n    return statistics.median(took)\n\n\nif __name__ == \"__main__\":\n    print(f\"GIL enabled: {sys._is_gil_enabled()}, cores: {os.cpu_count()}\")\n    print(\"eight jobs that wait 0.25 s\")\n    for name, run in ((\"one after another\", lambda: one_after_another(wait_job)), (\"8 threads\", lambda: with_threads(wait_job)),\n                      (\"4 processes\", lambda: with_processes(wait_job)), (\"asyncio\", with_asyncio)):\n        print(f\"  {name:<20}{seconds(run):>6.2f} s\")\n    print(\"eight jobs that compute\")\n    for name, run in ((\"one after another\", lambda: one_after_another(cpu_job)), (\"8 threads\", lambda: with_threads(cpu_job)), (\"4 processes\", lambda: with_processes(cpu_job))):\n        print(f\"  {name:<20}{seconds(run):>6.2f} s\")\n"
+  "m10/concurrency.py@free": "\"\"\"Eight jobs, done one after another and at once. The waiting jobs sleep 0.25 s, which stands in for a network call.\nThe computing jobs add up numbers. Each time is the median of 3 runs on this machine.\"\"\"\nimport asyncio\nimport os\nimport statistics\nimport sys\nimport time\nfrom concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor\n\n\ndef wait_job(_):\n    time.sleep(0.25)\n\n\nasync def wait_async(_):\n    await asyncio.sleep(0.25)\n\n\ndef cpu_job(_):\n    total = 0\n    for i in range(3_000_000):\n        total += i * i % 7\n    return total\n\n\ndef one_after_another(fn):\n    return [fn(i) for i in range(8)]\n\n\ndef with_threads(fn):\n    with ThreadPoolExecutor(8) as pool:\n        return list(pool.map(fn, range(8)))\n\n\ndef with_processes(fn):\n    with ProcessPoolExecutor(4) as pool:\n        return list(pool.map(fn, range(8)))\n\n\ndef with_asyncio():\n    async def main():\n        await asyncio.gather(*(wait_async(i) for i in range(8)))\n    asyncio.run(main())\n\n\ndef seconds(run, repeats=3):\n    took = []\n    for _ in range(repeats):\n        t0 = time.perf_counter()\n        run()\n        took.append(time.perf_counter() - t0)\n    return statistics.median(took)\n\n\nif __name__ == \"__main__\":\n    print(f\"GIL enabled: {sys._is_gil_enabled()}, cores: {os.cpu_count()}\")\n    print(\"eight jobs that wait 0.25 s\")\n    for name, run in ((\"one after another\", lambda: one_after_another(wait_job)), (\"8 threads\", lambda: with_threads(wait_job)),\n                      (\"4 processes\", lambda: with_processes(wait_job)), (\"asyncio\", with_asyncio)):\n        print(f\"  {name:<20}{seconds(run):>6.2f} s\")\n    print(\"eight jobs that compute\")\n    for name, run in ((\"one after another\", lambda: one_after_another(cpu_job)), (\"8 threads\", lambda: with_threads(cpu_job)), (\"4 processes\", lambda: with_processes(cpu_job))):\n        print(f\"  {name:<20}{seconds(run):>6.2f} s\")\n",
+  "m11/type_hints.py": "\"\"\"Type hints are notes for readers and tools. Python does not check them when the program runs.\"\"\"\nfrom dataclasses import dataclass\n\n\ndef total_in_cents(price: str, qty: int) -> int:\n    return price * qty  # \"12.50\" * 3 is legal Python: it repeats the text\n\n\nprint(\"the hint says int, and we got:\", repr(total_in_cents(\"12.50\", 3)))\n\n\n@dataclass\nclass Order:\n    order_id: str\n    total_cents: int\n\n\norder = Order(order_id=17, total_cents=\"12.50\")\nprint(\"a dataclass accepts anything:\", order)\nprint(\"the types of the fields:\", type(order.order_id).__name__, type(order.total_cents).__name__)\n",
+  "m11/dataclass_vs_pydantic.py": "\"\"\"A pydantic model checks what it is given, converts what it can, and says what is wrong.\"\"\"\nfrom datetime import datetime\nfrom typing import Literal\n\nfrom pydantic import BaseModel, Field, ValidationError\n\n\nclass Order(BaseModel):\n    order_id: str = Field(pattern=r\"^O-\\d+$\")\n    store: Literal[\"London\", \"Singapore\"]\n    qty: int = Field(ge=1)\n    total_cents: int = Field(ge=0)\n    ordered_at: datetime\n\n\ngood = {\"order_id\": \"O-17\", \"store\": \"London\", \"qty\": \"2\", \"total_cents\": \"1250\", \"ordered_at\": \"2026-03-14T08:15:00\"}\norder = Order.model_validate(good)\nprint(\"a row of text, converted:\", repr(order.qty), repr(order.total_cents), order.ordered_at.isoformat())\n\nbad = {\"order_id\": \"17\", \"store\": \"Paris\", \"qty\": 0, \"total_cents\": \"12.50\", \"ordered_at\": \"yesterday\"}\ntry:\n    Order.model_validate(bad)\nexcept ValidationError as err:\n    print(err.error_count(), \"errors:\")\n    for e in err.errors():\n        print(f\"  {e['loc'][0]:<13}{e['type']:<32}{e['msg']}\")\n\ntry:\n    Order.model_validate(good, strict=True)\nexcept ValidationError as err:\n    first = err.errors()[0]\n    print(\"strict mode on text from a CSV:\", err.error_count(), \"errors, the first is\", first[\"loc\"][0], \"->\", first[\"msg\"])\n",
+  "m11/validate_or_quarantine.py": "\"\"\"Validate every row at the boundary. Good rows go on, bad rows go to quarantine with the reason, and too many bad rows fail the run.\"\"\"\nimport sys\nfrom datetime import datetime\nfrom typing import Literal\n\nfrom pydantic import BaseModel, ConfigDict, Field, ValidationError\n\n\nclass Order(BaseModel):\n    model_config = ConfigDict(extra=\"ignore\")  # \"forbid\" would reject a column that is not in the model\n\n    order_id: str = Field(pattern=r\"^O-\\d+$\")\n    store: Literal[\"London\", \"Singapore\"]\n    qty: int = Field(ge=1)\n    total_cents: int = Field(ge=0)\n    ordered_at: datetime\n\n\nROWS = [  # one dict for each line of a CSV file, so every value is text\n    {\"order_id\": \"O-1\", \"store\": \"London\", \"qty\": \"2\", \"total_cents\": \"1250\", \"ordered_at\": \"2026-03-14T08:15:00\"},\n    {\"order_id\": \"O-2\", \"store\": \"Singapore\", \"qty\": \"1\", \"total_cents\": \"475\", \"ordered_at\": \"2026-03-14T09:02:00\"},\n    {\"order_id\": \"O-3\", \"store\": \"Paris\", \"qty\": \"1\", \"total_cents\": \"820\", \"ordered_at\": \"2026-03-14T09:30:00\"},\n    {\"order_id\": \"O-4\", \"store\": \"London\", \"qty\": \"3\", \"total_cents\": \"1990\", \"ordered_at\": \"2026-03-14T10:11:00\"},\n    {\"order_id\": \"O-5\", \"store\": \"London\", \"qty\": \"1\", \"total_cents\": \"12,50\", \"ordered_at\": \"2026-03-14T10:40:00\"},\n    {\"order_id\": \"O-6\", \"store\": \"Singapore\", \"qty\": \"2\", \"total_cents\": \"3100\", \"ordered_at\": \"2026-03-14T11:05:00\", \"coupon\": \"SPRING\"},\n    {\"order_id\": \"O-7\", \"store\": \"Singapore\", \"qty\": \"0\", \"total_cents\": \"640\", \"ordered_at\": \"2026-03-14T11:30:00\"},\n    {\"order_id\": \"O-8\", \"store\": \"London\", \"qty\": \"1\", \"total_cents\": \"900\", \"ordered_at\": \"2026-03-14T12:00:00\"},\n    {\"order_id\": \"O-8\", \"store\": \"London\", \"qty\": \"1\", \"total_cents\": \"900\", \"ordered_at\": \"2026-03-14T12:00:00\"},\n    {\"order_id\": \"O-10\", \"store\": \"Singapore\", \"qty\": \"4\", \"total_cents\": \"2200\", \"ordered_at\": \"2026-03-14T12:45:00\"},\n]\nMAX_BAD_SHARE = 0.50  # 50 percent suits this small demo. A real file gets a limit of a few percent.\n\n\ndef validate(rows):\n    good, quarantine, seen = [], [], set()\n    for line, row in enumerate(rows, start=2):  # line 1 of the file is the header\n        try:\n            order = Order.model_validate(row)\n        except ValidationError as err:\n            why = \"; \".join(f\"{e['loc'][0]}: {e['msg']}\" for e in err.errors())\n            quarantine.append({\"line\": line, \"order_id\": row[\"order_id\"], \"why\": why})\n            continue\n        if order.order_id in seen:\n            quarantine.append({\"line\": line, \"order_id\": row[\"order_id\"], \"why\": \"order_id: already seen in this file\"})\n            continue\n        seen.add(order.order_id)\n        good.append(order)\n    return good, quarantine\n\n\ngood, quarantine = validate(ROWS)\nprint(f\"read {len(ROWS)} rows: {len(good)} good, {len(quarantine)} in quarantine\")\nfor q in quarantine:\n    print(f\"  line {q['line']:>2} {q['order_id']:<5} {q['why']}\")\nshare = len(quarantine) / len(ROWS)\nif share > MAX_BAD_SHARE:\n    print(f\"status: failed, {share:.0%} of the rows are bad (limit {MAX_BAD_SHARE:.0%})\")\n    sys.exit(1)\nprint(f\"status: loaded {len(good)} rows, {share:.0%} in quarantine (limit {MAX_BAD_SHARE:.0%})\")\n",
+  "m11/split_valid.py": "\"\"\"Coding round: split rows into good ones and quarantined ones with a checking function, and fail when too many are bad.\"\"\"\n\n\ndef split_valid(rows, check, max_bad_share=0.2):\n    \"\"\"check(row) returns the cleaned row, or raises ValueError(\"reason\"). Return (good, quarantine).\n    A quarantine item is {\"line\": n, \"row\": row, \"why\": reason}, with n counting from 2 because line 1 is the header.\n    When the share of bad rows is above max_bad_share, raise RuntimeError (the good and quarantined rows are not returned).\"\"\"\n    good, quarantine = [], []\n    for line, row in enumerate(rows, start=2):\n        try:\n            good.append(check(row))\n        except ValueError as err:\n            quarantine.append({\"line\": line, \"row\": row, \"why\": str(err)})\n    if rows and len(quarantine) / len(rows) > max_bad_share:\n        raise RuntimeError(f\"{len(quarantine)} of {len(rows)} rows are bad\")\n    return good, quarantine\n\n\ndef check_order(row):\n    try:\n        qty = int(row[\"qty\"])\n        cents = int(row[\"total_cents\"])\n    except (KeyError, ValueError):\n        raise ValueError(\"qty and total_cents must be whole numbers\") from None\n    if qty < 1:\n        raise ValueError(\"qty must be at least 1\")\n    return {\"order_id\": row[\"order_id\"], \"qty\": qty, \"total_cents\": cents}\n\n\nrows = [{\"order_id\": \"O-1\", \"qty\": \"2\", \"total_cents\": \"1250\"}, {\"order_id\": \"O-2\", \"qty\": \"0\", \"total_cents\": \"475\"}, {\"order_id\": \"O-3\", \"qty\": \"1\", \"total_cents\": \"8,20\"},\n        {\"order_id\": \"O-4\", \"qty\": \"1\", \"total_cents\": \"1990\"}, {\"order_id\": \"O-5\", \"qty\": \"3\", \"total_cents\": \"3100\"}, {\"order_id\": \"O-6\", \"qty\": \"1\", \"total_cents\": \"640\"},\n        {\"order_id\": \"O-7\", \"qty\": \"2\", \"total_cents\": \"900\"}, {\"order_id\": \"O-8\", \"qty\": \"1\", \"total_cents\": \"2200\"}, {\"order_id\": \"O-9\", \"qty\": \"1\", \"total_cents\": \"500\"},\n        {\"order_id\": \"O-10\", \"qty\": \"5\", \"total_cents\": \"1000\"}]\ngood, quarantine = split_valid(rows, check_order, max_bad_share=0.3)\nassert [g[\"order_id\"] for g in good] == [\"O-1\", \"O-4\", \"O-5\", \"O-6\", \"O-7\", \"O-8\", \"O-9\", \"O-10\"] and good[0] == {\"order_id\": \"O-1\", \"qty\": 2, \"total_cents\": 1250}\nprint(\"8 good rows, cleaned:\", good[0])\nassert [(q[\"line\"], q[\"why\"]) for q in quarantine] == [(3, \"qty must be at least 1\"), (4, \"qty and total_cents must be whole numbers\")]\nprint(\"quarantined:\", [(q[\"line\"], q[\"why\"]) for q in quarantine])\ntry:\n    split_valid(rows, check_order, max_bad_share=0.1)\n    raise AssertionError(\"20 percent bad rows must fail a 10 percent limit\")\nexcept RuntimeError as err:\n    print(\"over the limit:\", err)\nassert split_valid([], check_order) == ([], [])\nprint(\"no rows:\", split_valid([], check_order))\nprint(\"tests passed\")\n",
+  "m11/contract_check.py": "\"\"\"Coding round: a data contract as code, and a report of how today's file differs from it.\"\"\"\nCONTRACT = {\"order_id\": \"str\", \"store\": \"str\", \"qty\": \"int\", \"total_cents\": \"int\"}\n\n\ndef kind(value):\n    for name, cast in ((\"int\", int), (\"float\", float)):\n        try:\n            cast(value)\n            return name\n        except ValueError:\n            pass\n    return \"str\"\n\n\ndef check_schema(contract, rows):\n    \"\"\"Compare the columns of `rows` (a list of dicts of text) with `contract` ({column: \"int\" | \"float\" | \"str\"}).\n    Return findings as tuples, sorted: (\"missing\", column), (\"new\", column), (\"type\", column, expected, got).\n    The type of a column is the widest kind seen in its values: str beats float, and float beats int.\"\"\"\n    order = {\"int\": 0, \"float\": 1, \"str\": 2}\n    columns = {c for row in rows for c in row}\n    findings = [(\"missing\", c) for c in contract if c not in columns] + [(\"new\", c) for c in columns if c not in contract]\n    for c in contract:\n        if c in columns:\n            seen = max((kind(row[c]) for row in rows if row.get(c) not in (None, \"\")), key=order.get, default=\"int\")\n            if seen != contract[c] and not (contract[c] == \"float\" and seen == \"int\"):\n                findings.append((\"type\", c, contract[c], seen))\n    return sorted(findings)\n\n\nok = [{\"order_id\": \"O-1\", \"store\": \"London\", \"qty\": \"2\", \"total_cents\": \"1250\"}, {\"order_id\": \"O-2\", \"store\": \"Singapore\", \"qty\": \"1\", \"total_cents\": \"475\"}]\nassert check_schema(CONTRACT, ok) == []\nprint(\"the contract and a clean file:\", check_schema(CONTRACT, ok))\n\nrenamed = [{\"order_id\": \"O-1\", \"store\": \"London\", \"qty\": \"2\", \"total\": \"1250\"}]\nassert check_schema(CONTRACT, renamed) == [(\"missing\", \"total_cents\"), (\"new\", \"total\")]\nprint(\"a renamed column:\", check_schema(CONTRACT, renamed))\n\nchanged = [{\"order_id\": \"O-1\", \"store\": \"London\", \"qty\": \"2\", \"total_cents\": \"12.50\"}, {\"order_id\": \"O-2\", \"store\": \"London\", \"qty\": \"two\", \"total_cents\": \"475\"}]\nassert check_schema(CONTRACT, changed) == [(\"type\", \"qty\", \"int\", \"str\"), (\"type\", \"total_cents\", \"int\", \"float\")]\nprint(\"values of another type:\", check_schema(CONTRACT, changed))\n\nextra = [dict(ok[0], coupon=\"SPRING\")]\nassert check_schema(CONTRACT, extra) == [(\"new\", \"coupon\")]\nprint(\"a new column:\", check_schema(CONTRACT, extra))\nprint(\"tests passed\")\n",
+  "m11/bad_types.py": "\"\"\"Three mistakes that mypy finds without running the code.\"\"\"\n\n\ndef total_in_cents(price_cents: int, qty: int) -> int:\n    return price_cents * qty / 100\n\n\ndef find_store(stores: dict[str, str], key: str) -> str:\n    return stores.get(key)\n\n\ndef load(order_id: str, total_cents: int) -> None:\n    print(order_id, total_cents)\n\n\nload(17, \"12.50\")\n"
  },
  "text": {
   "m1/load_orders_v7.py#1": "loaded 6 rows\n(6, 6, 78.85)\n(1,)",
@@ -183,7 +189,13 @@ LAB.real = {
   "m10/pandas_memory.py": "column       default type       MB   smaller type       MB\norder_id     int64             8.0   int32             4.0\nstore        str              13.9   category          1.0\nstatus       str              15.0   category          1.0\nqty          int64             8.0   int8              1.0\ntotal_cents  int64             8.0   int32             4.0\ntotal                         52.9                    11.0\nsame sums and values after the change",
   "m10/threaded_fetch.py": "20 calls of 0.1 s with 10 workers: finished in under a second - 20 results\norder kept: ('ok', '/ORDERS/0') ('ok', '/ORDERS/19')\none failure kept, the other 19 worked: ('error', 'TimeoutError: read timed out')\nno urls: []\ntests passed",
   "m10/concurrency.py": "GIL enabled: True, cores: 4\neight jobs that wait 0.25 s\n  one after another     2.00 s\n  8 threads             0.26 s\n  4 processes           0.54 s\n  asyncio               0.25 s\neight jobs that compute\n  one after another     1.22 s\n  8 threads             1.39 s\n  4 processes           0.41 s",
-  "m10/concurrency.py@free": "GIL enabled: False, cores: 4\neight jobs that wait 0.25 s\n  one after another     2.00 s\n  8 threads             0.25 s\n  4 processes           0.67 s\n  asyncio               0.25 s\neight jobs that compute\n  one after another     1.14 s\n  8 threads             0.48 s\n  4 processes           0.72 s"
+  "m10/concurrency.py@free": "GIL enabled: False, cores: 4\neight jobs that wait 0.25 s\n  one after another     2.00 s\n  8 threads             0.25 s\n  4 processes           0.67 s\n  asyncio               0.25 s\neight jobs that compute\n  one after another     1.14 s\n  8 threads             0.48 s\n  4 processes           0.72 s",
+  "m11/type_hints.py": "the hint says int, and we got: '12.5012.5012.50'\na dataclass accepts anything: Order(order_id=17, total_cents='12.50')\nthe types of the fields: int str",
+  "m11/dataclass_vs_pydantic.py": "a row of text, converted: 2 1250 2026-03-14T08:15:00\n5 errors:\n  order_id     string_pattern_mismatch         String should match pattern '^O-\\d+$'\n  store        literal_error                   Input should be 'London' or 'Singapore'\n  qty          greater_than_equal              Input should be greater than or equal to 1\n  total_cents  int_parsing                     Input should be a valid integer, unable to parse string as an integer\n  ordered_at   datetime_from_date_parsing      Input should be a valid datetime or date, input is too short\nstrict mode on text from a CSV: 3 errors, the first is qty -> Input should be a valid integer",
+  "m11/validate_or_quarantine.py": "read 10 rows: 6 good, 4 in quarantine\n  line  4 O-3   store: Input should be 'London' or 'Singapore'\n  line  6 O-5   total_cents: Input should be a valid integer, unable to parse string as an integer\n  line  8 O-7   qty: Input should be greater than or equal to 1\n  line 10 O-8   order_id: already seen in this file\nstatus: loaded 6 rows, 40% in quarantine (limit 50%)",
+  "m11/split_valid.py": "8 good rows, cleaned: {'order_id': 'O-1', 'qty': 2, 'total_cents': 1250}\nquarantined: [(3, 'qty must be at least 1'), (4, 'qty and total_cents must be whole numbers')]\nover the limit: 2 of 10 rows are bad\nno rows: ([], [])\ntests passed",
+  "m11/contract_check.py": "the contract and a clean file: []\na renamed column: [('missing', 'total_cents'), ('new', 'total')]\nvalues of another type: [('type', 'qty', 'int', 'str'), ('type', 'total_cents', 'int', 'float')]\na new column: [('new', 'coupon')]\ntests passed",
+  "m11/mypy": "$ mypy bad_types.py\nbad_types.py:5: error: Incompatible return value type (got \"float\", expected \"int\")  [return-value]\nbad_types.py:9: error: Incompatible return value type (got \"str | None\", expected \"str\")  [return-value]\nbad_types.py:16: error: Argument 1 to \"load\" has incompatible type \"int\"; expected \"str\"  [arg-type]\nbad_types.py:16: error: Argument 2 to \"load\" has incompatible type \"str\"; expected \"int\"  [arg-type]\nFound 4 errors in 1 file (checked 1 source file)"
  },
  "tables": {
   "m3.structs": {
@@ -348,7 +360,13 @@ LAB.real = {
    "m10/pandas_memory.py": 0,
    "m10/threaded_fetch.py": 0,
    "m10/concurrency.py": 0,
-   "m10/concurrency.py@free": 0
+   "m10/concurrency.py@free": 0,
+   "m11/type_hints.py": 0,
+   "m11/dataclass_vs_pydantic.py": 0,
+   "m11/validate_or_quarantine.py": 0,
+   "m11/split_valid.py": 0,
+   "m11/contract_check.py": 0,
+   "m11/mypy|/tmp/claude-0/-home-user/a3635923-0dcc-5766-9df4-bde417681138/scratchpad/python/venv/bin/python -m mypy bad_types.py": 1
   },
   "m2.specifiers.pandas": {
    "versions": [
@@ -4717,6 +4735,293 @@ LAB.real = {
     }
    },
    "note": "the waiting jobs sleep 0.25 s (a stand-in for a network call), the computing jobs add up numbers. Each time is the median of 3 runs on a 4 core machine that other programs were also using."
+  },
+  "m11.validate": {
+   "rows": [
+    {
+     "order_id": "O-1",
+     "store": "London",
+     "qty": "2",
+     "total_cents": "1250",
+     "ordered_at": "2026-03-14T08:15:00"
+    },
+    {
+     "order_id": "O-2",
+     "store": "Singapore",
+     "qty": "1",
+     "total_cents": "475",
+     "ordered_at": "2026-03-14T09:02:00"
+    },
+    {
+     "order_id": "O-3",
+     "store": "Paris",
+     "qty": "1",
+     "total_cents": "820",
+     "ordered_at": "2026-03-14T09:30:00"
+    },
+    {
+     "order_id": "O-4",
+     "store": "London",
+     "qty": "3",
+     "total_cents": "1990",
+     "ordered_at": "2026-03-14T10:11:00"
+    },
+    {
+     "order_id": "O-5",
+     "store": "London",
+     "qty": "1",
+     "total_cents": "12,50",
+     "ordered_at": "2026-03-14T10:40:00"
+    },
+    {
+     "order_id": "O-6",
+     "store": "Singapore",
+     "qty": "2",
+     "total_cents": "3100",
+     "ordered_at": "2026-03-14T11:05:00",
+     "coupon": "SPRING"
+    },
+    {
+     "order_id": "O-7",
+     "store": "Singapore",
+     "qty": "0",
+     "total_cents": "640",
+     "ordered_at": "2026-03-14T11:30:00"
+    },
+    {
+     "order_id": "O-8",
+     "store": "London",
+     "qty": "1",
+     "total_cents": "900",
+     "ordered_at": "2026-03-14T12:00:00"
+    },
+    {
+     "order_id": "O-8",
+     "store": "London",
+     "qty": "1",
+     "total_cents": "900",
+     "ordered_at": "2026-03-14T12:00:00"
+    },
+    {
+     "order_id": "O-10",
+     "store": "Singapore",
+     "qty": "4",
+     "total_cents": "2200",
+     "ordered_at": "2026-03-14T12:45:00"
+    }
+   ],
+   "models": {
+    "lax": {
+     "good": [
+      "O-1",
+      "O-2",
+      "O-4",
+      "O-6",
+      "O-8",
+      "O-10"
+     ],
+     "quarantine": [
+      {
+       "line": 4,
+       "order_id": "O-3",
+       "why": "store: Input should be 'London' or 'Singapore'"
+      },
+      {
+       "line": 6,
+       "order_id": "O-5",
+       "why": "total_cents: Input should be a valid integer, unable to parse string as an integer"
+      },
+      {
+       "line": 8,
+       "order_id": "O-7",
+       "why": "qty: Input should be greater than or equal to 1"
+      },
+      {
+       "line": 10,
+       "order_id": "O-8",
+       "why": "order_id: already seen in this file"
+      }
+     ]
+    },
+    "strict": {
+     "good": [],
+     "quarantine": [
+      {
+       "line": 2,
+       "order_id": "O-1",
+       "why": "qty: Input should be a valid integer; total_cents: Input should be a valid integer; ordered_at: Input should be a valid datetime"
+      },
+      {
+       "line": 3,
+       "order_id": "O-2",
+       "why": "qty: Input should be a valid integer; total_cents: Input should be a valid integer; ordered_at: Input should be a valid datetime"
+      },
+      {
+       "line": 4,
+       "order_id": "O-3",
+       "why": "store: Input should be 'London' or 'Singapore'; qty: Input should be a valid integer; total_cents: Input should be a valid integer; ordered_at: Input should be a valid datetime"
+      },
+      {
+       "line": 5,
+       "order_id": "O-4",
+       "why": "qty: Input should be a valid integer; total_cents: Input should be a valid integer; ordered_at: Input should be a valid datetime"
+      },
+      {
+       "line": 6,
+       "order_id": "O-5",
+       "why": "qty: Input should be a valid integer; total_cents: Input should be a valid integer; ordered_at: Input should be a valid datetime"
+      },
+      {
+       "line": 7,
+       "order_id": "O-6",
+       "why": "qty: Input should be a valid integer; total_cents: Input should be a valid integer; ordered_at: Input should be a valid datetime"
+      },
+      {
+       "line": 8,
+       "order_id": "O-7",
+       "why": "qty: Input should be a valid integer; total_cents: Input should be a valid integer; ordered_at: Input should be a valid datetime"
+      },
+      {
+       "line": 9,
+       "order_id": "O-8",
+       "why": "qty: Input should be a valid integer; total_cents: Input should be a valid integer; ordered_at: Input should be a valid datetime"
+      },
+      {
+       "line": 10,
+       "order_id": "O-8",
+       "why": "qty: Input should be a valid integer; total_cents: Input should be a valid integer; ordered_at: Input should be a valid datetime"
+      },
+      {
+       "line": 11,
+       "order_id": "O-10",
+       "why": "qty: Input should be a valid integer; total_cents: Input should be a valid integer; ordered_at: Input should be a valid datetime"
+      }
+     ]
+    },
+    "forbid extra columns": {
+     "good": [
+      "O-1",
+      "O-2",
+      "O-4",
+      "O-8",
+      "O-10"
+     ],
+     "quarantine": [
+      {
+       "line": 4,
+       "order_id": "O-3",
+       "why": "store: Input should be 'London' or 'Singapore'"
+      },
+      {
+       "line": 6,
+       "order_id": "O-5",
+       "why": "total_cents: Input should be a valid integer, unable to parse string as an integer"
+      },
+      {
+       "line": 7,
+       "order_id": "O-6",
+       "why": "coupon: Extra inputs are not permitted"
+      },
+      {
+       "line": 8,
+       "order_id": "O-7",
+       "why": "qty: Input should be greater than or equal to 1"
+      },
+      {
+       "line": 10,
+       "order_id": "O-8",
+       "why": "order_id: already seen in this file"
+      }
+     ]
+    }
+   },
+   "policies": [
+    "fail on the first bad row",
+    "quarantine, fail above 20 percent",
+    "quarantine, fail above 50 percent",
+    "drop bad rows silently"
+   ],
+   "cells": {
+    "lax": {
+     "fail on the first bad row": {
+      "loaded": 0,
+      "quarantined": 1,
+      "dropped": 0,
+      "status": "failed at line 4: store: Input should be 'London' or 'Singapore'"
+     },
+     "quarantine, fail above 20 percent": {
+      "loaded": 0,
+      "quarantined": 4,
+      "dropped": 0,
+      "status": "failed: 40% of the rows are bad (limit 20%)"
+     },
+     "quarantine, fail above 50 percent": {
+      "loaded": 6,
+      "quarantined": 4,
+      "dropped": 0,
+      "status": "loaded, 40% in quarantine (limit 50%)"
+     },
+     "drop bad rows silently": {
+      "loaded": 6,
+      "quarantined": 0,
+      "dropped": 4,
+      "status": "success, and nobody is told that 4 rows were dropped"
+     }
+    },
+    "strict": {
+     "fail on the first bad row": {
+      "loaded": 0,
+      "quarantined": 1,
+      "dropped": 0,
+      "status": "failed at line 2: qty: Input should be a valid integer; total_cents: Input should be a valid integer; ordered_at: Input should be a valid datetime"
+     },
+     "quarantine, fail above 20 percent": {
+      "loaded": 0,
+      "quarantined": 10,
+      "dropped": 0,
+      "status": "failed: 100% of the rows are bad (limit 20%)"
+     },
+     "quarantine, fail above 50 percent": {
+      "loaded": 0,
+      "quarantined": 10,
+      "dropped": 0,
+      "status": "failed: 100% of the rows are bad (limit 50%)"
+     },
+     "drop bad rows silently": {
+      "loaded": 0,
+      "quarantined": 0,
+      "dropped": 10,
+      "status": "success, and nobody is told that 10 rows were dropped"
+     }
+    },
+    "forbid extra columns": {
+     "fail on the first bad row": {
+      "loaded": 0,
+      "quarantined": 1,
+      "dropped": 0,
+      "status": "failed at line 4: store: Input should be 'London' or 'Singapore'"
+     },
+     "quarantine, fail above 20 percent": {
+      "loaded": 0,
+      "quarantined": 5,
+      "dropped": 0,
+      "status": "failed: 50% of the rows are bad (limit 20%)"
+     },
+     "quarantine, fail above 50 percent": {
+      "loaded": 5,
+      "quarantined": 5,
+      "dropped": 0,
+      "status": "loaded, 50% in quarantine (limit 50%)"
+     },
+     "drop bad rows silently": {
+      "loaded": 5,
+      "quarantined": 0,
+      "dropped": 5,
+      "status": "success, and nobody is told that 5 rows were dropped"
+     }
+    }
+   },
+   "note": "every case is a run of validate() from lessons/m11/validate_or_quarantine.py with a changed pydantic model (lax is the default, strict rejects text for numbers, forbid rejects columns that are not in the model). The policies are computed from those results."
   }
  }
 };
