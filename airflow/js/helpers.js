@@ -35,6 +35,12 @@
     },
     /* a recorded set of numbers, lists and small facts */
     counts: function (k) { return need(R.counts, k, 'counts'); },
+    /* the default value of a setting that was read with `airflow config get-value`, for example cfg('core.parallelism') */
+    cfg: function (k) {
+      var row = G.table('af.config').rows.filter(function (r) { return r[0] === k; })[0];
+      if (!row) throw new Error('real.js has no recorded setting "' + k + '". Add it to CONFIG_KEYS in capture_af.py.');
+      return row[1];
+    },
     /* the 1-based number of the first line that matches a pattern, so lessons never count lines by hand */
     at: function (code, re) {
       var l = code.split('\n');

@@ -4947,6 +4947,62 @@ LAB.real = {
     [
      "metrics.statsd_on",
      "False"
+    ],
+    [
+     "core.default_task_retry_delay",
+     "300"
+    ],
+    [
+     "core.max_task_retry_delay",
+     "86400"
+    ],
+    [
+     "core.default_task_execution_timeout",
+     "(empty)"
+    ],
+    [
+     "core.xcom_backend",
+     "airflow.sdk.execution_time.xcom.BaseXCom"
+    ],
+    [
+     "core.max_templated_field_length",
+     "4096"
+    ],
+    [
+     "core.default_task_weight_rule",
+     "downstream"
+    ],
+    [
+     "core.min_serialized_dag_update_interval",
+     "30"
+    ],
+    [
+     "core.dag_ignore_file_syntax",
+     "glob"
+    ],
+    [
+     "core.dag_discovery_safe_mode",
+     "True"
+    ],
+    [
+     "dag_processor.bundle_refresh_check_interval",
+     "5"
+    ],
+    [
+     "dag_processor.stale_dag_threshold",
+     "50"
+    ],
+    [
+     "scheduler.orphaned_tasks_check_interval",
+     "300.0"
+    ],
+    [
+     "scheduler.task_queued_timeout",
+     "600.0"
+    ],
+    [
+     "scheduler.max_dagruns_per_loop_to_schedule",
+     "20"
     ]
    ]
   },

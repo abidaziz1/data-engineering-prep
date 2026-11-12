@@ -1204,6 +1204,11 @@ CONFIG_KEYS = [
     ('dag_processor', 'refresh_interval'), ('dag_processor', 'min_file_process_interval'), ('dag_processor', 'parsing_processes'), ('dag_processor', 'dag_file_processor_timeout'),
     ('triggerer', 'capacity'), ('api', 'port'), ('logging', 'remote_logging'), ('secrets', 'backend'), ('workers', 'execution_api_retries'),
     ('database', 'max_db_retries'), ('metrics', 'statsd_on'),
+    ('core', 'default_task_retry_delay'), ('core', 'max_task_retry_delay'), ('core', 'default_task_execution_timeout'), ('core', 'xcom_backend'),
+    ('core', 'max_templated_field_length'), ('core', 'default_task_weight_rule'), ('core', 'min_serialized_dag_update_interval'),
+    ('core', 'dag_ignore_file_syntax'), ('core', 'dag_discovery_safe_mode'),
+    ('dag_processor', 'bundle_refresh_check_interval'), ('dag_processor', 'stale_dag_threshold'),
+    ('scheduler', 'orphaned_tasks_check_interval'), ('scheduler', 'task_queued_timeout'), ('scheduler', 'max_dagruns_per_loop_to_schedule'),
 ]
 
 
