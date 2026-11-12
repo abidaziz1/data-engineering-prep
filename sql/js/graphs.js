@@ -184,4 +184,29 @@
       { id: 'tg_gr3', x: 295, y: 232, t: 'every other column must be grouped or aggregated', c: 'int' }
     ]
   });
+  /* ------------------------------------------------------------------ */
+  /* 6. A recursive CTE                                                  */
+  /* ------------------------------------------------------------------ */
+  S.recursive = build({
+    h: 340, cw: 190, dx: 216,
+    label: 'How a recursive CTE runs. The anchor query runs once and fills the working table. The recursive step reads the working table and produces new rows. Those rows are added to the result and become the next working table. The loop ends when a step produces no rows.',
+    nodes: [
+      ['r_anchor', 0, 0, 'Anchor query', 'runs once', 'src'],
+      ['r_work', 1, 0, 'Working table', 'rows of the last step', 'raw'],
+      ['r_step', 2, 0, 'Recursive step', 'joins the working table', 'stg'],
+      ['r_res', 3, 0, 'Result', 'all rows so far', 'mart'],
+      ['r_stop', 2, 1.3, 'Stop', 'a step added no rows', 'qual']
+    ],
+    edges: [
+      ['z1', 'r_anchor', 'r_work', 1],
+      ['z2', 'r_work', 'r_step', 2],
+      ['z3', 'r_step', 'r_res', 3],
+      ['z4', 'r_step', 'r_work', 4, { d: 'M547 60 V30 H331 V58', bx: 439, by: 30 }],
+      ['z5', 'r_step', 'r_stop', 5]
+    ],
+    tags: [
+      { id: 'tg_rec1', x: 20, y: 150, t: 'UNION ALL keeps every row', c: 'qual' },
+      { id: 'tg_rec2', x: 20, y: 290, t: 'a cycle in the data never stops', c: 'int' }
+    ]
+  });
 })();

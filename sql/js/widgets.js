@@ -293,6 +293,48 @@
     SQ.info.rollup = { variants: variants, find: find };
   })();
 
+  /* ====================== mission 5: the recursive CTE stepper ====================== */
+  (function () {
+    function rows() { return G.on('m5.tree_iterations', 'duckdb'); }
+    function iter(n) { return rows().rows.filter(function (r) { return +r[0] === n; }); }
+    function maxIter() { return rows().rows.reduce(function (m, r) { return Math.max(m, +r[0]); }, 0); }
+    function cumulative(n) { return rows().rows.filter(function (r) { return +r[0] <= n; }); }
+    W.recursive = {
+      steps: function () { return 2; },
+      hint: function (s, i) { return i === 0 ? 'Press the iterations one by one.' : 'See what a cycle does.'; },
+      say: function (s, i) {
+        return [
+          'This recursive CTE walks the category tree. The anchor starts at the root. Each iteration adds the children of the rows added by the last one. Step through the iterations and watch the working table. The loop stops when an iteration adds no rows.',
+          'A cycle in the data breaks that stop rule. Here category 1 was made a child of category 9, which is below it. `UNION` drops rows it has seen, so the walk ends. `UNION ALL` keeps going until a depth guard stops it.'
+        ][i];
+      },
+      mood: function () { return 'think'; },
+      render: function (box, s, i, A) {
+        var h = '<div class="lab">';
+        if (i === 0) {
+          var st = A.local.rc || (A.local.rc = { n: 0 }), last = maxIter() + 1, sql = G.file('m5.tree_iterations');
+          var produced = iter(st.n), work = st.n === 0 ? [] : iter(st.n - 1), cum = cumulative(st.n);
+          var hl = st.n === 0 ? G.span(sql, /SELECT category_id, name, 0 AS iteration/, /WHERE parent_id IS NULL/) : G.span(sql, /SELECT c\.category_id/, /JOIN tree/);
+          var cols = ['iteration', 'category_id', 'name'];
+          h += '<div class="sel-chips">' + chips(Array.apply(null, Array(last + 1)).map(function (_, k) { return k; }), st.n, 'rc-n', function (k) { return k === 0 ? 'anchor' : k === last ? 'iteration ' + k + ' (stop)' : 'iteration ' + k; }) + '</div>' +
+            code('recursive CTE', 'sql', sql, hl) +
+            '<div class="pair"><div><h3 class="lab-h">Working table: what the step reads</h3>' + (st.n === 0 ? '<p class="lab-note">Empty. The anchor does not read it.</p>' : table(cols, work)) + '</div>' +
+            '<div><h3 class="lab-h">Rows this ' + (st.n === 0 ? 'anchor' : 'step') + ' produced</h3>' + (produced.length ? table(cols, produced, function () { return 'new'; }) : '<p class="lab-note">None. The step found no children, so the loop ends.</p>') + '</div></div>' +
+            '<div class="lab-out"><div class="big"><b>' + produced.length + '</b><span>rows added</span></div><div class="big"><b>' + cum.length + '</b><span>rows in the result so far</span></div><div class="big ' + (produced.length ? 'warn' : 'good') + '"><b>' + (produced.length ? 'go on' : 'stop') + '</b><span>' + (produced.length ? 'the new rows become the working table' : 'the result is complete') + '</span></div></div>';
+        } else {
+          var u = G.on('m5.cycle_union', 'duckdb').rows[0][0], ua = G.on('m5.cycle_union_all', 'duckdb').rows[0];
+          h += '<div class="pair"><div>' + code('UNION: drops rows it has seen', 'sql', G.file('m5.cycle_union')) + '<div class="lab-out"><div class="big good"><b>' + u + '</b><span>categories reached, then the walk ends</span></div></div></div>' +
+            '<div>' + code('UNION ALL with a depth guard', 'sql', G.file('m5.cycle_union_all')) + '<div class="lab-out"><div class="big bad"><b>' + ua[0] + '</b><span>rows produced, until depth ' + ua[1] + '</span></div></div></div></div>' +
+            '<div class="callout warn">`UNION ALL` is faster because it does not compare rows, and it is the right choice for a tree. With a cycle it never ends, so the engine needs a guard such as `depth < 20`, or the query runs until it uses all memory or disk. DuckDB, PostgreSQL and SQLite gave the same two numbers.</div>';
+        }
+        box.innerHTML = h + '</div>';
+        bindCodes(box);
+        A.bindWidget = function (act, el) { if (act === 'rc-n') A.local.rc.n = +el.getAttribute('data-v'); A.render(true); };
+      }
+    };
+    SQ.info.recursive = { iter: iter, maxIter: maxIter, cumulative: cumulative };
+  })();
+
   /* the helpers are shared with part 2 (widgets2.js) */
   SQ.u = { chips: chips, table: table, code: code, bindCodes: bindCodes, pre: pre, ENGINES: ENGINES, ENGINE_LABEL: ENGINE_LABEL };
 })();

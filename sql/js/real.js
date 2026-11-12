@@ -945,7 +945,33 @@ LAB.real = {
   "m4.set.4": "SELECT channel, store_id,\n       GROUPING(channel) AS g_channel, GROUPING(store_id) AS g_store,\n       count(*) AS orders, sum(total) AS revenue\nFROM orders\nWHERE status = 'paid'\nGROUP BY ROLLUP (channel, store_id)\nORDER BY channel NULLS LAST, store_id NULLS LAST\n",
   "m4.set.5": "SELECT store_id, channel,\n       GROUPING(store_id) AS g_store, GROUPING(channel) AS g_channel,\n       count(*) AS orders, sum(total) AS revenue\nFROM orders\nWHERE status = 'paid'\nGROUP BY CUBE (store_id, channel)\nORDER BY store_id NULLS LAST, channel NULLS LAST\n",
   "m4.set.6": "SELECT store_id, channel,\n       GROUPING(store_id) AS g_store, GROUPING(channel) AS g_channel,\n       count(*) AS orders, sum(total) AS revenue\nFROM orders\nWHERE status = 'paid'\nGROUP BY GROUPING SETS ((store_id), (channel), ())\nORDER BY store_id NULLS LAST, channel NULLS LAST\n",
-  "m4.string_agg": "SELECT country, count(*) AS customers, string_agg(name, ', ' ORDER BY name) AS names\nFROM customers\nGROUP BY country\nORDER BY country NULLS LAST;\n"
+  "m4.string_agg": "SELECT country, count(*) AS customers, string_agg(name, ', ' ORDER BY name) AS names\nFROM customers\nGROUP BY country\nORDER BY country NULLS LAST;\n",
+  "m5.calendar": "WITH RECURSIVE days(day) AS (\n  SELECT DATE '2026-03-01'\n  UNION ALL\n  SELECT day + 1 FROM days WHERE day < DATE '2026-03-10'\n)\nSELECT d.day, count(o.order_id) AS orders\nFROM days AS d\nLEFT JOIN orders AS o ON CAST(o.order_ts AS DATE) = d.day\nGROUP BY d.day\nORDER BY d.day;\n",
+  "m5.calendar_sqlite": "WITH RECURSIVE days(day) AS (\n  SELECT '2026-03-01'\n  UNION ALL\n  SELECT date(day, '+1 day') FROM days WHERE day < '2026-03-10'\n)\nSELECT d.day, count(o.order_id) AS orders\nFROM days AS d\nLEFT JOIN orders AS o ON date(o.order_ts) = d.day\nGROUP BY d.day\nORDER BY d.day;\n",
+  "m5.ch_second": "SELECT max(total) AS second_highest\nFROM orders\nWHERE status = 'paid'\n  AND total < (SELECT max(total) FROM orders WHERE status = 'paid');\n",
+  "m5.ch_storeavg": "SELECT o.order_id, o.store_id, o.total\nFROM orders AS o\nWHERE o.status = 'paid'\n  AND o.total > (\n    SELECT avg(i.total)\n    FROM orders AS i\n    WHERE i.status = 'paid' AND i.store_id = o.store_id\n  )\nORDER BY o.order_id;\n",
+  "m5.ch_subtree": "WITH RECURSIVE sub AS (\n  SELECT category_id, name, 0 AS depth\n  FROM categories\n  WHERE name = 'Drinks'\n  UNION ALL\n  SELECT c.category_id, c.name, s.depth + 1\n  FROM categories AS c\n  JOIN sub AS s ON c.parent_id = s.category_id\n)\nSELECT category_id, name, depth\nFROM sub\nORDER BY depth, category_id;\n",
+  "m5.correlated": "SELECT c.customer_id,\n       c.name,\n       (SELECT max(o.total) FROM orders AS o WHERE o.customer_id = c.customer_id) AS biggest_order\nFROM customers AS c\nORDER BY c.customer_id;\n",
+  "m5.cte": "WITH paid AS (\n  SELECT order_id, customer_id, total\n  FROM orders\n  WHERE status = 'paid' AND customer_id IS NOT NULL\n),\nper_customer AS (\n  SELECT customer_id, count(*) AS orders, sum(total) AS spent\n  FROM paid\n  GROUP BY customer_id\n)\nSELECT c.name, p.orders, p.spent\nFROM per_customer AS p\nJOIN customers AS c ON c.customer_id = p.customer_id\nWHERE p.spent > 30\nORDER BY p.spent DESC;\n",
+  "m5.cte_reuse": "WITH per_store AS (\n  SELECT store_id, sum(total) AS revenue\n  FROM orders\n  WHERE status = 'paid'\n  GROUP BY store_id\n)\nSELECT store_id,\n       revenue,\n       round(100.0 * revenue / (SELECT sum(revenue) FROM per_store), 1) AS share_percent\nFROM per_store\nORDER BY revenue DESC;\n",
+  "m5.cycle_union": "UPDATE categories SET parent_id = 9 WHERE category_id = 1;\nWITH RECURSIVE walk(category_id) AS (\n  SELECT 1\n  UNION\n  SELECT c.category_id\n  FROM categories AS c\n  JOIN walk AS w ON c.parent_id = w.category_id\n)\nSELECT count(*) AS categories_reached FROM walk;\n",
+  "m5.cycle_union_all": "UPDATE categories SET parent_id = 9 WHERE category_id = 1;\nWITH RECURSIVE walk(category_id, depth) AS (\n  SELECT 1, 0\n  UNION ALL\n  SELECT c.category_id, w.depth + 1\n  FROM categories AS c\n  JOIN walk AS w ON c.parent_id = w.category_id\n  WHERE w.depth < 20\n)\nSELECT count(*) AS rows_produced, max(depth) AS deepest FROM walk;\n",
+  "m5.derived": "SELECT customer_id, spent\nFROM (\n  SELECT customer_id, sum(total) AS spent\n  FROM orders\n  WHERE status = 'paid' AND customer_id IS NOT NULL\n  GROUP BY customer_id\n) AS per_customer\nWHERE spent > 30\nORDER BY spent DESC;\n",
+  "m5.exists": "SELECT c.customer_id, c.name\nFROM customers AS c\nWHERE EXISTS (\n  SELECT 1\n  FROM orders AS o\n  WHERE o.customer_id = c.customer_id AND o.status = 'refunded'\n);\n",
+  "m5.in_join": "SELECT c.customer_id, c.name\nFROM customers AS c\nJOIN orders AS o ON o.customer_id = c.customer_id\nWHERE o.store_id = 1\nORDER BY c.customer_id, o.order_id;\n",
+  "m5.in_subquery": "SELECT customer_id, name\nFROM customers\nWHERE customer_id IN (SELECT customer_id FROM orders WHERE store_id = 1)\nORDER BY customer_id;\n",
+  "m5.plan.corr": "SELECT c.customer_id,\n       (SELECT max(o.total) FROM big_orders AS o WHERE o.customer_id = c.customer_id) AS biggest\nFROM big_customers AS c\n",
+  "m5.plan.exists": "SELECT c.customer_id\nFROM big_customers AS c\nWHERE EXISTS (SELECT 1 FROM big_orders AS o WHERE o.customer_id = c.customer_id AND o.status = 'refunded')\n",
+  "m5.plan.materialized": "WITH o AS MATERIALIZED (SELECT * FROM big_orders) SELECT * FROM o WHERE order_id = 12345\n",
+  "m5.plan.once": "WITH o AS (SELECT * FROM big_orders) SELECT * FROM o WHERE order_id = 12345\n",
+  "m5.plan.twice": "WITH s AS (SELECT store_id, sum(total) AS revenue FROM big_orders WHERE status = 'paid' GROUP BY store_id)\nSELECT a.store_id, a.revenue, round(100.0 * a.revenue / (SELECT sum(revenue) FROM s), 1) AS share FROM s AS a ORDER BY a.store_id\n",
+  "m5.scalar": "SELECT order_id, total\nFROM orders\nWHERE status = 'paid'\n  AND total > (SELECT avg(total) FROM orders WHERE status = 'paid')\nORDER BY order_id;\n",
+  "m5.scalar_many": "SELECT c.name,\n       (SELECT o.order_id FROM orders AS o WHERE o.customer_id = c.customer_id) AS order_id\nFROM customers AS c\nORDER BY c.customer_id;\n",
+  "m5.series_duckdb": "SELECT CAST(d AS DATE) AS day, count(o.order_id) AS orders\nFROM range(DATE '2026-03-01', DATE '2026-03-11', INTERVAL 1 DAY) AS g(d)\nLEFT JOIN orders AS o ON CAST(o.order_ts AS DATE) = CAST(d AS DATE)\nGROUP BY CAST(d AS DATE)\nORDER BY CAST(d AS DATE);\n",
+  "m5.series_postgres": "SELECT CAST(d AS DATE) AS day, count(o.order_id) AS orders\nFROM generate_series(DATE '2026-03-01', DATE '2026-03-10', INTERVAL '1 day') AS g(d)\nLEFT JOIN orders AS o ON CAST(o.order_ts AS DATE) = CAST(d AS DATE)\nGROUP BY CAST(d AS DATE)\nORDER BY CAST(d AS DATE);\n",
+  "m5.tree": "WITH RECURSIVE tree AS (\n  SELECT category_id, name, 0 AS depth, name AS path\n  FROM categories\n  WHERE parent_id IS NULL\n  UNION ALL\n  SELECT c.category_id, c.name, t.depth + 1, t.path || ' > ' || c.name\n  FROM categories AS c\n  JOIN tree AS t ON c.parent_id = t.category_id\n)\nSELECT category_id, depth, path\nFROM tree\nORDER BY path;\n",
+  "m5.tree_iterations": "WITH RECURSIVE tree AS (\n  SELECT category_id, name, 0 AS iteration\n  FROM categories\n  WHERE parent_id IS NULL\n  UNION ALL\n  SELECT c.category_id, c.name, t.iteration + 1\n  FROM categories AS c\n  JOIN tree AS t ON c.parent_id = t.category_id\n)\nSELECT iteration, category_id, name\nFROM tree\nORDER BY iteration, category_id;\n",
+  "m5.view": "CREATE VIEW paid_orders AS\nSELECT order_id, customer_id, store_id, total\nFROM orders\nWHERE status = 'paid';\nSELECT count(*) AS paid_orders, sum(total) AS revenue FROM paid_orders;\n"
  },
  "meta": {
   "duckdb": "2.0.0",
@@ -6809,6 +6835,1537 @@ LAB.real = {
      "Fay Tan"
     ]
    ]
+  },
+  "m5.calendar.duckdb": {
+   "cols": [
+    "day",
+    "orders"
+   ],
+   "rows": [
+    [
+     "2026-03-01",
+     "1"
+    ],
+    [
+     "2026-03-02",
+     "2"
+    ],
+    [
+     "2026-03-03",
+     "1"
+    ],
+    [
+     "2026-03-04",
+     "2"
+    ],
+    [
+     "2026-03-05",
+     "1"
+    ],
+    [
+     "2026-03-06",
+     "2"
+    ],
+    [
+     "2026-03-07",
+     "1"
+    ],
+    [
+     "2026-03-08",
+     "1"
+    ],
+    [
+     "2026-03-09",
+     "1"
+    ],
+    [
+     "2026-03-10",
+     "0"
+    ]
+   ]
+  },
+  "m5.calendar.postgres": {
+   "cols": [
+    "day",
+    "orders"
+   ],
+   "rows": [
+    [
+     "2026-03-01",
+     "1"
+    ],
+    [
+     "2026-03-02",
+     "2"
+    ],
+    [
+     "2026-03-03",
+     "1"
+    ],
+    [
+     "2026-03-04",
+     "2"
+    ],
+    [
+     "2026-03-05",
+     "1"
+    ],
+    [
+     "2026-03-06",
+     "2"
+    ],
+    [
+     "2026-03-07",
+     "1"
+    ],
+    [
+     "2026-03-08",
+     "1"
+    ],
+    [
+     "2026-03-09",
+     "1"
+    ],
+    [
+     "2026-03-10",
+     "0"
+    ]
+   ]
+  },
+  "m5.calendar_sqlite": {
+   "cols": [
+    "day",
+    "orders"
+   ],
+   "rows": [
+    [
+     "2026-03-01",
+     "1"
+    ],
+    [
+     "2026-03-02",
+     "2"
+    ],
+    [
+     "2026-03-03",
+     "1"
+    ],
+    [
+     "2026-03-04",
+     "2"
+    ],
+    [
+     "2026-03-05",
+     "1"
+    ],
+    [
+     "2026-03-06",
+     "2"
+    ],
+    [
+     "2026-03-07",
+     "1"
+    ],
+    [
+     "2026-03-08",
+     "1"
+    ],
+    [
+     "2026-03-09",
+     "1"
+    ],
+    [
+     "2026-03-10",
+     "0"
+    ]
+   ]
+  },
+  "m5.ch_second.duckdb": {
+   "cols": [
+    "second_highest"
+   ],
+   "rows": [
+    [
+     "19.00"
+    ]
+   ]
+  },
+  "m5.ch_second.postgres": {
+   "cols": [
+    "second_highest"
+   ],
+   "rows": [
+    [
+     "19.00"
+    ]
+   ]
+  },
+  "m5.ch_second.sqlite": {
+   "cols": [
+    "second_highest"
+   ],
+   "rows": [
+    [
+     "19"
+    ]
+   ]
+  },
+  "m5.ch_storeavg.duckdb": {
+   "cols": [
+    "order_id",
+    "store_id",
+    "total"
+   ],
+   "rows": [
+    [
+     "1002",
+     "1",
+     "18.50"
+    ],
+    [
+     "1004",
+     "1",
+     "26.00"
+    ],
+    [
+     "1009",
+     "2",
+     "9.50"
+    ],
+    [
+     "1010",
+     "1",
+     "19.00"
+    ],
+    [
+     "1011",
+     "4",
+     "16.50"
+    ]
+   ]
+  },
+  "m5.ch_storeavg.postgres": {
+   "cols": [
+    "order_id",
+    "store_id",
+    "total"
+   ],
+   "rows": [
+    [
+     "1002",
+     "1",
+     "18.50"
+    ],
+    [
+     "1004",
+     "1",
+     "26.00"
+    ],
+    [
+     "1009",
+     "2",
+     "9.50"
+    ],
+    [
+     "1010",
+     "1",
+     "19.00"
+    ],
+    [
+     "1011",
+     "4",
+     "16.50"
+    ]
+   ]
+  },
+  "m5.ch_storeavg.sqlite": {
+   "cols": [
+    "order_id",
+    "store_id",
+    "total"
+   ],
+   "rows": [
+    [
+     "1002",
+     "1",
+     "18.5"
+    ],
+    [
+     "1004",
+     "1",
+     "26"
+    ],
+    [
+     "1009",
+     "2",
+     "9.5"
+    ],
+    [
+     "1010",
+     "1",
+     "19"
+    ],
+    [
+     "1011",
+     "4",
+     "16.5"
+    ]
+   ]
+  },
+  "m5.ch_subtree.duckdb": {
+   "cols": [
+    "category_id",
+    "name",
+    "depth"
+   ],
+   "rows": [
+    [
+     "2",
+     "Drinks",
+     "0"
+    ],
+    [
+     "3",
+     "Coffee",
+     "1"
+    ],
+    [
+     "6",
+     "Tea",
+     "1"
+    ],
+    [
+     "4",
+     "Espresso drinks",
+     "2"
+    ],
+    [
+     "5",
+     "Cold coffee",
+     "2"
+    ]
+   ]
+  },
+  "m5.ch_subtree.postgres": {
+   "cols": [
+    "category_id",
+    "name",
+    "depth"
+   ],
+   "rows": [
+    [
+     "2",
+     "Drinks",
+     "0"
+    ],
+    [
+     "3",
+     "Coffee",
+     "1"
+    ],
+    [
+     "6",
+     "Tea",
+     "1"
+    ],
+    [
+     "4",
+     "Espresso drinks",
+     "2"
+    ],
+    [
+     "5",
+     "Cold coffee",
+     "2"
+    ]
+   ]
+  },
+  "m5.ch_subtree.sqlite": {
+   "cols": [
+    "category_id",
+    "name",
+    "depth"
+   ],
+   "rows": [
+    [
+     "2",
+     "Drinks",
+     "0"
+    ],
+    [
+     "3",
+     "Coffee",
+     "1"
+    ],
+    [
+     "6",
+     "Tea",
+     "1"
+    ],
+    [
+     "4",
+     "Espresso drinks",
+     "2"
+    ],
+    [
+     "5",
+     "Cold coffee",
+     "2"
+    ]
+   ]
+  },
+  "m5.correlated.duckdb": {
+   "cols": [
+    "customer_id",
+    "name",
+    "biggest_order"
+   ],
+   "rows": [
+    [
+     "1",
+     "Ana Lim",
+     "18.50"
+    ],
+    [
+     "2",
+     "Ben Ortiz",
+     "8.00"
+    ],
+    [
+     "3",
+     "Chen Wei",
+     "26.00"
+    ],
+    [
+     "4",
+     "Dara Putri",
+     "9.00"
+    ],
+    [
+     "5",
+     "Eli Cohen",
+     "16.50"
+    ],
+    [
+     "6",
+     "Fay Tan",
+     "NULL"
+    ],
+    [
+     "7",
+     "Gus Hall",
+     "12.00"
+    ],
+    [
+     "8",
+     "Hana Ito",
+     "NULL"
+    ]
+   ]
+  },
+  "m5.correlated.postgres": {
+   "cols": [
+    "customer_id",
+    "name",
+    "biggest_order"
+   ],
+   "rows": [
+    [
+     "1",
+     "Ana Lim",
+     "18.50"
+    ],
+    [
+     "2",
+     "Ben Ortiz",
+     "8.00"
+    ],
+    [
+     "3",
+     "Chen Wei",
+     "26.00"
+    ],
+    [
+     "4",
+     "Dara Putri",
+     "9.00"
+    ],
+    [
+     "5",
+     "Eli Cohen",
+     "16.50"
+    ],
+    [
+     "6",
+     "Fay Tan",
+     "NULL"
+    ],
+    [
+     "7",
+     "Gus Hall",
+     "12.00"
+    ],
+    [
+     "8",
+     "Hana Ito",
+     "NULL"
+    ]
+   ]
+  },
+  "m5.correlated.sqlite": {
+   "cols": [
+    "customer_id",
+    "name",
+    "biggest_order"
+   ],
+   "rows": [
+    [
+     "1",
+     "Ana Lim",
+     "18.5"
+    ],
+    [
+     "2",
+     "Ben Ortiz",
+     "8"
+    ],
+    [
+     "3",
+     "Chen Wei",
+     "26"
+    ],
+    [
+     "4",
+     "Dara Putri",
+     "9"
+    ],
+    [
+     "5",
+     "Eli Cohen",
+     "16.5"
+    ],
+    [
+     "6",
+     "Fay Tan",
+     "NULL"
+    ],
+    [
+     "7",
+     "Gus Hall",
+     "12"
+    ],
+    [
+     "8",
+     "Hana Ito",
+     "NULL"
+    ]
+   ]
+  },
+  "m5.cte.duckdb": {
+   "cols": [
+    "name",
+    "orders",
+    "spent"
+   ],
+   "rows": [
+    [
+     "Chen Wei",
+     "2",
+     "45.00"
+    ],
+    [
+     "Ana Lim",
+     "3",
+     "37.00"
+    ],
+    [
+     "Eli Cohen",
+     "2",
+     "30.50"
+    ]
+   ]
+  },
+  "m5.cte.postgres": {
+   "cols": [
+    "name",
+    "orders",
+    "spent"
+   ],
+   "rows": [
+    [
+     "Chen Wei",
+     "2",
+     "45.00"
+    ],
+    [
+     "Ana Lim",
+     "3",
+     "37.00"
+    ],
+    [
+     "Eli Cohen",
+     "2",
+     "30.50"
+    ]
+   ]
+  },
+  "m5.cte.sqlite": {
+   "cols": [
+    "name",
+    "orders",
+    "spent"
+   ],
+   "rows": [
+    [
+     "Chen Wei",
+     "2",
+     "45"
+    ],
+    [
+     "Ana Lim",
+     "3",
+     "37.0"
+    ],
+    [
+     "Eli Cohen",
+     "2",
+     "30.5"
+    ]
+   ]
+  },
+  "m5.cte_reuse.duckdb": {
+   "cols": [
+    "store_id",
+    "revenue",
+    "share_percent"
+   ],
+   "rows": [
+    [
+     "1",
+     "82.00",
+     "64.6"
+    ],
+    [
+     "4",
+     "30.50",
+     "24.0"
+    ],
+    [
+     "2",
+     "14.50",
+     "11.4"
+    ]
+   ]
+  },
+  "m5.cte_reuse.postgres": {
+   "cols": [
+    "store_id",
+    "revenue",
+    "share_percent"
+   ],
+   "rows": [
+    [
+     "1",
+     "82.00",
+     "64.6"
+    ],
+    [
+     "4",
+     "30.50",
+     "24.0"
+    ],
+    [
+     "2",
+     "14.50",
+     "11.4"
+    ]
+   ]
+  },
+  "m5.cte_reuse.sqlite": {
+   "cols": [
+    "store_id",
+    "revenue",
+    "share_percent"
+   ],
+   "rows": [
+    [
+     "1",
+     "82.0",
+     "64.6"
+    ],
+    [
+     "4",
+     "30.5",
+     "24.0"
+    ],
+    [
+     "2",
+     "14.5",
+     "11.4"
+    ]
+   ]
+  },
+  "m5.cycle_union.duckdb": {
+   "cols": [
+    "categories_reached"
+   ],
+   "rows": [
+    [
+     "9"
+    ]
+   ]
+  },
+  "m5.cycle_union.postgres": {
+   "cols": [
+    "categories_reached"
+   ],
+   "rows": [
+    [
+     "9"
+    ]
+   ]
+  },
+  "m5.cycle_union.sqlite": {
+   "cols": [
+    "categories_reached"
+   ],
+   "rows": [
+    [
+     "9"
+    ]
+   ]
+  },
+  "m5.cycle_union_all.duckdb": {
+   "cols": [
+    "rows_produced",
+    "deepest"
+   ],
+   "rows": [
+    [
+     "61",
+     "20"
+    ]
+   ]
+  },
+  "m5.cycle_union_all.postgres": {
+   "cols": [
+    "rows_produced",
+    "deepest"
+   ],
+   "rows": [
+    [
+     "61",
+     "20"
+    ]
+   ]
+  },
+  "m5.cycle_union_all.sqlite": {
+   "cols": [
+    "rows_produced",
+    "deepest"
+   ],
+   "rows": [
+    [
+     "61",
+     "20"
+    ]
+   ]
+  },
+  "m5.derived.duckdb": {
+   "cols": [
+    "customer_id",
+    "spent"
+   ],
+   "rows": [
+    [
+     "3",
+     "45.00"
+    ],
+    [
+     "1",
+     "37.00"
+    ],
+    [
+     "5",
+     "30.50"
+    ]
+   ]
+  },
+  "m5.derived.postgres": {
+   "cols": [
+    "customer_id",
+    "spent"
+   ],
+   "rows": [
+    [
+     "3",
+     "45.00"
+    ],
+    [
+     "1",
+     "37.00"
+    ],
+    [
+     "5",
+     "30.50"
+    ]
+   ]
+  },
+  "m5.derived.sqlite": {
+   "cols": [
+    "customer_id",
+    "spent"
+   ],
+   "rows": [
+    [
+     "3",
+     "45"
+    ],
+    [
+     "1",
+     "37.0"
+    ],
+    [
+     "5",
+     "30.5"
+    ]
+   ]
+  },
+  "m5.exists.duckdb": {
+   "cols": [
+    "customer_id",
+    "name"
+   ],
+   "rows": [
+    [
+     "7",
+     "Gus Hall"
+    ]
+   ]
+  },
+  "m5.exists.postgres": {
+   "cols": [
+    "customer_id",
+    "name"
+   ],
+   "rows": [
+    [
+     "7",
+     "Gus Hall"
+    ]
+   ]
+  },
+  "m5.exists.sqlite": {
+   "cols": [
+    "customer_id",
+    "name"
+   ],
+   "rows": [
+    [
+     "7",
+     "Gus Hall"
+    ]
+   ]
+  },
+  "m5.in_join.duckdb": {
+   "cols": [
+    "customer_id",
+    "name"
+   ],
+   "rows": [
+    [
+     "1",
+     "Ana Lim"
+    ],
+    [
+     "1",
+     "Ana Lim"
+    ],
+    [
+     "1",
+     "Ana Lim"
+    ],
+    [
+     "3",
+     "Chen Wei"
+    ],
+    [
+     "3",
+     "Chen Wei"
+    ]
+   ]
+  },
+  "m5.in_join.postgres": {
+   "cols": [
+    "customer_id",
+    "name"
+   ],
+   "rows": [
+    [
+     "1",
+     "Ana Lim"
+    ],
+    [
+     "1",
+     "Ana Lim"
+    ],
+    [
+     "1",
+     "Ana Lim"
+    ],
+    [
+     "3",
+     "Chen Wei"
+    ],
+    [
+     "3",
+     "Chen Wei"
+    ]
+   ]
+  },
+  "m5.in_join.sqlite": {
+   "cols": [
+    "customer_id",
+    "name"
+   ],
+   "rows": [
+    [
+     "1",
+     "Ana Lim"
+    ],
+    [
+     "1",
+     "Ana Lim"
+    ],
+    [
+     "1",
+     "Ana Lim"
+    ],
+    [
+     "3",
+     "Chen Wei"
+    ],
+    [
+     "3",
+     "Chen Wei"
+    ]
+   ]
+  },
+  "m5.in_subquery.duckdb": {
+   "cols": [
+    "customer_id",
+    "name"
+   ],
+   "rows": [
+    [
+     "1",
+     "Ana Lim"
+    ],
+    [
+     "3",
+     "Chen Wei"
+    ]
+   ]
+  },
+  "m5.in_subquery.postgres": {
+   "cols": [
+    "customer_id",
+    "name"
+   ],
+   "rows": [
+    [
+     "1",
+     "Ana Lim"
+    ],
+    [
+     "3",
+     "Chen Wei"
+    ]
+   ]
+  },
+  "m5.in_subquery.sqlite": {
+   "cols": [
+    "customer_id",
+    "name"
+   ],
+   "rows": [
+    [
+     "1",
+     "Ana Lim"
+    ],
+    [
+     "3",
+     "Chen Wei"
+    ]
+   ]
+  },
+  "m5.scalar.duckdb": {
+   "cols": [
+    "order_id",
+    "total"
+   ],
+   "rows": [
+    [
+     "1002",
+     "18.50"
+    ],
+    [
+     "1004",
+     "26.00"
+    ],
+    [
+     "1010",
+     "19.00"
+    ],
+    [
+     "1011",
+     "16.50"
+    ]
+   ]
+  },
+  "m5.scalar.postgres": {
+   "cols": [
+    "order_id",
+    "total"
+   ],
+   "rows": [
+    [
+     "1002",
+     "18.50"
+    ],
+    [
+     "1004",
+     "26.00"
+    ],
+    [
+     "1010",
+     "19.00"
+    ],
+    [
+     "1011",
+     "16.50"
+    ]
+   ]
+  },
+  "m5.scalar.sqlite": {
+   "cols": [
+    "order_id",
+    "total"
+   ],
+   "rows": [
+    [
+     "1002",
+     "18.5"
+    ],
+    [
+     "1004",
+     "26"
+    ],
+    [
+     "1010",
+     "19"
+    ],
+    [
+     "1011",
+     "16.5"
+    ]
+   ]
+  },
+  "m5.scalar_many.sqlite": {
+   "cols": [
+    "name",
+    "order_id"
+   ],
+   "rows": [
+    [
+     "Ana Lim",
+     "1001"
+    ],
+    [
+     "Ben Ortiz",
+     "1003"
+    ],
+    [
+     "Chen Wei",
+     "1004"
+    ],
+    [
+     "Dara Putri",
+     "1005"
+    ],
+    [
+     "Eli Cohen",
+     "1006"
+    ],
+    [
+     "Fay Tan",
+     "NULL"
+    ],
+    [
+     "Gus Hall",
+     "1008"
+    ],
+    [
+     "Hana Ito",
+     "NULL"
+    ]
+   ]
+  },
+  "m5.series_duckdb": {
+   "cols": [
+    "day",
+    "orders"
+   ],
+   "rows": [
+    [
+     "2026-03-01",
+     "1"
+    ],
+    [
+     "2026-03-02",
+     "2"
+    ],
+    [
+     "2026-03-03",
+     "1"
+    ],
+    [
+     "2026-03-04",
+     "2"
+    ],
+    [
+     "2026-03-05",
+     "1"
+    ],
+    [
+     "2026-03-06",
+     "2"
+    ],
+    [
+     "2026-03-07",
+     "1"
+    ],
+    [
+     "2026-03-08",
+     "1"
+    ],
+    [
+     "2026-03-09",
+     "1"
+    ],
+    [
+     "2026-03-10",
+     "0"
+    ]
+   ]
+  },
+  "m5.series_postgres": {
+   "cols": [
+    "day",
+    "orders"
+   ],
+   "rows": [
+    [
+     "2026-03-01",
+     "1"
+    ],
+    [
+     "2026-03-02",
+     "2"
+    ],
+    [
+     "2026-03-03",
+     "1"
+    ],
+    [
+     "2026-03-04",
+     "2"
+    ],
+    [
+     "2026-03-05",
+     "1"
+    ],
+    [
+     "2026-03-06",
+     "2"
+    ],
+    [
+     "2026-03-07",
+     "1"
+    ],
+    [
+     "2026-03-08",
+     "1"
+    ],
+    [
+     "2026-03-09",
+     "1"
+    ],
+    [
+     "2026-03-10",
+     "0"
+    ]
+   ]
+  },
+  "m5.tree.duckdb": {
+   "cols": [
+    "category_id",
+    "depth",
+    "path"
+   ],
+   "rows": [
+    [
+     "1",
+     "0",
+     "Menu"
+    ],
+    [
+     "2",
+     "1",
+     "Menu > Drinks"
+    ],
+    [
+     "3",
+     "2",
+     "Menu > Drinks > Coffee"
+    ],
+    [
+     "5",
+     "3",
+     "Menu > Drinks > Coffee > Cold coffee"
+    ],
+    [
+     "4",
+     "3",
+     "Menu > Drinks > Coffee > Espresso drinks"
+    ],
+    [
+     "6",
+     "2",
+     "Menu > Drinks > Tea"
+    ],
+    [
+     "7",
+     "1",
+     "Menu > Retail"
+    ],
+    [
+     "8",
+     "2",
+     "Menu > Retail > Beans"
+    ],
+    [
+     "9",
+     "2",
+     "Menu > Retail > Merch"
+    ]
+   ]
+  },
+  "m5.tree.postgres": {
+   "cols": [
+    "category_id",
+    "depth",
+    "path"
+   ],
+   "rows": [
+    [
+     "1",
+     "0",
+     "Menu"
+    ],
+    [
+     "2",
+     "1",
+     "Menu > Drinks"
+    ],
+    [
+     "3",
+     "2",
+     "Menu > Drinks > Coffee"
+    ],
+    [
+     "5",
+     "3",
+     "Menu > Drinks > Coffee > Cold coffee"
+    ],
+    [
+     "4",
+     "3",
+     "Menu > Drinks > Coffee > Espresso drinks"
+    ],
+    [
+     "6",
+     "2",
+     "Menu > Drinks > Tea"
+    ],
+    [
+     "7",
+     "1",
+     "Menu > Retail"
+    ],
+    [
+     "8",
+     "2",
+     "Menu > Retail > Beans"
+    ],
+    [
+     "9",
+     "2",
+     "Menu > Retail > Merch"
+    ]
+   ]
+  },
+  "m5.tree.sqlite": {
+   "cols": [
+    "category_id",
+    "depth",
+    "path"
+   ],
+   "rows": [
+    [
+     "1",
+     "0",
+     "Menu"
+    ],
+    [
+     "2",
+     "1",
+     "Menu > Drinks"
+    ],
+    [
+     "3",
+     "2",
+     "Menu > Drinks > Coffee"
+    ],
+    [
+     "5",
+     "3",
+     "Menu > Drinks > Coffee > Cold coffee"
+    ],
+    [
+     "4",
+     "3",
+     "Menu > Drinks > Coffee > Espresso drinks"
+    ],
+    [
+     "6",
+     "2",
+     "Menu > Drinks > Tea"
+    ],
+    [
+     "7",
+     "1",
+     "Menu > Retail"
+    ],
+    [
+     "8",
+     "2",
+     "Menu > Retail > Beans"
+    ],
+    [
+     "9",
+     "2",
+     "Menu > Retail > Merch"
+    ]
+   ]
+  },
+  "m5.tree_iterations.duckdb": {
+   "cols": [
+    "iteration",
+    "category_id",
+    "name"
+   ],
+   "rows": [
+    [
+     "0",
+     "1",
+     "Menu"
+    ],
+    [
+     "1",
+     "2",
+     "Drinks"
+    ],
+    [
+     "1",
+     "7",
+     "Retail"
+    ],
+    [
+     "2",
+     "3",
+     "Coffee"
+    ],
+    [
+     "2",
+     "6",
+     "Tea"
+    ],
+    [
+     "2",
+     "8",
+     "Beans"
+    ],
+    [
+     "2",
+     "9",
+     "Merch"
+    ],
+    [
+     "3",
+     "4",
+     "Espresso drinks"
+    ],
+    [
+     "3",
+     "5",
+     "Cold coffee"
+    ]
+   ]
+  },
+  "m5.tree_iterations.postgres": {
+   "cols": [
+    "iteration",
+    "category_id",
+    "name"
+   ],
+   "rows": [
+    [
+     "0",
+     "1",
+     "Menu"
+    ],
+    [
+     "1",
+     "2",
+     "Drinks"
+    ],
+    [
+     "1",
+     "7",
+     "Retail"
+    ],
+    [
+     "2",
+     "3",
+     "Coffee"
+    ],
+    [
+     "2",
+     "6",
+     "Tea"
+    ],
+    [
+     "2",
+     "8",
+     "Beans"
+    ],
+    [
+     "2",
+     "9",
+     "Merch"
+    ],
+    [
+     "3",
+     "4",
+     "Espresso drinks"
+    ],
+    [
+     "3",
+     "5",
+     "Cold coffee"
+    ]
+   ]
+  },
+  "m5.tree_iterations.sqlite": {
+   "cols": [
+    "iteration",
+    "category_id",
+    "name"
+   ],
+   "rows": [
+    [
+     "0",
+     "1",
+     "Menu"
+    ],
+    [
+     "1",
+     "2",
+     "Drinks"
+    ],
+    [
+     "1",
+     "7",
+     "Retail"
+    ],
+    [
+     "2",
+     "3",
+     "Coffee"
+    ],
+    [
+     "2",
+     "6",
+     "Tea"
+    ],
+    [
+     "2",
+     "8",
+     "Beans"
+    ],
+    [
+     "2",
+     "9",
+     "Merch"
+    ],
+    [
+     "3",
+     "4",
+     "Espresso drinks"
+    ],
+    [
+     "3",
+     "5",
+     "Cold coffee"
+    ]
+   ]
+  },
+  "m5.view.duckdb": {
+   "cols": [
+    "paid_orders",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "9",
+     "127.00"
+    ]
+   ]
+  },
+  "m5.view.postgres": {
+   "cols": [
+    "paid_orders",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "9",
+     "127.00"
+    ]
+   ]
+  },
+  "m5.view.sqlite": {
+   "cols": [
+    "paid_orders",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "9",
+     "127.0"
+    ]
+   ]
   }
  },
  "text": {
@@ -6822,6 +8379,20 @@ LAB.real = {
   "m2.div_zero.postgres.error": "division by zero",
   "m4.bare_column.duckdb.error": "Binder Error: column \"channel\" must appear in the GROUP BY clause or must be part of an aggregate function.",
   "m4.bare_column.postgres.error": "column \"orders.channel\" must appear in the GROUP BY clause or be used in an aggregate function",
-  "m4.rollup_sqlite.error": "no such function: ROLLUP"
+  "m4.rollup_sqlite.error": "no such function: ROLLUP",
+  "m5.plan.duck_corr": "HASH_JOIN RIGHT   (customer_id IS NOT DISTINCT FROM customer_id, rows 3000)\n  PERFECT_HASH_GROUP_BY   (groups: #0, aggregates: max(#1), rows 3000)\n    SCAN big_orders   (scanned 30000, rows 30000)\n  SCAN big_customers   (scanned 3000, rows 3000)",
+  "m5.plan.duck_exists": "HASH_JOIN RIGHT_SEMI   (customer_id = customer_id, rows 90)\n  SCAN big_orders   (filter: (status = 'refunded'), scanned 30000, rows 900)\n  SCAN big_customers   (scanned 3000, rows 3000)",
+  "m5.plan.duck_once": "SCAN big_orders   (filter: (order_id = 12345), scanned 15664, rows 1)",
+  "m5.plan.duck_twice": "CTE   (cte name: s, table index: 0, execution mode: HYBRID_FANOUT, fanout mode: DIRECT, consumers: 1, direct consumers: 1, buffered consumers: 0, chunk storage: NONE, order mode: UNORDERED, materialized consumers: 1, rows 0)\n  PERFECT_HASH_GROUP_BY   (groups: #0, aggregates: sum(#1), rows 4)\n    SCAN big_orders   (filter: (status = 'paid'), scanned 30000, rows 27315)\n  ORDER_BY store_id ASC   (rows 4)\n    CROSS_PRODUCT   (rows 4)\n      CTE_SCAN   (cte index: 0, rows 4)\n      UNGROUPED_AGGREGATE   (aggregates: sum(#0), rows 1)\n        CTE_SCAN   (cte index: 0, cte mode: DIRECT, consumer: 1, rows 4)",
+  "m5.plan.pg_corr_index": "Seq Scan on big_customers c (actual rows=3000 loops=1)\n  SubPlan 1\n    ->  Aggregate (actual rows=1 loops=3000)\n          ->  Bitmap Heap Scan on big_orders o (actual rows=10 loops=3000)\n                Recheck Cond: (customer_id = c.customer_id)\n                Heap Blocks: exact=30000\n                ->  Bitmap Index Scan on big_orders_cust (actual rows=10 loops=3000)\n                      Index Cond: (customer_id = c.customer_id)",
+  "m5.plan.pg_corr_noindex": "Seq Scan on big_customers c (actual rows=3000 loops=1)\n  SubPlan 1\n    ->  Aggregate (actual rows=1 loops=3000)\n          ->  Seq Scan on big_orders o (actual rows=10 loops=3000)\n                Filter: (customer_id = c.customer_id)\n                Rows Removed by Filter: 29990",
+  "m5.plan.pg_exists": "Hash Semi Join (actual rows=90 loops=1)\n  Hash Cond: (c.customer_id = o.customer_id)\n  ->  Seq Scan on big_customers c (actual rows=3000 loops=1)\n  ->  Hash (actual rows=900 loops=1)\n        Buckets: 1024  Batches: 1  Memory Usage: 40kB\n        ->  Seq Scan on big_orders o (actual rows=900 loops=1)\n              Filter: (status = 'refunded'::text)\n              Rows Removed by Filter: 29100",
+  "m5.plan.pg_inlined_index": "Index Scan using big_orders_id on big_orders (actual rows=1 loops=1)\n  Index Cond: (order_id = 12345)",
+  "m5.plan.pg_inlined_noindex": "Seq Scan on big_orders (actual rows=1 loops=1)\n  Filter: (order_id = 12345)\n  Rows Removed by Filter: 29999",
+  "m5.plan.pg_materialized_index": "CTE Scan on o (actual rows=1 loops=1)\n  Filter: (order_id = 12345)\n  Rows Removed by Filter: 29999\n  CTE o\n    ->  Seq Scan on big_orders (actual rows=30000 loops=1)",
+  "m5.plan.pg_materialized_noindex": "CTE Scan on o (actual rows=1 loops=1)\n  Filter: (order_id = 12345)\n  Rows Removed by Filter: 29999\n  CTE o\n    ->  Seq Scan on big_orders (actual rows=30000 loops=1)",
+  "m5.plan.pg_twice": "Sort (actual rows=4 loops=1)\n  Sort Key: a.store_id\n  Sort Method: quicksort  Memory: 25kB\n  CTE s\n    ->  HashAggregate (actual rows=4 loops=1)\n          Group Key: big_orders.store_id\n          Batches: 1  Memory Usage: 24kB\n          ->  Seq Scan on big_orders (actual rows=27315 loops=1)\n                Filter: (status = 'paid'::text)\n                Rows Removed by Filter: 2685\n  InitPlan 2 (returns $1)\n    ->  Aggregate (actual rows=1 loops=1)\n          ->  CTE Scan on s (actual rows=4 loops=1)\n  ->  CTE Scan on s a (actual rows=4 loops=1)",
+  "m5.scalar_many.duckdb.error": "Invalid Input Error: More than one row returned by a subquery used as an expression - scalar subqueries can only return a single row.",
+  "m5.scalar_many.postgres.error": "more than one row returned by a subquery used as an expression"
  }
 };
