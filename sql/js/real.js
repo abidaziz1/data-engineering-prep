@@ -1091,6 +1091,274 @@ LAB.real = {
     "total_after": "150"
    }
   },
+  "m11.covering": {
+   "index_only": "Index Only Scan using bo_copy_cust on bo_copy  (estimated rows=10) (actual rows=10 loops=1)\n  Index Cond: (customer_id = 42)\n  Heap Fetches: 0",
+   "index_scan": "Bitmap Heap Scan on bo_copy  (estimated rows=10) (actual rows=10 loops=1)\n  Recheck Cond: (customer_id = 42)\n  Heap Blocks: exact=10\n  ->  Bitmap Index Scan on bo_copy_cust  (estimated rows=10) (actual rows=10 loops=1)\n        Index Cond: (customer_id = 42)",
+   "other_query": "SELECT order_id, total FROM bo_copy WHERE customer_id = 42",
+   "query": "SELECT order_id FROM bo_copy WHERE customer_id = 42"
+  },
+  "m11.estimates": {
+   "expr_after": "Aggregate  (estimated rows=1) (actual rows=1 loops=1)\n  ->  Bitmap Heap Scan on big_orders  (estimated rows=4285) (actual rows=4285 loops=1)\n        Recheck Cond: ((order_id % 7) = 0)\n        Heap Blocks: exact=253\n        ->  Bitmap Index Scan on o_mod7  (estimated rows=4285) (actual rows=4285 loops=1)\n              Index Cond: ((order_id % 7) = 0)",
+   "expr_before": "Aggregate  (estimated rows=1) (actual rows=1 loops=1)\n  ->  Seq Scan on big_orders  (estimated rows=150) (actual rows=4285 loops=1)\n        Filter: ((order_id % 7) = 0)\n        Rows Removed by Filter: 25715",
+   "expr_query": "SELECT count(*) FROM big_orders WHERE order_id % 7 = 0",
+   "fresh": "Aggregate  (estimated rows=1) (actual rows=1 loops=1)\n  ->  Seq Scan on stale_orders  (estimated rows=27315) (actual rows=27315 loops=1)\n        Filter: (status = 'paid'::text)\n        Rows Removed by Filter: 2685",
+   "stale": "Aggregate  (estimated rows=1) (actual rows=1 loops=1)\n  ->  Seq Scan on stale_orders  (estimated rows=23023) (actual rows=27315 loops=1)\n        Filter: (status = 'paid'::text)\n        Rows Removed by Filter: 2685",
+   "stale_query": "SELECT count(*) FROM stale_orders WHERE status = 'paid'"
+  },
+  "m11.joins": {
+   "default": "Aggregate  (estimated rows=1) (actual rows=1 loops=1)\n  ->  Hash Join  (estimated rows=7500) (actual rows=7500 loops=1)\n        Hash Cond: (o.customer_id = c.customer_id)\n        ->  Seq Scan on big_orders o  (estimated rows=30000) (actual rows=30000 loops=1)\n        ->  Hash  (estimated rows=750) (actual rows=750 loops=1)\n              Buckets: 1024  Batches: 1  Memory Usage: 35kB\n              ->  Seq Scan on big_customers c  (estimated rows=750) (actual rows=750 loops=1)\n                    Filter: (country = 'SG'::text)\n                    Rows Removed by Filter: 2250",
+   "duckdb": "UNGROUPED_AGGREGATE   (aggregates: count_star(), rows 1)\n  HASH_JOIN INNER   (customer_id = customer_id, rows 7500)\n    SCAN big_orders   (scanned 30000, rows 7500)\n    SCAN big_customers   (filter: (country = 'SG'), scanned 3000, rows 750)",
+   "merge": "Aggregate  (estimated rows=1) (actual rows=1 loops=1)\n  ->  Merge Join  (estimated rows=7500) (actual rows=7500 loops=1)\n        Merge Cond: (c.customer_id = o.customer_id)\n        ->  Sort  (estimated rows=750) (actual rows=750 loops=1)\n              Sort Key: c.customer_id\n              Sort Method: quicksort  Memory: 25kB\n              ->  Seq Scan on big_customers c  (estimated rows=750) (actual rows=750 loops=1)\n                    Filter: (country = 'SG'::text)\n                    Rows Removed by Filter: 2250\n        ->  Sort  (estimated rows=30000) (actual rows=30000 loops=1)\n              Sort Key: o.customer_id\n              Sort Method: quicksort  Memory: 769kB\n              ->  Seq Scan on big_orders o  (estimated rows=30000) (actual rows=30000 loops=1)",
+   "nested": "Aggregate  (estimated rows=1) (actual rows=1 loops=1)\n  ->  Nested Loop  (estimated rows=7500) (actual rows=7500 loops=1)\n        ->  Seq Scan on big_customers c  (estimated rows=750) (actual rows=750 loops=1)\n              Filter: (country = 'SG'::text)\n              Rows Removed by Filter: 2250\n        ->  Index Only Scan using o_cust on big_orders o  (estimated rows=10) (actual rows=10 loops=750)\n              Index Cond: (customer_id = c.customer_id)\n              Heap Fetches: 7500",
+   "query": "SELECT count(*) FROM big_orders AS o JOIN big_customers AS c ON c.customer_id = o.customer_id WHERE c.country = 'SG'",
+   "sqlite": "QUERY PLAN\n|--SCAN c\n|--BLOOM FILTER ON o (customer_id=?)\n`--SEARCH o USING AUTOMATIC COVERING INDEX (customer_id=?)"
+  },
+  "m11.lab": {
+   "lab": {
+    "cancelled": {
+     "designs": [
+      "none",
+      "status"
+     ],
+     "runs": {
+      "none": {
+       "ddl": "",
+       "label": "no index",
+       "plan": "Aggregate  (estimated rows=1) (actual rows=1 loops=1)\n  ->  Seq Scan on big_orders  (estimated rows=1500) (actual rows=1500 loops=1)\n        Filter: (status = 'cancelled'::text)\n        Rows Removed by Filter: 28500",
+       "rows_matched": 1500,
+       "rows_read": 30000,
+       "rows_returned": 1,
+       "scan": "Seq Scan"
+      },
+      "status": {
+       "ddl": "CREATE INDEX o_status ON big_orders (status)",
+       "label": "index on status",
+       "plan": "Aggregate  (estimated rows=1) (actual rows=1 loops=1)\n  ->  Bitmap Heap Scan on big_orders  (estimated rows=1500) (actual rows=1500 loops=1)\n        Recheck Cond: (status = 'cancelled'::text)\n        Heap Blocks: exact=253\n        ->  Bitmap Index Scan on o_status  (estimated rows=1500) (actual rows=1500 loops=1)\n              Index Cond: (status = 'cancelled'::text)",
+       "rows_matched": 1500,
+       "rows_read": 1500,
+       "rows_returned": 1,
+       "scan": "Bitmap Heap Scan"
+      }
+     },
+     "sql": "SELECT count(*) FROM big_orders WHERE status = 'cancelled'",
+     "title": "Some rows: status = cancelled"
+    },
+    "latest": {
+     "designs": [
+      "none",
+      "ts"
+     ],
+     "runs": {
+      "none": {
+       "ddl": "",
+       "label": "no index",
+       "plan": "Limit  (estimated rows=10) (actual rows=10 loops=1)\n  ->  Sort  (estimated rows=30000) (actual rows=10 loops=1)\n        Sort Key: order_ts DESC\n        Sort Method: top-N heapsort  Memory: 25kB\n        ->  Seq Scan on big_orders  (estimated rows=30000) (actual rows=30000 loops=1)",
+       "rows_matched": 30000,
+       "rows_read": 30000,
+       "rows_returned": 10,
+       "scan": "Seq Scan"
+      },
+      "ts": {
+       "ddl": "CREATE INDEX o_ts ON big_orders (order_ts)",
+       "label": "index on order_ts",
+       "plan": "Limit  (estimated rows=10) (actual rows=10 loops=1)\n  ->  Index Scan Backward using o_ts on big_orders  (estimated rows=30000) (actual rows=10 loops=1)",
+       "rows_matched": 10,
+       "rows_read": 10,
+       "rows_returned": 10,
+       "scan": "Index Scan"
+      }
+     },
+     "sql": "SELECT order_id, order_ts FROM big_orders ORDER BY order_ts DESC LIMIT 10",
+     "title": "The 10 latest orders"
+    },
+    "paid": {
+     "designs": [
+      "none",
+      "status"
+     ],
+     "runs": {
+      "none": {
+       "ddl": "",
+       "label": "no index",
+       "plan": "Aggregate  (estimated rows=1) (actual rows=1 loops=1)\n  ->  Seq Scan on big_orders  (estimated rows=27315) (actual rows=27315 loops=1)\n        Filter: (status = 'paid'::text)\n        Rows Removed by Filter: 2685",
+       "rows_matched": 27315,
+       "rows_read": 30000,
+       "rows_returned": 1,
+       "scan": "Seq Scan"
+      },
+      "status": {
+       "ddl": "CREATE INDEX o_status ON big_orders (status)",
+       "label": "index on status",
+       "plan": "Aggregate  (estimated rows=1) (actual rows=1 loops=1)\n  ->  Seq Scan on big_orders  (estimated rows=27315) (actual rows=27315 loops=1)\n        Filter: (status = 'paid'::text)\n        Rows Removed by Filter: 2685",
+       "rows_matched": 27315,
+       "rows_read": 30000,
+       "rows_returned": 1,
+       "scan": "Seq Scan"
+      }
+     },
+     "sql": "SELECT count(*) FROM big_orders WHERE status = 'paid'",
+     "title": "Most rows: status = paid"
+    },
+    "pending": {
+     "designs": [
+      "none",
+      "status"
+     ],
+     "runs": {
+      "none": {
+       "ddl": "",
+       "label": "no index",
+       "plan": "Aggregate  (estimated rows=1) (actual rows=1 loops=1)\n  ->  Seq Scan on big_orders  (estimated rows=285) (actual rows=285 loops=1)\n        Filter: (status = 'pending'::text)\n        Rows Removed by Filter: 29715",
+       "rows_matched": 285,
+       "rows_read": 30000,
+       "rows_returned": 1,
+       "scan": "Seq Scan"
+      },
+      "status": {
+       "ddl": "CREATE INDEX o_status ON big_orders (status)",
+       "label": "index on status",
+       "plan": "Aggregate  (estimated rows=1) (actual rows=1 loops=1)\n  ->  Index Only Scan using o_status on big_orders  (estimated rows=285) (actual rows=285 loops=1)\n        Index Cond: (status = 'pending'::text)\n        Heap Fetches: 285",
+       "rows_matched": 285,
+       "rows_read": 285,
+       "rows_returned": 1,
+       "scan": "Index Only Scan"
+      }
+     },
+     "sql": "SELECT count(*) FROM big_orders WHERE status = 'pending'",
+     "title": "Few rows: status = pending"
+    },
+    "point": {
+     "designs": [
+      "none",
+      "order_id"
+     ],
+     "runs": {
+      "none": {
+       "ddl": "",
+       "label": "no index",
+       "plan": "Seq Scan on big_orders  (estimated rows=1) (actual rows=1 loops=1)\n  Filter: (order_id = 12345)\n  Rows Removed by Filter: 29999",
+       "rows_matched": 1,
+       "rows_read": 30000,
+       "rows_returned": 1,
+       "scan": "Seq Scan"
+      },
+      "order_id": {
+       "ddl": "CREATE INDEX o_order_id ON big_orders (order_id)",
+       "label": "index on order_id",
+       "plan": "Index Scan using o_order_id on big_orders  (estimated rows=1) (actual rows=1 loops=1)\n  Index Cond: (order_id = 12345)",
+       "rows_matched": 1,
+       "rows_read": 1,
+       "rows_returned": 1,
+       "scan": "Index Scan"
+      }
+     },
+     "sql": "SELECT * FROM big_orders WHERE order_id = 12345",
+     "title": "One order by id"
+    },
+    "range": {
+     "designs": [
+      "none",
+      "store",
+      "ts",
+      "store_ts",
+      "ts_store"
+     ],
+     "runs": {
+      "none": {
+       "ddl": "",
+       "label": "no index",
+       "plan": "Aggregate  (estimated rows=1) (actual rows=1 loops=1)\n  ->  Seq Scan on big_orders  (estimated rows=579) (actual rows=579 loops=1)\n        Filter: ((order_ts >= '2026-02-10 00:00:00'::timestamp without time zone) AND (order_ts < '2026-02-17 00:00:00'::timestamp without time zone) AND (store_id = 2))\n        Rows Removed by Filter: 29421",
+       "rows_matched": 579,
+       "rows_read": 30000,
+       "rows_returned": 1,
+       "scan": "Seq Scan"
+      },
+      "store": {
+       "buffers": "Aggregate  (estimated rows=1) (actual rows=1 loops=1)\n  Buffers: shared hit=261\n  ->  Bitmap Heap Scan on big_orders  (estimated rows=579) (actual rows=579 loops=1)\n        Recheck Cond: (store_id = 2)\n        Filter: ((order_ts >= '2026-02-10 00:00:00'::timestamp without time zone) AND (order_ts < '2026-02-17 00:00:00'::timestamp without time zone))\n        Rows Removed by Filter: 6921\n        Heap Blocks: exact=253\n        Buffers: shared hit=261\n        ->  Bitmap Index Scan on o_store  (estimated rows=7500) (actual rows=7500 loops=1)\n              Index Cond: (store_id = 2)\n              Buffers: shared hit=8",
+       "ddl": "CREATE INDEX o_store ON big_orders (store_id)",
+       "label": "index on store_id",
+       "plan": "Aggregate  (estimated rows=1) (actual rows=1 loops=1)\n  ->  Bitmap Heap Scan on big_orders  (estimated rows=579) (actual rows=579 loops=1)\n        Recheck Cond: (store_id = 2)\n        Filter: ((order_ts >= '2026-02-10 00:00:00'::timestamp without time zone) AND (order_ts < '2026-02-17 00:00:00'::timestamp without time zone))\n        Rows Removed by Filter: 6921\n        Heap Blocks: exact=253\n        ->  Bitmap Index Scan on o_store  (estimated rows=7500) (actual rows=7500 loops=1)\n              Index Cond: (store_id = 2)",
+       "rows_matched": 579,
+       "rows_read": 7500,
+       "rows_returned": 1,
+       "scan": "Bitmap Heap Scan"
+      },
+      "store_ts": {
+       "buffers": "Aggregate  (estimated rows=1) (actual rows=1 loops=1)\n  Buffers: shared hit=40\n  ->  Bitmap Heap Scan on big_orders  (estimated rows=579) (actual rows=579 loops=1)\n        Recheck Cond: ((store_id = 2) AND (order_ts >= '2026-02-10 00:00:00'::timestamp without time zone) AND (order_ts < '2026-02-17 00:00:00'::timestamp without time zone))\n        Heap Blocks: exact=36\n        Buffers: shared hit=40\n        ->  Bitmap Index Scan on o_store_ts  (estimated rows=579) (actual rows=579 loops=1)\n              Index Cond: ((store_id = 2) AND (order_ts >= '2026-02-10 00:00:00'::timestamp without time zone) AND (order_ts < '2026-02-17 00:00:00'::timestamp without time zone))\n              Buffers: shared hit=4",
+       "ddl": "CREATE INDEX o_store_ts ON big_orders (store_id, order_ts)",
+       "label": "index on (store_id, order_ts)",
+       "plan": "Aggregate  (estimated rows=1) (actual rows=1 loops=1)\n  ->  Bitmap Heap Scan on big_orders  (estimated rows=579) (actual rows=579 loops=1)\n        Recheck Cond: ((store_id = 2) AND (order_ts >= '2026-02-10 00:00:00'::timestamp without time zone) AND (order_ts < '2026-02-17 00:00:00'::timestamp without time zone))\n        Heap Blocks: exact=36\n        ->  Bitmap Index Scan on o_store_ts  (estimated rows=579) (actual rows=579 loops=1)\n              Index Cond: ((store_id = 2) AND (order_ts >= '2026-02-10 00:00:00'::timestamp without time zone) AND (order_ts < '2026-02-17 00:00:00'::timestamp without time zone))",
+       "rows_matched": 579,
+       "rows_read": 579,
+       "rows_returned": 1,
+       "scan": "Bitmap Heap Scan"
+      },
+      "ts": {
+       "buffers": "Aggregate  (estimated rows=1) (actual rows=1 loops=1)\n  Buffers: shared hit=45\n  ->  Bitmap Heap Scan on big_orders  (estimated rows=579) (actual rows=579 loops=1)\n        Recheck Cond: ((order_ts >= '2026-02-10 00:00:00'::timestamp without time zone) AND (order_ts < '2026-02-17 00:00:00'::timestamp without time zone))\n        Filter: (store_id = 2)\n        Rows Removed by Filter: 1738\n        Heap Blocks: exact=36\n        Buffers: shared hit=45\n        ->  Bitmap Index Scan on o_ts  (estimated rows=2317) (actual rows=2317 loops=1)\n              Index Cond: ((order_ts >= '2026-02-10 00:00:00'::timestamp without time zone) AND (order_ts < '2026-02-17 00:00:00'::timestamp without time zone))\n              Buffers: shared hit=9",
+       "ddl": "CREATE INDEX o_ts ON big_orders (order_ts)",
+       "label": "index on order_ts",
+       "plan": "Aggregate  (estimated rows=1) (actual rows=1 loops=1)\n  ->  Bitmap Heap Scan on big_orders  (estimated rows=579) (actual rows=579 loops=1)\n        Recheck Cond: ((order_ts >= '2026-02-10 00:00:00'::timestamp without time zone) AND (order_ts < '2026-02-17 00:00:00'::timestamp without time zone))\n        Filter: (store_id = 2)\n        Rows Removed by Filter: 1738\n        Heap Blocks: exact=36\n        ->  Bitmap Index Scan on o_ts  (estimated rows=2317) (actual rows=2317 loops=1)\n              Index Cond: ((order_ts >= '2026-02-10 00:00:00'::timestamp without time zone) AND (order_ts < '2026-02-17 00:00:00'::timestamp without time zone))",
+       "rows_matched": 579,
+       "rows_read": 2317,
+       "rows_returned": 1,
+       "scan": "Bitmap Heap Scan"
+      },
+      "ts_store": {
+       "buffers": "Aggregate  (estimated rows=1) (actual rows=1 loops=1)\n  Buffers: shared hit=47\n  ->  Bitmap Heap Scan on big_orders  (estimated rows=579) (actual rows=579 loops=1)\n        Recheck Cond: ((order_ts >= '2026-02-10 00:00:00'::timestamp without time zone) AND (order_ts < '2026-02-17 00:00:00'::timestamp without time zone) AND (store_id = 2))\n        Heap Blocks: exact=36\n        Buffers: shared hit=47\n        ->  Bitmap Index Scan on o_ts_store  (estimated rows=579) (actual rows=579 loops=1)\n              Index Cond: ((order_ts >= '2026-02-10 00:00:00'::timestamp without time zone) AND (order_ts < '2026-02-17 00:00:00'::timestamp without time zone) AND (store_id = 2))\n              Buffers: shared hit=11",
+       "ddl": "CREATE INDEX o_ts_store ON big_orders (order_ts, store_id)",
+       "label": "index on (order_ts, store_id)",
+       "plan": "Aggregate  (estimated rows=1) (actual rows=1 loops=1)\n  ->  Bitmap Heap Scan on big_orders  (estimated rows=579) (actual rows=579 loops=1)\n        Recheck Cond: ((order_ts >= '2026-02-10 00:00:00'::timestamp without time zone) AND (order_ts < '2026-02-17 00:00:00'::timestamp without time zone) AND (store_id = 2))\n        Heap Blocks: exact=36\n        ->  Bitmap Index Scan on o_ts_store  (estimated rows=579) (actual rows=579 loops=1)\n              Index Cond: ((order_ts >= '2026-02-10 00:00:00'::timestamp without time zone) AND (order_ts < '2026-02-17 00:00:00'::timestamp without time zone) AND (store_id = 2))",
+       "rows_matched": 579,
+       "rows_read": 579,
+       "rows_returned": 1,
+       "scan": "Bitmap Heap Scan"
+      }
+     },
+     "sql": "SELECT count(*) FROM big_orders\nWHERE store_id = 2 AND order_ts >= TIMESTAMP '2026-02-10 00:00:00' AND order_ts < TIMESTAMP '2026-02-17 00:00:00'",
+     "title": "One store and one week"
+    }
+   },
+   "scenarios": [
+    "point",
+    "paid",
+    "cancelled",
+    "pending",
+    "range",
+    "latest"
+   ],
+   "table_rows": 30000
+  },
+  "m11.other_point": {
+   "duckdb": {
+    "index": "SCAN big_orders   (filter: (order_id = 12345), scanned 1, rows 1)",
+    "none": "SCAN big_orders   (filter: (order_id = 12345), scanned 15664, rows 1)"
+   },
+   "sqlite": {
+    "index": "QUERY PLAN\n`--SEARCH big_orders USING INDEX o_order_id (order_id=?)",
+    "none": "QUERY PLAN\n`--SCAN big_orders"
+   }
+  },
+  "m11.pagination": {
+   "keyset": "Limit  (estimated rows=20) (actual rows=20 loops=1)\n  ->  Index Only Scan using o_order_id on big_orders  (estimated rows=10000) (actual rows=20 loops=1)\n        Index Cond: (order_id > 20000)\n        Heap Fetches: 20",
+   "keyset_query": "SELECT order_id FROM big_orders WHERE order_id > 20000 ORDER BY order_id LIMIT 20",
+   "offset": "Limit  (estimated rows=20) (actual rows=20 loops=1)\n  ->  Index Only Scan using o_order_id on big_orders  (estimated rows=30000) (actual rows=20020 loops=1)\n        Heap Fetches: 20020",
+   "offset_query": "SELECT order_id FROM big_orders ORDER BY order_id LIMIT 20 OFFSET 20000",
+   "same_page": true
+  },
+  "m11.sizes": {
+   "customer_id": 303104,
+   "order_id": 688128,
+   "order_ts": 688128,
+   "status": 229376,
+   "store_id, order_ts": 958464,
+   "table": 2097152
+  },
+  "m11.status_rows": {
+   "cancelled": 1500,
+   "paid": 27315,
+   "pending": 285,
+   "refunded": 900
+  },
   "m2.truth": {
    "not": {
     "duckdb": [
@@ -4763,6 +5031,11 @@ LAB.real = {
   "m10.ch_incr": "UPDATE acct SET balance = balance + 10 WHERE id = 1;\nSELECT balance FROM acct WHERE id = 1;\n",
   "m10.ch_skip": "SELECT id\nFROM jobs\nWHERE state = 'pending'\nORDER BY id\nLIMIT 1\nFOR UPDATE SKIP LOCKED;\n",
   "m10.ch_transfer": "UPDATE acct SET balance = balance - 30 WHERE id = 1;\nUPDATE acct SET balance = balance + 30 WHERE id = 2;\nSELECT id, owner, balance FROM acct ORDER BY id;\n",
+  "m11.ch_keyset": "SELECT order_id, status, total\nFROM orders\nWHERE order_id > 1004\nORDER BY order_id\nLIMIT 5;\n",
+  "m11.ch_range": "SELECT count(*) AS orders\nFROM orders\nWHERE order_ts >= '2026-03-03' AND order_ts < '2026-03-04';\n",
+  "m11.ch_range_cast": "SELECT count(*) AS orders\nFROM orders\nWHERE CAST(order_ts AS DATE) = DATE '2026-03-03';\n",
+  "m11.ch_sargable": "SELECT order_id, total\nFROM orders\nWHERE total > 15\nORDER BY order_id;\n",
+  "m11.ch_sargable_bad": "SELECT order_id, total\nFROM orders\nWHERE total * 2 > 30\nORDER BY order_id;\n",
   "m2.avg_null": "SELECT round(avg(customer_id), 3)              AS avg_ignoring_null,\n       round(avg(coalesce(customer_id, 0)), 3) AS avg_null_as_zero,\n       count(*) - count(customer_id)           AS null_customers\nFROM orders;\n",
   "m2.case_null": "SELECT customer_id,\n       tier,\n       CASE tier WHEN 'gold' THEN 'top' WHEN 'silver' THEN 'mid' ELSE 'other' END AS bucket,\n       CASE WHEN tier IS NULL THEN 'unknown' ELSE tier END AS tier_or_unknown\nFROM customers\nORDER BY customer_id;\n",
   "m2.ch_changed": "SELECT c.customer_id, c.tier AS tier_in_customers, d.tier AS tier_in_dimension\nFROM customers AS c\nLEFT JOIN customer_dim AS d ON d.customer_id = c.customer_id AND d.is_current\nWHERE c.tier IS DISTINCT FROM d.tier\nORDER BY c.customer_id;\n",
@@ -6693,6 +6966,302 @@ LAB.real = {
      "2",
      "Ben",
      "80"
+    ]
+   ]
+  },
+  "m11.ch_keyset.duckdb": {
+   "cols": [
+    "order_id",
+    "status",
+    "total"
+   ],
+   "rows": [
+    [
+     "1005",
+     "cancelled",
+     "9.00"
+    ],
+    [
+     "1006",
+     "paid",
+     "14.00"
+    ],
+    [
+     "1007",
+     "paid",
+     "7.00"
+    ],
+    [
+     "1008",
+     "refunded",
+     "12.00"
+    ],
+    [
+     "1009",
+     "paid",
+     "9.50"
+    ]
+   ]
+  },
+  "m11.ch_keyset.postgres": {
+   "cols": [
+    "order_id",
+    "status",
+    "total"
+   ],
+   "rows": [
+    [
+     "1005",
+     "cancelled",
+     "9.00"
+    ],
+    [
+     "1006",
+     "paid",
+     "14.00"
+    ],
+    [
+     "1007",
+     "paid",
+     "7.00"
+    ],
+    [
+     "1008",
+     "refunded",
+     "12.00"
+    ],
+    [
+     "1009",
+     "paid",
+     "9.50"
+    ]
+   ]
+  },
+  "m11.ch_keyset.sqlite": {
+   "cols": [
+    "order_id",
+    "status",
+    "total"
+   ],
+   "rows": [
+    [
+     "1005",
+     "cancelled",
+     "9"
+    ],
+    [
+     "1006",
+     "paid",
+     "14"
+    ],
+    [
+     "1007",
+     "paid",
+     "7"
+    ],
+    [
+     "1008",
+     "refunded",
+     "12"
+    ],
+    [
+     "1009",
+     "paid",
+     "9.5"
+    ]
+   ]
+  },
+  "m11.ch_range.duckdb": {
+   "cols": [
+    "orders"
+   ],
+   "rows": [
+    [
+     "1"
+    ]
+   ]
+  },
+  "m11.ch_range.postgres": {
+   "cols": [
+    "orders"
+   ],
+   "rows": [
+    [
+     "1"
+    ]
+   ]
+  },
+  "m11.ch_range.sqlite": {
+   "cols": [
+    "orders"
+   ],
+   "rows": [
+    [
+     "1"
+    ]
+   ]
+  },
+  "m11.ch_range_cast.duckdb": {
+   "cols": [
+    "orders"
+   ],
+   "rows": [
+    [
+     "1"
+    ]
+   ]
+  },
+  "m11.ch_range_cast.postgres": {
+   "cols": [
+    "orders"
+   ],
+   "rows": [
+    [
+     "1"
+    ]
+   ]
+  },
+  "m11.ch_sargable.duckdb": {
+   "cols": [
+    "order_id",
+    "total"
+   ],
+   "rows": [
+    [
+     "1002",
+     "18.50"
+    ],
+    [
+     "1004",
+     "26.00"
+    ],
+    [
+     "1010",
+     "19.00"
+    ],
+    [
+     "1011",
+     "16.50"
+    ]
+   ]
+  },
+  "m11.ch_sargable.postgres": {
+   "cols": [
+    "order_id",
+    "total"
+   ],
+   "rows": [
+    [
+     "1002",
+     "18.50"
+    ],
+    [
+     "1004",
+     "26.00"
+    ],
+    [
+     "1010",
+     "19.00"
+    ],
+    [
+     "1011",
+     "16.50"
+    ]
+   ]
+  },
+  "m11.ch_sargable.sqlite": {
+   "cols": [
+    "order_id",
+    "total"
+   ],
+   "rows": [
+    [
+     "1002",
+     "18.5"
+    ],
+    [
+     "1004",
+     "26"
+    ],
+    [
+     "1010",
+     "19"
+    ],
+    [
+     "1011",
+     "16.5"
+    ]
+   ]
+  },
+  "m11.ch_sargable_bad.duckdb": {
+   "cols": [
+    "order_id",
+    "total"
+   ],
+   "rows": [
+    [
+     "1002",
+     "18.50"
+    ],
+    [
+     "1004",
+     "26.00"
+    ],
+    [
+     "1010",
+     "19.00"
+    ],
+    [
+     "1011",
+     "16.50"
+    ]
+   ]
+  },
+  "m11.ch_sargable_bad.postgres": {
+   "cols": [
+    "order_id",
+    "total"
+   ],
+   "rows": [
+    [
+     "1002",
+     "18.50"
+    ],
+    [
+     "1004",
+     "26.00"
+    ],
+    [
+     "1010",
+     "19.00"
+    ],
+    [
+     "1011",
+     "16.50"
+    ]
+   ]
+  },
+  "m11.ch_sargable_bad.sqlite": {
+   "cols": [
+    "order_id",
+    "total"
+   ],
+   "rows": [
+    [
+     "1002",
+     "18.5"
+    ],
+    [
+     "1004",
+     "26"
+    ],
+    [
+     "1010",
+     "19"
+    ],
+    [
+     "1011",
+     "16.5"
     ]
    ]
   },

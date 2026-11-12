@@ -151,4 +151,35 @@
     };
     SQ.info.txlog = {};
   })();
+
+  /* ====================== mission 11: the plan lab ====================== */
+  (function () {
+    function C() { return G.counts('m11.lab'); }
+    function pct(a, b) { return (a / b * 100).toFixed(1).replace(/\.0$/, ''); }
+    W.plan = {
+      steps: function () { return 1; },
+      hint: 'Pick a query, then a design, and compare the rows read.',
+      say: function () { return 'Six queries on 30,000 orders, each with and without an index. These are real EXPLAIN ANALYZE plans from PostgreSQL. Compare the rows that the scan read with the rows that matched. A good index makes those two numbers close. A bad one is not used at all.'; },
+      mood: function () { return 'think'; },
+      render: function (box, s, i, A) {
+        var u = SQ.u, c = C(), st = A.local.pl || (A.local.pl = { sc: 'point', d: 'order_id' });
+        var sc = c.lab[st.sc];
+        if (sc.designs.indexOf(st.d) < 0) st.d = sc.designs[sc.designs.length - 1];
+        var r = sc.runs[st.d];
+        var h = '<div class="lab"><div class="lab-h">Query</div><div class="sel-chips">' + u.chips(c.scenarios, st.sc, 'pl-sc', function (k) { return c.lab[k].title; }) + '</div>' +
+          u.code('the query', 'sql', sc.sql, null) +
+          '<div class="lab-h">Index design</div><div class="sel-chips">' + u.chips(sc.designs, st.d, 'pl-d', function (k) { return sc.runs[k].label; }) + '</div>' +
+          (r.ddl ? u.code('the index', 'sql', r.ddl, null) : '') +
+          '<h3 class="lab-h">PostgreSQL plan (EXPLAIN ANALYZE, rows only)</h3>' + u.pre(r.plan) +
+          '<div class="lab-out"><div class="big"><b>' + esc(r.scan) + '</b><span>how the table was read</span></div>' +
+          '<div class="big"><b>' + r.rows_matched.toLocaleString('en-US') + '</b><span>rows that matched</span></div>' +
+          '<div class="big ' + (r.rows_read > 3 * Math.max(r.rows_matched, 1) ? 'warn' : 'good') + '"><b>' + r.rows_read.toLocaleString('en-US') + '</b><span>rows read from the table (' + pct(r.rows_read, c.table_rows) + ' percent of ' + c.table_rows.toLocaleString('en-US') + ')</span></div></div>' +
+          (r.buffers ? '<h3 class="lab-h">The same plan with BUFFERS: pages touched</h3>' + u.pre(r.buffers) : '') + '</div>';
+        box.innerHTML = h;
+        u.bindCodes(box);
+        A.bindWidget = function (act, el) { var v = el.getAttribute('data-v'); if (act === 'pl-sc') { st.sc = v; st.d = c.lab[v].designs[c.lab[v].designs.length - 1]; } else if (act === 'pl-d') st.d = v; A.render(true); };
+      }
+    };
+    SQ.info.plan = { counts: C };
+  })();
 })();

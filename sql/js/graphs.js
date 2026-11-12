@@ -312,4 +312,30 @@
       { id: 'tg_v2', x: 20, y: 290, t: 'old versions are cleaned up when no session needs them', c: 'int' }
     ]
   });
+  /* ------------------------------------------------------------------ */
+  /* 11. From SQL to a plan                                              */
+  /* ------------------------------------------------------------------ */
+  S.planner = build({
+    h: 400, cw: 190, dx: 216,
+    label: 'From SQL to rows. The engine parses the query, then the planner chooses a plan by estimating the cost of the options. It uses statistics about the tables and the indexes that exist. The executor runs the plan and returns rows. EXPLAIN shows the plan, and EXPLAIN ANALYZE also runs it and adds the real row counts.',
+    nodes: [
+      ['p_sql', 0, 0.65, 'SQL text', 'what you wrote', 'src'],
+      ['p_parse', 1, 0.65, 'Parse and rewrite', 'names, types, views', 'raw'],
+      ['p_plan', 2, 0.65, 'Planner', 'picks the cheapest plan', 'stg'],
+      ['p_exec', 3, 0.65, 'Executor', 'runs the plan', 'int'],
+      ['p_rows', 4, 0.65, 'Result rows', 'plus real row counts', 'mart'],
+      ['p_stats', 2, 1.75, 'Statistics, indexes', 'row counts, value spread', 'qual']
+    ],
+    edges: [
+      ['n1', 'p_sql', 'p_parse', 1],
+      ['n2', 'p_parse', 'p_plan', 2],
+      ['n3', 'p_plan', 'p_exec', 3],
+      ['n4', 'p_exec', 'p_rows', 4],
+      ['n5', 'p_stats', 'p_plan', 5]
+    ],
+    tags: [
+      { id: 'tg_p1', x: 20, y: 300, t: 'the planner works from estimates', c: 'int' },
+      { id: 'tg_p2', x: 20, y: 350, t: 'EXPLAIN ANALYZE runs the query and shows real row counts', c: 'qual' }
+    ]
+  });
 })();
