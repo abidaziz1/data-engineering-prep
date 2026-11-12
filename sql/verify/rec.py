@@ -32,6 +32,16 @@ INSERT INTO app_events VALUES
   (3, '{"device":"web","country":"SG","cart":{"items":[]}}'),
   (4, '{"device":"ios","country":"ID"}');
 ''',
+    'store_day': '''
+CREATE TABLE store_day (store_id INTEGER, day DATE, revenue DECIMAL(10,2), PRIMARY KEY (store_id, day));
+INSERT INTO store_day SELECT store_id, day, revenue FROM daily_revenue;
+CREATE TABLE incoming (store_id INTEGER, day DATE, revenue DECIMAL(10,2));
+INSERT INTO incoming VALUES (1, '2026-03-02', 57.50), (2, '2026-03-05', 50.00), (1, '2026-03-06', 44.00);
+''',
+    'stock': '''
+CREATE TABLE stock (sku VARCHAR PRIMARY KEY, name VARCHAR, qty INTEGER);
+INSERT INTO stock VALUES ('ESP-01', 'Espresso beans', 40), ('LAT-01', 'Oat milk', 25), ('MUG-01', 'Mug', 8);
+''',
 }
 
 

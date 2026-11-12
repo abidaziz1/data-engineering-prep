@@ -261,4 +261,31 @@
       { id: 'tg_s2', x: 20, y: 290, t: 'the first event has no previous event, so it starts a session', c: 'qual' }
     ]
   });
+  /* ------------------------------------------------------------------ */
+  /* 9. A safe reload: match on the key, update or insert                */
+  /* ------------------------------------------------------------------ */
+  S.upsert = build({
+    h: 340, cw: 190, dx: 216,
+    label: 'A reload that is safe to run twice. New and changed rows are loaded into a staging table. Each staging row is matched to the target on its key. A matched row updates the target row. A row with no match is inserted. The target keeps one row for each key, so a second run changes nothing.',
+    nodes: [
+      ['u_src', 0, 0.65, 'Source file', 'new and changed rows', 'src'],
+      ['u_stage', 1, 0.65, 'Staging table', 'loaded as it arrives', 'raw'],
+      ['u_match', 2, 0.65, 'Match on the key', 'staging key = target key', 'stg'],
+      ['u_upd', 3, 0, 'Matched: UPDATE', 'replace the values', 'int'],
+      ['u_ins', 3, 1.3, 'No match: INSERT', 'add the new row', 'int'],
+      ['u_tgt', 4, 0.65, 'Target table', 'one row for each key', 'mart']
+    ],
+    edges: [
+      ['r1', 'u_src', 'u_stage', 1],
+      ['r2', 'u_stage', 'u_match', 2],
+      ['r3', 'u_match', 'u_upd', 3],
+      ['r4', 'u_match', 'u_ins', 4],
+      ['r5', 'u_upd', 'u_tgt', 5],
+      ['r6', 'u_ins', 'u_tgt', 6]
+    ],
+    tags: [
+      { id: 'tg_u1', x: 20, y: 150, t: 'the key must be unique in the target', c: 'qual' },
+      { id: 'tg_u2', x: 20, y: 290, t: 'two staging rows with one key are an error, so deduplicate first', c: 'int' }
+    ]
+  });
 })();

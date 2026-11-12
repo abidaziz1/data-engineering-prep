@@ -3943,7 +3943,31 @@ LAB.real = {
   "m8.retention_sqlite": "WITH first_day AS (\n  SELECT customer_id, min(day) AS cohort_day\n  FROM daily_active\n  GROUP BY customer_id\n),\noffsets AS (\n  SELECT f.cohort_day, a.customer_id, CAST(julianday(a.day) - julianday(f.cohort_day) AS INTEGER) AS day_n\n  FROM daily_active AS a\n  JOIN first_day AS f ON f.customer_id = a.customer_id\n)\nSELECT cohort_day,\n       count(DISTINCT customer_id) AS cohort_size,\n       count(DISTINCT CASE WHEN day_n = 1 THEN customer_id END) AS day_1,\n       count(DISTINCT CASE WHEN day_n = 2 THEN customer_id END) AS day_2,\n       count(DISTINCT CASE WHEN day_n = 3 THEN customer_id END) AS day_3\nFROM offsets\nGROUP BY cohort_day\nORDER BY cohort_day;\n",
   "m8.sessions": "WITH flagged AS (\n  SELECT event_id, customer_id, event_ts, event_type,\n         CASE WHEN LAG(event_ts) OVER w IS NULL\n                OR event_ts - LAG(event_ts) OVER w > INTERVAL '30 minutes'\n              THEN 1 ELSE 0 END AS is_new\n  FROM events\n  WINDOW w AS (PARTITION BY customer_id ORDER BY event_ts, event_id)\n),\nnumbered AS (\n  SELECT *, sum(is_new) OVER (PARTITION BY customer_id ORDER BY event_ts, event_id) AS session_no\n  FROM flagged\n)\nSELECT customer_id, session_no, min(event_ts) AS started, max(event_ts) AS ended, count(*) AS events\nFROM numbered\nGROUP BY customer_id, session_no\nORDER BY customer_id NULLS LAST, session_no;\n",
   "m8.sessions_sqlite": "WITH flagged AS (\n  SELECT event_id, customer_id, event_ts, event_type,\n         CASE WHEN LAG(event_ts) OVER w IS NULL\n                OR round((julianday(event_ts) - julianday(LAG(event_ts) OVER w)) * 1440) > 30\n              THEN 1 ELSE 0 END AS is_new\n  FROM events\n  WINDOW w AS (PARTITION BY customer_id ORDER BY event_ts, event_id)\n),\nnumbered AS (\n  SELECT *, sum(is_new) OVER (PARTITION BY customer_id ORDER BY event_ts, event_id) AS session_no\n  FROM flagged\n)\nSELECT customer_id, session_no, min(event_ts) AS started, max(event_ts) AS ended, count(*) AS events\nFROM numbered\nGROUP BY customer_id, session_no\nORDER BY customer_id NULLS LAST, session_no;\n",
-  "m8.topn": "WITH ranked AS (\n  SELECT store_id, order_id, total,\n         ROW_NUMBER() OVER (PARTITION BY store_id ORDER BY total DESC, order_id) AS rn\n  FROM orders\n  WHERE status = 'paid'\n)\nSELECT store_id, rn, order_id, total\nFROM ranked\nWHERE rn <= 2\nORDER BY store_id, rn;\n"
+  "m8.topn": "WITH ranked AS (\n  SELECT store_id, order_id, total,\n         ROW_NUMBER() OVER (PARTITION BY store_id ORDER BY total DESC, order_id) AS rn\n  FROM orders\n  WHERE status = 'paid'\n)\nSELECT store_id, rn, order_id, total\nFROM ranked\nWHERE rn <= 2\nORDER BY store_id, rn;\n",
+  "m9.append_twice": "CREATE TABLE loaded (store_id INTEGER, day DATE, revenue DECIMAL(10,2));\nINSERT INTO loaded SELECT store_id, day, revenue FROM daily_revenue;\nINSERT INTO loaded SELECT store_id, day, revenue FROM daily_revenue;\nSELECT count(*) AS rows_loaded, sum(revenue) AS revenue FROM loaded;\n",
+  "m9.ch_close": "UPDATE customer_dim\nSET valid_to = '2026-03-09', is_current = false\nWHERE is_current\n  AND EXISTS (SELECT 1 FROM customer_changes AS c WHERE c.customer_id = customer_dim.customer_id AND c.tier <> customer_dim.tier);\nSELECT customer_key, customer_id, tier, valid_from, valid_to, is_current\nFROM customer_dim\nORDER BY customer_key;\n",
+  "m9.ch_upsert": "INSERT INTO store_day\nSELECT store_id, day, revenue FROM incoming WHERE true\nON CONFLICT (store_id, day) DO UPDATE SET revenue = excluded.revenue;\nSELECT store_id, day, revenue FROM store_day ORDER BY store_id, day;\n",
+  "m9.check_error": "CREATE TABLE stock (sku VARCHAR PRIMARY KEY, name VARCHAR, qty INTEGER CHECK (qty >= 0));\nINSERT INTO stock VALUES ('ESP-01', 'Espresso beans', -3);\n",
+  "m9.crud": "CREATE TABLE stock (sku VARCHAR PRIMARY KEY, name VARCHAR, qty INTEGER);\nINSERT INTO stock VALUES ('ESP-01', 'Espresso beans', 40), ('LAT-01', 'Oat milk', 25), ('MUG-01', 'Mug', 8);\nUPDATE stock SET qty = qty - 5 WHERE sku = 'ESP-01';\nDELETE FROM stock WHERE qty < 10;\nSELECT * FROM stock ORDER BY sku;\n",
+  "m9.delete_insert": "CREATE TABLE loaded (store_id INTEGER, day DATE, revenue DECIMAL(10,2));\nINSERT INTO loaded SELECT store_id, day, revenue FROM daily_revenue;\nDELETE FROM loaded WHERE day BETWEEN '2026-03-01' AND '2026-03-05';\nINSERT INTO loaded SELECT store_id, day, revenue FROM daily_revenue WHERE day BETWEEN '2026-03-01' AND '2026-03-05';\nSELECT count(*) AS rows_loaded, sum(revenue) AS revenue FROM loaded;\n",
+  "m9.distinct_from": "SELECT c.customer_id, d.tier AS old_tier, c.tier AS new_tier\nFROM customer_changes AS c\nLEFT JOIN customer_dim AS d ON d.customer_id = c.customer_id AND d.is_current\nWHERE d.tier IS DISTINCT FROM c.tier\nORDER BY c.customer_id;\n",
+  "m9.do_nothing": "CREATE TABLE store_day (store_id INTEGER, day DATE, revenue DECIMAL(10,2), PRIMARY KEY (store_id, day));\nINSERT INTO store_day SELECT store_id, day, revenue FROM daily_revenue;\nCREATE TABLE incoming (store_id INTEGER, day DATE, revenue DECIMAL(10,2));\nINSERT INTO incoming VALUES (1, '2026-03-02', 57.50), (2, '2026-03-05', 50.00), (1, '2026-03-06', 44.00);\nINSERT INTO store_day\nSELECT store_id, day, revenue FROM incoming WHERE true\nON CONFLICT (store_id, day) DO NOTHING;\nSELECT store_id, day, revenue FROM store_day WHERE (store_id, day) IN ((1, '2026-03-02'), (1, '2026-03-06'), (2, '2026-03-05')) ORDER BY store_id, day;\n",
+  "m9.merge": "CREATE TABLE store_day (store_id INTEGER, day DATE, revenue DECIMAL(10,2), PRIMARY KEY (store_id, day));\nINSERT INTO store_day SELECT store_id, day, revenue FROM daily_revenue;\nCREATE TABLE incoming (store_id INTEGER, day DATE, revenue DECIMAL(10,2));\nINSERT INTO incoming VALUES (1, '2026-03-02', 57.50), (2, '2026-03-05', 50.00), (1, '2026-03-06', 44.00);\nMERGE INTO store_day AS t\nUSING incoming AS s\n  ON t.store_id = s.store_id AND t.day = s.day\nWHEN MATCHED THEN\n  UPDATE SET revenue = s.revenue\nWHEN NOT MATCHED THEN\n  INSERT (store_id, day, revenue) VALUES (s.store_id, s.day, s.revenue);\n",
+  "m9.merge_dup": "INSERT INTO incoming VALUES (1, '2026-03-02', 58.00);\nMERGE INTO store_day AS t\nUSING incoming AS s\n  ON t.store_id = s.store_id AND t.day = s.day\nWHEN MATCHED THEN\n  UPDATE SET revenue = s.revenue\nWHEN NOT MATCHED THEN\n  INSERT (store_id, day, revenue) VALUES (s.store_id, s.day, s.revenue);\n",
+  "m9.merge_result": "CREATE TABLE store_day (store_id INTEGER, day DATE, revenue DECIMAL(10,2), PRIMARY KEY (store_id, day));\nINSERT INTO store_day SELECT store_id, day, revenue FROM daily_revenue;\nCREATE TABLE incoming (store_id INTEGER, day DATE, revenue DECIMAL(10,2));\nINSERT INTO incoming VALUES (1, '2026-03-02', 57.50), (2, '2026-03-05', 50.00), (1, '2026-03-06', 44.00);\nMERGE INTO store_day AS t\nUSING incoming AS s\n  ON t.store_id = s.store_id AND t.day = s.day\nWHEN MATCHED THEN\n  UPDATE SET revenue = s.revenue\nWHEN NOT MATCHED THEN\n  INSERT (store_id, day, revenue) VALUES (s.store_id, s.day, s.revenue);\nSELECT store_id, day, revenue FROM store_day ORDER BY store_id, day;\n",
+  "m9.not_equal": "SELECT c.customer_id, d.tier AS old_tier, c.tier AS new_tier\nFROM customer_changes AS c\nLEFT JOIN customer_dim AS d ON d.customer_id = c.customer_id AND d.is_current\nWHERE d.tier <> c.tier\nORDER BY c.customer_id;\n",
+  "m9.notnull_error": "CREATE TABLE stock (sku VARCHAR PRIMARY KEY, name VARCHAR NOT NULL, qty INTEGER);\nINSERT INTO stock VALUES ('ESP-01', NULL, 40);\n",
+  "m9.pk_error": "CREATE TABLE stock (sku VARCHAR PRIMARY KEY, name VARCHAR, qty INTEGER);\nINSERT INTO stock VALUES ('ESP-01', 'Espresso beans', 40);\nINSERT INTO stock VALUES ('ESP-01', 'Espresso beans again', 12);\n",
+  "m9.returning": "CREATE TABLE stock (sku VARCHAR PRIMARY KEY, name VARCHAR, qty INTEGER);\nINSERT INTO stock VALUES ('ESP-01', 'Espresso beans', 40), ('LAT-01', 'Oat milk', 25), ('MUG-01', 'Mug', 8);\nUPDATE stock SET qty = qty + 10 WHERE qty < 30 RETURNING sku, qty;\n",
+  "m9.scd2": "CREATE TABLE dim AS SELECT * FROM customer_dim;\nUPDATE dim\nSET valid_to = '2026-03-09', is_current = false\nWHERE is_current\n  AND EXISTS (SELECT 1 FROM customer_changes AS c WHERE c.customer_id = dim.customer_id AND c.tier <> dim.tier);\nINSERT INTO dim (customer_key, customer_id, tier, valid_from, valid_to, is_current)\nSELECT (SELECT max(customer_key) FROM dim) + ROW_NUMBER() OVER (ORDER BY c.customer_id),\n       c.customer_id, c.tier, '2026-03-10', '9999-12-31', true\nFROM customer_changes AS c\nWHERE NOT EXISTS (\n  SELECT 1 FROM dim AS d WHERE d.customer_id = c.customer_id AND d.is_current AND d.tier = c.tier\n);\nUPDATE dim\nSET valid_to = '2026-03-09', is_current = false\nWHERE is_current\n  AND EXISTS (SELECT 1 FROM customer_changes AS c WHERE c.customer_id = dim.customer_id AND c.tier <> dim.tier);\nINSERT INTO dim (customer_key, customer_id, tier, valid_from, valid_to, is_current)\nSELECT (SELECT max(customer_key) FROM dim) + ROW_NUMBER() OVER (ORDER BY c.customer_id),\n       c.customer_id, c.tier, '2026-03-10', '9999-12-31', true\nFROM customer_changes AS c\nWHERE NOT EXISTS (\n  SELECT 1 FROM dim AS d WHERE d.customer_id = c.customer_id AND d.is_current AND d.tier = c.tier\n);\nSELECT customer_key, customer_id, tier, valid_from, valid_to, is_current FROM dim ORDER BY customer_key;\n",
+  "m9.scd_bug": "CREATE TABLE dim AS SELECT * FROM customer_dim;\nINSERT INTO dim (customer_key, customer_id, tier, valid_from, valid_to, is_current)\nSELECT (SELECT max(customer_key) FROM dim) + ROW_NUMBER() OVER (ORDER BY c.customer_id),\n       c.customer_id, c.tier, '2026-03-10', '9999-12-31', true\nFROM customer_changes AS c\nJOIN dim AS d ON d.customer_id = c.customer_id AND d.is_current AND d.tier <> c.tier;\nSELECT customer_id, count(*) AS current_rows\nFROM dim\nWHERE is_current\nGROUP BY customer_id\nHAVING count(*) > 1;\n",
+  "m9.scd_compare": "CREATE TABLE dim2 AS SELECT * FROM customer_dim;\nUPDATE dim2 SET valid_to = '2026-03-09', is_current = false\nWHERE is_current AND EXISTS (SELECT 1 FROM customer_changes AS c WHERE c.customer_id = dim2.customer_id AND c.tier <> dim2.tier);\nINSERT INTO dim2 (customer_key, customer_id, tier, valid_from, valid_to, is_current)\nSELECT (SELECT max(customer_key) FROM dim2) + ROW_NUMBER() OVER (ORDER BY c.customer_id), c.customer_id, c.tier, '2026-03-10', '9999-12-31', true\nFROM customer_changes AS c\nWHERE NOT EXISTS (SELECT 1 FROM dim2 AS d WHERE d.customer_id = c.customer_id AND d.is_current AND d.tier = c.tier);\nCREATE TABLE dim1 AS SELECT customer_id, tier FROM customer_dim WHERE is_current;\nUPDATE dim1 SET tier = (SELECT c.tier FROM customer_changes AS c WHERE c.customer_id = dim1.customer_id)\nWHERE customer_id IN (SELECT customer_id FROM customer_changes);\nSELECT o.order_id, o.customer_id, h.tier AS tier_with_history, o1.tier AS tier_overwritten\nFROM orders AS o\nJOIN dim2 AS h ON h.customer_id = o.customer_id AND date(o.order_ts) BETWEEN h.valid_from AND h.valid_to\nJOIN dim1 AS o1 ON o1.customer_id = o.customer_id\nORDER BY o.order_id;\n",
+  "m9.update_all": "UPDATE stock SET qty = 0;\nSELECT sku, qty FROM stock ORDER BY sku;\n",
+  "m9.update_where": "UPDATE stock SET qty = 0 WHERE sku = 'MUG-01';\nSELECT sku, qty FROM stock ORDER BY sku;\n",
+  "m9.upsert": "CREATE TABLE store_day (store_id INTEGER, day DATE, revenue DECIMAL(10,2), PRIMARY KEY (store_id, day));\nINSERT INTO store_day SELECT store_id, day, revenue FROM daily_revenue;\nCREATE TABLE incoming (store_id INTEGER, day DATE, revenue DECIMAL(10,2));\nINSERT INTO incoming VALUES (1, '2026-03-02', 57.50), (2, '2026-03-05', 50.00), (1, '2026-03-06', 44.00);\nINSERT INTO store_day\nSELECT store_id, day, revenue FROM incoming WHERE true\nON CONFLICT (store_id, day) DO UPDATE SET revenue = excluded.revenue;\nINSERT INTO store_day\nSELECT store_id, day, revenue FROM incoming WHERE true\nON CONFLICT (store_id, day) DO UPDATE SET revenue = excluded.revenue;\nSELECT store_id, day, revenue FROM store_day ORDER BY store_id, day;\n",
+  "m9.upsert_dup": "INSERT INTO incoming VALUES (1, '2026-03-02', 58.00);\nINSERT INTO store_day\nSELECT store_id, day, revenue FROM incoming WHERE true\nON CONFLICT (store_id, day) DO UPDATE SET revenue = excluded.revenue;\n",
+  "m9.upsert_dup_value": "INSERT INTO incoming VALUES (1, '2026-03-02', 58.00);\nINSERT INTO store_day\nSELECT store_id, day, revenue FROM incoming WHERE true\nON CONFLICT (store_id, day) DO UPDATE SET revenue = excluded.revenue;\nSELECT store_id, day, revenue FROM store_day WHERE store_id = 1 AND day = '2026-03-02';\n",
+  "m9.upsert_twice": "CREATE TABLE store_day (store_id INTEGER, day DATE, revenue DECIMAL(10,2), PRIMARY KEY (store_id, day));\nINSERT INTO store_day SELECT store_id, day, revenue FROM daily_revenue;\nCREATE TABLE incoming (store_id INTEGER, day DATE, revenue DECIMAL(10,2));\nINSERT INTO incoming VALUES (1, '2026-03-02', 57.50), (2, '2026-03-05', 50.00), (1, '2026-03-06', 44.00);\nINSERT INTO store_day\nSELECT store_id, day, revenue FROM incoming WHERE true\nON CONFLICT (store_id, day) DO UPDATE SET revenue = excluded.revenue;\nINSERT INTO store_day\nSELECT store_id, day, revenue FROM incoming WHERE true\nON CONFLICT (store_id, day) DO UPDATE SET revenue = excluded.revenue;\nSELECT count(*) AS rows_in_table, sum(revenue) AS revenue FROM store_day;\n"
  },
  "meta": {
   "duckdb": "2.0.0",
@@ -18775,6 +18799,2444 @@ LAB.real = {
      "14"
     ]
    ]
+  },
+  "m9.append_once.duckdb": {
+   "cols": [
+    "rows_loaded",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "10",
+     "410.00"
+    ]
+   ]
+  },
+  "m9.append_once.postgres": {
+   "cols": [
+    "rows_loaded",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "10",
+     "410.00"
+    ]
+   ]
+  },
+  "m9.append_once.sqlite": {
+   "cols": [
+    "rows_loaded",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "10",
+     "410"
+    ]
+   ]
+  },
+  "m9.append_twice.duckdb": {
+   "cols": [
+    "rows_loaded",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "20",
+     "820.00"
+    ]
+   ]
+  },
+  "m9.append_twice.postgres": {
+   "cols": [
+    "rows_loaded",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "20",
+     "820.00"
+    ]
+   ]
+  },
+  "m9.append_twice.sqlite": {
+   "cols": [
+    "rows_loaded",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "20",
+     "820"
+    ]
+   ]
+  },
+  "m9.ch_close.duckdb": {
+   "cols": [
+    "customer_key",
+    "customer_id",
+    "tier",
+    "valid_from",
+    "valid_to",
+    "is_current"
+   ],
+   "rows": [
+    [
+     "1",
+     "1",
+     "silver",
+     "2026-01-05",
+     "2026-02-14",
+     "false"
+    ],
+    [
+     "2",
+     "1",
+     "gold",
+     "2026-02-15",
+     "9999-12-31",
+     "true"
+    ],
+    [
+     "3",
+     "2",
+     "silver",
+     "2026-01-12",
+     "2026-03-09",
+     "false"
+    ],
+    [
+     "4",
+     "4",
+     "silver",
+     "2026-02-02",
+     "9999-12-31",
+     "true"
+    ],
+    [
+     "5",
+     "5",
+     "gold",
+     "2026-02-10",
+     "9999-12-31",
+     "true"
+    ]
+   ]
+  },
+  "m9.ch_close.postgres": {
+   "cols": [
+    "customer_key",
+    "customer_id",
+    "tier",
+    "valid_from",
+    "valid_to",
+    "is_current"
+   ],
+   "rows": [
+    [
+     "1",
+     "1",
+     "silver",
+     "2026-01-05",
+     "2026-02-14",
+     "false"
+    ],
+    [
+     "2",
+     "1",
+     "gold",
+     "2026-02-15",
+     "9999-12-31",
+     "true"
+    ],
+    [
+     "3",
+     "2",
+     "silver",
+     "2026-01-12",
+     "2026-03-09",
+     "false"
+    ],
+    [
+     "4",
+     "4",
+     "silver",
+     "2026-02-02",
+     "9999-12-31",
+     "true"
+    ],
+    [
+     "5",
+     "5",
+     "gold",
+     "2026-02-10",
+     "9999-12-31",
+     "true"
+    ]
+   ]
+  },
+  "m9.ch_close.sqlite": {
+   "cols": [
+    "customer_key",
+    "customer_id",
+    "tier",
+    "valid_from",
+    "valid_to",
+    "is_current"
+   ],
+   "rows": [
+    [
+     "1",
+     "1",
+     "silver",
+     "2026-01-05",
+     "2026-02-14",
+     "0"
+    ],
+    [
+     "2",
+     "1",
+     "gold",
+     "2026-02-15",
+     "9999-12-31",
+     "1"
+    ],
+    [
+     "3",
+     "2",
+     "silver",
+     "2026-01-12",
+     "2026-03-09",
+     "0"
+    ],
+    [
+     "4",
+     "4",
+     "silver",
+     "2026-02-02",
+     "9999-12-31",
+     "1"
+    ],
+    [
+     "5",
+     "5",
+     "gold",
+     "2026-02-10",
+     "9999-12-31",
+     "1"
+    ]
+   ]
+  },
+  "m9.ch_upsert.duckdb": {
+   "cols": [
+    "store_id",
+    "day",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "1",
+     "2026-03-01",
+     "40.00"
+    ],
+    [
+     "1",
+     "2026-03-02",
+     "57.50"
+    ],
+    [
+     "1",
+     "2026-03-03",
+     "35.00"
+    ],
+    [
+     "1",
+     "2026-03-04",
+     "60.00"
+    ],
+    [
+     "1",
+     "2026-03-05",
+     "50.00"
+    ],
+    [
+     "1",
+     "2026-03-06",
+     "44.00"
+    ],
+    [
+     "2",
+     "2026-03-01",
+     "25.00"
+    ],
+    [
+     "2",
+     "2026-03-02",
+     "30.00"
+    ],
+    [
+     "2",
+     "2026-03-03",
+     "45.00"
+    ],
+    [
+     "2",
+     "2026-03-04",
+     "20.00"
+    ],
+    [
+     "2",
+     "2026-03-05",
+     "50.00"
+    ]
+   ]
+  },
+  "m9.ch_upsert.postgres": {
+   "cols": [
+    "store_id",
+    "day",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "1",
+     "2026-03-01",
+     "40.00"
+    ],
+    [
+     "1",
+     "2026-03-02",
+     "57.50"
+    ],
+    [
+     "1",
+     "2026-03-03",
+     "35.00"
+    ],
+    [
+     "1",
+     "2026-03-04",
+     "60.00"
+    ],
+    [
+     "1",
+     "2026-03-05",
+     "50.00"
+    ],
+    [
+     "1",
+     "2026-03-06",
+     "44.00"
+    ],
+    [
+     "2",
+     "2026-03-01",
+     "25.00"
+    ],
+    [
+     "2",
+     "2026-03-02",
+     "30.00"
+    ],
+    [
+     "2",
+     "2026-03-03",
+     "45.00"
+    ],
+    [
+     "2",
+     "2026-03-04",
+     "20.00"
+    ],
+    [
+     "2",
+     "2026-03-05",
+     "50.00"
+    ]
+   ]
+  },
+  "m9.ch_upsert.sqlite": {
+   "cols": [
+    "store_id",
+    "day",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "1",
+     "2026-03-01",
+     "40"
+    ],
+    [
+     "1",
+     "2026-03-02",
+     "57.5"
+    ],
+    [
+     "1",
+     "2026-03-03",
+     "35"
+    ],
+    [
+     "1",
+     "2026-03-04",
+     "60"
+    ],
+    [
+     "1",
+     "2026-03-05",
+     "50"
+    ],
+    [
+     "1",
+     "2026-03-06",
+     "44"
+    ],
+    [
+     "2",
+     "2026-03-01",
+     "25"
+    ],
+    [
+     "2",
+     "2026-03-02",
+     "30"
+    ],
+    [
+     "2",
+     "2026-03-03",
+     "45"
+    ],
+    [
+     "2",
+     "2026-03-04",
+     "20"
+    ],
+    [
+     "2",
+     "2026-03-05",
+     "50"
+    ]
+   ]
+  },
+  "m9.crud.duckdb": {
+   "cols": [
+    "sku",
+    "name",
+    "qty"
+   ],
+   "rows": [
+    [
+     "ESP-01",
+     "Espresso beans",
+     "35"
+    ],
+    [
+     "LAT-01",
+     "Oat milk",
+     "25"
+    ]
+   ]
+  },
+  "m9.crud.postgres": {
+   "cols": [
+    "sku",
+    "name",
+    "qty"
+   ],
+   "rows": [
+    [
+     "ESP-01",
+     "Espresso beans",
+     "35"
+    ],
+    [
+     "LAT-01",
+     "Oat milk",
+     "25"
+    ]
+   ]
+  },
+  "m9.crud.sqlite": {
+   "cols": [
+    "sku",
+    "name",
+    "qty"
+   ],
+   "rows": [
+    [
+     "ESP-01",
+     "Espresso beans",
+     "35"
+    ],
+    [
+     "LAT-01",
+     "Oat milk",
+     "25"
+    ]
+   ]
+  },
+  "m9.crud_insert.duckdb": {
+   "cols": [
+    "sku",
+    "name",
+    "qty"
+   ],
+   "rows": [
+    [
+     "ESP-01",
+     "Espresso beans",
+     "40"
+    ],
+    [
+     "LAT-01",
+     "Oat milk",
+     "25"
+    ],
+    [
+     "MUG-01",
+     "Mug",
+     "8"
+    ]
+   ]
+  },
+  "m9.crud_insert.postgres": {
+   "cols": [
+    "sku",
+    "name",
+    "qty"
+   ],
+   "rows": [
+    [
+     "ESP-01",
+     "Espresso beans",
+     "40"
+    ],
+    [
+     "LAT-01",
+     "Oat milk",
+     "25"
+    ],
+    [
+     "MUG-01",
+     "Mug",
+     "8"
+    ]
+   ]
+  },
+  "m9.crud_insert.sqlite": {
+   "cols": [
+    "sku",
+    "name",
+    "qty"
+   ],
+   "rows": [
+    [
+     "ESP-01",
+     "Espresso beans",
+     "40"
+    ],
+    [
+     "LAT-01",
+     "Oat milk",
+     "25"
+    ],
+    [
+     "MUG-01",
+     "Mug",
+     "8"
+    ]
+   ]
+  },
+  "m9.crud_update.duckdb": {
+   "cols": [
+    "sku",
+    "name",
+    "qty"
+   ],
+   "rows": [
+    [
+     "ESP-01",
+     "Espresso beans",
+     "35"
+    ],
+    [
+     "LAT-01",
+     "Oat milk",
+     "25"
+    ],
+    [
+     "MUG-01",
+     "Mug",
+     "8"
+    ]
+   ]
+  },
+  "m9.crud_update.postgres": {
+   "cols": [
+    "sku",
+    "name",
+    "qty"
+   ],
+   "rows": [
+    [
+     "ESP-01",
+     "Espresso beans",
+     "35"
+    ],
+    [
+     "LAT-01",
+     "Oat milk",
+     "25"
+    ],
+    [
+     "MUG-01",
+     "Mug",
+     "8"
+    ]
+   ]
+  },
+  "m9.crud_update.sqlite": {
+   "cols": [
+    "sku",
+    "name",
+    "qty"
+   ],
+   "rows": [
+    [
+     "ESP-01",
+     "Espresso beans",
+     "35"
+    ],
+    [
+     "LAT-01",
+     "Oat milk",
+     "25"
+    ],
+    [
+     "MUG-01",
+     "Mug",
+     "8"
+    ]
+   ]
+  },
+  "m9.delete_insert.duckdb": {
+   "cols": [
+    "rows_loaded",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "10",
+     "410.00"
+    ]
+   ]
+  },
+  "m9.delete_insert.postgres": {
+   "cols": [
+    "rows_loaded",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "10",
+     "410.00"
+    ]
+   ]
+  },
+  "m9.delete_insert.sqlite": {
+   "cols": [
+    "rows_loaded",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "10",
+     "410"
+    ]
+   ]
+  },
+  "m9.delete_insert_once.duckdb": {
+   "cols": [
+    "rows_loaded",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "10",
+     "410.00"
+    ]
+   ]
+  },
+  "m9.delete_insert_once.postgres": {
+   "cols": [
+    "rows_loaded",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "10",
+     "410.00"
+    ]
+   ]
+  },
+  "m9.delete_insert_once.sqlite": {
+   "cols": [
+    "rows_loaded",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "10",
+     "410"
+    ]
+   ]
+  },
+  "m9.distinct_from.duckdb": {
+   "cols": [
+    "customer_id",
+    "old_tier",
+    "new_tier"
+   ],
+   "rows": [
+    [
+     "2",
+     "silver",
+     "gold"
+    ],
+    [
+     "9",
+     "NULL",
+     "gold"
+    ]
+   ]
+  },
+  "m9.distinct_from.postgres": {
+   "cols": [
+    "customer_id",
+    "old_tier",
+    "new_tier"
+   ],
+   "rows": [
+    [
+     "2",
+     "silver",
+     "gold"
+    ],
+    [
+     "9",
+     "NULL",
+     "gold"
+    ]
+   ]
+  },
+  "m9.distinct_from.sqlite": {
+   "cols": [
+    "customer_id",
+    "old_tier",
+    "new_tier"
+   ],
+   "rows": [
+    [
+     "2",
+     "silver",
+     "gold"
+    ],
+    [
+     "9",
+     "NULL",
+     "gold"
+    ]
+   ]
+  },
+  "m9.do_nothing.duckdb": {
+   "cols": [
+    "store_id",
+    "day",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "1",
+     "2026-03-02",
+     "55.00"
+    ],
+    [
+     "1",
+     "2026-03-06",
+     "44.00"
+    ],
+    [
+     "2",
+     "2026-03-05",
+     "50.00"
+    ]
+   ]
+  },
+  "m9.do_nothing.postgres": {
+   "cols": [
+    "store_id",
+    "day",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "1",
+     "2026-03-02",
+     "55.00"
+    ],
+    [
+     "1",
+     "2026-03-06",
+     "44.00"
+    ],
+    [
+     "2",
+     "2026-03-05",
+     "50.00"
+    ]
+   ]
+  },
+  "m9.do_nothing.sqlite": {
+   "cols": [
+    "store_id",
+    "day",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "1",
+     "2026-03-02",
+     "55"
+    ],
+    [
+     "1",
+     "2026-03-06",
+     "44"
+    ],
+    [
+     "2",
+     "2026-03-05",
+     "50"
+    ]
+   ]
+  },
+  "m9.merge.duckdb": {
+   "cols": [
+    "Count"
+   ],
+   "rows": [
+    [
+     "3"
+    ]
+   ]
+  },
+  "m9.merge_result.duckdb": {
+   "cols": [
+    "store_id",
+    "day",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "1",
+     "2026-03-01",
+     "40.00"
+    ],
+    [
+     "1",
+     "2026-03-02",
+     "57.50"
+    ],
+    [
+     "1",
+     "2026-03-03",
+     "35.00"
+    ],
+    [
+     "1",
+     "2026-03-04",
+     "60.00"
+    ],
+    [
+     "1",
+     "2026-03-05",
+     "50.00"
+    ],
+    [
+     "1",
+     "2026-03-06",
+     "44.00"
+    ],
+    [
+     "2",
+     "2026-03-01",
+     "25.00"
+    ],
+    [
+     "2",
+     "2026-03-02",
+     "30.00"
+    ],
+    [
+     "2",
+     "2026-03-03",
+     "45.00"
+    ],
+    [
+     "2",
+     "2026-03-04",
+     "20.00"
+    ],
+    [
+     "2",
+     "2026-03-05",
+     "50.00"
+    ]
+   ]
+  },
+  "m9.merge_result.postgres": {
+   "cols": [
+    "store_id",
+    "day",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "1",
+     "2026-03-01",
+     "40.00"
+    ],
+    [
+     "1",
+     "2026-03-02",
+     "57.50"
+    ],
+    [
+     "1",
+     "2026-03-03",
+     "35.00"
+    ],
+    [
+     "1",
+     "2026-03-04",
+     "60.00"
+    ],
+    [
+     "1",
+     "2026-03-05",
+     "50.00"
+    ],
+    [
+     "1",
+     "2026-03-06",
+     "44.00"
+    ],
+    [
+     "2",
+     "2026-03-01",
+     "25.00"
+    ],
+    [
+     "2",
+     "2026-03-02",
+     "30.00"
+    ],
+    [
+     "2",
+     "2026-03-03",
+     "45.00"
+    ],
+    [
+     "2",
+     "2026-03-04",
+     "20.00"
+    ],
+    [
+     "2",
+     "2026-03-05",
+     "50.00"
+    ]
+   ]
+  },
+  "m9.not_equal.duckdb": {
+   "cols": [
+    "customer_id",
+    "old_tier",
+    "new_tier"
+   ],
+   "rows": [
+    [
+     "2",
+     "silver",
+     "gold"
+    ]
+   ]
+  },
+  "m9.not_equal.postgres": {
+   "cols": [
+    "customer_id",
+    "old_tier",
+    "new_tier"
+   ],
+   "rows": [
+    [
+     "2",
+     "silver",
+     "gold"
+    ]
+   ]
+  },
+  "m9.not_equal.sqlite": {
+   "cols": [
+    "customer_id",
+    "old_tier",
+    "new_tier"
+   ],
+   "rows": [
+    [
+     "2",
+     "silver",
+     "gold"
+    ]
+   ]
+  },
+  "m9.returning.duckdb": {
+   "cols": [
+    "sku",
+    "qty"
+   ],
+   "rows": [
+    [
+     "LAT-01",
+     "35"
+    ],
+    [
+     "MUG-01",
+     "18"
+    ]
+   ]
+  },
+  "m9.returning.postgres": {
+   "cols": [
+    "sku",
+    "qty"
+   ],
+   "rows": [
+    [
+     "LAT-01",
+     "35"
+    ],
+    [
+     "MUG-01",
+     "18"
+    ]
+   ]
+  },
+  "m9.returning.sqlite": {
+   "cols": [
+    "sku",
+    "qty"
+   ],
+   "rows": [
+    [
+     "LAT-01",
+     "35"
+    ],
+    [
+     "MUG-01",
+     "18"
+    ]
+   ]
+  },
+  "m9.scd2.duckdb": {
+   "cols": [
+    "customer_key",
+    "customer_id",
+    "tier",
+    "valid_from",
+    "valid_to",
+    "is_current"
+   ],
+   "rows": [
+    [
+     "1",
+     "1",
+     "silver",
+     "2026-01-05",
+     "2026-02-14",
+     "false"
+    ],
+    [
+     "2",
+     "1",
+     "gold",
+     "2026-02-15",
+     "9999-12-31",
+     "true"
+    ],
+    [
+     "3",
+     "2",
+     "silver",
+     "2026-01-12",
+     "2026-03-09",
+     "false"
+    ],
+    [
+     "4",
+     "4",
+     "silver",
+     "2026-02-02",
+     "9999-12-31",
+     "true"
+    ],
+    [
+     "5",
+     "5",
+     "gold",
+     "2026-02-10",
+     "9999-12-31",
+     "true"
+    ],
+    [
+     "6",
+     "2",
+     "gold",
+     "2026-03-10",
+     "9999-12-31",
+     "true"
+    ],
+    [
+     "7",
+     "9",
+     "gold",
+     "2026-03-10",
+     "9999-12-31",
+     "true"
+    ]
+   ]
+  },
+  "m9.scd2.postgres": {
+   "cols": [
+    "customer_key",
+    "customer_id",
+    "tier",
+    "valid_from",
+    "valid_to",
+    "is_current"
+   ],
+   "rows": [
+    [
+     "1",
+     "1",
+     "silver",
+     "2026-01-05",
+     "2026-02-14",
+     "false"
+    ],
+    [
+     "2",
+     "1",
+     "gold",
+     "2026-02-15",
+     "9999-12-31",
+     "true"
+    ],
+    [
+     "3",
+     "2",
+     "silver",
+     "2026-01-12",
+     "2026-03-09",
+     "false"
+    ],
+    [
+     "4",
+     "4",
+     "silver",
+     "2026-02-02",
+     "9999-12-31",
+     "true"
+    ],
+    [
+     "5",
+     "5",
+     "gold",
+     "2026-02-10",
+     "9999-12-31",
+     "true"
+    ],
+    [
+     "6",
+     "2",
+     "gold",
+     "2026-03-10",
+     "9999-12-31",
+     "true"
+    ],
+    [
+     "7",
+     "9",
+     "gold",
+     "2026-03-10",
+     "9999-12-31",
+     "true"
+    ]
+   ]
+  },
+  "m9.scd2.sqlite": {
+   "cols": [
+    "customer_key",
+    "customer_id",
+    "tier",
+    "valid_from",
+    "valid_to",
+    "is_current"
+   ],
+   "rows": [
+    [
+     "1",
+     "1",
+     "silver",
+     "2026-01-05",
+     "2026-02-14",
+     "0"
+    ],
+    [
+     "2",
+     "1",
+     "gold",
+     "2026-02-15",
+     "9999-12-31",
+     "1"
+    ],
+    [
+     "3",
+     "2",
+     "silver",
+     "2026-01-12",
+     "2026-03-09",
+     "0"
+    ],
+    [
+     "4",
+     "4",
+     "silver",
+     "2026-02-02",
+     "9999-12-31",
+     "1"
+    ],
+    [
+     "5",
+     "5",
+     "gold",
+     "2026-02-10",
+     "9999-12-31",
+     "1"
+    ],
+    [
+     "6",
+     "2",
+     "gold",
+     "2026-03-10",
+     "9999-12-31",
+     "1"
+    ],
+    [
+     "7",
+     "9",
+     "gold",
+     "2026-03-10",
+     "9999-12-31",
+     "1"
+    ]
+   ]
+  },
+  "m9.scd2_before.duckdb": {
+   "cols": [
+    "customer_key",
+    "customer_id",
+    "tier",
+    "valid_from",
+    "valid_to",
+    "is_current"
+   ],
+   "rows": [
+    [
+     "1",
+     "1",
+     "silver",
+     "2026-01-05",
+     "2026-02-14",
+     "false"
+    ],
+    [
+     "2",
+     "1",
+     "gold",
+     "2026-02-15",
+     "9999-12-31",
+     "true"
+    ],
+    [
+     "3",
+     "2",
+     "silver",
+     "2026-01-12",
+     "9999-12-31",
+     "true"
+    ],
+    [
+     "4",
+     "4",
+     "silver",
+     "2026-02-02",
+     "9999-12-31",
+     "true"
+    ],
+    [
+     "5",
+     "5",
+     "gold",
+     "2026-02-10",
+     "9999-12-31",
+     "true"
+    ]
+   ]
+  },
+  "m9.scd2_before.postgres": {
+   "cols": [
+    "customer_key",
+    "customer_id",
+    "tier",
+    "valid_from",
+    "valid_to",
+    "is_current"
+   ],
+   "rows": [
+    [
+     "1",
+     "1",
+     "silver",
+     "2026-01-05",
+     "2026-02-14",
+     "false"
+    ],
+    [
+     "2",
+     "1",
+     "gold",
+     "2026-02-15",
+     "9999-12-31",
+     "true"
+    ],
+    [
+     "3",
+     "2",
+     "silver",
+     "2026-01-12",
+     "9999-12-31",
+     "true"
+    ],
+    [
+     "4",
+     "4",
+     "silver",
+     "2026-02-02",
+     "9999-12-31",
+     "true"
+    ],
+    [
+     "5",
+     "5",
+     "gold",
+     "2026-02-10",
+     "9999-12-31",
+     "true"
+    ]
+   ]
+  },
+  "m9.scd2_before.sqlite": {
+   "cols": [
+    "customer_key",
+    "customer_id",
+    "tier",
+    "valid_from",
+    "valid_to",
+    "is_current"
+   ],
+   "rows": [
+    [
+     "1",
+     "1",
+     "silver",
+     "2026-01-05",
+     "2026-02-14",
+     "0"
+    ],
+    [
+     "2",
+     "1",
+     "gold",
+     "2026-02-15",
+     "9999-12-31",
+     "1"
+    ],
+    [
+     "3",
+     "2",
+     "silver",
+     "2026-01-12",
+     "9999-12-31",
+     "1"
+    ],
+    [
+     "4",
+     "4",
+     "silver",
+     "2026-02-02",
+     "9999-12-31",
+     "1"
+    ],
+    [
+     "5",
+     "5",
+     "gold",
+     "2026-02-10",
+     "9999-12-31",
+     "1"
+    ]
+   ]
+  },
+  "m9.scd2_closed.duckdb": {
+   "cols": [
+    "customer_key",
+    "customer_id",
+    "tier",
+    "valid_from",
+    "valid_to",
+    "is_current"
+   ],
+   "rows": [
+    [
+     "1",
+     "1",
+     "silver",
+     "2026-01-05",
+     "2026-02-14",
+     "false"
+    ],
+    [
+     "2",
+     "1",
+     "gold",
+     "2026-02-15",
+     "9999-12-31",
+     "true"
+    ],
+    [
+     "3",
+     "2",
+     "silver",
+     "2026-01-12",
+     "2026-03-09",
+     "false"
+    ],
+    [
+     "4",
+     "4",
+     "silver",
+     "2026-02-02",
+     "9999-12-31",
+     "true"
+    ],
+    [
+     "5",
+     "5",
+     "gold",
+     "2026-02-10",
+     "9999-12-31",
+     "true"
+    ]
+   ]
+  },
+  "m9.scd2_closed.postgres": {
+   "cols": [
+    "customer_key",
+    "customer_id",
+    "tier",
+    "valid_from",
+    "valid_to",
+    "is_current"
+   ],
+   "rows": [
+    [
+     "1",
+     "1",
+     "silver",
+     "2026-01-05",
+     "2026-02-14",
+     "false"
+    ],
+    [
+     "2",
+     "1",
+     "gold",
+     "2026-02-15",
+     "9999-12-31",
+     "true"
+    ],
+    [
+     "3",
+     "2",
+     "silver",
+     "2026-01-12",
+     "2026-03-09",
+     "false"
+    ],
+    [
+     "4",
+     "4",
+     "silver",
+     "2026-02-02",
+     "9999-12-31",
+     "true"
+    ],
+    [
+     "5",
+     "5",
+     "gold",
+     "2026-02-10",
+     "9999-12-31",
+     "true"
+    ]
+   ]
+  },
+  "m9.scd2_closed.sqlite": {
+   "cols": [
+    "customer_key",
+    "customer_id",
+    "tier",
+    "valid_from",
+    "valid_to",
+    "is_current"
+   ],
+   "rows": [
+    [
+     "1",
+     "1",
+     "silver",
+     "2026-01-05",
+     "2026-02-14",
+     "0"
+    ],
+    [
+     "2",
+     "1",
+     "gold",
+     "2026-02-15",
+     "9999-12-31",
+     "1"
+    ],
+    [
+     "3",
+     "2",
+     "silver",
+     "2026-01-12",
+     "2026-03-09",
+     "0"
+    ],
+    [
+     "4",
+     "4",
+     "silver",
+     "2026-02-02",
+     "9999-12-31",
+     "1"
+    ],
+    [
+     "5",
+     "5",
+     "gold",
+     "2026-02-10",
+     "9999-12-31",
+     "1"
+    ]
+   ]
+  },
+  "m9.scd2_final.duckdb": {
+   "cols": [
+    "customer_key",
+    "customer_id",
+    "tier",
+    "valid_from",
+    "valid_to",
+    "is_current"
+   ],
+   "rows": [
+    [
+     "1",
+     "1",
+     "silver",
+     "2026-01-05",
+     "2026-02-14",
+     "false"
+    ],
+    [
+     "2",
+     "1",
+     "gold",
+     "2026-02-15",
+     "9999-12-31",
+     "true"
+    ],
+    [
+     "3",
+     "2",
+     "silver",
+     "2026-01-12",
+     "2026-03-09",
+     "false"
+    ],
+    [
+     "4",
+     "4",
+     "silver",
+     "2026-02-02",
+     "9999-12-31",
+     "true"
+    ],
+    [
+     "5",
+     "5",
+     "gold",
+     "2026-02-10",
+     "9999-12-31",
+     "true"
+    ],
+    [
+     "6",
+     "2",
+     "gold",
+     "2026-03-10",
+     "9999-12-31",
+     "true"
+    ],
+    [
+     "7",
+     "9",
+     "gold",
+     "2026-03-10",
+     "9999-12-31",
+     "true"
+    ]
+   ]
+  },
+  "m9.scd2_final.postgres": {
+   "cols": [
+    "customer_key",
+    "customer_id",
+    "tier",
+    "valid_from",
+    "valid_to",
+    "is_current"
+   ],
+   "rows": [
+    [
+     "1",
+     "1",
+     "silver",
+     "2026-01-05",
+     "2026-02-14",
+     "false"
+    ],
+    [
+     "2",
+     "1",
+     "gold",
+     "2026-02-15",
+     "9999-12-31",
+     "true"
+    ],
+    [
+     "3",
+     "2",
+     "silver",
+     "2026-01-12",
+     "2026-03-09",
+     "false"
+    ],
+    [
+     "4",
+     "4",
+     "silver",
+     "2026-02-02",
+     "9999-12-31",
+     "true"
+    ],
+    [
+     "5",
+     "5",
+     "gold",
+     "2026-02-10",
+     "9999-12-31",
+     "true"
+    ],
+    [
+     "6",
+     "2",
+     "gold",
+     "2026-03-10",
+     "9999-12-31",
+     "true"
+    ],
+    [
+     "7",
+     "9",
+     "gold",
+     "2026-03-10",
+     "9999-12-31",
+     "true"
+    ]
+   ]
+  },
+  "m9.scd2_final.sqlite": {
+   "cols": [
+    "customer_key",
+    "customer_id",
+    "tier",
+    "valid_from",
+    "valid_to",
+    "is_current"
+   ],
+   "rows": [
+    [
+     "1",
+     "1",
+     "silver",
+     "2026-01-05",
+     "2026-02-14",
+     "0"
+    ],
+    [
+     "2",
+     "1",
+     "gold",
+     "2026-02-15",
+     "9999-12-31",
+     "1"
+    ],
+    [
+     "3",
+     "2",
+     "silver",
+     "2026-01-12",
+     "2026-03-09",
+     "0"
+    ],
+    [
+     "4",
+     "4",
+     "silver",
+     "2026-02-02",
+     "9999-12-31",
+     "1"
+    ],
+    [
+     "5",
+     "5",
+     "gold",
+     "2026-02-10",
+     "9999-12-31",
+     "1"
+    ],
+    [
+     "6",
+     "2",
+     "gold",
+     "2026-03-10",
+     "9999-12-31",
+     "1"
+    ],
+    [
+     "7",
+     "9",
+     "gold",
+     "2026-03-10",
+     "9999-12-31",
+     "1"
+    ]
+   ]
+  },
+  "m9.scd_bug.duckdb": {
+   "cols": [
+    "customer_id",
+    "current_rows"
+   ],
+   "rows": [
+    [
+     "2",
+     "2"
+    ]
+   ]
+  },
+  "m9.scd_bug.postgres": {
+   "cols": [
+    "customer_id",
+    "current_rows"
+   ],
+   "rows": [
+    [
+     "2",
+     "2"
+    ]
+   ]
+  },
+  "m9.scd_bug.sqlite": {
+   "cols": [
+    "customer_id",
+    "current_rows"
+   ],
+   "rows": [
+    [
+     "2",
+     "2"
+    ]
+   ]
+  },
+  "m9.scd_compare.duckdb": {
+   "cols": [
+    "order_id",
+    "customer_id",
+    "tier_with_history",
+    "tier_overwritten"
+   ],
+   "rows": [
+    [
+     "1001",
+     "1",
+     "gold",
+     "gold"
+    ],
+    [
+     "1002",
+     "1",
+     "gold",
+     "gold"
+    ],
+    [
+     "1003",
+     "2",
+     "silver",
+     "gold"
+    ],
+    [
+     "1005",
+     "4",
+     "silver",
+     "silver"
+    ],
+    [
+     "1006",
+     "5",
+     "gold",
+     "gold"
+    ],
+    [
+     "1007",
+     "1",
+     "gold",
+     "gold"
+    ],
+    [
+     "1011",
+     "5",
+     "gold",
+     "gold"
+    ],
+    [
+     "1012",
+     "2",
+     "silver",
+     "gold"
+    ]
+   ]
+  },
+  "m9.scd_compare.postgres": {
+   "cols": [
+    "order_id",
+    "customer_id",
+    "tier_with_history",
+    "tier_overwritten"
+   ],
+   "rows": [
+    [
+     "1001",
+     "1",
+     "gold",
+     "gold"
+    ],
+    [
+     "1002",
+     "1",
+     "gold",
+     "gold"
+    ],
+    [
+     "1003",
+     "2",
+     "silver",
+     "gold"
+    ],
+    [
+     "1005",
+     "4",
+     "silver",
+     "silver"
+    ],
+    [
+     "1006",
+     "5",
+     "gold",
+     "gold"
+    ],
+    [
+     "1007",
+     "1",
+     "gold",
+     "gold"
+    ],
+    [
+     "1011",
+     "5",
+     "gold",
+     "gold"
+    ],
+    [
+     "1012",
+     "2",
+     "silver",
+     "gold"
+    ]
+   ]
+  },
+  "m9.scd_compare.sqlite": {
+   "cols": [
+    "order_id",
+    "customer_id",
+    "tier_with_history",
+    "tier_overwritten"
+   ],
+   "rows": [
+    [
+     "1001",
+     "1",
+     "gold",
+     "gold"
+    ],
+    [
+     "1002",
+     "1",
+     "gold",
+     "gold"
+    ],
+    [
+     "1003",
+     "2",
+     "silver",
+     "gold"
+    ],
+    [
+     "1005",
+     "4",
+     "silver",
+     "silver"
+    ],
+    [
+     "1006",
+     "5",
+     "gold",
+     "gold"
+    ],
+    [
+     "1007",
+     "1",
+     "gold",
+     "gold"
+    ],
+    [
+     "1011",
+     "5",
+     "gold",
+     "gold"
+    ],
+    [
+     "1012",
+     "2",
+     "silver",
+     "gold"
+    ]
+   ]
+  },
+  "m9.update_all.duckdb": {
+   "cols": [
+    "sku",
+    "qty"
+   ],
+   "rows": [
+    [
+     "ESP-01",
+     "0"
+    ],
+    [
+     "LAT-01",
+     "0"
+    ],
+    [
+     "MUG-01",
+     "0"
+    ]
+   ]
+  },
+  "m9.update_all.postgres": {
+   "cols": [
+    "sku",
+    "qty"
+   ],
+   "rows": [
+    [
+     "ESP-01",
+     "0"
+    ],
+    [
+     "LAT-01",
+     "0"
+    ],
+    [
+     "MUG-01",
+     "0"
+    ]
+   ]
+  },
+  "m9.update_all.sqlite": {
+   "cols": [
+    "sku",
+    "qty"
+   ],
+   "rows": [
+    [
+     "ESP-01",
+     "0"
+    ],
+    [
+     "LAT-01",
+     "0"
+    ],
+    [
+     "MUG-01",
+     "0"
+    ]
+   ]
+  },
+  "m9.update_where.duckdb": {
+   "cols": [
+    "sku",
+    "qty"
+   ],
+   "rows": [
+    [
+     "ESP-01",
+     "40"
+    ],
+    [
+     "LAT-01",
+     "25"
+    ],
+    [
+     "MUG-01",
+     "0"
+    ]
+   ]
+  },
+  "m9.update_where.postgres": {
+   "cols": [
+    "sku",
+    "qty"
+   ],
+   "rows": [
+    [
+     "ESP-01",
+     "40"
+    ],
+    [
+     "LAT-01",
+     "25"
+    ],
+    [
+     "MUG-01",
+     "0"
+    ]
+   ]
+  },
+  "m9.update_where.sqlite": {
+   "cols": [
+    "sku",
+    "qty"
+   ],
+   "rows": [
+    [
+     "ESP-01",
+     "40"
+    ],
+    [
+     "LAT-01",
+     "25"
+    ],
+    [
+     "MUG-01",
+     "0"
+    ]
+   ]
+  },
+  "m9.upsert.duckdb": {
+   "cols": [
+    "store_id",
+    "day",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "1",
+     "2026-03-01",
+     "40.00"
+    ],
+    [
+     "1",
+     "2026-03-02",
+     "57.50"
+    ],
+    [
+     "1",
+     "2026-03-03",
+     "35.00"
+    ],
+    [
+     "1",
+     "2026-03-04",
+     "60.00"
+    ],
+    [
+     "1",
+     "2026-03-05",
+     "50.00"
+    ],
+    [
+     "1",
+     "2026-03-06",
+     "44.00"
+    ],
+    [
+     "2",
+     "2026-03-01",
+     "25.00"
+    ],
+    [
+     "2",
+     "2026-03-02",
+     "30.00"
+    ],
+    [
+     "2",
+     "2026-03-03",
+     "45.00"
+    ],
+    [
+     "2",
+     "2026-03-04",
+     "20.00"
+    ],
+    [
+     "2",
+     "2026-03-05",
+     "50.00"
+    ]
+   ]
+  },
+  "m9.upsert.postgres": {
+   "cols": [
+    "store_id",
+    "day",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "1",
+     "2026-03-01",
+     "40.00"
+    ],
+    [
+     "1",
+     "2026-03-02",
+     "57.50"
+    ],
+    [
+     "1",
+     "2026-03-03",
+     "35.00"
+    ],
+    [
+     "1",
+     "2026-03-04",
+     "60.00"
+    ],
+    [
+     "1",
+     "2026-03-05",
+     "50.00"
+    ],
+    [
+     "1",
+     "2026-03-06",
+     "44.00"
+    ],
+    [
+     "2",
+     "2026-03-01",
+     "25.00"
+    ],
+    [
+     "2",
+     "2026-03-02",
+     "30.00"
+    ],
+    [
+     "2",
+     "2026-03-03",
+     "45.00"
+    ],
+    [
+     "2",
+     "2026-03-04",
+     "20.00"
+    ],
+    [
+     "2",
+     "2026-03-05",
+     "50.00"
+    ]
+   ]
+  },
+  "m9.upsert.sqlite": {
+   "cols": [
+    "store_id",
+    "day",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "1",
+     "2026-03-01",
+     "40"
+    ],
+    [
+     "1",
+     "2026-03-02",
+     "57.5"
+    ],
+    [
+     "1",
+     "2026-03-03",
+     "35"
+    ],
+    [
+     "1",
+     "2026-03-04",
+     "60"
+    ],
+    [
+     "1",
+     "2026-03-05",
+     "50"
+    ],
+    [
+     "1",
+     "2026-03-06",
+     "44"
+    ],
+    [
+     "2",
+     "2026-03-01",
+     "25"
+    ],
+    [
+     "2",
+     "2026-03-02",
+     "30"
+    ],
+    [
+     "2",
+     "2026-03-03",
+     "45"
+    ],
+    [
+     "2",
+     "2026-03-04",
+     "20"
+    ],
+    [
+     "2",
+     "2026-03-05",
+     "50"
+    ]
+   ]
+  },
+  "m9.upsert_count_once.duckdb": {
+   "cols": [
+    "rows_in_table",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "11",
+     "456.50"
+    ]
+   ]
+  },
+  "m9.upsert_count_once.postgres": {
+   "cols": [
+    "rows_in_table",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "11",
+     "456.50"
+    ]
+   ]
+  },
+  "m9.upsert_count_once.sqlite": {
+   "cols": [
+    "rows_in_table",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "11",
+     "456.5"
+    ]
+   ]
+  },
+  "m9.upsert_dup.duckdb": {
+   "cols": [
+    "Count"
+   ],
+   "rows": [
+    [
+     "3"
+    ]
+   ]
+  },
+  "m9.upsert_dup_value.duckdb": {
+   "cols": [
+    "store_id",
+    "day",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "1",
+     "2026-03-02",
+     "57.50"
+    ]
+   ]
+  },
+  "m9.upsert_dup_value.sqlite": {
+   "cols": [
+    "store_id",
+    "day",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "1",
+     "2026-03-02",
+     "58"
+    ]
+   ]
+  },
+  "m9.upsert_run1.duckdb": {
+   "cols": [
+    "rows_in_table",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "11",
+     "456.50"
+    ]
+   ]
+  },
+  "m9.upsert_run1.postgres": {
+   "cols": [
+    "rows_in_table",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "11",
+     "456.50"
+    ]
+   ]
+  },
+  "m9.upsert_run1.sqlite": {
+   "cols": [
+    "rows_in_table",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "11",
+     "456.5"
+    ]
+   ]
+  },
+  "m9.upsert_twice.duckdb": {
+   "cols": [
+    "rows_in_table",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "11",
+     "456.50"
+    ]
+   ]
+  },
+  "m9.upsert_twice.postgres": {
+   "cols": [
+    "rows_in_table",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "11",
+     "456.50"
+    ]
+   ]
+  },
+  "m9.upsert_twice.sqlite": {
+   "cols": [
+    "rows_in_table",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "11",
+     "456.5"
+    ]
+   ]
   }
  },
  "text": {
@@ -18817,6 +21279,20 @@ LAB.real = {
   "m7.plan.pg_range": "Aggregate (actual rows=1 loops=1)\n  ->  Bitmap Heap Scan on big_orders (actual rows=331 loops=1)\n        Recheck Cond: ((order_ts >= '2026-02-10 00:00:00'::timestamp without time zone) AND (order_ts < '2026-02-11 00:00:00'::timestamp without time zone))\n        Heap Blocks: exact=19\n        ->  Bitmap Index Scan on big_orders_ts (actual rows=331 loops=1)\n              Index Cond: ((order_ts >= '2026-02-10 00:00:00'::timestamp without time zone) AND (order_ts < '2026-02-11 00:00:00'::timestamp without time zone))",
   "m7.regex.sqlite.error": "no such function: regexp_replace",
   "m7.tz_sqlite_error.error": "near \"TIME\": syntax error",
-  "m8.lateral.sqlite.error": "near \"SELECT\": syntax error"
+  "m8.lateral.sqlite.error": "near \"SELECT\": syntax error",
+  "m9.check_error.duckdb.error": "Constraint Error: CHECK constraint failed on table \"stock\" with expression CHECK((qty >= 0))",
+  "m9.check_error.postgres.error": "new row for relation \"stock\" violates check constraint \"stock_qty_check\"",
+  "m9.check_error.sqlite.error": "CHECK constraint failed: qty >= 0",
+  "m9.merge.sqlite.error": "near \"MERGE\": syntax error",
+  "m9.merge_dup.duckdb.error": "Invalid Input Error: MERGE INTO command cannot affect the same target row more than once. A target row matched more than one source row; ensure the source rows are deduplicated or the ON condition is unique.",
+  "m9.merge_dup.postgres.error": "MERGE command cannot affect row a second time",
+  "m9.merge_dup.sqlite.error": "near \"MERGE\": syntax error",
+  "m9.notnull_error.duckdb.error": "Constraint Error: NOT NULL constraint failed: stock.\"name\"",
+  "m9.notnull_error.postgres.error": "null value in column \"name\" of relation \"stock\" violates not-null constraint",
+  "m9.notnull_error.sqlite.error": "NOT NULL constraint failed: stock.name",
+  "m9.pk_error.duckdb.error": "Constraint Error: PRIMARY KEY or UNIQUE constraint violation: duplicate key \"ESP-01\"",
+  "m9.pk_error.postgres.error": "duplicate key value violates unique constraint \"stock_pkey\"",
+  "m9.pk_error.sqlite.error": "UNIQUE constraint failed: stock.sku",
+  "m9.upsert_dup.postgres.error": "ON CONFLICT DO UPDATE command cannot affect row a second time"
  }
 };
