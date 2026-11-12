@@ -198,11 +198,12 @@
             table(['order_id', 'total'], c.final.map(function (r) { return [r[0], money(r[1])]; }), null, function (r, ri, ci) { return dupes[r[0]] > 1 ? 'wbad' : ''; }) +
             '<div class="callout ' + (c.right ? 'tip' : 'warn') + '">' + md(WHY[st.s] + (st.c === 'crash, then run again' && crash0.rows !== 0 && crash0.rows !== c.want_rows ? ' Right after the crash the table held **' + crash0.rows + '** rows.' : st.c === 'crash, then run again' && st.s === 'delete, then insert, in a transaction' ? ' Right after the crash the table held **' + crash0.rows + '** rows, as it did before the run.' : '')) + '</div>';
         } else {
-          var cols = ['Load by'].concat(d.scenarios);
+          var SHORT = { 'run once': 'run once', 'run twice': 'run twice', 'crash, then run again': 'crash, rerun', 'the source corrects O-3': 'O-3 corrected', 'the source drops O-6': 'O-6 dropped' };
+          var cols = ['Load by'].concat(d.scenarios.map(function (sc) { return SHORT[sc] || sc; }));
           h += table(cols, d.strategies.map(function (sn) {
-            return [sn].concat(d.scenarios.map(function (sc) { var c2 = d.cells[sn][sc]; return (c2.right ? 'right' : 'wrong') + ', ' + c2.final.length + ' rows'; }));
+            return [sn].concat(d.scenarios.map(function (sc) { var c2 = d.cells[sn][sc]; return (c2.right ? 'right' : 'wrong') + ' (' + c2.final.length + ')'; }));
           }), null, function (r, ri, ci) { return ci === 0 ? '' : /^right/.test(String(r[ci])) ? 'wgood' : 'wbad'; }) +
-            '<div class="callout tip">' + md('Read down a column and across a row. **Delete then insert** and **delete then insert in a transaction** end right in every column, **upsert** misses a row that the source dropped, a plain **append** is wrong in four columns, and a **primary key** with a plain INSERT cannot rerun at all. The two delete variants differ in the crash column: after the crash the first left **' + d.cells['delete, then insert']['crash, then run again'].runs[0].rows + '** rows in the table, the second left **' + d.cells['delete, then insert, in a transaction']['crash, then run again'].runs[0].rows + '**, the table as it was.') + '</div>';
+            '<p class="lab-note">The number in brackets is the number of rows in the final table. The file has 6 rows, and 5 when O-6 is dropped.</p><div class="callout tip">' + md('Read down a column and across a row. **Delete then insert** and **delete then insert in a transaction** end right in every column, **upsert** misses a row that the source dropped, a plain **append** is wrong in four columns, and a **primary key** with a plain INSERT cannot rerun at all. The two delete variants differ in the crash column: after the crash the first left **' + d.cells['delete, then insert']['crash, then run again'].runs[0].rows + '** rows in the table, the second left **' + d.cells['delete, then insert, in a transaction']['crash, then run again'].runs[0].rows + '**, the table as it was.') + '</div>';
         }
         box.innerHTML = h + '</div>';
         bindCodes(box);

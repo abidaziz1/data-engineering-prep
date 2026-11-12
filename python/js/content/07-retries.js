@@ -527,7 +527,7 @@
       }),
 
       B.qa({
-        id: 'qa-idem', t: 1, tag: 'Idempotency', secs: 60,
+        id: 'qa-idempotent', t: 1, tag: 'Idempotency', secs: 60,
         q: 'What does idempotent mean, and how do you make a load idempotent?',
         pts: ['Running it twice leaves the same result as once', 'Append is not idempotent', 'Replace the partition in one transaction, or upsert by key', 'Test it: run twice, and kill it halfway'],
         short: 'Idempotent means that running the operation twice leaves the same result as running it once. A load that appends is not, because a retry adds the rows again: in a recording the table had 12 rows and double the revenue after two runs. I make a load idempotent by writing by key, with an upsert, or by replacing a whole partition, such as a day, with a delete and an insert in one transaction. The transaction matters: without it a crash leaves a partial day. I test by running the load twice on the same file and by killing it halfway, and the table has to be the same.',
