@@ -92,7 +92,13 @@ LAB.real = {
   "m8/transactions.py": "\"\"\"A transaction: either both updates happen or neither does. SQLite, in memory.\"\"\"\nimport sqlite3\n\nconn = sqlite3.connect(\":memory:\")\nconn.execute(\"CREATE TABLE stock (store TEXT PRIMARY KEY, beans_kg INTEGER NOT NULL CHECK (beans_kg >= 0))\")\nconn.executemany(\"INSERT INTO stock VALUES (?, ?)\", [(\"Singapore\", 40), (\"London\", 10)])\nconn.commit()\n\n\ndef levels():\n    return dict(conn.execute(\"SELECT store, beans_kg FROM stock ORDER BY store\"))\n\n\ndef move(kg, src, dst, use_transaction):\n    try:\n        if use_transaction:\n            with conn:  # commits when the block ends, rolls back when it raises\n                conn.execute(\"UPDATE stock SET beans_kg = beans_kg + ? WHERE store = ?\", (kg, dst))\n                conn.execute(\"UPDATE stock SET beans_kg = beans_kg - ? WHERE store = ?\", (kg, src))\n        else:\n            conn.execute(\"UPDATE stock SET beans_kg = beans_kg + ? WHERE store = ?\", (kg, dst))\n            conn.commit()                         # the first update is saved on its own\n            conn.execute(\"UPDATE stock SET beans_kg = beans_kg - ? WHERE store = ?\", (kg, src))\n            conn.commit()\n    except sqlite3.IntegrityError as err:\n        print(\"  error:\", err)\n\n\nprint(\"start:\", levels())\nprint(\"move 5 kg, London to Singapore, with a transaction (London has 10):\")\nmove(5, \"London\", \"Singapore\", True)\nprint(\"  now:\", levels())\nprint(\"move 30 kg, London to Singapore, with a transaction (London only has 5 left):\")\nmove(30, \"London\", \"Singapore\", True)\nprint(\"  now:\", levels())\nprint(\"the same move, with each update committed on its own:\")\nmove(30, \"London\", \"Singapore\", False)\nprint(\"  now:\", levels(), \"-> total\", sum(levels().values()), \"kg, and it was 50\")\n",
   "m8/sqlalchemy_core.py": "\"\"\"The same ideas in SQLAlchemy Core: an engine, a text query with bind parameters, and a transaction block.\"\"\"\nimport sqlalchemy as sa\n\nengine = sa.create_engine(\"sqlite:///:memory:\")\nwith engine.begin() as conn:  # BEGIN ... COMMIT, or ROLLBACK when the block raises\n    conn.execute(sa.text(\"CREATE TABLE orders (order_id TEXT PRIMARY KEY, store TEXT, total_cents INTEGER)\"))\n    conn.execute(sa.text(\"INSERT INTO orders VALUES (:id, :store, :cents)\"), [\n        {\"id\": \"O-1\", \"store\": \"London\", \"cents\": 1250}, {\"id\": \"O-2\", \"store\": \"London\", \"cents\": 475}, {\"id\": \"O-3\", \"store\": \"Singapore\", \"cents\": 820}])\n\nwith engine.connect() as conn:\n    rows = conn.execute(sa.text(\"SELECT store, sum(total_cents) AS cents FROM orders WHERE total_cents >= :min GROUP BY store ORDER BY store\"), {\"min\": 500}).mappings().all()\n    print(\"rows:\", [dict(r) for r in rows])\n    print(\"column names:\", list(rows[0].keys()))\nprint(\"sqlalchemy\", sa.__version__)\n",
   "m8/upsert_batches.py": "\"\"\"Coding round: write many rows in batches, safe to run twice. SQLite, in memory.\"\"\"\nimport sqlite3\nfrom itertools import batched\n\n\ndef upsert_orders(conn, rows, batch_size=1000):\n    \"\"\"rows are (order_id, store, total_cents). Insert new orders and update the ones that exist. One transaction for each batch.\n    Return the number of batches written.\"\"\"\n    sql = (\"INSERT INTO orders (order_id, store, total_cents) VALUES (?, ?, ?) \"\n           \"ON CONFLICT (order_id) DO UPDATE SET store = excluded.store, total_cents = excluded.total_cents\")\n    n = 0\n    for chunk in batched(rows, batch_size):\n        with conn:\n            conn.executemany(sql, chunk)\n        n += 1\n    return n\n\n\nconn = sqlite3.connect(\":memory:\")\nconn.execute(\"CREATE TABLE orders (order_id TEXT PRIMARY KEY, store TEXT NOT NULL, total_cents INTEGER NOT NULL)\")\nrows = [(f\"O-{i}\", \"London\" if i % 2 else \"Singapore\", 100 + i) for i in range(2500)]\n\nn = upsert_orders(conn, rows, batch_size=1000)\ncount = lambda: conn.execute(\"SELECT count(*), sum(total_cents) FROM orders\").fetchone()\nassert n == 3 and count() == (2500, sum(r[2] for r in rows))\nprint(\"2,500 rows in batches of 1,000:\", n, \"batches,\", count()[0], \"rows\")\n\nupsert_orders(conn, rows, batch_size=1000)\nassert count() == (2500, sum(r[2] for r in rows))\nprint(\"run again:\", count()[0], \"rows, the same total\")\n\nchanged = [(\"O-0\", \"Singapore\", 9999)] + rows[1:]\nupsert_orders(conn, changed, batch_size=1000)\nassert conn.execute(\"SELECT total_cents FROM orders WHERE order_id = 'O-0'\").fetchone() == (9999,) and count()[0] == 2500\nprint(\"one changed row: updated in place, still\", count()[0], \"rows\")\n\nbad = rows[:3] + [(\"O-9000\", None, 1)]\ntry:\n    upsert_orders(conn, bad, batch_size=2)\nexcept sqlite3.IntegrityError as err:\n    print(\"a bad row in the second batch:\", err)\nassert conn.execute(\"SELECT count(*) FROM orders WHERE order_id = 'O-9000'\").fetchone() == (0,)\nprint(\"tests passed\")\n",
-  "m8/batch_insert.py": "\"\"\"Four ways to write 5,000 rows into SQLite, in a file on disk. The timings come from the machine that runs this file.\"\"\"\nimport os\nimport sqlite3\nimport statistics\nimport tempfile\nimport time\n\nROWS = [(f\"O-{i}\", \"London\" if i % 2 else \"Singapore\", 100 + i) for i in range(5000)]\nSQL = \"INSERT INTO orders VALUES (?, ?, ?)\"\n\n\ndef commit_each(conn, rows):          # a transaction for every row\n    for r in rows:\n        conn.execute(SQL, r)\n        conn.commit()\n\n\ndef one_transaction(conn, rows):      # one transaction, one execute for every row\n    for r in rows:\n        conn.execute(SQL, r)\n    conn.commit()\n\n\ndef many(conn, rows):                 # one transaction, one executemany call\n    conn.executemany(SQL, rows)\n    conn.commit()\n\n\ndef batches(conn, rows, size=1000):   # executemany, and a commit for every 1,000 rows\n    for i in range(0, len(rows), size):\n        conn.executemany(SQL, rows[i:i + size])\n        conn.commit()\n\n\nMETHODS = {\"commit for every row\": commit_each, \"one transaction, execute in a loop\": one_transaction, \"one transaction, executemany\": many, \"executemany, commit every 1,000\": batches}\n\n\ndef seconds(method, rows=ROWS):\n    with tempfile.TemporaryDirectory() as folder:\n        conn = sqlite3.connect(os.path.join(folder, \"orders.db\"))\n        conn.execute(\"CREATE TABLE orders (order_id TEXT PRIMARY KEY, store TEXT, total_cents INTEGER)\")\n        conn.commit()\n        t0 = time.perf_counter()\n        METHODS[method](conn, rows)\n        took = time.perf_counter() - t0\n        assert conn.execute(\"SELECT count(*) FROM orders\").fetchone()[0] == len(rows)\n        conn.close()\n        return took\n\n\nif __name__ == \"__main__\":\n    print(f\"{'method':<38}{'seconds':>9}{'rows per second':>18}\")\n    for name in METHODS:\n        s = statistics.median(seconds(name) for _ in range(3))\n        print(f\"{name:<38}{s:>9.3f}{len(ROWS) / s:>18,.0f}\")\n"
+  "m8/batch_insert.py": "\"\"\"Four ways to write 5,000 rows into SQLite, in a file on disk. The timings come from the machine that runs this file.\"\"\"\nimport os\nimport sqlite3\nimport statistics\nimport tempfile\nimport time\n\nROWS = [(f\"O-{i}\", \"London\" if i % 2 else \"Singapore\", 100 + i) for i in range(5000)]\nSQL = \"INSERT INTO orders VALUES (?, ?, ?)\"\n\n\ndef commit_each(conn, rows):          # a transaction for every row\n    for r in rows:\n        conn.execute(SQL, r)\n        conn.commit()\n\n\ndef one_transaction(conn, rows):      # one transaction, one execute for every row\n    for r in rows:\n        conn.execute(SQL, r)\n    conn.commit()\n\n\ndef many(conn, rows):                 # one transaction, one executemany call\n    conn.executemany(SQL, rows)\n    conn.commit()\n\n\ndef batches(conn, rows, size=1000):   # executemany, and a commit for every 1,000 rows\n    for i in range(0, len(rows), size):\n        conn.executemany(SQL, rows[i:i + size])\n        conn.commit()\n\n\nMETHODS = {\"commit for every row\": commit_each, \"one transaction, execute in a loop\": one_transaction, \"one transaction, executemany\": many, \"executemany, commit every 1,000\": batches}\n\n\ndef seconds(method, rows=ROWS):\n    with tempfile.TemporaryDirectory() as folder:\n        conn = sqlite3.connect(os.path.join(folder, \"orders.db\"))\n        conn.execute(\"CREATE TABLE orders (order_id TEXT PRIMARY KEY, store TEXT, total_cents INTEGER)\")\n        conn.commit()\n        t0 = time.perf_counter()\n        METHODS[method](conn, rows)\n        took = time.perf_counter() - t0\n        assert conn.execute(\"SELECT count(*) FROM orders\").fetchone()[0] == len(rows)\n        conn.close()\n        return took\n\n\nif __name__ == \"__main__\":\n    print(f\"{'method':<38}{'seconds':>9}{'rows per second':>18}\")\n    for name in METHODS:\n        s = statistics.median(seconds(name) for _ in range(3))\n        print(f\"{name:<38}{s:>9.3f}{len(ROWS) / s:>18,.0f}\")\n",
+  "m9/nulls_and_types.py": "\"\"\"Missing values in pandas, Polars and DuckDB: what counts, what sums and what groups.\"\"\"\nimport duckdb\nimport pandas as pd\nimport polars as pl\n\ndata = {\"order_id\": [\"O-1\", \"O-2\", \"O-3\", \"O-4\"], \"total\": [12.5, None, 8.2, None], \"store\": [\"London\", \"London\", None, \"Singapore\"]}\n\np = pd.DataFrame(data)\nprint(\"pandas  dtypes:\", {k: str(v) for k, v in p.dtypes.items()})\nprint(\"pandas  rows:\", len(p), \" count of total:\", p[\"total\"].count(), \" sum:\", p[\"total\"].sum(), \" mean:\", round(p[\"total\"].mean(), 2))\nprint(\"pandas  NaN == NaN:\", p[\"total\"][1] == p[\"total\"][1], \" isna:\", p[\"total\"].isna().tolist())\nprint(\"pandas  rows per store:\", p.groupby(\"store\").size().to_dict(), \"(the missing store is dropped)\")\nprint(\"pandas  with dropna=False:\", p.groupby(\"store\", dropna=False).size().to_dict())\n\nq = pl.DataFrame(data)\nprint(\"polars  dtypes:\", {k: str(v) for k, v in q.schema.items()})\nprint(\"polars  rows:\", q.height, \" count of total:\", q[\"total\"].count(), \" null_count:\", q[\"total\"].null_count(), \" sum:\", q[\"total\"].sum(), \" mean:\", round(q[\"total\"].mean(), 2))\nprint(\"polars  rows per store:\", dict(q.group_by(\"store\").len().sort(\"store\", nulls_last=True).iter_rows()))\n\nprint(\"duckdb  rows per store:\", dict(duckdb.sql(\"SELECT store, count(*) FROM p GROUP BY store ORDER BY store NULLS LAST\").fetchall()))\nprint(\"duckdb  count(*), count(total), sum, avg:\", duckdb.sql(\"SELECT count(*), count(total), sum(total), round(avg(total), 2) FROM p\").fetchall()[0])\n",
+  "m9/merge_fanout.py": "\"\"\"A join that multiplies rows: the customer table has two rows for customer 3. The same join in pandas, Polars and DuckDB.\"\"\"\nimport duckdb\nimport pandas as pd\nimport polars as pl\n\norders = pd.DataFrame({\"order_id\": [\"O-1\", \"O-2\", \"O-3\", \"O-4\", \"O-5\", \"O-6\"], \"customer_id\": [1, 2, 2, 3, 1, 3], \"total_cents\": [1250, 475, 820, 1990, 3100, 640]})\ncustomers = pd.DataFrame({\"customer_id\": [1, 2, 3, 3], \"city\": [\"London\", \"London\", \"Singapore\", \"Singapore\"]})  # 3 appears twice, like a history table\n\nprint(\"orders:\", len(orders), \"rows, total\", orders[\"total_cents\"].sum(), \"cents\")\n\nmerged = orders.merge(customers, on=\"customer_id\", how=\"left\")\nprint(\"pandas  left join:\", len(merged), \"rows, total\", merged[\"total_cents\"].sum(), \"cents\")\n\njoined = pl.from_pandas(orders).join(pl.from_pandas(customers), on=\"customer_id\", how=\"left\")\nprint(\"polars  left join:\", joined.height, \"rows, total\", joined[\"total_cents\"].sum(), \"cents\")\n\nrow = duckdb.sql(\"SELECT count(*), sum(total_cents) FROM orders LEFT JOIN customers USING (customer_id)\").fetchall()[0]\nprint(\"duckdb  left join:\", row[0], \"rows, total\", row[1], \"cents\")\n\nprint(\"who is repeated:\", merged[merged[\"order_id\"].duplicated(keep=False)][\"order_id\"].tolist())\n\ntry:\n    orders.merge(customers, on=\"customer_id\", how=\"left\", validate=\"m:1\")\nexcept Exception as err:\n    print(\"pandas  validate m:1 ->\", type(err).__name__ + \":\", err)\ntry:\n    pl.from_pandas(orders).join(pl.from_pandas(customers), on=\"customer_id\", how=\"left\", validate=\"m:1\")\nexcept Exception as err:\n    print(\"polars  validate m:1 ->\", type(err).__name__ + \":\", err)\nprint(\"duckdb  has no validate. Check the key yourself:\",\n      duckdb.sql(\"SELECT customer_id, count(*) AS rows FROM customers GROUP BY customer_id HAVING count(*) > 1\").fetchall())\n\nfixed = orders.merge(customers.drop_duplicates(\"customer_id\"), on=\"customer_id\", how=\"left\", validate=\"m:1\")\nprint(\"after drop_duplicates and validate m:1:\", len(fixed), \"rows, total\", fixed[\"total_cents\"].sum(), \"cents\")\n",
+  "m9/three_engines.py": "\"\"\"The same question in pandas, Polars and DuckDB: paid revenue for each store, biggest first. Two million made-up orders.\"\"\"\nimport duckdb\nimport numpy as np\nimport pandas as pd\nimport polars as pl\n\nrng = np.random.default_rng(7)\nn = 2_000_000\npd.DataFrame({\n    \"order_id\": np.arange(n),\n    \"store\": rng.choice([\"London\", \"Singapore\", \"Sydney\", \"Mumbai\", \"Dubai\", \"Paris\", \"Tokyo\", \"Lagos\"], n),\n    \"status\": rng.choice([\"paid\", \"paid\", \"paid\", \"refunded\", \"cancelled\"], n),\n    \"total_cents\": rng.integers(300, 4000, n),\n}).to_parquet(\"orders.parquet\")\n\n\ndef with_pandas():\n    df = pd.read_parquet(\"orders.parquet\", columns=[\"store\", \"status\", \"total_cents\"])\n    paid = df[df[\"status\"] == \"paid\"]\n    return paid.groupby(\"store\")[\"total_cents\"].agg([\"sum\", \"count\"]).sort_values(\"sum\", ascending=False)\n\n\ndef with_polars():\n    return (pl.scan_parquet(\"orders.parquet\").filter(pl.col(\"status\") == \"paid\")\n            .group_by(\"store\").agg(pl.col(\"total_cents\").sum().alias(\"sum\"), pl.col(\"total_cents\").count().alias(\"count\"))\n            .sort(\"sum\", descending=True).collect())\n\n\ndef with_duckdb():\n    return duckdb.sql(\"\"\"SELECT store, sum(total_cents) AS \"sum\", count(*) AS \"count\" FROM 'orders.parquet'\n                         WHERE status = 'paid' GROUP BY store ORDER BY \"sum\" DESC\"\"\").fetchall()\n\n\na = [(store, int(r[\"sum\"]), int(r[\"count\"])) for store, r in with_pandas().iterrows()]\nb = [tuple(r) for r in with_polars().iter_rows()]\nc = with_duckdb()\nprint(\"same answer from all three:\", a == b == c)\nfor store, cents, count in a[:3]:\n    print(f\"  {store:<10}{count:>9,} paid orders{cents / 100:>14,.2f}\")\n",
+  "m9/lazy_polars.py": "\"\"\"Polars can look at the whole query before it reads anything. explain() prints the plan.\"\"\"\nimport polars as pl\n\nquery = (pl.scan_parquet(\"orders.parquet\")\n         .filter(pl.col(\"status\") == \"paid\")\n         .group_by(\"store\").agg(pl.col(\"total_cents\").sum().alias(\"cents\"))\n         .sort(\"cents\", descending=True))\nprint(query.explain())\n",
+  "m9/safe_join.py": "\"\"\"Coding round: a left join that cannot multiply rows.\"\"\"\nimport pandas as pd\n\n\ndef safe_join(orders, customers, key=\"customer_id\"):\n    \"\"\"Left join orders to customers. Raise ValueError, naming the keys, when customers has more than one row for a key.\n    The result has exactly one row for each order, in the order of `orders`.\"\"\"\n    repeated = customers.loc[customers[key].duplicated(keep=False), key].unique().tolist()\n    if repeated:\n        raise ValueError(f\"customers has more than one row for {key} {repeated}\")\n    out = orders.merge(customers, on=key, how=\"left\", validate=\"m:1\")\n    assert len(out) == len(orders)\n    return out\n\n\norders = pd.DataFrame({\"order_id\": [\"O-1\", \"O-2\", \"O-3\", \"O-4\"], \"customer_id\": [1, 2, 3, 9], \"total_cents\": [1250, 475, 820, 1990]})\ncustomers = pd.DataFrame({\"customer_id\": [1, 2, 3], \"city\": [\"London\", \"London\", \"Singapore\"]})\n\nout = safe_join(orders, customers)\nassert out[\"order_id\"].tolist() == [\"O-1\", \"O-2\", \"O-3\", \"O-4\"] and out[\"total_cents\"].sum() == orders[\"total_cents\"].sum()\nprint(\"a clean join:\", len(out), \"rows, total\", out[\"total_cents\"].sum(), \"cents\")\nassert bool(out[\"city\"].isna().iloc[3]) and out[\"city\"].iloc[0] == \"London\"\nprint(\"an order with no customer is kept:\", out[\"order_id\"].iloc[3], \"with a missing city\")\ntry:\n    safe_join(orders, pd.concat([customers, customers.iloc[[2]]]))\n    raise AssertionError(\"a repeated key must raise\")\nexcept ValueError as err:\n    print(\"a repeated key raises:\", err)\nprint(\"tests passed\")\n",
+  "m9/latest_per_order.py": "\"\"\"Coding round: the latest row for each order, in SQL, with DuckDB.\"\"\"\nimport duckdb\nimport pandas as pd\n\n\ndef latest_per_order(rows):\n    \"\"\"rows are (order_id, status, updated_at). Return one row for each order_id, the one with the latest updated_at, sorted by order_id.\"\"\"\n    df = pd.DataFrame(rows, columns=[\"order_id\", \"status\", \"updated_at\"])\n    return duckdb.sql(\"\"\"\n        SELECT order_id, status, updated_at FROM df\n        QUALIFY row_number() OVER (PARTITION BY order_id ORDER BY updated_at DESC) = 1\n        ORDER BY order_id\"\"\").fetchall()\n\n\nrows = [(\"O-1\", \"placed\", \"2026-03-14 08:00\"), (\"O-2\", \"placed\", \"2026-03-14 09:00\"), (\"O-1\", \"paid\", \"2026-03-14 08:05\"),\n        (\"O-3\", \"placed\", \"2026-03-14 07:00\"), (\"O-1\", \"refunded\", \"2026-03-15 10:00\"), (\"O-2\", \"paid\", \"2026-03-14 09:30\")]\ngot = latest_per_order(rows)\nassert got == [(\"O-1\", \"refunded\", \"2026-03-15 10:00\"), (\"O-2\", \"paid\", \"2026-03-14 09:30\"), (\"O-3\", \"placed\", \"2026-03-14 07:00\")]\nprint(\"latest status of each order:\", [(o, s) for o, s, _ in got])\nassert latest_per_order([]) == []\nprint(\"no rows:\", latest_per_order([]))\nassert latest_per_order(rows[:1]) == [rows[0]]\nprint(\"one row:\", len(latest_per_order(rows[:1])), \"row\")\nprint(\"tests passed\")\n"
  },
  "text": {
   "m1/load_orders_v7.py#1": "loaded 6 rows\n(6, 6, 78.85)\n(1,)",
@@ -159,7 +165,13 @@ LAB.real = {
   "m8/transactions.py": "start: {'London': 10, 'Singapore': 40}\nmove 5 kg, London to Singapore, with a transaction (London has 10):\n  now: {'London': 5, 'Singapore': 45}\nmove 30 kg, London to Singapore, with a transaction (London only has 5 left):\n  error: CHECK constraint failed: beans_kg >= 0\n  now: {'London': 5, 'Singapore': 45}\nthe same move, with each update committed on its own:\n  error: CHECK constraint failed: beans_kg >= 0\n  now: {'London': 5, 'Singapore': 75} -> total 80 kg, and it was 50",
   "m8/sqlalchemy_core.py": "rows: [{'store': 'London', 'cents': 1250}, {'store': 'Singapore', 'cents': 820}]\ncolumn names: ['store', 'cents']\nsqlalchemy 2.1.8",
   "m8/upsert_batches.py": "2,500 rows in batches of 1,000: 3 batches, 2500 rows\nrun again: 2500 rows, the same total\none changed row: updated in place, still 2500 rows\na bad row in the second batch: NOT NULL constraint failed: orders.store\ntests passed",
-  "m8/batch_insert.py": "method                                  seconds   rows per second\ncommit for every row                      6.251               800\none transaction, execute in a loop        0.010           516,047\none transaction, executemany              0.007           695,004\nexecutemany, commit every 1,000           0.017           301,644"
+  "m8/batch_insert.py": "method                                  seconds   rows per second\ncommit for every row                      6.251               800\none transaction, execute in a loop        0.010           516,047\none transaction, executemany              0.007           695,004\nexecutemany, commit every 1,000           0.017           301,644",
+  "m9/nulls_and_types.py": "pandas  dtypes: {'order_id': 'str', 'total': 'float64', 'store': 'str'}\npandas  rows: 4  count of total: 2  sum: 20.7  mean: 10.35\npandas  NaN == NaN: False  isna: [False, True, False, True]\npandas  rows per store: {'London': 2, 'Singapore': 1} (the missing store is dropped)\npandas  with dropna=False: {'London': 2, 'Singapore': 1, nan: 1}\npolars  dtypes: {'order_id': 'String', 'total': 'Float64', 'store': 'String'}\npolars  rows: 4  count of total: 2  null_count: 2  sum: 20.7  mean: 10.35\npolars  rows per store: {'London': 2, 'Singapore': 1, None: 1}\nduckdb  rows per store: {'London': 2, 'Singapore': 1, None: 1}\nduckdb  count(*), count(total), sum, avg: (4, 2, 20.7, 10.35)",
+  "m9/merge_fanout.py": "orders: 6 rows, total 8275 cents\npandas  left join: 8 rows, total 10905 cents\npolars  left join: 8 rows, total 10905 cents\nduckdb  left join: 8 rows, total 10905 cents\nwho is repeated: ['O-4', 'O-4', 'O-6', 'O-6']\npandas  validate m:1 -> MergeError: Merge keys are not unique in right dataset; not a many-to-one merge\n\nDuplicates in right:\n  customer_id\n           3 ...\npolars  validate m:1 -> ComputeError: join keys did not fulfill m:1 validation\nduckdb  has no validate. Check the key yourself: [(3, 2)]\nafter drop_duplicates and validate m:1: 6 rows, total 8275 cents",
+  "m9/three_engines.py": "same answer from all three: True\n  Paris       150,613 paid orders  3,235,372.73\n  Tokyo       150,288 paid orders  3,233,056.35\n  Dubai       150,263 paid orders  3,227,403.79",
+  "m9/lazy_polars.py": "SORT BY [descending: [true]] [col(\"cents\")]\n  AGGREGATE[maintain_order: false]\n    [col(\"total_cents\").sum().alias(\"cents\")] BY [col(\"store\")]\n    FROM\n    simple π 2/2 [\"store\", \"total_cents\"]\n      Parquet SCAN [orders.parquet]\n      PROJECT 3/4 COLUMNS\n      SELECTION: col(\"status\") == \"paid\"\n      ESTIMATED ROWS: 2000000",
+  "m9/safe_join.py": "a clean join: 4 rows, total 4535 cents\nan order with no customer is kept: O-4 with a missing city\na repeated key raises: customers has more than one row for customer_id [3]\ntests passed",
+  "m9/latest_per_order.py": "latest status of each order: [('O-1', 'refunded'), ('O-2', 'paid'), ('O-3', 'placed')]\nno rows: []\none row: 1 row\ntests passed"
  },
  "tables": {
   "m3.structs": {
@@ -312,7 +324,13 @@ LAB.real = {
    "m8/transactions.py": 0,
    "m8/sqlalchemy_core.py": 0,
    "m8/upsert_batches.py": 0,
-   "m8/batch_insert.py": 0
+   "m8/batch_insert.py": 0,
+   "m9/nulls_and_types.py": 0,
+   "m9/merge_fanout.py": 0,
+   "m9/three_engines.py": 0,
+   "m9/lazy_polars.py": 0,
+   "m9/safe_join.py": 0,
+   "m9/latest_per_order.py": 0
   },
   "m2.specifiers.pandas": {
    "versions": [
@@ -4478,6 +4496,117 @@ LAB.real = {
     }
    },
    "note": "median of 3 runs for each method, SQLite in a file in a temporary folder, on this machine. Parsed from the recorded output of lessons/m8/batch_insert.py."
+  },
+  "m9.engines": {
+   "rows": 2000000,
+   "file_mb": 12.9,
+   "engines": {
+    "pandas": {
+     "seconds": 0.2341,
+     "extra_mb": 272.4,
+     "peak_mb": 377.8,
+     "runs": [
+      0.3325,
+      0.4412,
+      0.2341,
+      0.1681,
+      0.206
+     ]
+    },
+    "polars eager": {
+     "seconds": 0.1022,
+     "extra_mb": 230.0,
+     "peak_mb": 276.7,
+     "runs": [
+      0.1176,
+      0.1624,
+      0.1022,
+      0.0965,
+      0.0942
+     ]
+    },
+    "polars lazy": {
+     "seconds": 0.028,
+     "extra_mb": 53.8,
+     "peak_mb": 100.5,
+     "runs": [
+      0.0273,
+      0.0425,
+      0.028,
+      0.0233,
+      0.0284
+     ]
+    },
+    "duckdb": {
+     "seconds": 0.0516,
+     "extra_mb": 37.9,
+     "peak_mb": 74.7,
+     "runs": [
+      0.0458,
+      0.0556,
+      0.0516,
+      0.0608,
+      0.0495
+     ]
+    }
+   },
+   "note": "each number is the median of 5 runs, each run a new process, reading the same Parquet file and answering the same question, on this machine. extra_mb is the growth of the peak resident memory during the query."
+  },
+  "m9.fanout": {
+   "orders": {
+    "rows": 7,
+    "cents": 8835
+   },
+   "cases": [
+    {
+     "how": "inner",
+     "dup": 0,
+     "rows": 6,
+     "cents": 8275,
+     "pandas_validate": null,
+     "polars_validate": null
+    },
+    {
+     "how": "inner",
+     "dup": 1,
+     "rows": 8,
+     "cents": 10905,
+     "pandas_validate": "MergeError: Merge keys are not unique in right dataset; not a many-to-one merge",
+     "polars_validate": "ComputeError: join keys did not fulfill m:1 validation"
+    },
+    {
+     "how": "inner",
+     "dup": 2,
+     "rows": 10,
+     "cents": 13535,
+     "pandas_validate": "MergeError: Merge keys are not unique in right dataset; not a many-to-one merge",
+     "polars_validate": "ComputeError: join keys did not fulfill m:1 validation"
+    },
+    {
+     "how": "left",
+     "dup": 0,
+     "rows": 7,
+     "cents": 8835,
+     "pandas_validate": null,
+     "polars_validate": null
+    },
+    {
+     "how": "left",
+     "dup": 1,
+     "rows": 9,
+     "cents": 11465,
+     "pandas_validate": "MergeError: Merge keys are not unique in right dataset; not a many-to-one merge",
+     "polars_validate": "ComputeError: join keys did not fulfill m:1 validation"
+    },
+    {
+     "how": "left",
+     "dup": 2,
+     "rows": 11,
+     "cents": 14095,
+     "pandas_validate": "MergeError: Merge keys are not unique in right dataset; not a many-to-one merge",
+     "polars_validate": "ComputeError: join keys did not fulfill m:1 validation"
+    }
+   ]
   }
  }
 };

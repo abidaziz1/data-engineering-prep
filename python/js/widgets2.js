@@ -246,5 +246,41 @@
     W.pagingInfo = { data: data, find: find };
   })();
 
+  /* ====================== Mission 9: a join that multiplies rows ====================== */
+  (function () {
+    function data() { return G.counts('m9.fanout'); }
+    function find(how, dup) { return data().cases.filter(function (c) { return c.how === how && c.dup === dup; })[0]; }
+    var ORDERS = [['O-1', 1, 1250], ['O-2', 2, 475], ['O-3', 2, 820], ['O-4', 3, 1990], ['O-5', 1, 3100], ['O-6', 3, 640], ['O-7', 4, 560]];
+    function money(c) { return fmtN(c / 100, 2); }
+    W.fanout = {
+      steps: function () { return 1; },
+      hint: 'Pick the join and the number of extra rows for customer 3. Watch the revenue.',
+      say: function () { return 'Seven orders and a customer table with one row for each of customers 1, 2 and 3. Customer 4 has no row. Pick the kind of join, and how many extra rows customer 3 has in the customer table, like a history table with old addresses. These are real results from pandas, Polars and DuckDB, and the three agreed in every case.'; },
+      mood: function (s, i, A) { var st = A && A.local.fo, c = st && find(st.h, st.d); return c && c.cents > data().orders.cents ? 'oops' : 'think'; },
+      render: function (box, s, i, A) {
+        var d = data(), st = A.local.fo || (A.local.fo = { h: 'left', d: 1 }), c = find(st.h, st.d), rows = 0, cents = 0, h = '<div class="lab">';
+        h += '<div class="lab-row"><span class="lab-l">Join</span><div class="sel-chips">' + chips(['inner', 'left'], st.h, 'fo-h') + '</div></div>' +
+          '<div class="lab-row"><span class="lab-l">Extra rows for customer 3</span><div class="sel-chips">' + chips([0, 1, 2], st.d, 'fo-d') + '</div></div>' +
+          code('python', 'python', '# the customer table has ' + (1 + st.d) + ' row' + (st.d ? 's' : '') + ' for customer 3\norders.merge(customers, on="customer_id", how="' + st.h + '")') + '<div class="pgs">';
+        ORDERS.forEach(function (o) {
+          var times = o[1] === 3 ? 1 + st.d : o[1] === 4 ? (st.h === 'left' ? 1 : 0) : 1;
+          rows += times; cents += times * o[2];
+          h += '<div class="pg"><b>' + o[0] + '</b><span class="idc">customer ' + o[1] + '</span><span class="idc">' + money(o[2]) + '</span>';
+          for (var k = 0; k < times; k++) h += '<span class="idc ' + (k ? 'dupe' : '') + '">' + (k ? 'extra copy' : 'in the result') + '</span>';
+          if (!times) h += '<span class="idc miss">dropped: no customer 4</span>';
+          h += '</div>';
+        });
+        if (rows !== c.rows || cents !== c.cents) throw new Error('the per-order view does not match the recording: ' + rows + ' rows and ' + cents + ' against ' + c.rows + ' and ' + c.cents);
+        var diff = c.cents - d.orders.cents;
+        h += '</div><div class="lab-out"><div class="big"><b>' + d.orders.rows + ' to ' + c.rows + '</b><span>rows</span></div><div class="big ' + (diff ? 'bad' : 'good') + '"><b>' + money(d.orders.cents) + ' to ' + money(c.cents) + '</b><span>revenue' + (diff > 0 ? ', ' + fmtN(diff / d.orders.cents * 100, 1) + ' percent too high' : diff < 0 ? ', ' + money(-diff) + ' lost' : ', unchanged') + '</span></div></div>' +
+          '<div class="callout ' + (st.d ? 'warn' : 'tip') + '">' + md(st.d ? 'Customer 3 has ' + (1 + st.d) + ' rows in the customer table, so each of their two orders, O-4 and O-6, appears ' + (1 + st.d) + ' times. Nothing failed, and the revenue is wrong. **validate="m:1"** stops it: pandas raised `' + esc(c.pandas_validate) + '`, and Polars raised `' + esc(c.polars_validate) + '`.' : st.h === 'inner' ? 'The key is unique, so no order is repeated. But an **inner** join dropped O-7, because customer 4 is not in the customer table: the revenue lost ' + money(d.orders.cents - c.cents) + '. A left join keeps it, with an empty city. `validate="m:1"` passes here, since the keys are unique.' : 'The key is unique, so every order appears once and the total is unchanged. A left join keeps O-7 with an empty city. `validate="m:1"` passes without an error.') + '</div></div>';
+        box.innerHTML = h;
+        bindCodes(box);
+        A.bindWidget = function (act, el) { var v = el.getAttribute('data-v'); if (act === 'fo-h') st.h = v; if (act === 'fo-d') st.d = +v; A.render(true); };
+      }
+    };
+    W.fanoutInfo = { data: data, find: find };
+  })();
+
   /* @@END */
 })();
