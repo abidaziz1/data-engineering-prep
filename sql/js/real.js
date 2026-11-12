@@ -3078,6 +3078,656 @@ LAB.real = {
     "Asia/Singapore": "2026-03-01 10:15:00+08",
     "UTC": "2026-03-01 02:15:00+00"
    }
+  },
+  "m8.sessions_lab": {
+   "combos": {
+    "10": {
+     "funnel": [
+      9,
+      5,
+      4,
+      3
+     ],
+     "session_of_event": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      2,
+      2,
+      1,
+      2,
+      2,
+      3,
+      3,
+      3,
+      3,
+      1,
+      1,
+      1,
+      1,
+      2,
+      2,
+      2,
+      2,
+      1,
+      2
+     ],
+     "sessions": [
+      [
+       "1",
+       "1",
+       "2026-03-02 09:00:00",
+       "2026-03-02 09:16:00",
+       "5"
+      ],
+      [
+       "1",
+       "2",
+       "2026-03-02 14:02:00",
+       "2026-03-02 14:05:00",
+       "2"
+      ],
+      [
+       "2",
+       "1",
+       "2026-03-02 10:00:00",
+       "2026-03-02 10:00:00",
+       "1"
+      ],
+      [
+       "2",
+       "2",
+       "2026-03-02 10:40:00",
+       "2026-03-02 10:46:00",
+       "2"
+      ],
+      [
+       "2",
+       "3",
+       "2026-03-02 16:20:00",
+       "2026-03-02 16:30:00",
+       "4"
+      ],
+      [
+       "3",
+       "1",
+       "2026-03-02 11:00:00",
+       "2026-03-02 11:03:00",
+       "4"
+      ],
+      [
+       "3",
+       "2",
+       "2026-03-02 23:42:00",
+       "2026-03-02 23:50:00",
+       "4"
+      ],
+      [
+       "NULL",
+       "1",
+       "2026-03-02 12:00:00",
+       "2026-03-02 12:00:00",
+       "1"
+      ],
+      [
+       "NULL",
+       "2",
+       "2026-03-02 12:30:00",
+       "2026-03-02 12:30:00",
+       "1"
+      ]
+     ]
+    },
+    "120": {
+     "funnel": [
+      7,
+      5,
+      4,
+      3
+     ],
+     "session_of_event": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      2,
+      2,
+      1,
+      1,
+      1,
+      2,
+      2,
+      2,
+      2,
+      1,
+      1,
+      1,
+      1,
+      2,
+      2,
+      2,
+      2,
+      1,
+      1
+     ],
+     "sessions": [
+      [
+       "1",
+       "1",
+       "2026-03-02 09:00:00",
+       "2026-03-02 09:16:00",
+       "5"
+      ],
+      [
+       "1",
+       "2",
+       "2026-03-02 14:02:00",
+       "2026-03-02 14:05:00",
+       "2"
+      ],
+      [
+       "2",
+       "1",
+       "2026-03-02 10:00:00",
+       "2026-03-02 10:46:00",
+       "3"
+      ],
+      [
+       "2",
+       "2",
+       "2026-03-02 16:20:00",
+       "2026-03-02 16:30:00",
+       "4"
+      ],
+      [
+       "3",
+       "1",
+       "2026-03-02 11:00:00",
+       "2026-03-02 11:03:00",
+       "4"
+      ],
+      [
+       "3",
+       "2",
+       "2026-03-02 23:42:00",
+       "2026-03-02 23:50:00",
+       "4"
+      ],
+      [
+       "NULL",
+       "1",
+       "2026-03-02 12:00:00",
+       "2026-03-02 12:30:00",
+       "2"
+      ]
+     ]
+    },
+    "30": {
+     "funnel": [
+      8,
+      5,
+      4,
+      3
+     ],
+     "session_of_event": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      2,
+      2,
+      1,
+      2,
+      2,
+      3,
+      3,
+      3,
+      3,
+      1,
+      1,
+      1,
+      1,
+      2,
+      2,
+      2,
+      2,
+      1,
+      1
+     ],
+     "sessions": [
+      [
+       "1",
+       "1",
+       "2026-03-02 09:00:00",
+       "2026-03-02 09:16:00",
+       "5"
+      ],
+      [
+       "1",
+       "2",
+       "2026-03-02 14:02:00",
+       "2026-03-02 14:05:00",
+       "2"
+      ],
+      [
+       "2",
+       "1",
+       "2026-03-02 10:00:00",
+       "2026-03-02 10:00:00",
+       "1"
+      ],
+      [
+       "2",
+       "2",
+       "2026-03-02 10:40:00",
+       "2026-03-02 10:46:00",
+       "2"
+      ],
+      [
+       "2",
+       "3",
+       "2026-03-02 16:20:00",
+       "2026-03-02 16:30:00",
+       "4"
+      ],
+      [
+       "3",
+       "1",
+       "2026-03-02 11:00:00",
+       "2026-03-02 11:03:00",
+       "4"
+      ],
+      [
+       "3",
+       "2",
+       "2026-03-02 23:42:00",
+       "2026-03-02 23:50:00",
+       "4"
+      ],
+      [
+       "NULL",
+       "1",
+       "2026-03-02 12:00:00",
+       "2026-03-02 12:30:00",
+       "2"
+      ]
+     ]
+    },
+    "45": {
+     "funnel": [
+      7,
+      5,
+      4,
+      3
+     ],
+     "session_of_event": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      2,
+      2,
+      1,
+      1,
+      1,
+      2,
+      2,
+      2,
+      2,
+      1,
+      1,
+      1,
+      1,
+      2,
+      2,
+      2,
+      2,
+      1,
+      1
+     ],
+     "sessions": [
+      [
+       "1",
+       "1",
+       "2026-03-02 09:00:00",
+       "2026-03-02 09:16:00",
+       "5"
+      ],
+      [
+       "1",
+       "2",
+       "2026-03-02 14:02:00",
+       "2026-03-02 14:05:00",
+       "2"
+      ],
+      [
+       "2",
+       "1",
+       "2026-03-02 10:00:00",
+       "2026-03-02 10:46:00",
+       "3"
+      ],
+      [
+       "2",
+       "2",
+       "2026-03-02 16:20:00",
+       "2026-03-02 16:30:00",
+       "4"
+      ],
+      [
+       "3",
+       "1",
+       "2026-03-02 11:00:00",
+       "2026-03-02 11:03:00",
+       "4"
+      ],
+      [
+       "3",
+       "2",
+       "2026-03-02 23:42:00",
+       "2026-03-02 23:50:00",
+       "4"
+      ],
+      [
+       "NULL",
+       "1",
+       "2026-03-02 12:00:00",
+       "2026-03-02 12:30:00",
+       "2"
+      ]
+     ]
+    },
+    "5": {
+     "funnel": [
+      9,
+      5,
+      4,
+      3
+     ],
+     "session_of_event": [
+      1,
+      1,
+      1,
+      2,
+      2,
+      3,
+      3,
+      1,
+      2,
+      3,
+      4,
+      5,
+      5,
+      5,
+      1,
+      1,
+      1,
+      1,
+      2,
+      2,
+      2,
+      2,
+      1,
+      2
+     ],
+     "sessions": [
+      [
+       "1",
+       "1",
+       "2026-03-02 09:00:00",
+       "2026-03-02 09:09:00",
+       "3"
+      ],
+      [
+       "1",
+       "2",
+       "2026-03-02 09:15:00",
+       "2026-03-02 09:16:00",
+       "2"
+      ],
+      [
+       "1",
+       "3",
+       "2026-03-02 14:02:00",
+       "2026-03-02 14:05:00",
+       "2"
+      ],
+      [
+       "2",
+       "1",
+       "2026-03-02 10:00:00",
+       "2026-03-02 10:00:00",
+       "1"
+      ],
+      [
+       "2",
+       "2",
+       "2026-03-02 10:40:00",
+       "2026-03-02 10:40:00",
+       "1"
+      ],
+      [
+       "2",
+       "3",
+       "2026-03-02 10:46:00",
+       "2026-03-02 10:46:00",
+       "1"
+      ],
+      [
+       "2",
+       "4",
+       "2026-03-02 16:20:00",
+       "2026-03-02 16:20:00",
+       "1"
+      ],
+      [
+       "2",
+       "5",
+       "2026-03-02 16:27:00",
+       "2026-03-02 16:30:00",
+       "3"
+      ],
+      [
+       "3",
+       "1",
+       "2026-03-02 11:00:00",
+       "2026-03-02 11:03:00",
+       "4"
+      ],
+      [
+       "3",
+       "2",
+       "2026-03-02 23:42:00",
+       "2026-03-02 23:50:00",
+       "4"
+      ],
+      [
+       "NULL",
+       "1",
+       "2026-03-02 12:00:00",
+       "2026-03-02 12:00:00",
+       "1"
+      ],
+      [
+       "NULL",
+       "2",
+       "2026-03-02 12:30:00",
+       "2026-03-02 12:30:00",
+       "1"
+      ]
+     ]
+    }
+   },
+   "engines": [
+    "duckdb",
+    "postgres",
+    "sqlite"
+   ],
+   "events": [
+    [
+     "1",
+     "1",
+     "2026-03-02 09:00:00",
+     "view"
+    ],
+    [
+     "2",
+     "1",
+     "2026-03-02 09:04:00",
+     "view"
+    ],
+    [
+     "3",
+     "1",
+     "2026-03-02 09:09:00",
+     "add_to_cart"
+    ],
+    [
+     "4",
+     "1",
+     "2026-03-02 09:15:00",
+     "checkout"
+    ],
+    [
+     "5",
+     "1",
+     "2026-03-02 09:16:00",
+     "purchase"
+    ],
+    [
+     "6",
+     "1",
+     "2026-03-02 14:02:00",
+     "view"
+    ],
+    [
+     "7",
+     "1",
+     "2026-03-02 14:05:00",
+     "view"
+    ],
+    [
+     "8",
+     "2",
+     "2026-03-02 10:00:00",
+     "view"
+    ],
+    [
+     "9",
+     "2",
+     "2026-03-02 10:40:00",
+     "view"
+    ],
+    [
+     "10",
+     "2",
+     "2026-03-02 10:46:00",
+     "add_to_cart"
+    ],
+    [
+     "11",
+     "2",
+     "2026-03-02 16:20:00",
+     "view"
+    ],
+    [
+     "12",
+     "2",
+     "2026-03-02 16:27:00",
+     "add_to_cart"
+    ],
+    [
+     "13",
+     "2",
+     "2026-03-02 16:29:00",
+     "checkout"
+    ],
+    [
+     "14",
+     "2",
+     "2026-03-02 16:30:00",
+     "purchase"
+    ],
+    [
+     "15",
+     "3",
+     "2026-03-02 11:00:00",
+     "view"
+    ],
+    [
+     "16",
+     "3",
+     "2026-03-02 11:01:00",
+     "view"
+    ],
+    [
+     "17",
+     "3",
+     "2026-03-02 11:02:00",
+     "add_to_cart"
+    ],
+    [
+     "18",
+     "3",
+     "2026-03-02 11:03:00",
+     "checkout"
+    ],
+    [
+     "19",
+     "3",
+     "2026-03-02 23:42:00",
+     "view"
+    ],
+    [
+     "20",
+     "3",
+     "2026-03-02 23:45:00",
+     "add_to_cart"
+    ],
+    [
+     "21",
+     "3",
+     "2026-03-02 23:48:00",
+     "checkout"
+    ],
+    [
+     "22",
+     "3",
+     "2026-03-02 23:50:00",
+     "purchase"
+    ],
+    [
+     "23",
+     "NULL",
+     "2026-03-02 12:00:00",
+     "view"
+    ],
+    [
+     "24",
+     "NULL",
+     "2026-03-02 12:30:00",
+     "view"
+    ]
+   ],
+   "limits": [
+    5,
+    10,
+    30,
+    45,
+    120
+   ],
+   "query": "WITH flagged AS (\n  SELECT event_id, customer_id, event_ts, event_type,\n         CASE WHEN LAG(event_ts) OVER w IS NULL OR event_ts - LAG(event_ts) OVER w > INTERVAL '30 minutes' THEN 1 ELSE 0 END AS is_new\n  FROM events\n  WINDOW w AS (PARTITION BY customer_id ORDER BY event_ts, event_id)\n),\nnumbered AS (\n  SELECT *, sum(is_new) OVER (PARTITION BY customer_id ORDER BY event_ts, event_id) AS session_no\n  FROM flagged\n)\nSELECT customer_id, session_no, min(event_ts) AS started, max(event_ts) AS ended, count(*) AS events\nFROM numbered\nGROUP BY customer_id, session_no\nORDER BY customer_id NULLS LAST, session_no",
+   "steps": [
+    "view",
+    "add_to_cart",
+    "checkout",
+    "purchase"
+   ]
   }
  },
  "files": {
@@ -3265,7 +3915,35 @@ LAB.real = {
   "m7.tz_day": "WITH store_tz(store_id, tz) AS (\n  VALUES (1, 'Asia/Singapore'), (2, 'Asia/Kuala_Lumpur'), (3, 'Asia/Jakarta'), (4, 'Australia/Sydney')\n),\nlocal AS (\n  SELECT o.order_id,\n         CAST(o.order_ts AS DATE) AS utc_day,\n         CAST((o.order_ts AT TIME ZONE 'UTC') AT TIME ZONE z.tz AS DATE) AS local_day\n  FROM orders AS o\n  JOIN store_tz AS z ON z.store_id = o.store_id\n)\nSELECT order_id, utc_day, local_day\nFROM local\nWHERE utc_day <> local_day\nORDER BY order_id;\n",
   "m7.tz_local": "WITH store_tz(store_id, tz) AS (\n  VALUES (1, 'Asia/Singapore'), (2, 'Asia/Kuala_Lumpur'), (3, 'Asia/Jakarta'), (4, 'Australia/Sydney')\n)\nSELECT o.order_id, o.store_id, z.tz,\n       o.order_ts AS utc_ts,\n       (o.order_ts AT TIME ZONE 'UTC') AT TIME ZONE z.tz AS local_ts\nFROM orders AS o\nJOIN store_tz AS z ON z.store_id = o.store_id\nORDER BY o.order_id;\n",
   "m7.tz_sqlite": "SELECT order_id, order_ts AS utc_ts, datetime(order_ts, '+8 hours') AS singapore_ts\nFROM orders\nWHERE store_id = 1\nORDER BY order_id;\n",
-  "m7.tz_sqlite_error": "SELECT order_ts AT TIME ZONE 'Asia/Singapore' FROM orders;\n"
+  "m7.tz_sqlite_error": "SELECT order_ts AT TIME ZONE 'Asia/Singapore' FROM orders;\n",
+  "m8.asof": "SELECT i.order_id, i.product_id, CAST(o.order_ts AS DATE) AS order_day, i.unit_price AS charged, ph.price AS list_price\nFROM order_items AS i\nJOIN orders AS o ON o.order_id = i.order_id\nJOIN price_history AS ph\n  ON ph.product_id = i.product_id\n AND CAST(o.order_ts AS DATE) BETWEEN ph.valid_from AND ph.valid_to\nWHERE i.unit_price <> ph.price\nORDER BY i.order_id, i.line_no;\n",
+  "m8.asof_join": "SELECT i.order_id, i.product_id, CAST(o.order_ts AS DATE) AS order_day, i.unit_price AS charged, ph.price AS list_price\nFROM order_items AS i\nJOIN orders AS o ON o.order_id = i.order_id\nASOF JOIN price_history AS ph\n  ON ph.product_id = i.product_id\n AND o.order_ts >= ph.valid_from\nWHERE i.unit_price <> ph.price\nORDER BY i.order_id, i.line_no;\n",
+  "m8.asof_sqlite": "SELECT i.order_id, i.product_id, date(o.order_ts) AS order_day, i.unit_price AS charged, ph.price AS list_price\nFROM order_items AS i\nJOIN orders AS o ON o.order_id = i.order_id\nJOIN price_history AS ph\n  ON ph.product_id = i.product_id\n AND date(o.order_ts) BETWEEN ph.valid_from AND ph.valid_to\nWHERE i.unit_price <> ph.price\nORDER BY i.order_id, i.line_no;\n",
+  "m8.ch_sessions": "SELECT customer_id, sum(is_new) AS sessions\nFROM (\n  SELECT customer_id,\n         CASE WHEN LAG(event_ts) OVER w IS NULL\n                OR event_ts - LAG(event_ts) OVER w > INTERVAL '30 minutes'\n              THEN 1 ELSE 0 END AS is_new\n  FROM events\n  WINDOW w AS (PARTITION BY customer_id ORDER BY event_ts, event_id)\n) AS f\nGROUP BY customer_id\nORDER BY customer_id NULLS LAST;\n",
+  "m8.ch_streak": "WITH numbered AS (\n  SELECT customer_id, day,\n         day - CAST(ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY day) AS INTEGER) AS grp\n  FROM daily_active\n),\nstreaks AS (\n  SELECT customer_id, count(*) AS days\n  FROM numbered\n  GROUP BY customer_id, grp\n)\nSELECT customer_id, max(days) AS longest_streak\nFROM streaks\nGROUP BY customer_id\nORDER BY customer_id;\n",
+  "m8.dedupe": "WITH ranked AS (\n  SELECT order_id, status, total, ingested_at,\n         ROW_NUMBER() OVER (PARTITION BY order_id ORDER BY ingested_at DESC) AS rn\n  FROM orders_raw\n)\nSELECT order_id, status, total, ingested_at\nFROM ranked\nWHERE rn = 1\nORDER BY order_id;\n",
+  "m8.dedupe_argmax": "SELECT order_id,\n       arg_max(status, ingested_at) AS status,\n       arg_max(total, ingested_at) AS total,\n       max(ingested_at) AS ingested_at\nFROM orders_raw\nGROUP BY order_id\nORDER BY order_id;\n",
+  "m8.dedupe_distinct_on": "SELECT DISTINCT ON (order_id) order_id, status, total, ingested_at\nFROM orders_raw\nORDER BY order_id, ingested_at DESC;\n",
+  "m8.dedupe_qualify": "SELECT order_id, status, total, ingested_at\nFROM orders_raw\nQUALIFY ROW_NUMBER() OVER (PARTITION BY order_id ORDER BY ingested_at DESC) = 1\nORDER BY order_id;\n",
+  "m8.dedupe_total": "WITH ranked AS (\n  SELECT order_id, total,\n         ROW_NUMBER() OVER (PARTITION BY order_id ORDER BY ingested_at DESC) AS rn\n  FROM orders_raw\n)\nSELECT count(*) AS rows_kept, sum(total) AS clean_total\nFROM ranked\nWHERE rn = 1;\n",
+  "m8.distinct_bug": "SELECT count(*) AS rows_after_distinct\nFROM (SELECT DISTINCT * FROM orders_raw) AS t;\n",
+  "m8.dups": "SELECT order_id, count(*) AS versions, min(ingested_at) AS first_seen, max(ingested_at) AS last_seen\nFROM orders_raw\nGROUP BY order_id\nHAVING count(*) > 1\nORDER BY order_id;\n",
+  "m8.funnel": "WITH flagged AS (\n  SELECT event_id, customer_id, event_ts, event_type,\n         CASE WHEN LAG(event_ts) OVER w IS NULL\n                OR event_ts - LAG(event_ts) OVER w > INTERVAL '30 minutes'\n              THEN 1 ELSE 0 END AS is_new\n  FROM events\n  WINDOW w AS (PARTITION BY customer_id ORDER BY event_ts, event_id)\n),\nnumbered AS (\n  SELECT *, sum(is_new) OVER (PARTITION BY customer_id ORDER BY event_ts, event_id) AS session_no\n  FROM flagged\n),\nper_session AS (\n  SELECT customer_id, session_no,\n         max(CASE WHEN event_type = 'view' THEN 1 ELSE 0 END) AS viewed,\n         max(CASE WHEN event_type = 'add_to_cart' THEN 1 ELSE 0 END) AS carted,\n         max(CASE WHEN event_type = 'checkout' THEN 1 ELSE 0 END) AS checked_out,\n         max(CASE WHEN event_type = 'purchase' THEN 1 ELSE 0 END) AS purchased\n  FROM numbered\n  GROUP BY customer_id, session_no\n)\nSELECT count(*) AS sessions, sum(viewed) AS viewed, sum(carted) AS carted,\n       sum(checked_out) AS checked_out, sum(purchased) AS purchased\nFROM per_session;\n",
+  "m8.funnel_events": "SELECT count(*) FILTER (WHERE event_type = 'view') AS views,\n       count(*) FILTER (WHERE event_type = 'add_to_cart') AS carts,\n       count(*) FILTER (WHERE event_type = 'checkout') AS checkouts,\n       count(*) FILTER (WHERE event_type = 'purchase') AS purchases\nFROM events;\n",
+  "m8.gaps": "SELECT customer_id, day AS last_active, next_day AS back_on, next_day - day - 1 AS days_missed\nFROM (\n  SELECT customer_id, day,\n         LEAD(day) OVER (PARTITION BY customer_id ORDER BY day) AS next_day\n  FROM daily_active\n) AS t\nWHERE next_day - day > 1\nORDER BY customer_id, day;\n",
+  "m8.island_trick": "SELECT day,\n       ROW_NUMBER() OVER (ORDER BY day) AS rn,\n       day - CAST(ROW_NUMBER() OVER (ORDER BY day) AS INTEGER) AS grp\nFROM daily_active\nWHERE customer_id = 1\nORDER BY day;\n",
+  "m8.islands": "WITH numbered AS (\n  SELECT customer_id, day,\n         day - CAST(ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY day) AS INTEGER) AS grp\n  FROM daily_active\n)\nSELECT customer_id, min(day) AS streak_start, max(day) AS streak_end, count(*) AS days\nFROM numbered\nGROUP BY customer_id, grp\nORDER BY customer_id, streak_start;\n",
+  "m8.islands_sqlite": "WITH numbered AS (\n  SELECT customer_id, day,\n         date(day, '-' || ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY day) || ' days') AS grp\n  FROM daily_active\n)\nSELECT customer_id, min(day) AS streak_start, max(day) AS streak_end, count(*) AS days\nFROM numbered\nGROUP BY customer_id, grp\nORDER BY customer_id, streak_start;\n",
+  "m8.lateral": "SELECT s.store_id, s.name, t.order_id, t.total\nFROM stores AS s\nLEFT JOIN LATERAL (\n  SELECT o.order_id, o.total\n  FROM orders AS o\n  WHERE o.store_id = s.store_id AND o.status = 'paid'\n  ORDER BY o.total DESC\n  LIMIT 2\n) AS t ON true\nORDER BY s.store_id, t.total DESC;\n",
+  "m8.pivot": "SELECT store_id,\n       sum(total) FILTER (WHERE channel = 'web') AS web,\n       sum(total) FILTER (WHERE channel = 'app') AS app,\n       sum(total) FILTER (WHERE channel = 'store') AS in_store\nFROM orders\nWHERE status = 'paid'\nGROUP BY store_id\nORDER BY store_id;\n",
+  "m8.pivot_case": "SELECT store_id,\n       sum(CASE WHEN channel = 'web' THEN total ELSE 0 END) AS web,\n       sum(CASE WHEN channel = 'app' THEN total ELSE 0 END) AS app,\n       sum(CASE WHEN channel = 'store' THEN total ELSE 0 END) AS in_store\nFROM orders\nWHERE status = 'paid'\nGROUP BY store_id\nORDER BY store_id;\n",
+  "m8.pivot_duckdb": "PIVOT (SELECT store_id, channel, total FROM orders WHERE status = 'paid')\nON channel\nUSING sum(total)\nGROUP BY store_id\nORDER BY store_id;\n",
+  "m8.raw_sum": "SELECT count(*) AS raw_rows, count(DISTINCT order_id) AS orders, sum(total) AS raw_total\nFROM orders_raw;\n",
+  "m8.retention": "WITH first_day AS (\n  SELECT customer_id, min(day) AS cohort_day\n  FROM daily_active\n  GROUP BY customer_id\n),\noffsets AS (\n  SELECT f.cohort_day, a.customer_id, a.day - f.cohort_day AS day_n\n  FROM daily_active AS a\n  JOIN first_day AS f ON f.customer_id = a.customer_id\n)\nSELECT cohort_day,\n       count(DISTINCT customer_id) AS cohort_size,\n       count(DISTINCT CASE WHEN day_n = 1 THEN customer_id END) AS day_1,\n       count(DISTINCT CASE WHEN day_n = 2 THEN customer_id END) AS day_2,\n       count(DISTINCT CASE WHEN day_n = 3 THEN customer_id END) AS day_3\nFROM offsets\nGROUP BY cohort_day\nORDER BY cohort_day;\n",
+  "m8.retention_sqlite": "WITH first_day AS (\n  SELECT customer_id, min(day) AS cohort_day\n  FROM daily_active\n  GROUP BY customer_id\n),\noffsets AS (\n  SELECT f.cohort_day, a.customer_id, CAST(julianday(a.day) - julianday(f.cohort_day) AS INTEGER) AS day_n\n  FROM daily_active AS a\n  JOIN first_day AS f ON f.customer_id = a.customer_id\n)\nSELECT cohort_day,\n       count(DISTINCT customer_id) AS cohort_size,\n       count(DISTINCT CASE WHEN day_n = 1 THEN customer_id END) AS day_1,\n       count(DISTINCT CASE WHEN day_n = 2 THEN customer_id END) AS day_2,\n       count(DISTINCT CASE WHEN day_n = 3 THEN customer_id END) AS day_3\nFROM offsets\nGROUP BY cohort_day\nORDER BY cohort_day;\n",
+  "m8.sessions": "WITH flagged AS (\n  SELECT event_id, customer_id, event_ts, event_type,\n         CASE WHEN LAG(event_ts) OVER w IS NULL\n                OR event_ts - LAG(event_ts) OVER w > INTERVAL '30 minutes'\n              THEN 1 ELSE 0 END AS is_new\n  FROM events\n  WINDOW w AS (PARTITION BY customer_id ORDER BY event_ts, event_id)\n),\nnumbered AS (\n  SELECT *, sum(is_new) OVER (PARTITION BY customer_id ORDER BY event_ts, event_id) AS session_no\n  FROM flagged\n)\nSELECT customer_id, session_no, min(event_ts) AS started, max(event_ts) AS ended, count(*) AS events\nFROM numbered\nGROUP BY customer_id, session_no\nORDER BY customer_id NULLS LAST, session_no;\n",
+  "m8.sessions_sqlite": "WITH flagged AS (\n  SELECT event_id, customer_id, event_ts, event_type,\n         CASE WHEN LAG(event_ts) OVER w IS NULL\n                OR round((julianday(event_ts) - julianday(LAG(event_ts) OVER w)) * 1440) > 30\n              THEN 1 ELSE 0 END AS is_new\n  FROM events\n  WINDOW w AS (PARTITION BY customer_id ORDER BY event_ts, event_id)\n),\nnumbered AS (\n  SELECT *, sum(is_new) OVER (PARTITION BY customer_id ORDER BY event_ts, event_id) AS session_no\n  FROM flagged\n)\nSELECT customer_id, session_no, min(event_ts) AS started, max(event_ts) AS ended, count(*) AS events\nFROM numbered\nGROUP BY customer_id, session_no\nORDER BY customer_id NULLS LAST, session_no;\n",
+  "m8.topn": "WITH ranked AS (\n  SELECT store_id, order_id, total,\n         ROW_NUMBER() OVER (PARTITION BY store_id ORDER BY total DESC, order_id) AS rn\n  FROM orders\n  WHERE status = 'paid'\n)\nSELECT store_id, rn, order_id, total\nFROM ranked\nWHERE rn <= 2\nORDER BY store_id, rn;\n"
  },
  "meta": {
   "duckdb": "2.0.0",
@@ -16387,6 +17065,1716 @@ LAB.real = {
      "2026-03-07 20:30:00"
     ]
    ]
+  },
+  "m8.asof.duckdb": {
+   "cols": [
+    "order_id",
+    "product_id",
+    "order_day",
+    "charged",
+    "list_price"
+   ],
+   "rows": [
+    [
+     "1003",
+     "3",
+     "2026-03-02",
+     "5.00",
+     "4.50"
+    ]
+   ]
+  },
+  "m8.asof.postgres": {
+   "cols": [
+    "order_id",
+    "product_id",
+    "order_day",
+    "charged",
+    "list_price"
+   ],
+   "rows": [
+    [
+     "1003",
+     "3",
+     "2026-03-02",
+     "5.00",
+     "4.50"
+    ]
+   ]
+  },
+  "m8.asof_join": {
+   "cols": [
+    "order_id",
+    "product_id",
+    "order_day",
+    "charged",
+    "list_price"
+   ],
+   "rows": [
+    [
+     "1003",
+     "3",
+     "2026-03-02",
+     "5.00",
+     "4.50"
+    ]
+   ]
+  },
+  "m8.asof_sqlite": {
+   "cols": [
+    "order_id",
+    "product_id",
+    "order_day",
+    "charged",
+    "list_price"
+   ],
+   "rows": [
+    [
+     "1003",
+     "3",
+     "2026-03-02",
+     "5",
+     "4.5"
+    ]
+   ]
+  },
+  "m8.ch_sessions.duckdb": {
+   "cols": [
+    "customer_id",
+    "sessions"
+   ],
+   "rows": [
+    [
+     "1",
+     "2"
+    ],
+    [
+     "2",
+     "3"
+    ],
+    [
+     "3",
+     "2"
+    ],
+    [
+     "NULL",
+     "1"
+    ]
+   ]
+  },
+  "m8.ch_sessions.postgres": {
+   "cols": [
+    "customer_id",
+    "sessions"
+   ],
+   "rows": [
+    [
+     "1",
+     "2"
+    ],
+    [
+     "2",
+     "3"
+    ],
+    [
+     "3",
+     "2"
+    ],
+    [
+     "NULL",
+     "1"
+    ]
+   ]
+  },
+  "m8.ch_streak.duckdb": {
+   "cols": [
+    "customer_id",
+    "longest_streak"
+   ],
+   "rows": [
+    [
+     "1",
+     "3"
+    ],
+    [
+     "2",
+     "4"
+    ],
+    [
+     "3",
+     "2"
+    ]
+   ]
+  },
+  "m8.ch_streak.postgres": {
+   "cols": [
+    "customer_id",
+    "longest_streak"
+   ],
+   "rows": [
+    [
+     "1",
+     "3"
+    ],
+    [
+     "2",
+     "4"
+    ],
+    [
+     "3",
+     "2"
+    ]
+   ]
+  },
+  "m8.dedupe.duckdb": {
+   "cols": [
+    "order_id",
+    "status",
+    "total",
+    "ingested_at"
+   ],
+   "rows": [
+    [
+     "1001",
+     "paid",
+     "11.50",
+     "2026-03-01 02:25:00"
+    ],
+    [
+     "1002",
+     "paid",
+     "18.50",
+     "2026-03-03 09:45:00"
+    ],
+    [
+     "1003",
+     "paid",
+     "5.00",
+     "2026-03-02 16:35:00"
+    ],
+    [
+     "1004",
+     "paid",
+     "26.00",
+     "2026-03-03 00:10:00"
+    ],
+    [
+     "1005",
+     "cancelled",
+     "9.00",
+     "2026-03-04 03:30:00"
+    ]
+   ]
+  },
+  "m8.dedupe.postgres": {
+   "cols": [
+    "order_id",
+    "status",
+    "total",
+    "ingested_at"
+   ],
+   "rows": [
+    [
+     "1001",
+     "paid",
+     "11.50",
+     "2026-03-01 02:25:00"
+    ],
+    [
+     "1002",
+     "paid",
+     "18.50",
+     "2026-03-03 09:45:00"
+    ],
+    [
+     "1003",
+     "paid",
+     "5.00",
+     "2026-03-02 16:35:00"
+    ],
+    [
+     "1004",
+     "paid",
+     "26.00",
+     "2026-03-03 00:10:00"
+    ],
+    [
+     "1005",
+     "cancelled",
+     "9.00",
+     "2026-03-04 03:30:00"
+    ]
+   ]
+  },
+  "m8.dedupe.sqlite": {
+   "cols": [
+    "order_id",
+    "status",
+    "total",
+    "ingested_at"
+   ],
+   "rows": [
+    [
+     "1001",
+     "paid",
+     "11.5",
+     "2026-03-01 02:25:00"
+    ],
+    [
+     "1002",
+     "paid",
+     "18.5",
+     "2026-03-03 09:45:00"
+    ],
+    [
+     "1003",
+     "paid",
+     "5",
+     "2026-03-02 16:35:00"
+    ],
+    [
+     "1004",
+     "paid",
+     "26",
+     "2026-03-03 00:10:00"
+    ],
+    [
+     "1005",
+     "cancelled",
+     "9",
+     "2026-03-04 03:30:00"
+    ]
+   ]
+  },
+  "m8.dedupe_argmax": {
+   "cols": [
+    "order_id",
+    "status",
+    "total",
+    "ingested_at"
+   ],
+   "rows": [
+    [
+     "1001",
+     "paid",
+     "11.50",
+     "2026-03-01 02:25:00"
+    ],
+    [
+     "1002",
+     "paid",
+     "18.50",
+     "2026-03-03 09:45:00"
+    ],
+    [
+     "1003",
+     "paid",
+     "5.00",
+     "2026-03-02 16:35:00"
+    ],
+    [
+     "1004",
+     "paid",
+     "26.00",
+     "2026-03-03 00:10:00"
+    ],
+    [
+     "1005",
+     "cancelled",
+     "9.00",
+     "2026-03-04 03:30:00"
+    ]
+   ]
+  },
+  "m8.dedupe_distinct_on": {
+   "cols": [
+    "order_id",
+    "status",
+    "total",
+    "ingested_at"
+   ],
+   "rows": [
+    [
+     "1001",
+     "paid",
+     "11.50",
+     "2026-03-01 02:25:00"
+    ],
+    [
+     "1002",
+     "paid",
+     "18.50",
+     "2026-03-03 09:45:00"
+    ],
+    [
+     "1003",
+     "paid",
+     "5.00",
+     "2026-03-02 16:35:00"
+    ],
+    [
+     "1004",
+     "paid",
+     "26.00",
+     "2026-03-03 00:10:00"
+    ],
+    [
+     "1005",
+     "cancelled",
+     "9.00",
+     "2026-03-04 03:30:00"
+    ]
+   ]
+  },
+  "m8.dedupe_qualify": {
+   "cols": [
+    "order_id",
+    "status",
+    "total",
+    "ingested_at"
+   ],
+   "rows": [
+    [
+     "1001",
+     "paid",
+     "11.50",
+     "2026-03-01 02:25:00"
+    ],
+    [
+     "1002",
+     "paid",
+     "18.50",
+     "2026-03-03 09:45:00"
+    ],
+    [
+     "1003",
+     "paid",
+     "5.00",
+     "2026-03-02 16:35:00"
+    ],
+    [
+     "1004",
+     "paid",
+     "26.00",
+     "2026-03-03 00:10:00"
+    ],
+    [
+     "1005",
+     "cancelled",
+     "9.00",
+     "2026-03-04 03:30:00"
+    ]
+   ]
+  },
+  "m8.dedupe_total.duckdb": {
+   "cols": [
+    "rows_kept",
+    "clean_total"
+   ],
+   "rows": [
+    [
+     "5",
+     "70.00"
+    ]
+   ]
+  },
+  "m8.dedupe_total.postgres": {
+   "cols": [
+    "rows_kept",
+    "clean_total"
+   ],
+   "rows": [
+    [
+     "5",
+     "70.00"
+    ]
+   ]
+  },
+  "m8.dedupe_total.sqlite": {
+   "cols": [
+    "rows_kept",
+    "clean_total"
+   ],
+   "rows": [
+    [
+     "5",
+     "70.0"
+    ]
+   ]
+  },
+  "m8.distinct_bug.duckdb": {
+   "cols": [
+    "rows_after_distinct"
+   ],
+   "rows": [
+    [
+     "8"
+    ]
+   ]
+  },
+  "m8.distinct_bug.postgres": {
+   "cols": [
+    "rows_after_distinct"
+   ],
+   "rows": [
+    [
+     "8"
+    ]
+   ]
+  },
+  "m8.distinct_bug.sqlite": {
+   "cols": [
+    "rows_after_distinct"
+   ],
+   "rows": [
+    [
+     "8"
+    ]
+   ]
+  },
+  "m8.dups.duckdb": {
+   "cols": [
+    "order_id",
+    "versions",
+    "first_seen",
+    "last_seen"
+   ],
+   "rows": [
+    [
+     "1001",
+     "2",
+     "2026-03-01 02:20:00",
+     "2026-03-01 02:25:00"
+    ],
+    [
+     "1002",
+     "2",
+     "2026-03-03 09:45:00",
+     "2026-03-03 09:45:00"
+    ],
+    [
+     "1004",
+     "2",
+     "2026-03-02 23:55:00",
+     "2026-03-03 00:10:00"
+    ],
+    [
+     "1005",
+     "2",
+     "2026-03-04 03:10:00",
+     "2026-03-04 03:30:00"
+    ]
+   ]
+  },
+  "m8.dups.postgres": {
+   "cols": [
+    "order_id",
+    "versions",
+    "first_seen",
+    "last_seen"
+   ],
+   "rows": [
+    [
+     "1001",
+     "2",
+     "2026-03-01 02:20:00",
+     "2026-03-01 02:25:00"
+    ],
+    [
+     "1002",
+     "2",
+     "2026-03-03 09:45:00",
+     "2026-03-03 09:45:00"
+    ],
+    [
+     "1004",
+     "2",
+     "2026-03-02 23:55:00",
+     "2026-03-03 00:10:00"
+    ],
+    [
+     "1005",
+     "2",
+     "2026-03-04 03:10:00",
+     "2026-03-04 03:30:00"
+    ]
+   ]
+  },
+  "m8.dups.sqlite": {
+   "cols": [
+    "order_id",
+    "versions",
+    "first_seen",
+    "last_seen"
+   ],
+   "rows": [
+    [
+     "1001",
+     "2",
+     "2026-03-01 02:20:00",
+     "2026-03-01 02:25:00"
+    ],
+    [
+     "1002",
+     "2",
+     "2026-03-03 09:45:00",
+     "2026-03-03 09:45:00"
+    ],
+    [
+     "1004",
+     "2",
+     "2026-03-02 23:55:00",
+     "2026-03-03 00:10:00"
+    ],
+    [
+     "1005",
+     "2",
+     "2026-03-04 03:10:00",
+     "2026-03-04 03:30:00"
+    ]
+   ]
+  },
+  "m8.funnel.duckdb": {
+   "cols": [
+    "sessions",
+    "viewed",
+    "carted",
+    "checked_out",
+    "purchased"
+   ],
+   "rows": [
+    [
+     "8",
+     "8",
+     "5",
+     "4",
+     "3"
+    ]
+   ]
+  },
+  "m8.funnel.postgres": {
+   "cols": [
+    "sessions",
+    "viewed",
+    "carted",
+    "checked_out",
+    "purchased"
+   ],
+   "rows": [
+    [
+     "8",
+     "8",
+     "5",
+     "4",
+     "3"
+    ]
+   ]
+  },
+  "m8.funnel_events.duckdb": {
+   "cols": [
+    "views",
+    "carts",
+    "checkouts",
+    "purchases"
+   ],
+   "rows": [
+    [
+     "12",
+     "5",
+     "4",
+     "3"
+    ]
+   ]
+  },
+  "m8.funnel_events.postgres": {
+   "cols": [
+    "views",
+    "carts",
+    "checkouts",
+    "purchases"
+   ],
+   "rows": [
+    [
+     "12",
+     "5",
+     "4",
+     "3"
+    ]
+   ]
+  },
+  "m8.funnel_events.sqlite": {
+   "cols": [
+    "views",
+    "carts",
+    "checkouts",
+    "purchases"
+   ],
+   "rows": [
+    [
+     "12",
+     "5",
+     "4",
+     "3"
+    ]
+   ]
+  },
+  "m8.gaps.duckdb": {
+   "cols": [
+    "customer_id",
+    "last_active",
+    "back_on",
+    "days_missed"
+   ],
+   "rows": [
+    [
+     "1",
+     "2026-03-03",
+     "2026-03-05",
+     "1"
+    ],
+    [
+     "1",
+     "2026-03-06",
+     "2026-03-09",
+     "2"
+    ],
+    [
+     "2",
+     "2026-03-05",
+     "2026-03-07",
+     "1"
+    ],
+    [
+     "3",
+     "2026-03-02",
+     "2026-03-04",
+     "1"
+    ]
+   ]
+  },
+  "m8.gaps.postgres": {
+   "cols": [
+    "customer_id",
+    "last_active",
+    "back_on",
+    "days_missed"
+   ],
+   "rows": [
+    [
+     "1",
+     "2026-03-03",
+     "2026-03-05",
+     "1"
+    ],
+    [
+     "1",
+     "2026-03-06",
+     "2026-03-09",
+     "2"
+    ],
+    [
+     "2",
+     "2026-03-05",
+     "2026-03-07",
+     "1"
+    ],
+    [
+     "3",
+     "2026-03-02",
+     "2026-03-04",
+     "1"
+    ]
+   ]
+  },
+  "m8.island_trick.duckdb": {
+   "cols": [
+    "day",
+    "rn",
+    "grp"
+   ],
+   "rows": [
+    [
+     "2026-03-01",
+     "1",
+     "2026-02-28"
+    ],
+    [
+     "2026-03-02",
+     "2",
+     "2026-02-28"
+    ],
+    [
+     "2026-03-03",
+     "3",
+     "2026-02-28"
+    ],
+    [
+     "2026-03-05",
+     "4",
+     "2026-03-01"
+    ],
+    [
+     "2026-03-06",
+     "5",
+     "2026-03-01"
+    ],
+    [
+     "2026-03-09",
+     "6",
+     "2026-03-03"
+    ]
+   ]
+  },
+  "m8.island_trick.postgres": {
+   "cols": [
+    "day",
+    "rn",
+    "grp"
+   ],
+   "rows": [
+    [
+     "2026-03-01",
+     "1",
+     "2026-02-28"
+    ],
+    [
+     "2026-03-02",
+     "2",
+     "2026-02-28"
+    ],
+    [
+     "2026-03-03",
+     "3",
+     "2026-02-28"
+    ],
+    [
+     "2026-03-05",
+     "4",
+     "2026-03-01"
+    ],
+    [
+     "2026-03-06",
+     "5",
+     "2026-03-01"
+    ],
+    [
+     "2026-03-09",
+     "6",
+     "2026-03-03"
+    ]
+   ]
+  },
+  "m8.islands.duckdb": {
+   "cols": [
+    "customer_id",
+    "streak_start",
+    "streak_end",
+    "days"
+   ],
+   "rows": [
+    [
+     "1",
+     "2026-03-01",
+     "2026-03-03",
+     "3"
+    ],
+    [
+     "1",
+     "2026-03-05",
+     "2026-03-06",
+     "2"
+    ],
+    [
+     "1",
+     "2026-03-09",
+     "2026-03-09",
+     "1"
+    ],
+    [
+     "2",
+     "2026-03-02",
+     "2026-03-05",
+     "4"
+    ],
+    [
+     "2",
+     "2026-03-07",
+     "2026-03-07",
+     "1"
+    ],
+    [
+     "3",
+     "2026-03-01",
+     "2026-03-02",
+     "2"
+    ],
+    [
+     "3",
+     "2026-03-04",
+     "2026-03-04",
+     "1"
+    ]
+   ]
+  },
+  "m8.islands.postgres": {
+   "cols": [
+    "customer_id",
+    "streak_start",
+    "streak_end",
+    "days"
+   ],
+   "rows": [
+    [
+     "1",
+     "2026-03-01",
+     "2026-03-03",
+     "3"
+    ],
+    [
+     "1",
+     "2026-03-05",
+     "2026-03-06",
+     "2"
+    ],
+    [
+     "1",
+     "2026-03-09",
+     "2026-03-09",
+     "1"
+    ],
+    [
+     "2",
+     "2026-03-02",
+     "2026-03-05",
+     "4"
+    ],
+    [
+     "2",
+     "2026-03-07",
+     "2026-03-07",
+     "1"
+    ],
+    [
+     "3",
+     "2026-03-01",
+     "2026-03-02",
+     "2"
+    ],
+    [
+     "3",
+     "2026-03-04",
+     "2026-03-04",
+     "1"
+    ]
+   ]
+  },
+  "m8.islands_sqlite": {
+   "cols": [
+    "customer_id",
+    "streak_start",
+    "streak_end",
+    "days"
+   ],
+   "rows": [
+    [
+     "1",
+     "2026-03-01",
+     "2026-03-03",
+     "3"
+    ],
+    [
+     "1",
+     "2026-03-05",
+     "2026-03-06",
+     "2"
+    ],
+    [
+     "1",
+     "2026-03-09",
+     "2026-03-09",
+     "1"
+    ],
+    [
+     "2",
+     "2026-03-02",
+     "2026-03-05",
+     "4"
+    ],
+    [
+     "2",
+     "2026-03-07",
+     "2026-03-07",
+     "1"
+    ],
+    [
+     "3",
+     "2026-03-01",
+     "2026-03-02",
+     "2"
+    ],
+    [
+     "3",
+     "2026-03-04",
+     "2026-03-04",
+     "1"
+    ]
+   ]
+  },
+  "m8.lateral.duckdb": {
+   "cols": [
+    "store_id",
+    "name",
+    "order_id",
+    "total"
+   ],
+   "rows": [
+    [
+     "1",
+     "Orchard",
+     "1004",
+     "26.00"
+    ],
+    [
+     "1",
+     "Orchard",
+     "1010",
+     "19.00"
+    ],
+    [
+     "2",
+     "Bukit Bintang",
+     "1009",
+     "9.50"
+    ],
+    [
+     "2",
+     "Bukit Bintang",
+     "1003",
+     "5.00"
+    ],
+    [
+     "3",
+     "Kemang",
+     "NULL",
+     "NULL"
+    ],
+    [
+     "4",
+     "Surry Hills",
+     "1011",
+     "16.50"
+    ],
+    [
+     "4",
+     "Surry Hills",
+     "1006",
+     "14.00"
+    ]
+   ]
+  },
+  "m8.lateral.postgres": {
+   "cols": [
+    "store_id",
+    "name",
+    "order_id",
+    "total"
+   ],
+   "rows": [
+    [
+     "1",
+     "Orchard",
+     "1004",
+     "26.00"
+    ],
+    [
+     "1",
+     "Orchard",
+     "1010",
+     "19.00"
+    ],
+    [
+     "2",
+     "Bukit Bintang",
+     "1009",
+     "9.50"
+    ],
+    [
+     "2",
+     "Bukit Bintang",
+     "1003",
+     "5.00"
+    ],
+    [
+     "3",
+     "Kemang",
+     "NULL",
+     "NULL"
+    ],
+    [
+     "4",
+     "Surry Hills",
+     "1011",
+     "16.50"
+    ],
+    [
+     "4",
+     "Surry Hills",
+     "1006",
+     "14.00"
+    ]
+   ]
+  },
+  "m8.pivot.duckdb": {
+   "cols": [
+    "store_id",
+    "web",
+    "app",
+    "in_store"
+   ],
+   "rows": [
+    [
+     "1",
+     "56.50",
+     "7.00",
+     "18.50"
+    ],
+    [
+     "2",
+     "NULL",
+     "5.00",
+     "9.50"
+    ],
+    [
+     "4",
+     "14.00",
+     "16.50",
+     "NULL"
+    ]
+   ]
+  },
+  "m8.pivot.postgres": {
+   "cols": [
+    "store_id",
+    "web",
+    "app",
+    "in_store"
+   ],
+   "rows": [
+    [
+     "1",
+     "56.50",
+     "7.00",
+     "18.50"
+    ],
+    [
+     "2",
+     "NULL",
+     "5.00",
+     "9.50"
+    ],
+    [
+     "4",
+     "14.00",
+     "16.50",
+     "NULL"
+    ]
+   ]
+  },
+  "m8.pivot.sqlite": {
+   "cols": [
+    "store_id",
+    "web",
+    "app",
+    "in_store"
+   ],
+   "rows": [
+    [
+     "1",
+     "56.5",
+     "7",
+     "18.5"
+    ],
+    [
+     "2",
+     "NULL",
+     "5",
+     "9.5"
+    ],
+    [
+     "4",
+     "14",
+     "16.5",
+     "NULL"
+    ]
+   ]
+  },
+  "m8.pivot_case.duckdb": {
+   "cols": [
+    "store_id",
+    "web",
+    "app",
+    "in_store"
+   ],
+   "rows": [
+    [
+     "1",
+     "56.50",
+     "7.00",
+     "18.50"
+    ],
+    [
+     "2",
+     "0.00",
+     "5.00",
+     "9.50"
+    ],
+    [
+     "4",
+     "14.00",
+     "16.50",
+     "0.00"
+    ]
+   ]
+  },
+  "m8.pivot_case.postgres": {
+   "cols": [
+    "store_id",
+    "web",
+    "app",
+    "in_store"
+   ],
+   "rows": [
+    [
+     "1",
+     "56.50",
+     "7.00",
+     "18.50"
+    ],
+    [
+     "2",
+     "0",
+     "5.00",
+     "9.50"
+    ],
+    [
+     "4",
+     "14.00",
+     "16.50",
+     "0"
+    ]
+   ]
+  },
+  "m8.pivot_case.sqlite": {
+   "cols": [
+    "store_id",
+    "web",
+    "app",
+    "in_store"
+   ],
+   "rows": [
+    [
+     "1",
+     "56.5",
+     "7",
+     "18.5"
+    ],
+    [
+     "2",
+     "0",
+     "5",
+     "9.5"
+    ],
+    [
+     "4",
+     "14",
+     "16.5",
+     "0"
+    ]
+   ]
+  },
+  "m8.pivot_duckdb": {
+   "cols": [
+    "store_id",
+    "app",
+    "store",
+    "web"
+   ],
+   "rows": [
+    [
+     "1",
+     "7.00",
+     "18.50",
+     "56.50"
+    ],
+    [
+     "2",
+     "5.00",
+     "9.50",
+     "NULL"
+    ],
+    [
+     "4",
+     "16.50",
+     "NULL",
+     "14.00"
+    ]
+   ]
+  },
+  "m8.raw_sum.duckdb": {
+   "cols": [
+    "raw_rows",
+    "orders",
+    "raw_total"
+   ],
+   "rows": [
+    [
+     "9",
+     "5",
+     "135.00"
+    ]
+   ]
+  },
+  "m8.raw_sum.postgres": {
+   "cols": [
+    "raw_rows",
+    "orders",
+    "raw_total"
+   ],
+   "rows": [
+    [
+     "9",
+     "5",
+     "135.00"
+    ]
+   ]
+  },
+  "m8.raw_sum.sqlite": {
+   "cols": [
+    "raw_rows",
+    "orders",
+    "raw_total"
+   ],
+   "rows": [
+    [
+     "9",
+     "5",
+     "135.0"
+    ]
+   ]
+  },
+  "m8.retention.duckdb": {
+   "cols": [
+    "cohort_day",
+    "cohort_size",
+    "day_1",
+    "day_2",
+    "day_3"
+   ],
+   "rows": [
+    [
+     "2026-03-01",
+     "2",
+     "2",
+     "1",
+     "1"
+    ],
+    [
+     "2026-03-02",
+     "1",
+     "1",
+     "1",
+     "1"
+    ]
+   ]
+  },
+  "m8.retention.postgres": {
+   "cols": [
+    "cohort_day",
+    "cohort_size",
+    "day_1",
+    "day_2",
+    "day_3"
+   ],
+   "rows": [
+    [
+     "2026-03-01",
+     "2",
+     "2",
+     "1",
+     "1"
+    ],
+    [
+     "2026-03-02",
+     "1",
+     "1",
+     "1",
+     "1"
+    ]
+   ]
+  },
+  "m8.retention_sqlite": {
+   "cols": [
+    "cohort_day",
+    "cohort_size",
+    "day_1",
+    "day_2",
+    "day_3"
+   ],
+   "rows": [
+    [
+     "2026-03-01",
+     "2",
+     "2",
+     "1",
+     "1"
+    ],
+    [
+     "2026-03-02",
+     "1",
+     "1",
+     "1",
+     "1"
+    ]
+   ]
+  },
+  "m8.sessions.duckdb": {
+   "cols": [
+    "customer_id",
+    "session_no",
+    "started",
+    "ended",
+    "events"
+   ],
+   "rows": [
+    [
+     "1",
+     "1",
+     "2026-03-02 09:00:00",
+     "2026-03-02 09:16:00",
+     "5"
+    ],
+    [
+     "1",
+     "2",
+     "2026-03-02 14:02:00",
+     "2026-03-02 14:05:00",
+     "2"
+    ],
+    [
+     "2",
+     "1",
+     "2026-03-02 10:00:00",
+     "2026-03-02 10:00:00",
+     "1"
+    ],
+    [
+     "2",
+     "2",
+     "2026-03-02 10:40:00",
+     "2026-03-02 10:46:00",
+     "2"
+    ],
+    [
+     "2",
+     "3",
+     "2026-03-02 16:20:00",
+     "2026-03-02 16:30:00",
+     "4"
+    ],
+    [
+     "3",
+     "1",
+     "2026-03-02 11:00:00",
+     "2026-03-02 11:03:00",
+     "4"
+    ],
+    [
+     "3",
+     "2",
+     "2026-03-02 23:42:00",
+     "2026-03-02 23:50:00",
+     "4"
+    ],
+    [
+     "NULL",
+     "1",
+     "2026-03-02 12:00:00",
+     "2026-03-02 12:30:00",
+     "2"
+    ]
+   ]
+  },
+  "m8.sessions.postgres": {
+   "cols": [
+    "customer_id",
+    "session_no",
+    "started",
+    "ended",
+    "events"
+   ],
+   "rows": [
+    [
+     "1",
+     "1",
+     "2026-03-02 09:00:00",
+     "2026-03-02 09:16:00",
+     "5"
+    ],
+    [
+     "1",
+     "2",
+     "2026-03-02 14:02:00",
+     "2026-03-02 14:05:00",
+     "2"
+    ],
+    [
+     "2",
+     "1",
+     "2026-03-02 10:00:00",
+     "2026-03-02 10:00:00",
+     "1"
+    ],
+    [
+     "2",
+     "2",
+     "2026-03-02 10:40:00",
+     "2026-03-02 10:46:00",
+     "2"
+    ],
+    [
+     "2",
+     "3",
+     "2026-03-02 16:20:00",
+     "2026-03-02 16:30:00",
+     "4"
+    ],
+    [
+     "3",
+     "1",
+     "2026-03-02 11:00:00",
+     "2026-03-02 11:03:00",
+     "4"
+    ],
+    [
+     "3",
+     "2",
+     "2026-03-02 23:42:00",
+     "2026-03-02 23:50:00",
+     "4"
+    ],
+    [
+     "NULL",
+     "1",
+     "2026-03-02 12:00:00",
+     "2026-03-02 12:30:00",
+     "2"
+    ]
+   ]
+  },
+  "m8.sessions_sqlite": {
+   "cols": [
+    "customer_id",
+    "session_no",
+    "started",
+    "ended",
+    "events"
+   ],
+   "rows": [
+    [
+     "1",
+     "1",
+     "2026-03-02 09:00:00",
+     "2026-03-02 09:16:00",
+     "5"
+    ],
+    [
+     "1",
+     "2",
+     "2026-03-02 14:02:00",
+     "2026-03-02 14:05:00",
+     "2"
+    ],
+    [
+     "2",
+     "1",
+     "2026-03-02 10:00:00",
+     "2026-03-02 10:00:00",
+     "1"
+    ],
+    [
+     "2",
+     "2",
+     "2026-03-02 10:40:00",
+     "2026-03-02 10:46:00",
+     "2"
+    ],
+    [
+     "2",
+     "3",
+     "2026-03-02 16:20:00",
+     "2026-03-02 16:30:00",
+     "4"
+    ],
+    [
+     "3",
+     "1",
+     "2026-03-02 11:00:00",
+     "2026-03-02 11:03:00",
+     "4"
+    ],
+    [
+     "3",
+     "2",
+     "2026-03-02 23:42:00",
+     "2026-03-02 23:50:00",
+     "4"
+    ],
+    [
+     "NULL",
+     "1",
+     "2026-03-02 12:00:00",
+     "2026-03-02 12:30:00",
+     "2"
+    ]
+   ]
+  },
+  "m8.topn.duckdb": {
+   "cols": [
+    "store_id",
+    "rn",
+    "order_id",
+    "total"
+   ],
+   "rows": [
+    [
+     "1",
+     "1",
+     "1004",
+     "26.00"
+    ],
+    [
+     "1",
+     "2",
+     "1010",
+     "19.00"
+    ],
+    [
+     "2",
+     "1",
+     "1009",
+     "9.50"
+    ],
+    [
+     "2",
+     "2",
+     "1003",
+     "5.00"
+    ],
+    [
+     "4",
+     "1",
+     "1011",
+     "16.50"
+    ],
+    [
+     "4",
+     "2",
+     "1006",
+     "14.00"
+    ]
+   ]
+  },
+  "m8.topn.postgres": {
+   "cols": [
+    "store_id",
+    "rn",
+    "order_id",
+    "total"
+   ],
+   "rows": [
+    [
+     "1",
+     "1",
+     "1004",
+     "26.00"
+    ],
+    [
+     "1",
+     "2",
+     "1010",
+     "19.00"
+    ],
+    [
+     "2",
+     "1",
+     "1009",
+     "9.50"
+    ],
+    [
+     "2",
+     "2",
+     "1003",
+     "5.00"
+    ],
+    [
+     "4",
+     "1",
+     "1011",
+     "16.50"
+    ],
+    [
+     "4",
+     "2",
+     "1006",
+     "14.00"
+    ]
+   ]
+  },
+  "m8.topn.sqlite": {
+   "cols": [
+    "store_id",
+    "rn",
+    "order_id",
+    "total"
+   ],
+   "rows": [
+    [
+     "1",
+     "1",
+     "1004",
+     "26"
+    ],
+    [
+     "1",
+     "2",
+     "1010",
+     "19"
+    ],
+    [
+     "2",
+     "1",
+     "1009",
+     "9.5"
+    ],
+    [
+     "2",
+     "2",
+     "1003",
+     "5"
+    ],
+    [
+     "4",
+     "1",
+     "1011",
+     "16.5"
+    ],
+    [
+     "4",
+     "2",
+     "1006",
+     "14"
+    ]
+   ]
   }
  },
  "text": {
@@ -16428,6 +18816,7 @@ LAB.real = {
   "m7.plan.pg_func": "Aggregate (actual rows=1 loops=1)\n  ->  Seq Scan on big_orders (actual rows=331 loops=1)\n        Filter: ((order_ts)::date = '2026-02-10'::date)\n        Rows Removed by Filter: 29669",
   "m7.plan.pg_range": "Aggregate (actual rows=1 loops=1)\n  ->  Bitmap Heap Scan on big_orders (actual rows=331 loops=1)\n        Recheck Cond: ((order_ts >= '2026-02-10 00:00:00'::timestamp without time zone) AND (order_ts < '2026-02-11 00:00:00'::timestamp without time zone))\n        Heap Blocks: exact=19\n        ->  Bitmap Index Scan on big_orders_ts (actual rows=331 loops=1)\n              Index Cond: ((order_ts >= '2026-02-10 00:00:00'::timestamp without time zone) AND (order_ts < '2026-02-11 00:00:00'::timestamp without time zone))",
   "m7.regex.sqlite.error": "no such function: regexp_replace",
-  "m7.tz_sqlite_error.error": "near \"TIME\": syntax error"
+  "m7.tz_sqlite_error.error": "near \"TIME\": syntax error",
+  "m8.lateral.sqlite.error": "near \"SELECT\": syntax error"
  }
 };

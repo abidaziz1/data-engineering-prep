@@ -80,3 +80,13 @@ a.logo:hover{background:#3730A3}
 .tbl td,.tbl th{overflow-wrap:anywhere}
 
 .nowrap .tbl td,.nowrap .tbl th{white-space:nowrap}
+
+.sx-rows{display:grid;gap:.5rem}
+.sx-row{display:grid;grid-template-columns:7.5rem minmax(0,1fr);align-items:center;gap:.6rem}
+.sx-row .sx-l{font:700 .9rem Manrope,sans-serif}
+.sx-track{position:relative;height:34px;background:#fff;border:3px solid var(--ink);border-radius:10px;overflow:hidden}
+.sx-band{position:absolute;top:4px;bottom:4px;border-radius:8px;border:2px solid var(--ink);opacity:.9;min-width:10px}
+.sx-band.c0{background:#BFDBFE}.sx-band.c1{background:#BBF7D0}.sx-band.c2{background:#FDE68A}.sx-band.c3{background:#FBCFE8}
+.sx-dot{position:absolute;top:50%;width:8px;height:8px;margin-left:-4px;margin-top:-4px;border-radius:50%;background:var(--ink)}
+.sx-axis{display:flex;justify-content:space-between;font:600 .8rem 'IBM Plex Mono',monospace;color:var(--ink2);margin-left:8.1rem}
+@media (max-width:600px){.sx-row{grid-template-columns:4.5rem minmax(0,1fr)}.sx-axis{margin-left:5.1rem}}

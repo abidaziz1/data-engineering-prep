@@ -235,4 +235,30 @@
       { id: 'tg_w2', x: 20, y: 290, t: 'runs after GROUP BY and HAVING, before DISTINCT, ORDER BY and LIMIT', c: 'int' }
     ]
   });
+  /* ------------------------------------------------------------------ */
+  /* 8. Sessions from events                                             */
+  /* ------------------------------------------------------------------ */
+  S.sessions = build({
+    h: 340, cw: 190, dx: 216,
+    label: 'How events become sessions. Events are sorted by time for each customer. LAG reads the time of the previous event. A flag marks the events that come more than N minutes after the previous one. A running sum of the flags numbers the sessions. Grouping by customer and session number gives one row for each session.',
+    nodes: [
+      ['s_ev', 0, 0, 'Events', 'sorted by time', 'src'],
+      ['s_lag', 1, 0, 'LAG', 'time of the last event', 'raw'],
+      ['s_flag', 2, 0, 'New session?', 'gap longer than N', 'stg'],
+      ['s_sum', 3, 0, 'Running sum', 'counts the new sessions', 'int'],
+      ['s_id', 4, 0, 'Session number', 'same inside a session', 'mart'],
+      ['s_out', 4, 1.3, 'GROUP BY session', 'a row for each session', 'qual']
+    ],
+    edges: [
+      ['q1', 's_ev', 's_lag', 1],
+      ['q2', 's_lag', 's_flag', 2],
+      ['q3', 's_flag', 's_sum', 3],
+      ['q4', 's_sum', 's_id', 4],
+      ['q5', 's_id', 's_out', 5]
+    ],
+    tags: [
+      { id: 'tg_s1', x: 20, y: 150, t: 'each customer is its own partition', c: 'int' },
+      { id: 'tg_s2', x: 20, y: 290, t: 'the first event has no previous event, so it starts a session', c: 'qual' }
+    ]
+  });
 })();
