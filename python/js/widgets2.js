@@ -282,5 +282,39 @@
     W.fanoutInfo = { data: data, find: find };
   })();
 
+  /* ====================== Mission 10: threads, processes, asyncio and the GIL ====================== */
+  (function () {
+    function data() { return G.counts('m10.concurrency'); }
+    var WHY = {
+      'waiting': 'While a job waits for the network it uses no CPU, and Python lets go of the GIL. So threads and asyncio overlap the eight waits and finish in about the time of one. Processes overlap them too, and they pay for starting the pool.',
+      'computing': {
+        'regular': 'The GIL lets one thread run Python code at a time, so eight threads do the same work in about the same time, a little slower from switching. Processes have their own interpreter and GIL, so they use several cores.',
+        'free-threaded': 'In the free-threaded build the GIL is off, and threads run on several cores at once. The speed-up is smaller than the core count here because the machine has 4 cores that other programs were also using.'
+      }
+    };
+    W.conc = {
+      steps: function () { return 1; },
+      hint: 'Pick the kind of work and the Python build. Compare the bars with one after another.',
+      say: function () { return 'Eight jobs, done one after another and at once. Waiting jobs sleep 0.25 s, standing in for a network call. Computing jobs add up numbers. Pick the kind of work and the build of Python. These are real timings, medians of three runs, on this machine.'; },
+      mood: function () { return 'think'; },
+      render: function (box, s, i, A) {
+        var d = data(), builds = Object.keys(d.builds), st = A.local.cc || (A.local.cc = { w: 'computing', b: 'regular' });
+        if (!d.builds[st.b]) st.b = builds[0];
+        var b = d.builds[st.b], rows = b[st.w], names = Object.keys(rows), base = rows['one after another'], max = Math.max.apply(null, names.map(function (n) { return rows[n]; })), h = '<div class="lab">';
+        h += '<div class="lab-row"><span class="lab-l">Work</span><div class="sel-chips">' + chips(['waiting', 'computing'], st.w, 'cc-w', function (k) { return k === 'waiting' ? 'eight jobs that wait 0.25 s' : 'eight jobs that compute'; }) + '</div></div>' +
+          '<div class="lab-row"><span class="lab-l">Python build</span><div class="sel-chips">' + chips(builds, st.b, 'cc-b', function (k) { return k === 'regular' ? 'regular 3.14, with a GIL' : 'free-threaded 3.14t, no GIL'; }) + '</div></div>' +
+          '<p class="lab-note">GIL enabled: <b>' + (b.gil ? 'True' : 'False') + '</b>, cores: ' + b.cores + '. The timing of each method is the median of 3 runs.</p><div class="gantt">';
+        names.forEach(function (n) {
+          var t = rows[n], faster = base / t;
+          h += '<div class="lane"><span class="lane-n lane-wide">' + esc(n) + '</span><div class="lane-track"><div class="gbar' + (n === 'one after another' ? '' : faster < 1.15 ? ' bad' : ' sel') + '" style="width:' + Math.max(2, Math.round(t / max * 100)) + '%"></div></div><span class="lane-v">' + t.toFixed(2) + ' s' + (n === 'one after another' ? '' : ', ' + (faster >= 1.15 ? faster.toFixed(1) + ' times faster' : faster >= 0.9 ? 'no gain' : 'slower')) + '</span></div>';
+        });
+        h += '</div><div class="callout tip">' + md(st.w === 'waiting' ? WHY.waiting : WHY.computing[st.b]) + '</div></div>';
+        box.innerHTML = h;
+        A.bindWidget = function (act, el) { var v = el.getAttribute('data-v'); if (act === 'cc-w') st.w = v; if (act === 'cc-b') st.b = v; A.render(true); };
+      }
+    };
+    W.concInfo = { data: data };
+  })();
+
   /* @@END */
 })();

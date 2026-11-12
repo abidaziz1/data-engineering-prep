@@ -152,5 +152,33 @@
     ]
   };
 
+  /* ------------------------------------------------------------------ */
+  /* 6. Threads and processes, and the GIL                               */
+  /* ------------------------------------------------------------------ */
+  S.conc = {
+    w: 1100, h: 340, label: 'Threads and processes: threads share one process and one GIL, so only one runs Python code at a time, while processes each have their own interpreter and GIL and can use several cores; a free-threaded build has no GIL',
+    nodes: [
+      { id: 'job', x: 10, y: 125, w: 170, h: 90, t: 'Your job', s: 'eight chunks of work', c: 'ing', k: 'chip' },
+      { id: 'thr', x: 260, y: 40, w: 200, h: 80, t: 'Threads', s: 'one process, shared memory', c: 'stg', k: 'chip' },
+      { id: 'prc', x: 260, y: 220, w: 200, h: 80, t: 'Processes', s: 'a separate interpreter each', c: 'con', k: 'chip' },
+      { id: 'gil', x: 560, y: 40, w: 230, h: 80, t: 'One GIL', s: 'one thread runs Python at a time', c: 'mon', k: 'chip' },
+      { id: 'gils', x: 560, y: 220, w: 230, h: 80, t: 'A GIL in each process', s: 'they do not block each other', c: 'mon', k: 'chip' },
+      { id: 'one', x: 870, y: 40, w: 210, h: 80, t: 'One core busy', s: 'for computing work', c: 'snap', k: 'chip' },
+      { id: 'many', x: 870, y: 220, w: 210, h: 80, t: 'Several cores busy', s: 'for computing work', c: 'mart', k: 'chip' }
+    ],
+    edges: [
+      { id: 'c1', a: 'job', b: 'thr', d: 'M180 150 C220 150 220 80 260 80', n: 1, bx: 220, by: 118 },
+      { id: 'c2', a: 'thr', b: 'gil', d: 'M460 80 H560', n: 2, bx: 510, by: 58 },
+      { id: 'c3', a: 'gil', b: 'one', d: 'M790 80 H870', n: 3, bx: 830, by: 58 },
+      { id: 'c4', a: 'job', b: 'prc', d: 'M180 190 C220 190 220 260 260 260', n: 4, bx: 220, by: 232 },
+      { id: 'c5', a: 'prc', b: 'gils', d: 'M460 260 H560', n: 5, bx: 510, by: 238 },
+      { id: 'c6', a: 'gils', b: 'many', d: 'M790 260 H870', n: 6, bx: 830, by: 238 }
+    ],
+    tags: [
+      { id: 'tg_wait', x: 560, y: 150, t: 'a thread that waits lets go of the GIL', c: 'qual' },
+      { id: 'tg_free', x: 560, y: 186, t: 'free-threaded build 3.14t: no GIL', c: 'ci' }
+    ]
+  };
+
   /* @@END */
 })();

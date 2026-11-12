@@ -98,7 +98,13 @@ LAB.real = {
   "m9/three_engines.py": "\"\"\"The same question in pandas, Polars and DuckDB: paid revenue for each store, biggest first. Two million made-up orders.\"\"\"\nimport duckdb\nimport numpy as np\nimport pandas as pd\nimport polars as pl\n\nrng = np.random.default_rng(7)\nn = 2_000_000\npd.DataFrame({\n    \"order_id\": np.arange(n),\n    \"store\": rng.choice([\"London\", \"Singapore\", \"Sydney\", \"Mumbai\", \"Dubai\", \"Paris\", \"Tokyo\", \"Lagos\"], n),\n    \"status\": rng.choice([\"paid\", \"paid\", \"paid\", \"refunded\", \"cancelled\"], n),\n    \"total_cents\": rng.integers(300, 4000, n),\n}).to_parquet(\"orders.parquet\")\n\n\ndef with_pandas():\n    df = pd.read_parquet(\"orders.parquet\", columns=[\"store\", \"status\", \"total_cents\"])\n    paid = df[df[\"status\"] == \"paid\"]\n    return paid.groupby(\"store\")[\"total_cents\"].agg([\"sum\", \"count\"]).sort_values(\"sum\", ascending=False)\n\n\ndef with_polars():\n    return (pl.scan_parquet(\"orders.parquet\").filter(pl.col(\"status\") == \"paid\")\n            .group_by(\"store\").agg(pl.col(\"total_cents\").sum().alias(\"sum\"), pl.col(\"total_cents\").count().alias(\"count\"))\n            .sort(\"sum\", descending=True).collect())\n\n\ndef with_duckdb():\n    return duckdb.sql(\"\"\"SELECT store, sum(total_cents) AS \"sum\", count(*) AS \"count\" FROM 'orders.parquet'\n                         WHERE status = 'paid' GROUP BY store ORDER BY \"sum\" DESC\"\"\").fetchall()\n\n\na = [(store, int(r[\"sum\"]), int(r[\"count\"])) for store, r in with_pandas().iterrows()]\nb = [tuple(r) for r in with_polars().iter_rows()]\nc = with_duckdb()\nprint(\"same answer from all three:\", a == b == c)\nfor store, cents, count in a[:3]:\n    print(f\"  {store:<10}{count:>9,} paid orders{cents / 100:>14,.2f}\")\n",
   "m9/lazy_polars.py": "\"\"\"Polars can look at the whole query before it reads anything. explain() prints the plan.\"\"\"\nimport polars as pl\n\nquery = (pl.scan_parquet(\"orders.parquet\")\n         .filter(pl.col(\"status\") == \"paid\")\n         .group_by(\"store\").agg(pl.col(\"total_cents\").sum().alias(\"cents\"))\n         .sort(\"cents\", descending=True))\nprint(query.explain())\n",
   "m9/safe_join.py": "\"\"\"Coding round: a left join that cannot multiply rows.\"\"\"\nimport pandas as pd\n\n\ndef safe_join(orders, customers, key=\"customer_id\"):\n    \"\"\"Left join orders to customers. Raise ValueError, naming the keys, when customers has more than one row for a key.\n    The result has exactly one row for each order, in the order of `orders`.\"\"\"\n    repeated = customers.loc[customers[key].duplicated(keep=False), key].unique().tolist()\n    if repeated:\n        raise ValueError(f\"customers has more than one row for {key} {repeated}\")\n    out = orders.merge(customers, on=key, how=\"left\", validate=\"m:1\")\n    assert len(out) == len(orders)\n    return out\n\n\norders = pd.DataFrame({\"order_id\": [\"O-1\", \"O-2\", \"O-3\", \"O-4\"], \"customer_id\": [1, 2, 3, 9], \"total_cents\": [1250, 475, 820, 1990]})\ncustomers = pd.DataFrame({\"customer_id\": [1, 2, 3], \"city\": [\"London\", \"London\", \"Singapore\"]})\n\nout = safe_join(orders, customers)\nassert out[\"order_id\"].tolist() == [\"O-1\", \"O-2\", \"O-3\", \"O-4\"] and out[\"total_cents\"].sum() == orders[\"total_cents\"].sum()\nprint(\"a clean join:\", len(out), \"rows, total\", out[\"total_cents\"].sum(), \"cents\")\nassert bool(out[\"city\"].isna().iloc[3]) and out[\"city\"].iloc[0] == \"London\"\nprint(\"an order with no customer is kept:\", out[\"order_id\"].iloc[3], \"with a missing city\")\ntry:\n    safe_join(orders, pd.concat([customers, customers.iloc[[2]]]))\n    raise AssertionError(\"a repeated key must raise\")\nexcept ValueError as err:\n    print(\"a repeated key raises:\", err)\nprint(\"tests passed\")\n",
-  "m9/latest_per_order.py": "\"\"\"Coding round: the latest row for each order, in SQL, with DuckDB.\"\"\"\nimport duckdb\nimport pandas as pd\n\n\ndef latest_per_order(rows):\n    \"\"\"rows are (order_id, status, updated_at). Return one row for each order_id, the one with the latest updated_at, sorted by order_id.\"\"\"\n    df = pd.DataFrame(rows, columns=[\"order_id\", \"status\", \"updated_at\"])\n    return duckdb.sql(\"\"\"\n        SELECT order_id, status, updated_at FROM df\n        QUALIFY row_number() OVER (PARTITION BY order_id ORDER BY updated_at DESC) = 1\n        ORDER BY order_id\"\"\").fetchall()\n\n\nrows = [(\"O-1\", \"placed\", \"2026-03-14 08:00\"), (\"O-2\", \"placed\", \"2026-03-14 09:00\"), (\"O-1\", \"paid\", \"2026-03-14 08:05\"),\n        (\"O-3\", \"placed\", \"2026-03-14 07:00\"), (\"O-1\", \"refunded\", \"2026-03-15 10:00\"), (\"O-2\", \"paid\", \"2026-03-14 09:30\")]\ngot = latest_per_order(rows)\nassert got == [(\"O-1\", \"refunded\", \"2026-03-15 10:00\"), (\"O-2\", \"paid\", \"2026-03-14 09:30\"), (\"O-3\", \"placed\", \"2026-03-14 07:00\")]\nprint(\"latest status of each order:\", [(o, s) for o, s, _ in got])\nassert latest_per_order([]) == []\nprint(\"no rows:\", latest_per_order([]))\nassert latest_per_order(rows[:1]) == [rows[0]]\nprint(\"one row:\", len(latest_per_order(rows[:1])), \"row\")\nprint(\"tests passed\")\n"
+  "m9/latest_per_order.py": "\"\"\"Coding round: the latest row for each order, in SQL, with DuckDB.\"\"\"\nimport duckdb\nimport pandas as pd\n\n\ndef latest_per_order(rows):\n    \"\"\"rows are (order_id, status, updated_at). Return one row for each order_id, the one with the latest updated_at, sorted by order_id.\"\"\"\n    df = pd.DataFrame(rows, columns=[\"order_id\", \"status\", \"updated_at\"])\n    return duckdb.sql(\"\"\"\n        SELECT order_id, status, updated_at FROM df\n        QUALIFY row_number() OVER (PARTITION BY order_id ORDER BY updated_at DESC) = 1\n        ORDER BY order_id\"\"\").fetchall()\n\n\nrows = [(\"O-1\", \"placed\", \"2026-03-14 08:00\"), (\"O-2\", \"placed\", \"2026-03-14 09:00\"), (\"O-1\", \"paid\", \"2026-03-14 08:05\"),\n        (\"O-3\", \"placed\", \"2026-03-14 07:00\"), (\"O-1\", \"refunded\", \"2026-03-15 10:00\"), (\"O-2\", \"paid\", \"2026-03-14 09:30\")]\ngot = latest_per_order(rows)\nassert got == [(\"O-1\", \"refunded\", \"2026-03-15 10:00\"), (\"O-2\", \"paid\", \"2026-03-14 09:30\"), (\"O-3\", \"placed\", \"2026-03-14 07:00\")]\nprint(\"latest status of each order:\", [(o, s) for o, s, _ in got])\nassert latest_per_order([]) == []\nprint(\"no rows:\", latest_per_order([]))\nassert latest_per_order(rows[:1]) == [rows[0]]\nprint(\"one row:\", len(latest_per_order(rows[:1])), \"row\")\nprint(\"tests passed\")\n",
+  "m10/profile_first.py": "\"\"\"Measure first. A slow report, a profile that names the hot spot, a one-line fix, and the same run again.\"\"\"\nimport cProfile\nimport pstats\nimport statistics\nimport time\n\nSTORES = [f\"S-{n:04d}\" for n in range(5000)]\nROWS = [(f\"O-{i}\", STORES[(i * 37) % 5000], 100 + i % 900) for i in range(20_000)]\n\n\ndef is_known(store, known):\n    return store in known\n\n\ndef report(rows, known):\n    totals = {}\n    for order_id, store, cents in rows:\n        if is_known(store, known):\n            totals[store] = totals.get(store, 0) + cents\n    return totals\n\n\ndef seconds(known, runs=3):\n    took = []\n    for _ in range(runs):\n        t0 = time.perf_counter()\n        report(ROWS, known)\n        took.append(time.perf_counter() - t0)\n    return statistics.median(took)\n\n\nprofile = cProfile.Profile()\nprofile.runcall(report, ROWS, STORES)  # `known` is a list of 5,000 store ids\npstats.Stats(profile).strip_dirs().sort_stats(\"tottime\").print_stats(3)\n\nprint(f\"known is a list: {seconds(STORES):.3f} s\")\nprint(f\"known is a set:  {seconds(set(STORES)):.4f} s\")\n",
+  "m10/vectorize.py": "\"\"\"One million numbers: a Python loop and the same sum as one column operation. Median of 5 runs each.\"\"\"\nimport statistics\nimport time\n\nimport numpy as np\nimport pandas as pd\n\nvalues = list(range(1_000_000))\narr = np.arange(1_000_000)\nseries = pd.Series(arr)\n\n\ndef loop():\n    total = 0\n    for v in values:\n        total += v * 2\n    return total\n\n\ndef comprehension():\n    return sum([v * 2 for v in values])\n\n\ndef numpy_sum():\n    return int((arr * 2).sum())\n\n\ndef pandas_sum():\n    return int((series * 2).sum())\n\n\ndef median_ms(fn, runs=5):\n    took = []\n    for _ in range(runs):\n        t0 = time.perf_counter()\n        fn()\n        took.append((time.perf_counter() - t0) * 1000)\n    return statistics.median(took)\n\n\nassert loop() == comprehension() == numpy_sum() == pandas_sum()\nprint(f\"{'method':<28}{'milliseconds':>14}\")\nfor name, fn in ((\"for loop\", loop), (\"list comprehension and sum\", comprehension), (\"numpy: (arr * 2).sum()\", numpy_sum), (\"pandas: (s * 2).sum()\", pandas_sum)):\n    print(f\"{name:<28}{median_ms(fn):>14.1f}\")\n",
+  "m10/pandas_memory.py": "\"\"\"The memory of one table, with the default types and with smaller ones. One million made-up orders.\"\"\"\nimport numpy as np\nimport pandas as pd\n\nrng = np.random.default_rng(7)\nn = 1_000_000\ndf = pd.DataFrame({\n    \"order_id\": np.arange(n),\n    \"store\": rng.choice([\"London\", \"Singapore\", \"Sydney\", \"Mumbai\", \"Dubai\", \"Paris\", \"Tokyo\", \"Lagos\"], n),\n    \"status\": rng.choice([\"paid\", \"refunded\", \"cancelled\"], n),\n    \"qty\": rng.integers(1, 10, n),\n    \"total_cents\": rng.integers(300, 4000, n),\n})\nsmall = df.astype({\"order_id\": \"int32\", \"store\": \"category\", \"status\": \"category\", \"qty\": \"int8\", \"total_cents\": \"int32\"})\nbefore, after = df.memory_usage(deep=True), small.memory_usage(deep=True)\n\nprint(f\"{'column':<13}{'default type':<14}{'MB':>7}   {'smaller type':<14}{'MB':>7}\")\nfor col in df.columns:\n    print(f\"{col:<13}{str(df[col].dtype):<14}{before[col] / 1e6:>7.1f}   {str(small[col].dtype):<14}{after[col] / 1e6:>7.1f}\")\nprint(f\"{'total':<13}{'':<14}{before.sum() / 1e6:>7.1f}   {'':<14}{after.sum() / 1e6:>7.1f}\")\nassert df[\"total_cents\"].sum() == small[\"total_cents\"].sum() and (df[\"store\"] == small[\"store\"].astype(str)).all()\nprint(\"same sums and values after the change\")\n",
+  "m10/threaded_fetch.py": "\"\"\"Coding round: do many slow calls at once, keep the order, and keep going when one call fails.\"\"\"\nimport time\nfrom concurrent.futures import ThreadPoolExecutor\n\n\ndef fetch_all(fetch, urls, workers=10):\n    \"\"\"Call fetch(url) for every url in a thread pool. Return a list in the order of `urls` with one item for each:\n    (\"ok\", result) when the call worked, or (\"error\", \"ExceptionName: message\") when it raised.\"\"\"\n    def one(url):\n        try:\n            return (\"ok\", fetch(url))\n        except Exception as err:\n            return (\"error\", f\"{type(err).__name__}: {err}\")\n    with ThreadPoolExecutor(workers) as pool:\n        return list(pool.map(one, urls))\n\n\ndef slow(url):\n    time.sleep(0.1)  # stands in for a network call\n    if url.endswith(\"/7\"):\n        raise TimeoutError(\"read timed out\")\n    return url.upper()\n\n\nurls = [f\"/orders/{n}\" for n in range(20)]\nt0 = time.perf_counter()\ngot = fetch_all(slow, urls, workers=10)\ntook = time.perf_counter() - t0\nassert [g[1] for g in got if g[0] == \"ok\"] == [u.upper() for u in urls if not u.endswith(\"/7\")], \"results in the order of the urls\"\nassert got[7] == (\"error\", \"TimeoutError: read timed out\") and len([g for g in got if g[0] == \"error\"]) == 1\nprint(\"20 calls of 0.1 s with 10 workers:\", \"finished in under a second\" if took < 1.0 else \"TOO SLOW\", \"-\", len(got), \"results\")\nassert took < 1.0, took\nprint(\"order kept:\", got[0], got[19])\nprint(\"one failure kept, the other 19 worked:\", got[7])\nassert fetch_all(slow, []) == []\nprint(\"no urls:\", fetch_all(slow, []))\nprint(\"tests passed\")\n",
+  "m10/concurrency.py": "\"\"\"Eight jobs, done one after another and at once. The waiting jobs sleep 0.25 s, which stands in for a network call.\nThe computing jobs add up numbers. Each time is the median of 3 runs on this machine.\"\"\"\nimport asyncio\nimport os\nimport statistics\nimport sys\nimport time\nfrom concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor\n\n\ndef wait_job(_):\n    time.sleep(0.25)\n\n\nasync def wait_async(_):\n    await asyncio.sleep(0.25)\n\n\ndef cpu_job(_):\n    total = 0\n    for i in range(3_000_000):\n        total += i * i % 7\n    return total\n\n\ndef one_after_another(fn):\n    return [fn(i) for i in range(8)]\n\n\ndef with_threads(fn):\n    with ThreadPoolExecutor(8) as pool:\n        return list(pool.map(fn, range(8)))\n\n\ndef with_processes(fn):\n    with ProcessPoolExecutor(4) as pool:\n        return list(pool.map(fn, range(8)))\n\n\ndef with_asyncio():\n    async def main():\n        await asyncio.gather(*(wait_async(i) for i in range(8)))\n    asyncio.run(main())\n\n\ndef seconds(run, repeats=3):\n    took = []\n    for _ in range(repeats):\n        t0 = time.perf_counter()\n        run()\n        took.append(time.perf_counter() - t0)\n    return statistics.median(took)\n\n\nif __name__ == \"__main__\":\n    print(f\"GIL enabled: {sys._is_gil_enabled()}, cores: {os.cpu_count()}\")\n    print(\"eight jobs that wait 0.25 s\")\n    for name, run in ((\"one after another\", lambda: one_after_another(wait_job)), (\"8 threads\", lambda: with_threads(wait_job)),\n                      (\"4 processes\", lambda: with_processes(wait_job)), (\"asyncio\", with_asyncio)):\n        print(f\"  {name:<20}{seconds(run):>6.2f} s\")\n    print(\"eight jobs that compute\")\n    for name, run in ((\"one after another\", lambda: one_after_another(cpu_job)), (\"8 threads\", lambda: with_threads(cpu_job)), (\"4 processes\", lambda: with_processes(cpu_job))):\n        print(f\"  {name:<20}{seconds(run):>6.2f} s\")\n",
+  "m10/concurrency.py@free": "\"\"\"Eight jobs, done one after another and at once. The waiting jobs sleep 0.25 s, which stands in for a network call.\nThe computing jobs add up numbers. Each time is the median of 3 runs on this machine.\"\"\"\nimport asyncio\nimport os\nimport statistics\nimport sys\nimport time\nfrom concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor\n\n\ndef wait_job(_):\n    time.sleep(0.25)\n\n\nasync def wait_async(_):\n    await asyncio.sleep(0.25)\n\n\ndef cpu_job(_):\n    total = 0\n    for i in range(3_000_000):\n        total += i * i % 7\n    return total\n\n\ndef one_after_another(fn):\n    return [fn(i) for i in range(8)]\n\n\ndef with_threads(fn):\n    with ThreadPoolExecutor(8) as pool:\n        return list(pool.map(fn, range(8)))\n\n\ndef with_processes(fn):\n    with ProcessPoolExecutor(4) as pool:\n        return list(pool.map(fn, range(8)))\n\n\ndef with_asyncio():\n    async def main():\n        await asyncio.gather(*(wait_async(i) for i in range(8)))\n    asyncio.run(main())\n\n\ndef seconds(run, repeats=3):\n    took = []\n    for _ in range(repeats):\n        t0 = time.perf_counter()\n        run()\n        took.append(time.perf_counter() - t0)\n    return statistics.median(took)\n\n\nif __name__ == \"__main__\":\n    print(f\"GIL enabled: {sys._is_gil_enabled()}, cores: {os.cpu_count()}\")\n    print(\"eight jobs that wait 0.25 s\")\n    for name, run in ((\"one after another\", lambda: one_after_another(wait_job)), (\"8 threads\", lambda: with_threads(wait_job)),\n                      (\"4 processes\", lambda: with_processes(wait_job)), (\"asyncio\", with_asyncio)):\n        print(f\"  {name:<20}{seconds(run):>6.2f} s\")\n    print(\"eight jobs that compute\")\n    for name, run in ((\"one after another\", lambda: one_after_another(cpu_job)), (\"8 threads\", lambda: with_threads(cpu_job)), (\"4 processes\", lambda: with_processes(cpu_job))):\n        print(f\"  {name:<20}{seconds(run):>6.2f} s\")\n"
  },
  "text": {
   "m1/load_orders_v7.py#1": "loaded 6 rows\n(6, 6, 78.85)\n(1,)",
@@ -171,7 +177,13 @@ LAB.real = {
   "m9/three_engines.py": "same answer from all three: True\n  Paris       150,613 paid orders  3,235,372.73\n  Tokyo       150,288 paid orders  3,233,056.35\n  Dubai       150,263 paid orders  3,227,403.79",
   "m9/lazy_polars.py": "SORT BY [descending: [true]] [col(\"cents\")]\n  AGGREGATE[maintain_order: false]\n    [col(\"total_cents\").sum().alias(\"cents\")] BY [col(\"store\")]\n    FROM\n    simple π 2/2 [\"store\", \"total_cents\"]\n      Parquet SCAN [orders.parquet]\n      PROJECT 3/4 COLUMNS\n      SELECTION: col(\"status\") == \"paid\"\n      ESTIMATED ROWS: 2000000",
   "m9/safe_join.py": "a clean join: 4 rows, total 4535 cents\nan order with no customer is kept: O-4 with a missing city\na repeated key raises: customers has more than one row for customer_id [3]\ntests passed",
-  "m9/latest_per_order.py": "latest status of each order: [('O-1', 'refunded'), ('O-2', 'paid'), ('O-3', 'placed')]\nno rows: []\none row: 1 row\ntests passed"
+  "m9/latest_per_order.py": "latest status of each order: [('O-1', 'refunded'), ('O-2', 'paid'), ('O-3', 'placed')]\nno rows: []\none row: 1 row\ntests passed",
+  "m10/profile_first.py": "         40002 function calls in 0.456 seconds\n\n   Ordered by: internal time\n   List reduced from 4 to 3 due to restriction <3>\n\n   ncalls  tottime  percall  cumtime  percall filename:lineno(function)\n    20000    0.441    0.000    0.441    0.000 profile_first.py:11(is_known)\n        1    0.010    0.010    0.456    0.456 profile_first.py:15(report)\n    20000    0.004    0.000    0.004    0.000 {method 'get' of 'dict' objects}\n\n\nknown is a list: 0.554 s\nknown is a set:  0.0038 s",
+  "m10/vectorize.py": "method                        milliseconds\nfor loop                              46.1\nlist comprehension and sum            62.4\nnumpy: (arr * 2).sum()                 1.4\npandas: (s * 2).sum()                  1.6",
+  "m10/pandas_memory.py": "column       default type       MB   smaller type       MB\norder_id     int64             8.0   int32             4.0\nstore        str              13.9   category          1.0\nstatus       str              15.0   category          1.0\nqty          int64             8.0   int8              1.0\ntotal_cents  int64             8.0   int32             4.0\ntotal                         52.9                    11.0\nsame sums and values after the change",
+  "m10/threaded_fetch.py": "20 calls of 0.1 s with 10 workers: finished in under a second - 20 results\norder kept: ('ok', '/ORDERS/0') ('ok', '/ORDERS/19')\none failure kept, the other 19 worked: ('error', 'TimeoutError: read timed out')\nno urls: []\ntests passed",
+  "m10/concurrency.py": "GIL enabled: True, cores: 4\neight jobs that wait 0.25 s\n  one after another     2.00 s\n  8 threads             0.26 s\n  4 processes           0.54 s\n  asyncio               0.25 s\neight jobs that compute\n  one after another     1.22 s\n  8 threads             1.39 s\n  4 processes           0.41 s",
+  "m10/concurrency.py@free": "GIL enabled: False, cores: 4\neight jobs that wait 0.25 s\n  one after another     2.00 s\n  8 threads             0.25 s\n  4 processes           0.67 s\n  asyncio               0.25 s\neight jobs that compute\n  one after another     1.14 s\n  8 threads             0.48 s\n  4 processes           0.72 s"
  },
  "tables": {
   "m3.structs": {
@@ -330,7 +342,13 @@ LAB.real = {
    "m9/three_engines.py": 0,
    "m9/lazy_polars.py": 0,
    "m9/safe_join.py": 0,
-   "m9/latest_per_order.py": 0
+   "m9/latest_per_order.py": 0,
+   "m10/profile_first.py": 0,
+   "m10/vectorize.py": 0,
+   "m10/pandas_memory.py": 0,
+   "m10/threaded_fetch.py": 0,
+   "m10/concurrency.py": 0,
+   "m10/concurrency.py@free": 0
   },
   "m2.specifiers.pandas": {
    "versions": [
@@ -4607,6 +4625,98 @@ LAB.real = {
      "polars_validate": "ComputeError: join keys did not fulfill m:1 validation"
     }
    ]
+  },
+  "m10.profile": {
+   "hot_function": "is_known",
+   "hot_calls": 20000,
+   "list_seconds": 0.554,
+   "set_seconds": 0.0038,
+   "note": "cProfile on 20,000 rows and a list of 5,000 store ids, then the median of 3 runs with a list and with a set, on this machine"
+  },
+  "m10.vector": {
+   "ms": {
+    "for loop": 46.1,
+    "list comprehension and sum": 62.4,
+    "numpy: (arr * 2).sum()": 1.4,
+    "pandas: (s * 2).sum()": 1.6
+   },
+   "note": "median of 5 runs, one million numbers, on this machine"
+  },
+  "m10.memory": {
+   "columns": {
+    "order_id": {
+     "before_mb": 8.0,
+     "after_mb": 4.0,
+     "before_type": "int64",
+     "after_type": "int32"
+    },
+    "store": {
+     "before_mb": 13.9,
+     "after_mb": 1.0,
+     "before_type": "str",
+     "after_type": "category"
+    },
+    "status": {
+     "before_mb": 15.0,
+     "after_mb": 1.0,
+     "before_type": "str",
+     "after_type": "category"
+    },
+    "qty": {
+     "before_mb": 8.0,
+     "after_mb": 1.0,
+     "before_type": "int64",
+     "after_type": "int8"
+    },
+    "total_cents": {
+     "before_mb": 8.0,
+     "after_mb": 4.0,
+     "before_type": "int64",
+     "after_type": "int32"
+    },
+    "total": {
+     "before_mb": 52.9,
+     "after_mb": 11.0,
+     "before_type": null,
+     "after_type": null
+    }
+   },
+   "rows": 1000000
+  },
+  "m10.concurrency": {
+   "builds": {
+    "regular": {
+     "gil": true,
+     "cores": 4,
+     "waiting": {
+      "one after another": 2.0,
+      "8 threads": 0.26,
+      "4 processes": 0.54,
+      "asyncio": 0.25
+     },
+     "computing": {
+      "one after another": 1.22,
+      "8 threads": 1.39,
+      "4 processes": 0.41
+     }
+    },
+    "free-threaded": {
+     "gil": false,
+     "cores": 4,
+     "waiting": {
+      "one after another": 2.0,
+      "8 threads": 0.25,
+      "4 processes": 0.67,
+      "asyncio": 0.25
+     },
+     "computing": {
+      "one after another": 1.14,
+      "8 threads": 0.48,
+      "4 processes": 0.72
+     }
+    }
+   },
+   "note": "the waiting jobs sleep 0.25 s (a stand-in for a network call), the computing jobs add up numbers. Each time is the median of 3 runs on a 4 core machine that other programs were also using."
   }
  }
 };
