@@ -29,6 +29,10 @@ def norm(text, c):
     t = re.sub(r'(directory\.id=|"directoryId": ")[A-Za-z0-9_-]{22}', r'\1<directory id>', t)
     t = re.sub(r'(DirectoryId\s*\n?\s*)?\b[A-Za-z0-9_-]{22}\b(?=\s+\d+\s+\d+\s+\d{13})', '<directory id>', t)
     t = re.sub(r'(topic_id: |TopicId: )[A-Za-z0-9_-]{22}', r'\1<topic id>', t)
+    t = re.sub(r'("directories":\[)([^\]]*)(\])', lambda m: m.group(1) + re.sub(r'"[A-Za-z0-9_-]{22}"', '"<directory id>"', m.group(2)) + m.group(3), t)
+    t = re.sub(r'lastModifiedTime=\d+', 'lastModifiedTime=<time>', t)
+    t = re.sub(r'prior to \w{3} \w{3} \d{1,2} \d\d:\d\d:\d\d UTC \d{4}', 'prior to <time>', t)
+    t = re.sub(r'^\[\d{4}-\d\d-\d\d \d\d:\d\d:\d\d,\d{3}\] ', '[<time>] ', t, flags=re.M)
     return t
 
 

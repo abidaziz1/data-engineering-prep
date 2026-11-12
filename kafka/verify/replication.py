@@ -124,7 +124,7 @@ def run(c, rec):
     # ---- R4: two of the three replicas are gone, and the topic needs two ----
     c.stop_node(2, kill=True)
     c.stop_node(3, kill=True)
-    lay = wait_layout(c, 'repl', lambda l: l[0][3] == [1])
+    lay = wait_layout(c, 'repl', lambda l: all(x[3] == [1] and x[1] == 1 for x in l))                 # every partition, not only the first: the controller shrinks them one by one
     rec.table('replication.two_down', ['partition', 'leader', 'replicas (the first is the preferred leader)', 'in-sync replicas'], layout_rows(lay))
     all_ack = try_send(c, 'repl', 5, partition=0, start=1500, acks='all', retries=0)
     one_ack = try_send(c, 'repl', 5, partition=0, start=1505, acks='1', retries=0)

@@ -91,7 +91,7 @@ def basics(c, rec):
     rc, out, err = c.tool('kafka-consumer-groups', *base, '--reset-offsets', '--to-earliest', '--dry-run')
     rec.text('consumers.reset_dry_run', out)
     rc, out, err = c.tool('kafka-consumer-groups', *base, '--reset-offsets', '--shift-by=-100', '--execute')
-    rec.text('consumers.reset_shift', (out + '\n' + err).strip())
+    rec.text('consumers.reset_shift', norm((out + '\n' + err).strip(), c))
     rc, out, err = c.tool('kafka-consumer-groups', *base, '--reset-offsets', '--to-datetime', '2026-01-01T00:30:00.000', '--dry-run')
     rec.text('consumers.reset_datetime', out)
     # a group that is running cannot be reset

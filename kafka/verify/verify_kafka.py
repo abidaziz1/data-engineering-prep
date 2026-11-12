@@ -47,6 +47,7 @@ ap = argparse.ArgumentParser()
 ap.add_argument('--no-run', action='store_true', help='parse and compare only: run no recorder, no broker and no checker')
 ap.add_argument('--live', action='store_true', help='start a three broker cluster and run the commands of the bug hunts on it')
 ap.add_argument('--recapture', action='store_true', help='make the whole recording again and compare it with js/real.js')
+ap.add_argument('--only', help='with --recapture: record only these sections (for example world,keys) and compare only their items')
 ap.add_argument('--verbose', '-v', action='store_true')
 args = ap.parse_args()
 
@@ -450,9 +451,25 @@ else:
 # ======================================================================================================================
 # 8. The recording made again
 # ======================================================================================================================
-VOLATILE = {
-    'keys.keyless': 'the partition of a keyless batch is chosen at random',
+# What may differ between two recordings, and why. Everything else must be the same, number for number.
+VOLATILE = {                                   # the whole item may differ
+    'counts:keys.keyless': 'the partition of a keyless batch is chosen at random',
+    'text:consumers.describe_state': 'which broker is the coordinator of a group depends on where the leader of its partition of __consumer_offsets was placed',
+    'text:ops.reassign_generate': 'the reassignment tool proposes the replicas in a random order',
+    'text:replication.under_min_isr': 'which stopped brokers are listed as eligible leader replicas depends on the order in which they left',
+    'text:tests.pytest_bug': 'pytest lists the differing keys of a dictionary in the order in which the partitions were read',
+    'text:consumers.reset_datetime': 'the answer to a lookup by time depends on where the batches began and ended, which varies a little with the timing of the producer',
+    'tables:consumers.rebalance_new_protocol': 'with the new protocol the broker picks the partitions, from member ids that are random in each run, so which member gets which partitions can differ',
+    'tables:replication.copies': 'the bytes and the hash of a log file depend on where the batches began and ended, which varies a little with the timing of the producer. The three copies are identical within a run',
+    'tables:replication.caught_up': 'the same: the size and the hash vary between runs, and the three copies are identical within a run',
 }
+VOLATILE_FIELDS = {                            # only these fields of the item may differ
+    'counts:ops.quota': ['client_with_the_quota_waited_ms_at_most'],                      # the wait that the broker asks for follows the measured rate, by a few milliseconds
+    'counts:ops.rolling_restart': ['orders_sent', 'delivery_reports_ok', 'distinct_orders', 'records_in_the_topic'],   # a producer that sends every 10 ms sends more when the restarts take longer
+    'counts:consumers.too_slow': ['poll_errors'],                                        # the milliseconds by which the poll interval was exceeded
+    'counts:streams.restart': ['restoration_log_lines'],                                  # which tasks restore, and how many records each has, depends on the assignment
+}
+ORDER_FREE = ['tables:consumers.rebalance_range', 'tables:consumers.rebalance_cooperative', 'tables:consumers.rebalance_new_protocol']   # the callbacks of different members arrive in no fixed order
 
 
 def flatten(real):
@@ -463,27 +480,49 @@ def flatten(real):
     return out
 
 
+def same_item(k, a, b):
+    """True when the two recordings of one item agree, apart from what is allowed to differ. The second value says what was allowed, or None."""
+    if a == b:
+        return True, None
+    if k in VOLATILE:
+        return True, VOLATILE[k]
+    if k in VOLATILE_FIELDS and isinstance(a, dict) and isinstance(b, dict):
+        keep = [f for f in VOLATILE_FIELDS[k]]
+        if {f: v for f, v in a.items() if f not in keep} == {f: v for f, v in b.items() if f not in keep}:
+            return True, 'the fields %s vary' % ', '.join(keep)
+    if k in ORDER_FREE and isinstance(a, dict) and isinstance(b, dict):
+        if a.get('cols') == b.get('cols') and sorted(map(json.dumps, a.get('rows', []))) == sorted(map(json.dumps, b.get('rows', []))):
+            return True, 'the same rows in another order'
+    return False, None
+
+
 if args.recapture and not args.no_run:
     if not (HAVE_KAFKA and HAVE_JAVA):
         skipped('recapture', 'KAFKA_HOME and Java are needed')
     else:
         tmp = pathlib.Path(tempfile.mkdtemp(prefix='kafka-recapture-')) / 'real.js'
-        r = run([sys.executable, str(HERE / 'capture_kafka.py'), '--out', str(tmp)], env=dict(os.environ))
+        cmd = [sys.executable, str(HERE / 'capture_kafka.py'), '--out', str(tmp)] + (['--only', args.only] if args.only else [])
+        r = run(cmd, env=dict(os.environ))
         if r.returncode or not tmp.exists():
             bad('capture_kafka.py failed: ' + (r.stdout + r.stderr)[-500:])
         else:
             again, first = flatten(load_real(tmp)), flatten(REAL)
+            wanted = {x.strip() for x in args.only.split(',')} if args.only else None
+            prefix = lambda k: k.split(':', 1)[1].split('.')[0]
             differ = []
             for k in sorted(set(first) | set(again)):
+                if wanted is not None and prefix(k) not in wanted:
+                    continue
                 tick('recaptured items')
-                if first.get(k) != again.get(k):
-                    if any(k.endswith(v) for v in VOLATILE):
-                        notes.append('%s differs, as expected: %s' % (k, VOLATILE[[v for v in VOLATILE if k.endswith(v)][0]]))
-                        continue
+                ok, why = same_item(k, first.get(k), again.get(k))
+                if not ok:
                     differ.append(k)
+                elif why:
+                    tick('recaptured items that differ for a stated reason')
+                    notes.append('%s differs, as allowed: %s' % (k, why))
             for k in differ:
                 bad('the recapture differs from js/real.js in %s' % k)
-            print('recapture: %d items, %d differ' % (counts.get('recaptured items', 0), len(differ)))
+            print('recapture: %d items, %d differ for a stated reason, %d differ without one' % (counts.get('recaptured items', 0), counts.get('recaptured items that differ for a stated reason', 0), len(differ)))
 else:
     skipped('recapture', 'run with --recapture (about forty minutes)')
 

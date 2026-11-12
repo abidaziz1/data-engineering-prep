@@ -5,6 +5,8 @@
   var LY = G.table('replication.layout'), CP = G.table('replication.copies'), CE = G.counts('replication.copies_equal'), AK = G.table('replication.after_kill'), WD = G.counts('replication.while_one_is_down');
   var AR = G.table('replication.after_restart'), CU = G.table('replication.caught_up'), CQ = G.counts('replication.caught_up_equal'), EP = G.text('replication.epochs'), PE = G.text('replication.preferred_election');
   var PR = G.counts('replication.preferred_election_result'), TD = G.table('replication.two_down'), UM = G.text('replication.under_min_isr'), UC = G.counts('replication.under_replicated_count');
+  var ELR0 = (UM.split('\n')[0].match(/Elr: ([\d,]+)/) || [])[1];
+  G.expect(!!ELR0, 'the first partition lists its eligible leader replicas');
   var AS = G.table('replication.acks_when_short'), UE = G.table('replication.unclean_election'), DO = G.text('replication.describe_offline'), UR = G.table('replication.unclean_result');
   var UL = G.counts('replication.unclean_lost'), TL = G.text('replication.truncation_log'), DS = G.text('replication.describe');
   var PY = G.file('code/replication.py');
@@ -155,7 +157,7 @@
             notes: ['Recorded. The producer was set to not retry, so that the first answer is the one reported. With retries it would keep trying until `message.timeout.ms`, and then say `_MSG_TIMED_OUT`.']
           },
           {
-            say: 'The cluster can tell you which partitions are in trouble. `kafka-topics.sh --describe --under-min-isr-partitions` lists those below `min.insync.replicas`. Look at the new field. `Isr: 1` and **`Elr: 2,3`**: the controller remembers that brokers 2 and 3 were in sync when the set shrank, so they are the only safe candidates for the next election.',
+            say: 'The cluster can tell you which partitions are in trouble. `kafka-topics.sh --describe --under-min-isr-partitions` lists those below `min.insync.replicas`. Look at the new field. For partition 0, `Isr: 1` and **`Elr: ' + ELR0 + '`**: the controller remembers which brokers were in sync when the set shrank, so they are the only safe candidates for the next election. The other partitions can list fewer brokers, because the brokers did not leave their sets at the same moment. Read the field as the brokers that are safe to elect, and not as a fixed set.',
             tabs: [{ layer: 'RECORDED', name: 'kafka-topics.sh --describe --under-min-isr-partitions', c: 'raw', cols: ['Output'], rows: UM.split('\n').map(function (l) { return [l]; }), trk: 2 }],
             notes: ['Recorded. ' + UC.under_min_isr_partitions + ' partitions were below the minimum, and ' + UC.under_replicated_partitions + ' were under-replicated.']
           }
