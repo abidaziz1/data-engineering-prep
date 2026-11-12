@@ -50,6 +50,7 @@ INSERT INTO acct VALUES (1, 'Ana', 100), (2, 'Ben', 50);
 CREATE TABLE jobs (id INTEGER PRIMARY KEY, state VARCHAR);
 INSERT INTO jobs VALUES (1, 'pending'), (2, 'pending'), (3, 'pending');
 ''',
+    'star': open(__import__('os').path.join(__import__('os').path.dirname(__import__('os').path.abspath(__file__)), 'q', '_star.sql')).read(),
 }
 
 

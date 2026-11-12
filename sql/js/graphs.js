@@ -338,4 +338,28 @@
       { id: 'tg_p2', x: 20, y: 350, t: 'EXPLAIN ANALYZE runs the query and shows real row counts', c: 'qual' }
     ]
   });
+  /* ------------------------------------------------------------------ */
+  /* 12. A star schema                                                   */
+  /* ------------------------------------------------------------------ */
+  S.star = build({
+    h: 400, cw: 190, dx: 216,
+    label: 'A star schema. One fact table in the centre has a row for each order line, with a key to every dimension and the numbers to add up. Four dimension tables around it describe the date, the customer, the store and the product. A query joins the fact to the dimensions it needs and groups by their columns.',
+    nodes: [
+      ['x_date', 0, 0, 'dim_date', 'a row for each day', 'src'],
+      ['x_cust', 4, 0, 'dim_customer', 'every customer, once', 'src'],
+      ['x_fact', 2, 0.65, 'fact_sales', 'a row for each line', 'mart'],
+      ['x_store', 0, 1.3, 'dim_store', 'a row for each store', 'src'],
+      ['x_prod', 4, 1.3, 'dim_product', 'a row for each product', 'src']
+    ],
+    edges: [
+      ['k1', 'x_date', 'x_fact', 1],
+      ['k2', 'x_cust', 'x_fact', 2],
+      ['k3', 'x_store', 'x_fact', 3],
+      ['k4', 'x_prod', 'x_fact', 4]
+    ],
+    tags: [
+      { id: 'tg_x1', x: 20, y: 150, t: 'grain: one row for each order line', c: 'qual' },
+      { id: 'tg_x2', x: 20, y: 350, t: 'every fact row has exactly one key for each dimension', c: 'int' }
+    ]
+  });
 })();

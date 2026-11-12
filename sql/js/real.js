@@ -5036,6 +5036,26 @@ LAB.real = {
   "m11.ch_range_cast": "SELECT count(*) AS orders\nFROM orders\nWHERE CAST(order_ts AS DATE) = DATE '2026-03-03';\n",
   "m11.ch_sargable": "SELECT order_id, total\nFROM orders\nWHERE total > 15\nORDER BY order_id;\n",
   "m11.ch_sargable_bad": "SELECT order_id, total\nFROM orders\nWHERE total * 2 > 30\nORDER BY order_id;\n",
+  "m12.build": "CREATE TABLE dim_product AS\nSELECT product_id AS product_key, sku, name AS product, category\nFROM products;\n\nCREATE TABLE dim_store AS\nSELECT store_id AS store_key, name AS store, city, country\nFROM stores;\n\nCREATE TABLE dim_customer AS\nSELECT customer_id AS customer_key, name AS customer, country, tier\nFROM customers\nUNION ALL\nSELECT -1, 'Unknown customer', NULL, NULL;\n\nCREATE TABLE dim_date AS\nWITH RECURSIVE d(day) AS (\n  SELECT DATE '2026-03-01'\n  UNION ALL\n  SELECT CAST(day + 1 AS DATE) FROM d WHERE day < DATE '2026-03-10'\n)\nSELECT CAST(extract(year FROM day) * 10000 + extract(month FROM day) * 100 + extract(day FROM day) AS INTEGER) AS date_key,\n       day,\n       CAST(extract(isodow FROM day) AS INTEGER) AS iso_weekday,\n       CASE WHEN extract(isodow FROM day) >= 6 THEN 'weekend' ELSE 'weekday' END AS day_type\nFROM d;\n\nCREATE TABLE fact_sales AS\nSELECT i.order_id,\n       i.line_no,\n       CAST(extract(year FROM o.order_ts) * 10000 + extract(month FROM o.order_ts) * 100 + extract(day FROM o.order_ts) AS INTEGER) AS date_key,\n       coalesce(o.customer_id, -1) AS customer_key,\n       o.store_id AS store_key,\n       i.product_id AS product_key,\n       o.status,\n       i.qty,\n       i.qty * i.unit_price AS line_amount\nFROM order_items AS i\nJOIN orders AS o ON o.order_id = i.order_id;\nSELECT (SELECT count(*) FROM dim_date) AS dim_date,\n       (SELECT count(*) FROM dim_product) AS dim_product,\n       (SELECT count(*) FROM dim_store) AS dim_store,\n       (SELECT count(*) FROM dim_customer) AS dim_customer,\n       (SELECT count(*) FROM fact_sales) AS fact_sales;\n",
+  "m12.by_category": "SELECT p.category, s.country, sum(f.line_amount) AS revenue\nFROM fact_sales AS f\nJOIN dim_product AS p ON p.product_key = f.product_key\nJOIN dim_store AS s ON s.store_key = f.store_key\nWHERE f.status = 'paid'\nGROUP BY p.category, s.country\nORDER BY p.category, s.country;\n",
+  "m12.by_daytype": "SELECT d.day_type, count(DISTINCT f.order_id) AS orders, sum(f.line_amount) AS revenue\nFROM fact_sales AS f\nJOIN dim_date AS d ON d.date_key = f.date_key\nWHERE f.status = 'paid'\nGROUP BY d.day_type\nORDER BY d.day_type;\n",
+  "m12.ch_aov": "SELECT round(sum(line_amount) / count(DISTINCT order_id), 2) AS avg_order_value\nFROM fact_sales\nWHERE status = 'paid';\n",
+  "m12.ch_revenue": "SELECT p.category, sum(f.line_amount) AS revenue\nFROM fact_sales AS f\nJOIN dim_product AS p ON p.product_key = f.product_key\nWHERE f.status = 'paid'\nGROUP BY p.category\nORDER BY revenue DESC;\n",
+  "m12.ch_weekday": "SELECT d.iso_weekday, count(DISTINCT f.order_id) AS orders\nFROM fact_sales AS f\nJOIN dim_date AS d ON d.date_key = f.date_key\nGROUP BY d.iso_weekday\nORDER BY d.iso_weekday;\n",
+  "m12.dump_date": "SELECT date_key, day, iso_weekday, day_type FROM dim_date ORDER BY date_key;\n",
+  "m12.dump_fact": "SELECT order_id, line_no, date_key, customer_key, store_key, product_key, status, qty, line_amount\nFROM fact_sales\nORDER BY order_id, line_no;\n",
+  "m12.dump_product": "SELECT product_key, sku, product, category FROM dim_product ORDER BY product_key;\n",
+  "m12.fact_sample": "SELECT order_id, line_no, date_key, customer_key, store_key, product_key, qty, line_amount\nFROM fact_sales\nORDER BY order_id, line_no\nLIMIT 6;\n",
+  "m12.fanout": "SELECT (SELECT sum(total) FROM orders WHERE status = 'paid') AS right_revenue,\n       sum(o.total) AS revenue_repeated_on_every_line\nFROM orders AS o\nJOIN fact_sales AS f ON f.order_id = o.order_id\nWHERE o.status = 'paid';\n",
+  "m12.grain_customer": "SELECT count(*) AS rows_in_table, sum(revenue) AS total, CAST(NULL AS INTEGER) AS distinct_orders, round(avg(revenue), 2) AS avg_per_row\nFROM (SELECT customer_key, sum(line_amount) AS revenue FROM fact_sales GROUP BY customer_key) AS t;\n",
+  "m12.grain_line": "SELECT count(*) AS rows_in_table, sum(line_amount) AS total, count(DISTINCT order_id) AS distinct_orders, round(avg(line_amount), 2) AS avg_per_row\nFROM fact_sales;\n",
+  "m12.grain_order": "SELECT count(*) AS rows_in_table, sum(total) AS total, count(DISTINCT order_id) AS distinct_orders, round(avg(total), 2) AS avg_per_row\nFROM orders;\n",
+  "m12.grain_store": "SELECT count(*) AS rows_in_table, sum(revenue) AS total, CAST(NULL AS INTEGER) AS distinct_orders, round(avg(revenue), 2) AS avg_per_row\nFROM (SELECT store_key, sum(line_amount) AS revenue FROM fact_sales GROUP BY store_key) AS t;\n",
+  "m12.lifecycle": "SELECT o.order_id, o.status, o.order_ts AS ordered_at,\n       min(CASE WHEN p.status = 'ok' THEN p.paid_ts END) AS first_paid_at,\n       min(CASE WHEN p.status = 'refund' THEN p.paid_ts END) AS refunded_at\nFROM orders AS o\nLEFT JOIN payments AS p ON p.order_id = o.order_id\nGROUP BY o.order_id, o.status, o.order_ts\nORDER BY o.order_id;\n",
+  "m12.normal_update": "CREATE TABLE customers_copy AS SELECT customer_id, name, country FROM customers;\nUPDATE customers_copy SET country = 'MY' WHERE customer_id = 1;\nSELECT o.order_id, c.name, c.country\nFROM orders AS o\nJOIN customers_copy AS c ON c.customer_id = o.customer_id\nWHERE c.customer_id = 1\nORDER BY o.order_id;\n",
+  "m12.reconcile": "SELECT (SELECT sum(total) FROM orders) AS orders_total,\n       (SELECT sum(line_amount) FROM fact_sales) AS fact_total,\n       (SELECT count(*) FROM (\n          SELECT o.order_id\n          FROM orders AS o\n          JOIN (SELECT order_id, sum(line_amount) AS lines_total FROM fact_sales GROUP BY order_id) AS f ON f.order_id = o.order_id\n          WHERE f.lines_total <> o.total\n        ) AS t) AS orders_that_differ;\n",
+  "m12.unknown_customer": "SELECT c.customer, count(DISTINCT f.order_id) AS orders, sum(f.line_amount) AS revenue\nFROM fact_sales AS f\nJOIN dim_customer AS c ON c.customer_key = f.customer_key\nWHERE f.status = 'paid'\nGROUP BY c.customer\nORDER BY revenue DESC;\n",
+  "m12.wide_anomaly": "CREATE TABLE orders_wide AS\nSELECT o.order_id, c.customer_id, c.name, c.country, o.total\nFROM orders AS o\nJOIN customers AS c ON c.customer_id = o.customer_id;\nUPDATE orders_wide SET country = 'MY' WHERE order_id = 1001;\nSELECT name, count(DISTINCT country) AS countries, count(*) AS rows_for_customer\nFROM orders_wide\nGROUP BY name\nHAVING count(DISTINCT country) > 1;\n",
   "m2.avg_null": "SELECT round(avg(customer_id), 3)              AS avg_ignoring_null,\n       round(avg(coalesce(customer_id, 0)), 3) AS avg_null_as_zero,\n       count(*) - count(customer_id)           AS null_customers\nFROM orders;\n",
   "m2.case_null": "SELECT customer_id,\n       tier,\n       CASE tier WHEN 'gold' THEN 'top' WHEN 'silver' THEN 'mid' ELSE 'other' END AS bucket,\n       CASE WHEN tier IS NULL THEN 'unknown' ELSE tier END AS tier_or_unknown\nFROM customers\nORDER BY customer_id;\n",
   "m2.ch_changed": "SELECT c.customer_id, c.tier AS tier_in_customers, d.tier AS tier_in_dimension\nFROM customers AS c\nLEFT JOIN customer_dim AS d ON d.customer_id = c.customer_id AND d.is_current\nWHERE c.tier IS DISTINCT FROM d.tier\nORDER BY c.customer_id;\n",
@@ -7262,6 +7282,1803 @@ LAB.real = {
     [
      "1011",
      "16.5"
+    ]
+   ]
+  },
+  "m12.build.duckdb": {
+   "cols": [
+    "dim_date",
+    "dim_product",
+    "dim_store",
+    "dim_customer",
+    "fact_sales"
+   ],
+   "rows": [
+    [
+     "10",
+     "6",
+     "4",
+     "9",
+     "19"
+    ]
+   ]
+  },
+  "m12.build.postgres": {
+   "cols": [
+    "dim_date",
+    "dim_product",
+    "dim_store",
+    "dim_customer",
+    "fact_sales"
+   ],
+   "rows": [
+    [
+     "10",
+     "6",
+     "4",
+     "9",
+     "19"
+    ]
+   ]
+  },
+  "m12.by_category.duckdb": {
+   "cols": [
+    "category",
+    "country",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "beans",
+     "AU",
+     "14.00"
+    ],
+    [
+     "beans",
+     "SG",
+     "42.00"
+    ],
+    [
+     "cold",
+     "MY",
+     "10.00"
+    ],
+    [
+     "cold",
+     "SG",
+     "5.00"
+    ],
+    [
+     "hot",
+     "AU",
+     "4.50"
+    ],
+    [
+     "hot",
+     "MY",
+     "4.50"
+    ],
+    [
+     "hot",
+     "SG",
+     "23.00"
+    ],
+    [
+     "merch",
+     "AU",
+     "12.00"
+    ],
+    [
+     "merch",
+     "SG",
+     "12.00"
+    ]
+   ]
+  },
+  "m12.by_category.postgres": {
+   "cols": [
+    "category",
+    "country",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "beans",
+     "AU",
+     "14.00"
+    ],
+    [
+     "beans",
+     "SG",
+     "42.00"
+    ],
+    [
+     "cold",
+     "MY",
+     "10.00"
+    ],
+    [
+     "cold",
+     "SG",
+     "5.00"
+    ],
+    [
+     "hot",
+     "AU",
+     "4.50"
+    ],
+    [
+     "hot",
+     "MY",
+     "4.50"
+    ],
+    [
+     "hot",
+     "SG",
+     "23.00"
+    ],
+    [
+     "merch",
+     "AU",
+     "12.00"
+    ],
+    [
+     "merch",
+     "SG",
+     "12.00"
+    ]
+   ]
+  },
+  "m12.by_daytype.duckdb": {
+   "cols": [
+    "day_type",
+    "orders",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "weekday",
+     "6",
+     "80.00"
+    ],
+    [
+     "weekend",
+     "3",
+     "47.00"
+    ]
+   ]
+  },
+  "m12.by_daytype.postgres": {
+   "cols": [
+    "day_type",
+    "orders",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "weekday",
+     "6",
+     "80.00"
+    ],
+    [
+     "weekend",
+     "3",
+     "47.00"
+    ]
+   ]
+  },
+  "m12.ch_aov.duckdb": {
+   "cols": [
+    "avg_order_value"
+   ],
+   "rows": [
+    [
+     "14.11"
+    ]
+   ]
+  },
+  "m12.ch_aov.postgres": {
+   "cols": [
+    "avg_order_value"
+   ],
+   "rows": [
+    [
+     "14.11"
+    ]
+   ]
+  },
+  "m12.ch_revenue.duckdb": {
+   "cols": [
+    "category",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "beans",
+     "56.00"
+    ],
+    [
+     "hot",
+     "32.00"
+    ],
+    [
+     "merch",
+     "24.00"
+    ],
+    [
+     "cold",
+     "15.00"
+    ]
+   ]
+  },
+  "m12.ch_revenue.postgres": {
+   "cols": [
+    "category",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "beans",
+     "56.00"
+    ],
+    [
+     "hot",
+     "32.00"
+    ],
+    [
+     "merch",
+     "24.00"
+    ],
+    [
+     "cold",
+     "15.00"
+    ]
+   ]
+  },
+  "m12.ch_weekday.duckdb": {
+   "cols": [
+    "iso_weekday",
+    "orders"
+   ],
+   "rows": [
+    [
+     "1",
+     "3"
+    ],
+    [
+     "2",
+     "1"
+    ],
+    [
+     "3",
+     "2"
+    ],
+    [
+     "4",
+     "1"
+    ],
+    [
+     "5",
+     "2"
+    ],
+    [
+     "6",
+     "1"
+    ],
+    [
+     "7",
+     "2"
+    ]
+   ]
+  },
+  "m12.ch_weekday.postgres": {
+   "cols": [
+    "iso_weekday",
+    "orders"
+   ],
+   "rows": [
+    [
+     "1",
+     "3"
+    ],
+    [
+     "2",
+     "1"
+    ],
+    [
+     "3",
+     "2"
+    ],
+    [
+     "4",
+     "1"
+    ],
+    [
+     "5",
+     "2"
+    ],
+    [
+     "6",
+     "1"
+    ],
+    [
+     "7",
+     "2"
+    ]
+   ]
+  },
+  "m12.dump_date.duckdb": {
+   "cols": [
+    "date_key",
+    "day",
+    "iso_weekday",
+    "day_type"
+   ],
+   "rows": [
+    [
+     "20260301",
+     "2026-03-01",
+     "7",
+     "weekend"
+    ],
+    [
+     "20260302",
+     "2026-03-02",
+     "1",
+     "weekday"
+    ],
+    [
+     "20260303",
+     "2026-03-03",
+     "2",
+     "weekday"
+    ],
+    [
+     "20260304",
+     "2026-03-04",
+     "3",
+     "weekday"
+    ],
+    [
+     "20260305",
+     "2026-03-05",
+     "4",
+     "weekday"
+    ],
+    [
+     "20260306",
+     "2026-03-06",
+     "5",
+     "weekday"
+    ],
+    [
+     "20260307",
+     "2026-03-07",
+     "6",
+     "weekend"
+    ],
+    [
+     "20260308",
+     "2026-03-08",
+     "7",
+     "weekend"
+    ],
+    [
+     "20260309",
+     "2026-03-09",
+     "1",
+     "weekday"
+    ],
+    [
+     "20260310",
+     "2026-03-10",
+     "2",
+     "weekday"
+    ]
+   ]
+  },
+  "m12.dump_date.postgres": {
+   "cols": [
+    "date_key",
+    "day",
+    "iso_weekday",
+    "day_type"
+   ],
+   "rows": [
+    [
+     "20260301",
+     "2026-03-01",
+     "7",
+     "weekend"
+    ],
+    [
+     "20260302",
+     "2026-03-02",
+     "1",
+     "weekday"
+    ],
+    [
+     "20260303",
+     "2026-03-03",
+     "2",
+     "weekday"
+    ],
+    [
+     "20260304",
+     "2026-03-04",
+     "3",
+     "weekday"
+    ],
+    [
+     "20260305",
+     "2026-03-05",
+     "4",
+     "weekday"
+    ],
+    [
+     "20260306",
+     "2026-03-06",
+     "5",
+     "weekday"
+    ],
+    [
+     "20260307",
+     "2026-03-07",
+     "6",
+     "weekend"
+    ],
+    [
+     "20260308",
+     "2026-03-08",
+     "7",
+     "weekend"
+    ],
+    [
+     "20260309",
+     "2026-03-09",
+     "1",
+     "weekday"
+    ],
+    [
+     "20260310",
+     "2026-03-10",
+     "2",
+     "weekday"
+    ]
+   ]
+  },
+  "m12.dump_fact.duckdb": {
+   "cols": [
+    "order_id",
+    "line_no",
+    "date_key",
+    "customer_key",
+    "store_key",
+    "product_key",
+    "status",
+    "qty",
+    "line_amount"
+   ],
+   "rows": [
+    [
+     "1001",
+     "1",
+     "20260301",
+     "1",
+     "1",
+     "1",
+     "paid",
+     "2",
+     "7.00"
+    ],
+    [
+     "1001",
+     "2",
+     "20260301",
+     "1",
+     "1",
+     "2",
+     "paid",
+     "1",
+     "4.50"
+    ],
+    [
+     "1002",
+     "1",
+     "20260303",
+     "1",
+     "1",
+     "4",
+     "paid",
+     "1",
+     "14.00"
+    ],
+    [
+     "1002",
+     "2",
+     "20260303",
+     "1",
+     "1",
+     "2",
+     "paid",
+     "1",
+     "4.50"
+    ],
+    [
+     "1003",
+     "1",
+     "20260302",
+     "2",
+     "2",
+     "3",
+     "paid",
+     "1",
+     "5.00"
+    ],
+    [
+     "1004",
+     "1",
+     "20260302",
+     "3",
+     "1",
+     "4",
+     "paid",
+     "1",
+     "14.00"
+    ],
+    [
+     "1004",
+     "2",
+     "20260302",
+     "3",
+     "1",
+     "5",
+     "paid",
+     "1",
+     "12.00"
+    ],
+    [
+     "1005",
+     "1",
+     "20260304",
+     "4",
+     "3",
+     "2",
+     "cancelled",
+     "2",
+     "9.00"
+    ],
+    [
+     "1006",
+     "1",
+     "20260304",
+     "5",
+     "4",
+     "4",
+     "paid",
+     "1",
+     "14.00"
+    ],
+    [
+     "1007",
+     "1",
+     "20260305",
+     "1",
+     "1",
+     "1",
+     "paid",
+     "2",
+     "7.00"
+    ],
+    [
+     "1008",
+     "1",
+     "20260306",
+     "7",
+     "4",
+     "5",
+     "refunded",
+     "1",
+     "12.00"
+    ],
+    [
+     "1009",
+     "1",
+     "20260306",
+     "-1",
+     "2",
+     "2",
+     "paid",
+     "1",
+     "4.50"
+    ],
+    [
+     "1009",
+     "2",
+     "20260306",
+     "-1",
+     "2",
+     "3",
+     "paid",
+     "1",
+     "5.00"
+    ],
+    [
+     "1010",
+     "1",
+     "20260307",
+     "3",
+     "1",
+     "4",
+     "paid",
+     "1",
+     "14.00"
+    ],
+    [
+     "1010",
+     "2",
+     "20260307",
+     "3",
+     "1",
+     "3",
+     "paid",
+     "1",
+     "5.00"
+    ],
+    [
+     "1011",
+     "1",
+     "20260308",
+     "5",
+     "4",
+     "2",
+     "paid",
+     "1",
+     "4.50"
+    ],
+    [
+     "1011",
+     "2",
+     "20260308",
+     "5",
+     "4",
+     "5",
+     "paid",
+     "1",
+     "12.00"
+    ],
+    [
+     "1012",
+     "1",
+     "20260309",
+     "2",
+     "2",
+     "2",
+     "pending",
+     "1",
+     "4.50"
+    ],
+    [
+     "1012",
+     "2",
+     "20260309",
+     "2",
+     "2",
+     "1",
+     "pending",
+     "1",
+     "3.50"
+    ]
+   ]
+  },
+  "m12.dump_fact.postgres": {
+   "cols": [
+    "order_id",
+    "line_no",
+    "date_key",
+    "customer_key",
+    "store_key",
+    "product_key",
+    "status",
+    "qty",
+    "line_amount"
+   ],
+   "rows": [
+    [
+     "1001",
+     "1",
+     "20260301",
+     "1",
+     "1",
+     "1",
+     "paid",
+     "2",
+     "7.00"
+    ],
+    [
+     "1001",
+     "2",
+     "20260301",
+     "1",
+     "1",
+     "2",
+     "paid",
+     "1",
+     "4.50"
+    ],
+    [
+     "1002",
+     "1",
+     "20260303",
+     "1",
+     "1",
+     "4",
+     "paid",
+     "1",
+     "14.00"
+    ],
+    [
+     "1002",
+     "2",
+     "20260303",
+     "1",
+     "1",
+     "2",
+     "paid",
+     "1",
+     "4.50"
+    ],
+    [
+     "1003",
+     "1",
+     "20260302",
+     "2",
+     "2",
+     "3",
+     "paid",
+     "1",
+     "5.00"
+    ],
+    [
+     "1004",
+     "1",
+     "20260302",
+     "3",
+     "1",
+     "4",
+     "paid",
+     "1",
+     "14.00"
+    ],
+    [
+     "1004",
+     "2",
+     "20260302",
+     "3",
+     "1",
+     "5",
+     "paid",
+     "1",
+     "12.00"
+    ],
+    [
+     "1005",
+     "1",
+     "20260304",
+     "4",
+     "3",
+     "2",
+     "cancelled",
+     "2",
+     "9.00"
+    ],
+    [
+     "1006",
+     "1",
+     "20260304",
+     "5",
+     "4",
+     "4",
+     "paid",
+     "1",
+     "14.00"
+    ],
+    [
+     "1007",
+     "1",
+     "20260305",
+     "1",
+     "1",
+     "1",
+     "paid",
+     "2",
+     "7.00"
+    ],
+    [
+     "1008",
+     "1",
+     "20260306",
+     "7",
+     "4",
+     "5",
+     "refunded",
+     "1",
+     "12.00"
+    ],
+    [
+     "1009",
+     "1",
+     "20260306",
+     "-1",
+     "2",
+     "2",
+     "paid",
+     "1",
+     "4.50"
+    ],
+    [
+     "1009",
+     "2",
+     "20260306",
+     "-1",
+     "2",
+     "3",
+     "paid",
+     "1",
+     "5.00"
+    ],
+    [
+     "1010",
+     "1",
+     "20260307",
+     "3",
+     "1",
+     "4",
+     "paid",
+     "1",
+     "14.00"
+    ],
+    [
+     "1010",
+     "2",
+     "20260307",
+     "3",
+     "1",
+     "3",
+     "paid",
+     "1",
+     "5.00"
+    ],
+    [
+     "1011",
+     "1",
+     "20260308",
+     "5",
+     "4",
+     "2",
+     "paid",
+     "1",
+     "4.50"
+    ],
+    [
+     "1011",
+     "2",
+     "20260308",
+     "5",
+     "4",
+     "5",
+     "paid",
+     "1",
+     "12.00"
+    ],
+    [
+     "1012",
+     "1",
+     "20260309",
+     "2",
+     "2",
+     "2",
+     "pending",
+     "1",
+     "4.50"
+    ],
+    [
+     "1012",
+     "2",
+     "20260309",
+     "2",
+     "2",
+     "1",
+     "pending",
+     "1",
+     "3.50"
+    ]
+   ]
+  },
+  "m12.dump_product.duckdb": {
+   "cols": [
+    "product_key",
+    "sku",
+    "product",
+    "category"
+   ],
+   "rows": [
+    [
+     "1",
+     "ESP-01",
+     "Espresso",
+     "hot"
+    ],
+    [
+     "2",
+     "LAT-01",
+     "Latte",
+     "hot"
+    ],
+    [
+     "3",
+     "CLD-01",
+     "Cold brew",
+     "cold"
+    ],
+    [
+     "4",
+     "BEA-01",
+     "House beans 250g",
+     "beans"
+    ],
+    [
+     "5",
+     "MUG-01",
+     "Brewline mug",
+     "merch"
+    ],
+    [
+     "6",
+     "MAT-01",
+     "Matcha",
+     "hot"
+    ]
+   ]
+  },
+  "m12.dump_product.postgres": {
+   "cols": [
+    "product_key",
+    "sku",
+    "product",
+    "category"
+   ],
+   "rows": [
+    [
+     "1",
+     "ESP-01",
+     "Espresso",
+     "hot"
+    ],
+    [
+     "2",
+     "LAT-01",
+     "Latte",
+     "hot"
+    ],
+    [
+     "3",
+     "CLD-01",
+     "Cold brew",
+     "cold"
+    ],
+    [
+     "4",
+     "BEA-01",
+     "House beans 250g",
+     "beans"
+    ],
+    [
+     "5",
+     "MUG-01",
+     "Brewline mug",
+     "merch"
+    ],
+    [
+     "6",
+     "MAT-01",
+     "Matcha",
+     "hot"
+    ]
+   ]
+  },
+  "m12.fact_sample.duckdb": {
+   "cols": [
+    "order_id",
+    "line_no",
+    "date_key",
+    "customer_key",
+    "store_key",
+    "product_key",
+    "qty",
+    "line_amount"
+   ],
+   "rows": [
+    [
+     "1001",
+     "1",
+     "20260301",
+     "1",
+     "1",
+     "1",
+     "2",
+     "7.00"
+    ],
+    [
+     "1001",
+     "2",
+     "20260301",
+     "1",
+     "1",
+     "2",
+     "1",
+     "4.50"
+    ],
+    [
+     "1002",
+     "1",
+     "20260303",
+     "1",
+     "1",
+     "4",
+     "1",
+     "14.00"
+    ],
+    [
+     "1002",
+     "2",
+     "20260303",
+     "1",
+     "1",
+     "2",
+     "1",
+     "4.50"
+    ],
+    [
+     "1003",
+     "1",
+     "20260302",
+     "2",
+     "2",
+     "3",
+     "1",
+     "5.00"
+    ],
+    [
+     "1004",
+     "1",
+     "20260302",
+     "3",
+     "1",
+     "4",
+     "1",
+     "14.00"
+    ]
+   ]
+  },
+  "m12.fact_sample.postgres": {
+   "cols": [
+    "order_id",
+    "line_no",
+    "date_key",
+    "customer_key",
+    "store_key",
+    "product_key",
+    "qty",
+    "line_amount"
+   ],
+   "rows": [
+    [
+     "1001",
+     "1",
+     "20260301",
+     "1",
+     "1",
+     "1",
+     "2",
+     "7.00"
+    ],
+    [
+     "1001",
+     "2",
+     "20260301",
+     "1",
+     "1",
+     "2",
+     "1",
+     "4.50"
+    ],
+    [
+     "1002",
+     "1",
+     "20260303",
+     "1",
+     "1",
+     "4",
+     "1",
+     "14.00"
+    ],
+    [
+     "1002",
+     "2",
+     "20260303",
+     "1",
+     "1",
+     "2",
+     "1",
+     "4.50"
+    ],
+    [
+     "1003",
+     "1",
+     "20260302",
+     "2",
+     "2",
+     "3",
+     "1",
+     "5.00"
+    ],
+    [
+     "1004",
+     "1",
+     "20260302",
+     "3",
+     "1",
+     "4",
+     "1",
+     "14.00"
+    ]
+   ]
+  },
+  "m12.fanout.duckdb": {
+   "cols": [
+    "right_revenue",
+    "revenue_repeated_on_every_line"
+   ],
+   "rows": [
+    [
+     "127.00",
+     "228.00"
+    ]
+   ]
+  },
+  "m12.fanout.postgres": {
+   "cols": [
+    "right_revenue",
+    "revenue_repeated_on_every_line"
+   ],
+   "rows": [
+    [
+     "127.00",
+     "228.00"
+    ]
+   ]
+  },
+  "m12.grain_customer.duckdb": {
+   "cols": [
+    "rows_in_table",
+    "total",
+    "distinct_orders",
+    "avg_per_row"
+   ],
+   "rows": [
+    [
+     "7",
+     "156.00",
+     "NULL",
+     "22.29"
+    ]
+   ]
+  },
+  "m12.grain_customer.postgres": {
+   "cols": [
+    "rows_in_table",
+    "total",
+    "distinct_orders",
+    "avg_per_row"
+   ],
+   "rows": [
+    [
+     "7",
+     "156.00",
+     "NULL",
+     "22.29"
+    ]
+   ]
+  },
+  "m12.grain_line.duckdb": {
+   "cols": [
+    "rows_in_table",
+    "total",
+    "distinct_orders",
+    "avg_per_row"
+   ],
+   "rows": [
+    [
+     "19",
+     "156.00",
+     "12",
+     "8.21"
+    ]
+   ]
+  },
+  "m12.grain_line.postgres": {
+   "cols": [
+    "rows_in_table",
+    "total",
+    "distinct_orders",
+    "avg_per_row"
+   ],
+   "rows": [
+    [
+     "19",
+     "156.00",
+     "12",
+     "8.21"
+    ]
+   ]
+  },
+  "m12.grain_order.duckdb": {
+   "cols": [
+    "rows_in_table",
+    "total",
+    "distinct_orders",
+    "avg_per_row"
+   ],
+   "rows": [
+    [
+     "12",
+     "156.00",
+     "12",
+     "13.0"
+    ]
+   ]
+  },
+  "m12.grain_order.postgres": {
+   "cols": [
+    "rows_in_table",
+    "total",
+    "distinct_orders",
+    "avg_per_row"
+   ],
+   "rows": [
+    [
+     "12",
+     "156.00",
+     "12",
+     "13.00"
+    ]
+   ]
+  },
+  "m12.grain_store.duckdb": {
+   "cols": [
+    "rows_in_table",
+    "total",
+    "distinct_orders",
+    "avg_per_row"
+   ],
+   "rows": [
+    [
+     "4",
+     "156.00",
+     "NULL",
+     "39.0"
+    ]
+   ]
+  },
+  "m12.grain_store.postgres": {
+   "cols": [
+    "rows_in_table",
+    "total",
+    "distinct_orders",
+    "avg_per_row"
+   ],
+   "rows": [
+    [
+     "4",
+     "156.00",
+     "NULL",
+     "39.00"
+    ]
+   ]
+  },
+  "m12.lifecycle.duckdb": {
+   "cols": [
+    "order_id",
+    "status",
+    "ordered_at",
+    "first_paid_at",
+    "refunded_at"
+   ],
+   "rows": [
+    [
+     "1001",
+     "paid",
+     "2026-03-01 02:15:00",
+     "2026-03-01 02:16:00",
+     "NULL"
+    ],
+    [
+     "1002",
+     "paid",
+     "2026-03-03 09:40:00",
+     "2026-03-03 09:41:00",
+     "NULL"
+    ],
+    [
+     "1003",
+     "paid",
+     "2026-03-02 16:30:00",
+     "2026-03-02 16:31:00",
+     "NULL"
+    ],
+    [
+     "1004",
+     "paid",
+     "2026-03-02 23:50:00",
+     "2026-03-02 23:51:00",
+     "NULL"
+    ],
+    [
+     "1005",
+     "cancelled",
+     "2026-03-04 03:05:00",
+     "NULL",
+     "NULL"
+    ],
+    [
+     "1006",
+     "paid",
+     "2026-03-04 21:10:00",
+     "2026-03-04 21:11:00",
+     "NULL"
+    ],
+    [
+     "1007",
+     "paid",
+     "2026-03-05 08:00:00",
+     "2026-03-05 08:01:00",
+     "NULL"
+    ],
+    [
+     "1008",
+     "refunded",
+     "2026-03-06 10:20:00",
+     "2026-03-06 10:21:00",
+     "2026-03-06 15:00:00"
+    ],
+    [
+     "1009",
+     "paid",
+     "2026-03-06 11:00:00",
+     "2026-03-06 11:01:00",
+     "NULL"
+    ],
+    [
+     "1010",
+     "paid",
+     "2026-03-07 12:30:00",
+     "2026-03-07 12:31:00",
+     "NULL"
+    ],
+    [
+     "1011",
+     "paid",
+     "2026-03-08 04:45:00",
+     "2026-03-08 04:46:00",
+     "NULL"
+    ],
+    [
+     "1012",
+     "pending",
+     "2026-03-09 15:00:00",
+     "NULL",
+     "NULL"
+    ]
+   ]
+  },
+  "m12.lifecycle.postgres": {
+   "cols": [
+    "order_id",
+    "status",
+    "ordered_at",
+    "first_paid_at",
+    "refunded_at"
+   ],
+   "rows": [
+    [
+     "1001",
+     "paid",
+     "2026-03-01 02:15:00",
+     "2026-03-01 02:16:00",
+     "NULL"
+    ],
+    [
+     "1002",
+     "paid",
+     "2026-03-03 09:40:00",
+     "2026-03-03 09:41:00",
+     "NULL"
+    ],
+    [
+     "1003",
+     "paid",
+     "2026-03-02 16:30:00",
+     "2026-03-02 16:31:00",
+     "NULL"
+    ],
+    [
+     "1004",
+     "paid",
+     "2026-03-02 23:50:00",
+     "2026-03-02 23:51:00",
+     "NULL"
+    ],
+    [
+     "1005",
+     "cancelled",
+     "2026-03-04 03:05:00",
+     "NULL",
+     "NULL"
+    ],
+    [
+     "1006",
+     "paid",
+     "2026-03-04 21:10:00",
+     "2026-03-04 21:11:00",
+     "NULL"
+    ],
+    [
+     "1007",
+     "paid",
+     "2026-03-05 08:00:00",
+     "2026-03-05 08:01:00",
+     "NULL"
+    ],
+    [
+     "1008",
+     "refunded",
+     "2026-03-06 10:20:00",
+     "2026-03-06 10:21:00",
+     "2026-03-06 15:00:00"
+    ],
+    [
+     "1009",
+     "paid",
+     "2026-03-06 11:00:00",
+     "2026-03-06 11:01:00",
+     "NULL"
+    ],
+    [
+     "1010",
+     "paid",
+     "2026-03-07 12:30:00",
+     "2026-03-07 12:31:00",
+     "NULL"
+    ],
+    [
+     "1011",
+     "paid",
+     "2026-03-08 04:45:00",
+     "2026-03-08 04:46:00",
+     "NULL"
+    ],
+    [
+     "1012",
+     "pending",
+     "2026-03-09 15:00:00",
+     "NULL",
+     "NULL"
+    ]
+   ]
+  },
+  "m12.lifecycle.sqlite": {
+   "cols": [
+    "order_id",
+    "status",
+    "ordered_at",
+    "first_paid_at",
+    "refunded_at"
+   ],
+   "rows": [
+    [
+     "1001",
+     "paid",
+     "2026-03-01 02:15:00",
+     "2026-03-01 02:16:00",
+     "NULL"
+    ],
+    [
+     "1002",
+     "paid",
+     "2026-03-03 09:40:00",
+     "2026-03-03 09:41:00",
+     "NULL"
+    ],
+    [
+     "1003",
+     "paid",
+     "2026-03-02 16:30:00",
+     "2026-03-02 16:31:00",
+     "NULL"
+    ],
+    [
+     "1004",
+     "paid",
+     "2026-03-02 23:50:00",
+     "2026-03-02 23:51:00",
+     "NULL"
+    ],
+    [
+     "1005",
+     "cancelled",
+     "2026-03-04 03:05:00",
+     "NULL",
+     "NULL"
+    ],
+    [
+     "1006",
+     "paid",
+     "2026-03-04 21:10:00",
+     "2026-03-04 21:11:00",
+     "NULL"
+    ],
+    [
+     "1007",
+     "paid",
+     "2026-03-05 08:00:00",
+     "2026-03-05 08:01:00",
+     "NULL"
+    ],
+    [
+     "1008",
+     "refunded",
+     "2026-03-06 10:20:00",
+     "2026-03-06 10:21:00",
+     "2026-03-06 15:00:00"
+    ],
+    [
+     "1009",
+     "paid",
+     "2026-03-06 11:00:00",
+     "2026-03-06 11:01:00",
+     "NULL"
+    ],
+    [
+     "1010",
+     "paid",
+     "2026-03-07 12:30:00",
+     "2026-03-07 12:31:00",
+     "NULL"
+    ],
+    [
+     "1011",
+     "paid",
+     "2026-03-08 04:45:00",
+     "2026-03-08 04:46:00",
+     "NULL"
+    ],
+    [
+     "1012",
+     "pending",
+     "2026-03-09 15:00:00",
+     "NULL",
+     "NULL"
+    ]
+   ]
+  },
+  "m12.normal_update.duckdb": {
+   "cols": [
+    "order_id",
+    "name",
+    "country"
+   ],
+   "rows": [
+    [
+     "1001",
+     "Ana Lim",
+     "MY"
+    ],
+    [
+     "1002",
+     "Ana Lim",
+     "MY"
+    ],
+    [
+     "1007",
+     "Ana Lim",
+     "MY"
+    ]
+   ]
+  },
+  "m12.normal_update.postgres": {
+   "cols": [
+    "order_id",
+    "name",
+    "country"
+   ],
+   "rows": [
+    [
+     "1001",
+     "Ana Lim",
+     "MY"
+    ],
+    [
+     "1002",
+     "Ana Lim",
+     "MY"
+    ],
+    [
+     "1007",
+     "Ana Lim",
+     "MY"
+    ]
+   ]
+  },
+  "m12.normal_update.sqlite": {
+   "cols": [
+    "order_id",
+    "name",
+    "country"
+   ],
+   "rows": [
+    [
+     "1001",
+     "Ana Lim",
+     "MY"
+    ],
+    [
+     "1002",
+     "Ana Lim",
+     "MY"
+    ],
+    [
+     "1007",
+     "Ana Lim",
+     "MY"
+    ]
+   ]
+  },
+  "m12.reconcile.duckdb": {
+   "cols": [
+    "orders_total",
+    "fact_total",
+    "orders_that_differ"
+   ],
+   "rows": [
+    [
+     "156.00",
+     "156.00",
+     "0"
+    ]
+   ]
+  },
+  "m12.reconcile.postgres": {
+   "cols": [
+    "orders_total",
+    "fact_total",
+    "orders_that_differ"
+   ],
+   "rows": [
+    [
+     "156.00",
+     "156.00",
+     "0"
+    ]
+   ]
+  },
+  "m12.unknown_customer.duckdb": {
+   "cols": [
+    "customer",
+    "orders",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "Chen Wei",
+     "2",
+     "45.00"
+    ],
+    [
+     "Ana Lim",
+     "3",
+     "37.00"
+    ],
+    [
+     "Eli Cohen",
+     "2",
+     "30.50"
+    ],
+    [
+     "Unknown customer",
+     "1",
+     "9.50"
+    ],
+    [
+     "Ben Ortiz",
+     "1",
+     "5.00"
+    ]
+   ]
+  },
+  "m12.unknown_customer.postgres": {
+   "cols": [
+    "customer",
+    "orders",
+    "revenue"
+   ],
+   "rows": [
+    [
+     "Chen Wei",
+     "2",
+     "45.00"
+    ],
+    [
+     "Ana Lim",
+     "3",
+     "37.00"
+    ],
+    [
+     "Eli Cohen",
+     "2",
+     "30.50"
+    ],
+    [
+     "Unknown customer",
+     "1",
+     "9.50"
+    ],
+    [
+     "Ben Ortiz",
+     "1",
+     "5.00"
+    ]
+   ]
+  },
+  "m12.wide_anomaly.duckdb": {
+   "cols": [
+    "name",
+    "countries",
+    "rows_for_customer"
+   ],
+   "rows": [
+    [
+     "Ana Lim",
+     "2",
+     "3"
+    ]
+   ]
+  },
+  "m12.wide_anomaly.postgres": {
+   "cols": [
+    "name",
+    "countries",
+    "rows_for_customer"
+   ],
+   "rows": [
+    [
+     "Ana Lim",
+     "2",
+     "3"
+    ]
+   ]
+  },
+  "m12.wide_anomaly.sqlite": {
+   "cols": [
+    "name",
+    "countries",
+    "rows_for_customer"
+   ],
+   "rows": [
+    [
+     "Ana Lim",
+     "2",
+     "3"
     ]
    ]
   },

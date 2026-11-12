@@ -182,4 +182,35 @@
     };
     SQ.info.plan = { counts: C };
   })();
+
+  /* ====================== mission 12: the grain lab ====================== */
+  (function () {
+    var GRAINS = [
+      { id: 'order', key: 'm12.grain_order', title: 'One row for each order', measure: 'total', can: ['Number of orders (count)', 'Average order value', 'Revenue by store, day or customer'], cannot: ['Revenue by product or category', 'Quantity sold'] },
+      { id: 'line', key: 'm12.grain_line', title: 'One row for each order line', measure: 'line_amount', can: ['Revenue by product and category', 'Quantity sold', 'Revenue by store, day or customer'], cannot: ['A plain count(*) as the number of orders: it counts lines', 'Average per row as the average order value'] },
+      { id: 'store', key: 'm12.grain_store', title: 'One row for each store (a summary)', measure: 'revenue', can: ['Revenue by store'], cannot: ['Orders, products, days or customers: the detail is gone', 'Anything that needs another grouping'] },
+      { id: 'customer', key: 'm12.grain_customer', title: 'One row for each customer (a summary)', measure: 'revenue', can: ['Revenue by customer'], cannot: ['Orders, products, days or stores: the detail is gone'] }
+    ];
+    function t(g) { return G.on(g.key, 'duckdb'); }
+    W.grain = {
+      steps: function () { return 1; },
+      hint: 'Pick a grain and read what it can answer.',
+      say: function () { return 'The grain is what one row of a table stands for. The same 156.00 of orders is stored at four grains. Pick one and see how many rows it needs, what you can still ask, and which familiar numbers turn into wrong answers.'; },
+      mood: function () { return 'think'; },
+      render: function (box, s, i, A) {
+        var u = SQ.u, st = A.local.gr || (A.local.gr = { g: 'line' }), g = GRAINS.filter(function (x) { return x.id === st.g; })[0], r = t(g).rows[0], cols = t(g).cols;
+        var v = function (c) { return r[cols.indexOf(c)]; };
+        var h = '<div class="lab"><div class="lab-h">Grain of the table</div><div class="sel-chips">' + u.chips(GRAINS.map(function (x) { return x.id; }), st.g, 'gr-g', function (k) { return GRAINS.filter(function (x) { return x.id === k; })[0].title; }) + '</div>' +
+          '<div class="lab-out"><div class="big"><b>' + v('rows_in_table') + '</b><span>rows in the table</span></div><div class="big good"><b>' + v('total') + '</b><span>sum of ' + esc(g.measure) + ': the money always adds up</span></div>' +
+          '<div class="big ' + (g.id === 'order' ? 'good' : 'bad') + '"><b>' + v('rows_in_table') + '</b><span>what count(*) returns, against ' + G.on('m12.grain_order', 'duckdb').rows[0][0] + ' real orders</span></div>' +
+          '<div class="big ' + (g.id === 'order' ? 'good' : 'bad') + '"><b>' + v('avg_per_row') + '</b><span>average of ' + esc(g.measure) + ' per row, against ' + G.on('m12.grain_order', 'duckdb').rows[0][3] + ' for an order</span></div></div>' +
+          '<div class="pair"><div><h3 class="lab-h">You can still answer</h3><ul class="notes">' + g.can.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></div>' +
+          '<div><h3 class="lab-h">You cannot, or the answer is wrong</h3><ul class="notes">' + g.cannot.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></div></div>' +
+          '<p class="lab-note">The row counts and sums were returned by DuckDB and PostgreSQL, which agreed. The lists of questions are design reasoning from the columns that each table keeps.</p></div>';
+        box.innerHTML = h;
+        A.bindWidget = function (act, el) { if (act === 'gr-g') st.g = el.getAttribute('data-v'); A.render(true); };
+      }
+    };
+    SQ.info.grain = { grains: GRAINS, tab: t };
+  })();
 })();
