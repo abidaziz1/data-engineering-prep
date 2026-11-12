@@ -107,6 +107,51 @@ def cmd_idem(dag_id, table, db, dates):
 
 
 # ------------------------------------------------------------------------------------------------------------------------------------------
+def cmd_incremental(db):
+    """Two incremental loads of one source table. A row arrives late, and each load runs again for the same day."""
+    import sqlite3
+    import pendulum
+    from airflow.dag_processing.dagbag import DagBag
+    bag, _ = quiet(DagBag, dag_folder=os.environ["AIRFLOW__CORE__DAGS_FOLDER"])
+    con = sqlite3.connect(db)
+    con.execute("CREATE TABLE IF NOT EXISTS source_orders (order_id TEXT PRIMARY KEY, updated_at TEXT, total REAL)")
+    con.execute("DELETE FROM source_orders")
+    con.executemany("INSERT INTO source_orders VALUES (?, ?, ?)", [("O-1", "2026-03-14 10:00:00", 12.5), ("O-2", "2026-03-14 11:00:00", 8.0)])
+    for t in ("orders_window", "orders_lookback"):
+        con.execute("DROP TABLE IF EXISTS " + t)
+    con.commit()
+    steps = []
+
+    def run(dag_id, day):
+        quiet(bag.dags[dag_id].test, logical_date=pendulum.parse(day))
+
+    def snap(label, day, source_rows):
+        out = {"step": label, "day": day, "source": source_rows}
+        for dag_id, t in (("brewline_incr_window", "orders_window"), ("brewline_incr_lookback", "orders_lookback")):
+            c = sqlite3.connect(db)
+            try:
+                out[dag_id] = [r[0] for r in c.execute("SELECT order_id FROM %s ORDER BY order_id" % t).fetchall()]
+            except sqlite3.OperationalError:
+                out[dag_id] = []
+            c.close()
+        steps.append(out)
+
+    src = lambda: [r[0] for r in sqlite3.connect(db).execute("SELECT order_id FROM source_orders ORDER BY order_id").fetchall()]
+    for d in ("brewline_incr_window", "brewline_incr_lookback"):
+        run(d, "2026-03-14")
+    snap("the run of 14 March", "2026-03-14", src())
+    con.executemany("INSERT INTO source_orders VALUES (?, ?, ?)", [("O-3", "2026-03-15 09:00:00", 21.0), ("O-4", "2026-03-14 23:30:00", 5.5)])
+    con.commit()
+    for d in ("brewline_incr_window", "brewline_incr_lookback"):
+        run(d, "2026-03-15")
+    snap("the run of 15 March, after O-3 and a late O-4 arrived", "2026-03-15", src())
+    for d in ("brewline_incr_window", "brewline_incr_lookback"):
+        run(d, "2026-03-15")
+    snap("the run of 15 March again", "2026-03-15", src())
+    emit(steps)
+
+
+# ------------------------------------------------------------------------------------------------------------------------------------------
 def cmd_rules():
     from airflow.task.trigger_rule import TriggerRule
     emit([r.value for r in TriggerRule])

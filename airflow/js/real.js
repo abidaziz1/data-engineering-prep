@@ -2715,6 +2715,73 @@ LAB.real = {
     "warnings": []
    }
   ],
+  "af.incremental": {
+   "late_row": {
+    "arrived": "after the run of 14 March",
+    "order_id": "O-4",
+    "updated_at": "2026-03-14 23:30:00"
+   },
+   "steps": [
+    {
+     "brewline_incr_lookback": [
+      "O-1",
+      "O-2"
+     ],
+     "brewline_incr_window": [
+      "O-1",
+      "O-2"
+     ],
+     "day": "2026-03-14",
+     "source": [
+      "O-1",
+      "O-2"
+     ],
+     "step": "the run of 14 March"
+    },
+    {
+     "brewline_incr_lookback": [
+      "O-1",
+      "O-2",
+      "O-3",
+      "O-4"
+     ],
+     "brewline_incr_window": [
+      "O-1",
+      "O-2",
+      "O-3"
+     ],
+     "day": "2026-03-15",
+     "source": [
+      "O-1",
+      "O-2",
+      "O-3",
+      "O-4"
+     ],
+     "step": "the run of 15 March, after O-3 and a late O-4 arrived"
+    },
+    {
+     "brewline_incr_lookback": [
+      "O-1",
+      "O-2",
+      "O-3",
+      "O-4"
+     ],
+     "brewline_incr_window": [
+      "O-1",
+      "O-2",
+      "O-3"
+     ],
+     "day": "2026-03-15",
+     "source": [
+      "O-1",
+      "O-2",
+      "O-3",
+      "O-4"
+     ],
+     "step": "the run of 15 March again"
+    }
+   ]
+  },
   "af.mapping_edge": {
    "big": {
     "list_stores": "failed",
@@ -4745,7 +4812,7 @@ LAB.real = {
  },
  "files": {
   "dags/brewline_alerts.py": "\"\"\"Functions that the scheduler and the executor import by name. They must be importable from the DAGs folder.\"\"\"\nimport os\n\n\ndef deadline_missed(**kwargs):\n    with open(os.environ.get(\"BREWLINE_DEADLINE_LOG\", \"/tmp/brewline_deadline.log\"), \"a\") as f:\n        f.write(\"deadline missed\\n\")\n",
-  "dags/brewline_assets.py": "\"\"\"Assets: a producer task says which asset it updated, and the DAGs that schedule on that asset run when it does.\"\"\"\nimport pendulum\nfrom airflow.sdk import Asset, dag, task, get_current_context\n\norders_raw = Asset(name=\"orders_raw\", uri=\"brewline://lake/raw/orders\")\ncustomers_raw = Asset(name=\"customers_raw\", uri=\"brewline://lake/raw/customers\")\n\n\n@dag(dag_id=\"brewline_land_orders\", schedule=None, start_date=pendulum.datetime(2026, 3, 1, tz=\"UTC\"), catchup=False)\ndef land_orders():\n    @task(outlets=[orders_raw])\n    def land():\n        print(\"landed the orders file\")\n\n    land()\n\n\n@dag(dag_id=\"brewline_land_customers\", schedule=None, start_date=pendulum.datetime(2026, 3, 1, tz=\"UTC\"), catchup=False)\ndef land_customers():\n    @task(outlets=[customers_raw])\n    def land():\n        print(\"landed the customers file\")\n\n    land()\n\n\n@dag(dag_id=\"brewline_orders_daily\", schedule=[orders_raw], start_date=pendulum.datetime(2026, 3, 1, tz=\"UTC\"), catchup=False)\ndef orders_daily():\n    @task\n    def build():\n        events = get_current_context()[\"triggering_asset_events\"]\n        for asset, evs in events.items():\n            print(f\"triggered by {asset.name}: {len(evs)} event(s)\")\n\n    build()\n\n\n@dag(dag_id=\"brewline_customer_orders\", schedule=[orders_raw, customers_raw], start_date=pendulum.datetime(2026, 3, 1, tz=\"UTC\"), catchup=False)\ndef customer_orders():\n    @task\n    def build():\n        events = get_current_context()[\"triggering_asset_events\"]\n        print(\"triggered by\", sorted(a.name for a in events))\n\n    build()\n\n\nland_orders()\nland_customers()\norders_daily()\ncustomer_orders()\n",
+  "dags/brewline_assets.py": "\"\"\"Assets: a producer task says which asset it updated, and the DAGs that schedule on that asset run when it does.\"\"\"\nimport pendulum\nfrom airflow.sdk import Asset, dag, task, get_current_context\n\norders_raw = Asset(name=\"orders_raw\", uri=\"brewline://lake/raw/orders\")\ncustomers_raw = Asset(name=\"customers_raw\", uri=\"brewline://lake/raw/customers\")\n\n\n@dag(dag_id=\"brewline_land_orders\", schedule=None, start_date=pendulum.datetime(2026, 3, 1, tz=\"UTC\"), catchup=False)\ndef land_orders():\n    @task(outlets=[orders_raw])\n    def land():\n        print(\"landed the orders file\")\n\n    land()\n\n\n@dag(dag_id=\"brewline_land_customers\", schedule=None, start_date=pendulum.datetime(2026, 3, 1, tz=\"UTC\"), catchup=False)\ndef land_customers():\n    @task(outlets=[customers_raw])\n    def land():\n        print(\"landed the customers file\")\n\n    land()\n\n\n@dag(dag_id=\"brewline_orders_daily\", schedule=[orders_raw], start_date=pendulum.datetime(2026, 3, 1, tz=\"UTC\"), catchup=False)\ndef orders_daily():\n    @task\n    def build():\n        events = get_current_context()[\"triggering_asset_events\"]\n        for asset, evs in events.items():\n            print(f\"triggered by {asset.name}: {len(evs)} event(s)\")\n\n    build()\n\n\n@dag(dag_id=\"brewline_customer_orders\", schedule=[orders_raw, customers_raw], start_date=pendulum.datetime(2026, 3, 1, tz=\"UTC\"), catchup=False)\ndef customer_orders():\n    @task\n    def build():\n        events = get_current_context()[\"triggering_asset_events\"]\n        for asset, evs in sorted(events.items(), key=lambda kv: kv[0].name):\n            print(f\"triggered by {asset.name}: {len(evs)} event(s)\")\n\n    build()\n\n\nland_orders()\nland_customers()\norders_daily()\ncustomer_orders()\n",
   "dags/brewline_backfill_demo.py": "\"\"\"A daily load without catchup. Old days are filled with a backfill instead.\"\"\"\nimport pendulum\nfrom airflow.sdk import DAG\nfrom airflow.providers.standard.operators.bash import BashOperator\n\nwith DAG(dag_id=\"brewline_backfill_demo\", schedule=\"@daily\", start_date=pendulum.datetime(2026, 3, 2, tz=\"UTC\"), catchup=False) as dag:\n    BashOperator(task_id=\"load\", bash_command=\"echo loading {{ ds }}\")\n",
   "dags/brewline_backoff.py": "\"\"\"A task that always fails, with exponential backoff: how long does Airflow wait before each retry?\"\"\"\nimport datetime\n\nimport pendulum\nfrom airflow.sdk import dag, task\n\n\n@dag(dag_id=\"brewline_backoff\", schedule=None, start_date=pendulum.datetime(2026, 3, 1, tz=\"UTC\"), catchup=False)\ndef brewline_backoff():\n    @task(\n        retries=4,\n        retry_delay=datetime.timedelta(seconds=1),\n        retry_exponential_backoff=2.0,\n        max_retry_delay=datetime.timedelta(seconds=10),\n    )\n    def call_partner():\n        raise ConnectionError(\"the partner API is down\")\n\n    call_partner()\n\n\nbrewline_backoff()\n",
   "dags/brewline_blocked.py": "\"\"\"Four reasons why a task does not start. The recorder asks Airflow while each one is true.\"\"\"\nimport pendulum\nfrom airflow.sdk import DAG\nfrom airflow.providers.standard.operators.bash import BashOperator\n\nSTART = pendulum.datetime(2026, 3, 1, tz=\"UTC\")\n\nwith DAG(dag_id=\"brewline_blocked\", schedule=None, start_date=START, catchup=False) as dag:\n    hold_slot = BashOperator(task_id=\"hold_slot\", bash_command=\"sleep 30\", pool=\"tiny_pool\")\n    wait_for_slot = BashOperator(task_id=\"wait_for_slot\", bash_command=\"echo report\", pool=\"tiny_pool\")\n    slow_extract = BashOperator(task_id=\"slow_extract\", bash_command=\"sleep 30\")\n    load_after_extract = BashOperator(task_id=\"load_after_extract\", bash_command=\"echo load\")\n    slow_extract >> load_after_extract\n\nwith DAG(dag_id=\"brewline_blocked_limit\", schedule=None, start_date=START, catchup=False, max_active_tasks=1) as dag2:\n    BashOperator(task_id=\"long_a\", bash_command=\"sleep 30\")\n    BashOperator(task_id=\"long_b\", bash_command=\"echo b\")\n\nwith DAG(dag_id=\"brewline_blocked_past\", schedule=None, start_date=START, catchup=False, default_args={\"depends_on_past\": True, \"retries\": 0}) as dag3:\n    BashOperator(task_id=\"load\", bash_command=\"test -f /nonexistent_partner_file\")\n",
@@ -4760,6 +4827,7 @@ LAB.real = {
   "dags/brewline_deadline.py": "\"\"\"A deadline alert: if the run is not done five seconds after it was queued, Airflow calls a function.\"\"\"\nimport datetime\n\nimport pendulum\nfrom airflow.sdk import DeadlineAlert, DeadlineReference, SyncCallback, dag, task\n\n\n@dag(\n    dag_id=\"brewline_deadline\",\n    schedule=None,\n    start_date=pendulum.datetime(2026, 3, 1, tz=\"UTC\"),\n    catchup=False,\n    deadline=DeadlineAlert(\n        reference=DeadlineReference.DAGRUN_QUEUED_AT,\n        interval=datetime.timedelta(seconds=5),\n        callback=SyncCallback(\"brewline_alerts.deadline_missed\"),\n    ),\n)\ndef brewline_deadline():\n    @task\n    def slow_load():\n        import time\n\n        time.sleep(20)\n\n    slow_load()\n\n\nbrewline_deadline()\n",
   "dags/brewline_first.py": "\"\"\"The first Brewline DAG: three TaskFlow tasks in a row, run once a day.\"\"\"\nimport json\nimport os\nfrom pathlib import Path\n\nimport pendulum\nfrom airflow.sdk import dag, task\n\nOUT = Path(os.environ.get(\"BREWLINE_OUT\", \"/tmp/brewline\"))\n\n\n@dag(\n    dag_id=\"brewline_first\",\n    schedule=\"@daily\",\n    start_date=pendulum.datetime(2026, 3, 1, tz=\"UTC\"),\n    catchup=False,\n    tags=[\"brewline\"],\n)\ndef brewline_first():\n    @task\n    def extract(ds=None):\n        orders = [{\"order_id\": \"O-1\", \"total\": 12.5}, {\"order_id\": \"O-2\", \"total\": 8.0}]\n        print(f\"extracted {len(orders)} orders for {ds}\")\n        return orders\n\n    @task\n    def transform(orders):\n        total = sum(o[\"total\"] for o in orders)\n        print(f\"total is {total}\")\n        return {\"orders\": len(orders), \"total\": total}\n\n    @task\n    def load(summary, ds=None):\n        OUT.mkdir(parents=True, exist_ok=True)\n        path = OUT / f\"summary_{ds}.json\"\n        path.write_text(json.dumps(summary))\n        print(f\"wrote {path.name}\")\n\n    load(transform(extract()))\n\n\nbrewline_first()\n",
   "dags/brewline_flaky.py": "\"\"\"A task that fails twice and then works. The counter lives in a file, so it survives between tries.\"\"\"\nimport datetime\nimport os\n\nimport pendulum\nfrom airflow.sdk import dag, task\n\nCOUNT_FILE = os.environ.get(\"FLAKY_COUNT_FILE\", \"/tmp/brewline_flaky_count\")\n\n\n@dag(dag_id=\"brewline_flaky\", schedule=None, start_date=pendulum.datetime(2026, 3, 1, tz=\"UTC\"), catchup=False)\ndef brewline_flaky():\n    @task(retries=3, retry_delay=datetime.timedelta(seconds=2))\n    def extract():\n        tries = int(open(COUNT_FILE).read()) if os.path.exists(COUNT_FILE) else 0\n        open(COUNT_FILE, \"w\").write(str(tries + 1))\n        if tries < 2:\n            raise RuntimeError(f\"source not ready (try {tries + 1})\")\n        return \"rows=10\"\n\n    @task\n    def load(value):\n        print(\"loading\", value)\n\n    load(extract())\n\n\nbrewline_flaky()\n",
+  "dags/brewline_incremental.py": "\"\"\"Two incremental loads of the same source. One reads only the day of the run. The other also reads the day before, so it catches rows that arrive late.\"\"\"\nimport os\nimport sqlite3\n\nimport pendulum\nfrom airflow.sdk import dag, task\n\nDB = os.environ.get(\"BREWLINE_DB\", \"/tmp/brewline.db\")\n\n\ndef make(dag_id, table, lookback_days):\n    @dag(dag_id=dag_id, schedule=\"@daily\", start_date=pendulum.datetime(2026, 3, 1, tz=\"UTC\"), catchup=False)\n    def incremental():\n        @task\n        def load(ds=None):\n            with sqlite3.connect(DB) as con:\n                con.execute(f\"CREATE TABLE IF NOT EXISTS {table} (order_id TEXT PRIMARY KEY, updated_at TEXT, total REAL)\")\n                rows = con.execute(\n                    \"SELECT order_id, updated_at, total FROM source_orders WHERE updated_at >= date(?, ?) AND updated_at < date(?, '+1 day')\",\n                    (ds, f\"-{lookback_days} day\", ds),\n                ).fetchall()\n                con.executemany(\n                    f\"INSERT INTO {table} VALUES (?, ?, ?) ON CONFLICT(order_id) DO UPDATE SET updated_at = excluded.updated_at, total = excluded.total\",\n                    rows,\n                )\n            print(f\"read {len(rows)} source rows for {ds}\")\n\n        load()\n\n    return incremental()\n\n\nbrewline_incr_window = make(\"brewline_incr_window\", \"orders_window\", 0)\nbrewline_incr_lookback = make(\"brewline_incr_lookback\", \"orders_lookback\", 1)\n",
   "dags/brewline_load_append.py": "\"\"\"A load that appends. Run it twice for the same day and the day is in the table twice.\"\"\"\nimport os\nimport sqlite3\n\nimport pendulum\nfrom airflow.sdk import dag, task\n\nDB = os.environ.get(\"BREWLINE_DB\", \"/tmp/brewline.db\")\nORDERS = [(\"O-1\", 12.5), (\"O-2\", 8.0), (\"O-3\", 21.0)]\n\n\n@dag(dag_id=\"brewline_load_append\", schedule=\"@daily\", start_date=pendulum.datetime(2026, 3, 1, tz=\"UTC\"), catchup=False)\ndef brewline_load_append():\n    @task\n    def load(ds=None):\n        with sqlite3.connect(DB) as con:\n            con.execute(\"CREATE TABLE IF NOT EXISTS orders_append (order_id TEXT, dt TEXT, total REAL)\")\n            con.executemany(\"INSERT INTO orders_append VALUES (?, ?, ?)\", [(i, ds, t) for i, t in ORDERS])\n        print(f\"inserted {len(ORDERS)} rows for {ds}\")\n\n    load()\n\n\nbrewline_load_append()\n",
   "dags/brewline_load_replace.py": "\"\"\"A load that replaces its own day: delete and insert in one transaction. Run it twice and the table is the same.\"\"\"\nimport os\nimport sqlite3\n\nimport pendulum\nfrom airflow.sdk import dag, task\n\nDB = os.environ.get(\"BREWLINE_DB\", \"/tmp/brewline.db\")\nORDERS = [(\"O-1\", 12.5), (\"O-2\", 8.0), (\"O-3\", 21.0)]\n\n\n@dag(dag_id=\"brewline_load_replace\", schedule=\"@daily\", start_date=pendulum.datetime(2026, 3, 1, tz=\"UTC\"), catchup=False)\ndef brewline_load_replace():\n    @task\n    def load(ds=None):\n        with sqlite3.connect(DB) as con:  # one transaction: both statements commit together or not at all\n            con.execute(\"CREATE TABLE IF NOT EXISTS orders_replace (order_id TEXT, dt TEXT, total REAL)\")\n            con.execute(\"DELETE FROM orders_replace WHERE dt = ?\", (ds,))\n            con.executemany(\"INSERT INTO orders_replace VALUES (?, ?, ?)\", [(i, ds, t) for i, t in ORDERS])\n        print(f\"replaced the rows of {ds}: {len(ORDERS)}\")\n\n    load()\n\n\nbrewline_load_replace()\n",
   "dags/brewline_load_upsert.py": "\"\"\"A load that upserts on the order id. Run it twice and the table is the same, and rows of other days stay.\"\"\"\nimport os\nimport sqlite3\n\nimport pendulum\nfrom airflow.sdk import dag, task\n\nDB = os.environ.get(\"BREWLINE_DB\", \"/tmp/brewline.db\")\nORDERS = [(\"O-1\", 12.5), (\"O-2\", 8.0), (\"O-3\", 21.0)]\n\n\n@dag(dag_id=\"brewline_load_upsert\", schedule=\"@daily\", start_date=pendulum.datetime(2026, 3, 1, tz=\"UTC\"), catchup=False)\ndef brewline_load_upsert():\n    @task\n    def load(ds=None):\n        with sqlite3.connect(DB) as con:\n            con.execute(\"CREATE TABLE IF NOT EXISTS orders_upsert (order_id TEXT PRIMARY KEY, dt TEXT, total REAL)\")\n            con.executemany(\n                \"INSERT INTO orders_upsert VALUES (?, ?, ?) ON CONFLICT(order_id) DO UPDATE SET dt = excluded.dt, total = excluded.total\",\n                [(f\"{ds}-{i}\", ds, t) for i, t in ORDERS],\n            )\n        print(f\"upserted {len(ORDERS)} rows for {ds}\")\n\n    load()\n\n\nbrewline_load_upsert()\n",

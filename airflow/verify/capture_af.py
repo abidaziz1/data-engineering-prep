@@ -940,6 +940,17 @@ def sec_idempotent():
     counts('af.idempotent', res)
 
 
+def sec_incremental():
+    """Two incremental loads of one source: one reads only the day of the run, one also reads the day before. A row arrives late."""
+    migrate(HOME_TEST)
+    d = mini('brewline_incremental.py')
+    db = OUTDIR / 'brewline.db'                            # the file that BREWLINE_DB points to, which the DAGs read
+    if db.exists():
+        db.unlink()
+    steps = probe('incremental', db, dags=d)
+    counts('af.incremental', {'steps': steps, 'late_row': {'order_id': 'O-4', 'updated_at': '2026-03-14 23:30:00', 'arrived': 'after the run of 14 March'}})
+
+
 def sec_parse_cost():
     d = WORK / 'parse'
     d.mkdir(exist_ok=True)
@@ -1531,6 +1542,7 @@ section('branch')(sec_branch)
 section('mapping')(sec_mapping)
 section('xcom')(sec_xcom)
 section('idempotent')(sec_idempotent)
+section('incremental')(sec_incremental)
 section('parse_cost')(sec_parse_cost)
 section('retries')(sec_retries)
 section('failed_deps')(sec_failed_deps)
