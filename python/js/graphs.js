@@ -231,5 +231,31 @@
     ]
   };
 
+  /* ------------------------------------------------------------------ */
+  /* 9. A pure core and a thin shell                                     */
+  /* ------------------------------------------------------------------ */
+  S.core = {
+    w: 1100, h: 340, label: 'A pure core and a thin shell: the shell reads the file, the API and the clock, passes plain values to the core, which is made of pure functions, and the shell writes the results to the warehouse and the alert',
+    nodes: [
+      { id: 'file', x: 10, y: 40, w: 200, h: 70, t: 'The file', s: 'shell reads it', c: 'src', k: 'chip' },
+      { id: 'api', x: 10, y: 130, w: 200, h: 70, t: 'The API', s: 'shell calls it', c: 'src', k: 'chip' },
+      { id: 'clock', x: 10, y: 220, w: 200, h: 70, t: 'The clock', s: 'shell asks it', c: 'src', k: 'chip' },
+      { id: 'core', x: 330, y: 40, w: 300, h: 250, t: 'The core', s: 'pure functions: parse, clean, add up', c: 'stg', k: 'layer' },
+      { id: 'db', x: 830, y: 60, w: 230, h: 80, t: 'The warehouse', s: 'shell writes it', c: 'mart', k: 'chip' },
+      { id: 'alert', x: 830, y: 190, w: 230, h: 80, t: 'The alert', s: 'shell sends it', c: 'mon', k: 'chip' }
+    ],
+    edges: [
+      { id: 'i1', a: 'file', b: 'core', d: 'M210 75 H330', n: 1, bx: 270, by: 53 },
+      { id: 'i2', a: 'api', b: 'core', d: 'M210 165 H330', n: 2, bx: 270, by: 143 },
+      { id: 'i3', a: 'clock', b: 'core', d: 'M210 255 H330', n: 3, bx: 270, by: 233 },
+      { id: 'o1', a: 'core', b: 'db', d: 'M630 100 H830', n: 4, bx: 730, by: 78 },
+      { id: 'o2', a: 'core', b: 'alert', d: 'M630 230 H830', n: 5, bx: 730, by: 208 }
+    ],
+    tags: [
+      { id: 'tg_pure', x: 330, y: 304, t: 'no file, no network, no clock: easy to test', c: 'qual' },
+      { id: 'tg_shell', x: 10, y: 304, t: 'the shell is thin: it moves values', c: 'ci' }
+    ]
+  };
+
   /* @@END */
 })();
