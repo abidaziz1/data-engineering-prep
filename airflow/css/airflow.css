@@ -1,0 +1,93 @@
+/* Apache Airflow tutorial: styles for the lab widgets. The engine styles are in shared/css/app.css. */
+:root{--blue:#0E7490;--blue-bg:#CFFAFE}
+a.logo{background:#0E7490}
+a.logo:hover{background:#155E75}
+
+.lab{display:flex;flex-direction:column;gap:.7rem}
+.lab-row{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem .9rem}
+.lab-l{font-weight:800;min-width:8rem}
+.lab-note{font-size:.9rem;font-weight:600;color:var(--ink2);margin:.1rem 0 0}
+.lab button:disabled{opacity:.45}
+.lab-out{display:flex;flex-wrap:wrap;gap:.6rem}
+.lab-out .big{flex:1 1 9rem;background:#fff;border:3px solid var(--ink);border-radius:12px;padding:.4rem .8rem;box-shadow:0 3px 0 var(--ink)}
+.lab-out .big b{display:block;font:800 1.5rem Manrope,sans-serif}
+.lab-out .big span{font-size:.9rem;font-weight:700;color:var(--ink2)}
+.lab-out .big.warn{background:#FEF3C7}
+.lab-out .big.bad{background:#FEE2E2}
+.lab-out .big.good{background:#DCFCE7}
+.lab-h{font:800 1.05rem Manrope,sans-serif;margin:.3rem 0 .1rem}
+.tbl td code{font-size:.96em}
+.tbl td.wbad{background:#FEE2E2;font-weight:800}
+.tbl td.wgood{background:#DCFCE7;font-weight:800}
+.tbl tr.dup td{background:#FEE2E2}
+.tbl tr.old td{color:#64748B;text-decoration:line-through}
+.tbl tr.new td{background:#DCFCE7}
+
+/* two panels side by side */
+.pair{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:.8rem}
+.pair .code{margin:0}
+@media (max-width:900px){.pair{grid-template-columns:minmax(0,1fr)}}
+
+/* selector chips */
+.sel-chips{display:flex;flex-wrap:wrap;gap:.45rem}
+.sel-chip{background:#fff;border:3px solid var(--ink);border-radius:12px;padding:.35rem .7rem;font:600 .9rem 'IBM Plex Mono',monospace;cursor:pointer;text-align:left}
+.sel-chip:hover{background:var(--blue-bg)}
+.sel-chip.on{background:#FEF3C7;box-shadow:0 3px 0 var(--ink)}
+
+.pill{display:inline-block;border:2px solid var(--ink);border-radius:999px;padding:.05rem .65rem;font:800 .85rem Manrope,sans-serif;letter-spacing:.04em;text-transform:uppercase;background:#fff}
+.pill.good{background:#BBF7D0}.pill.bad{background:#FECACA}.pill.warn{background:#FEF3C7}
+
+/* task states, the same colours everywhere */
+.st{display:inline-block;border:2px solid var(--ink);border-radius:8px;padding:.02rem .5rem;font:700 .82rem 'IBM Plex Mono',monospace;background:#E2E8F0;white-space:nowrap}
+.st.success{background:#BBF7D0}
+.st.failed{background:#FECACA}
+.st.skipped{background:#FBCFE8}
+.st.upstream_failed{background:#FED7AA}
+.st.up_for_retry{background:#FDE68A}
+.st.up_for_reschedule{background:#99F6E4}
+.st.running{background:#A7F3D0}
+.st.queued{background:#E2E8F0}
+.st.scheduled{background:#E7E5E4}
+.st.deferred{background:#DDD6FE}
+.st.none{background:#fff}
+
+/* timelines (pools, sensors, retries) */
+.gantt{display:flex;flex-direction:column;gap:.35rem}
+.lane{display:flex;align-items:center;gap:.6rem}
+.lane-n{min-width:7.5rem;font-weight:800;font-size:.9rem}
+.lane-track{position:relative;flex:1;height:2rem;background:#E2E8F0;border:3px solid var(--ink);border-radius:8px;overflow:hidden}
+.gbar{position:absolute;top:0;bottom:0;background:#FB923C;border-right:2px solid var(--ink);font:700 .8rem 'IBM Plex Mono',monospace;padding:.25rem .3rem;overflow:hidden;white-space:nowrap}
+.gbar.run{background:#34D399}
+.gbar.wait{background:#FDE68A}
+.gbar.defer{background:#C4B5FD}
+.gbar.bad{background:#F87171}
+.lane-v{min-width:5.2rem;text-align:right;font:700 .95rem 'IBM Plex Mono',monospace}
+.axis{display:flex;justify-content:space-between;margin-left:8.1rem;margin-right:5.8rem;font:700 .8rem 'IBM Plex Mono',monospace;color:var(--ink2)}
+
+/* a time axis for logical dates and data intervals */
+.tline{position:relative;height:4.6rem;margin:.4rem 0 1.2rem;border-bottom:3px solid var(--ink)}
+.tseg{position:absolute;top:.3rem;height:1.5rem;border:3px solid var(--ink);border-radius:8px;background:#BAE6FD;font:700 .8rem 'IBM Plex Mono',monospace;padding:.05rem .4rem;overflow:hidden;white-space:nowrap}
+.tmark{position:absolute;top:2.2rem;transform:translateX(-50%);font:700 .8rem 'IBM Plex Mono',monospace;white-space:nowrap}
+.tmark::before{content:"";position:absolute;left:50%;top:-.4rem;height:.4rem;border-left:3px solid var(--ink)}
+.tmark.run{color:#9A3412}
+
+/* boxes for runs, partitions and events */
+.chips{display:flex;flex-wrap:wrap;gap:.35rem}
+.chip-d{border:2px solid var(--ink);border-radius:8px;padding:.05rem .45rem;font:700 .85rem 'IBM Plex Mono',monospace;background:#F1F5F9}
+.chip-d.on{background:#BBF7D0}
+.chip-d.off{background:#FECACA}
+.chip-d.skip{background:#FBCFE8}
+
+/* grids of tasks and mapped instances */
+.tgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(5.4rem,1fr));gap:.35rem}
+.tcell{border:3px solid var(--ink);border-radius:10px;padding:.25rem .35rem;font:700 .8rem 'IBM Plex Mono',monospace;background:#E2E8F0;display:flex;flex-direction:column;gap:.05rem}
+.tcell b{font-weight:800}
+.tcell span{font-weight:600;font-size:.74rem}
+.tcell.success{background:#BBF7D0}.tcell.failed{background:#FECACA}.tcell.skipped{background:#FBCFE8}.tcell.upstream_failed{background:#FED7AA}
+.tcell.running{background:#A7F3D0}.tcell.deferred{background:#DDD6FE}.tcell.up_for_retry{background:#FDE68A}.tcell.queued{background:#E2E8F0}
+
+.keylist{list-style:none;margin:.2rem 0 0;padding:0;display:flex;flex-direction:column;gap:.25rem}
+.keylist li{border:2px solid var(--ink);border-radius:8px;padding:.15rem .55rem;font:600 .9rem 'IBM Plex Mono',monospace;background:#fff;word-break:break-all}
+
+/* long identifiers and long paths must wrap on a phone */
+.qtext,.alertbox,.alertbox *,.prompt,.opt .ot,.callout,.clues li,.triage li,.lab-out .big b,.lab-out .big span,.tcell,.tseg,.tmark{overflow-wrap:anywhere}
