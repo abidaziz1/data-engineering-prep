@@ -685,7 +685,11 @@ def close_stack():
 def write_dag(name, body):
     """A DAG file that depends on today's date: written for the run, and stored shifted to the lesson's date."""
     (DAGS / name).write_text(body)
-    file('dags/' + name, norm(body, shift=True))
+
+    def shift_pendulum(m):                                 # pendulum.datetime(2026, 11, 8 ...) is a date too: shift it like the ISO dates
+        y, mo, d = norm('%04d-%02d-%02d' % (int(m.group(1)), int(m.group(2)), int(m.group(3))), shift=True).split('-')
+        return 'pendulum.datetime(%d, %d, %d' % (int(y), int(mo), int(d))
+    file('dags/' + name, re.sub(r'pendulum\.datetime\((\d{4}), (\d{1,2}), (\d{1,2})', shift_pendulum, norm(body, shift=True)))
 
 
 def sec_stack_basic():
