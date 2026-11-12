@@ -126,5 +126,31 @@
     ]
   };
 
+  /* ------------------------------------------------------------------ */
+  /* 5. A paginated extract with a cursor                                */
+  /* ------------------------------------------------------------------ */
+  S.api = {
+    w: 1100, h: 340, label: 'A paginated extract: the loop asks the API for a page after a cursor, the page comes back with the next cursor, the loop writes the page to a staging file, saves the cursor, and asks again, and a 429 answer makes it wait and ask for the same page',
+    nodes: [
+      { id: 'loop', x: 10, y: 130, w: 170, h: 90, t: 'Extract loop', s: 'page after page', c: 'ing', k: 'chip' },
+      { id: 'api', x: 290, y: 130, w: 170, h: 90, t: 'Partner API', s: '100 orders a page', c: 'src', k: 'chip' },
+      { id: 'page', x: 570, y: 130, w: 170, h: 90, t: 'One page', s: 'items and next cursor', c: 'stg', k: 'chip' },
+      { id: 'file', x: 850, y: 40, w: 220, h: 80, t: 'Staging file', s: 'one file for each page', c: 'mart', k: 'chip' },
+      { id: 'ckpt', x: 850, y: 230, w: 220, h: 80, t: 'Checkpoint', s: 'the last cursor saved', c: 'snap', k: 'chip' }
+    ],
+    edges: [
+      { id: 'r1', a: 'loop', b: 'api', d: 'M180 175 H290', n: 1, bx: 235, by: 150, label: 'GET after=C', lx: 235, ly: 238 },
+      { id: 'r2', a: 'api', b: 'page', d: 'M460 175 H570', n: 2, bx: 515, by: 150, label: '200 JSON', lx: 515, ly: 238 },
+      { id: 'r3', a: 'page', b: 'file', d: 'M740 160 C795 160 795 80 850 80', n: 3, bx: 795, by: 120, label: 'write', lx: 760, ly: 70 },
+      { id: 'r4', a: 'file', b: 'ckpt', d: 'M960 120 V230', n: 4, bx: 960, by: 175, label: 'then save', lx: 1030, ly: 178 },
+      { id: 'r5', a: 'ckpt', b: 'loop', d: 'M850 270 H95 V220', n: 5, bx: 470, by: 270, label: 'next cursor', lx: 470, ly: 296 },
+      { id: 'r6', a: 'api', b: 'loop', d: 'M375 130 V82 H95 V130', k: 'ctl', n: 6, bx: 235, by: 82, label: '429: wait, ask again', lx: 235, ly: 62 }
+    ],
+    tags: [
+      { id: 'tg_safe', x: 850, y: 304, t: 'write first, then save the cursor', c: 'mon' },
+      { id: 'tg_stop', x: 570, y: 232, t: 'stop when next cursor is empty', c: 'qual' }
+    ]
+  };
+
   /* @@END */
 })();

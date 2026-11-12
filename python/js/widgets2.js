@@ -213,5 +213,38 @@
     W.idemInfo = { data: data, fnSrc: fnSrc };
   })();
 
+  /* ====================== Mission 8: paging through an API that changes ====================== */
+  (function () {
+    function data() { return G.counts('m8.paging'); }
+    function find(st, sc) { return data().cases.filter(function (c) { return c.style === st && c.scenario === sc; })[0]; }
+    var STYLE = { offset: 'offset pages: page=2&per_page=5', cursor: 'cursor pages: after=O-104&limit=5' };
+    var HAPPENS = { none: 'Nothing changes while the extract runs.', insert: 'After the first page, 3 new orders arrive.', 'delete': 'After the first page, the 3 newest orders are cancelled and disappear from the listing.' };
+    W.paging = {
+      steps: function () { return 1; },
+      hint: 'Pick a paging style and a change. Look for red and dashed ids.',
+      say: function () { return 'Pick how the extract pages, and what happens to the data while it runs. Each result is a real run against the fake API: the first page is read, the data changes, and the rest is read. Red ids were read twice. Dashed ids existed the whole time and were never read.'; },
+      mood: function (s, i, A) { var st = A && A.local.pg, c = st && find(st.s, st.c); return c && (c.repeated.length || c.missed.length) ? 'oops' : 'think'; },
+      render: function (box, s, i, A) {
+        var d = data(), st = A.local.pg || (A.local.pg = { s: 'offset', c: 'insert' }), c = find(st.s, st.c), seen = {}, h = '<div class="lab">';
+        h += '<div class="lab-row"><span class="lab-l">Paging</span><div class="sel-chips">' + chips(['offset', 'cursor'], st.s, 'pg-s') + '</div></div>' +
+          '<div class="lab-row"><span class="lab-l">While it runs</span><div class="sel-chips">' + chips(['none', 'insert', 'delete'], st.c, 'pg-c', function (k) { return { none: 'nothing changes', insert: '3 orders arrive', 'delete': '3 are cancelled' }[k]; }) + '</div></div>' +
+          '<p class="lab-note">' + esc(HAPPENS[st.c]) + ' Request shape: ' + esc(STYLE[st.s]) + '.</p><div class="pgs">';
+        c.pages.forEach(function (p, k) {
+          h += '<div class="pg"><b>page ' + (k + 1) + '</b>' + p.map(function (id) { var cls = seen[id] ? 'dupe' : c['new'].indexOf(id) >= 0 ? 'new' : ''; seen[id] = true; return '<span class="idc ' + cls + '">' + esc(id) + '</span>'; }).join('') + '</div>';
+        });
+        h += '</div>' + (c.missed.length ? '<div class="pg"><b>never read</b>' + c.missed.map(function (id) { return '<span class="idc miss">' + esc(id) + '</span>'; }).join('') + '</div>' : '') +
+          '<div class="lab-out"><div class="big">' + '<b>' + c.rows + '</b><span>rows read</span></div><div class="big ' + (c.rows === c.unique ? 'good' : 'bad') + '"><b>' + c.repeated.length + '</b><span>read twice</span></div><div class="big ' + (c.missed.length ? 'bad' : 'good') + '"><b>' + c.missed.length + '</b><span>missed</span></div></div>' +
+          '<div class="callout ' + (c.repeated.length || c.missed.length ? 'warn' : 'tip') + '">' + md(
+            st.s === 'offset' && c.repeated.length ? 'Three new orders went to the top of a newest-first list, so every order moved down by three places. The last three orders of page 1 came back as the first three of page 2: **' + c.repeated.join(', ') + '** were read twice.' :
+            st.s === 'offset' && c.missed.length ? 'Three orders disappeared from the top, so every order moved up by three places. Page 2 started three places too late and skipped **' + c.missed.join(', ') + '**. Nobody got an error.' :
+            st.s === 'cursor' && c['new'].length ? 'The cursor is the id of the last order that was read, so new orders, which have higher ids, simply come at the end: **' + c['new'].join(', ') + '** are in the result once each.' :
+            st.s === 'cursor' ? 'The cursor is where the extract stopped, not a position in a list that can shift. A cancelled order that was already read changes nothing.' : 'With no changes both styles read every order once.') + '</div></div>';
+        box.innerHTML = h;
+        A.bindWidget = function (act, el) { var v = el.getAttribute('data-v'); if (act === 'pg-s') st.s = v; if (act === 'pg-c') st.c = v; A.render(true); };
+      }
+    };
+    W.pagingInfo = { data: data, find: find };
+  })();
+
   /* @@END */
 })();

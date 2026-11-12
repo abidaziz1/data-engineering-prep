@@ -135,3 +135,12 @@ a.logo:hover{background:#25527A}
 .rkey{font:700 .85rem Manrope,sans-serif;color:var(--ink2);padding:.15rem .3rem .4rem}
 .rkey i{display:inline-block;width:.9rem;height:.9rem;border:2px solid var(--ink);border-radius:3px;vertical-align:-.15rem;margin:0 .2rem 0 .6rem}
 .tbl td.wgood{background:#DCFCE7;font-weight:800}
+
+/* mission 8: pages of ids */
+.pgs{display:grid;gap:.4rem;margin:.5rem 0}
+.pg{display:flex;align-items:center;gap:.35rem;flex-wrap:wrap}
+.pg b{min-width:5.2rem;font:800 .9rem Manrope,sans-serif}
+.idc{font:700 .85rem 'IBM Plex Mono',monospace;border:2px solid var(--ink);border-radius:8px;padding:.1rem .4rem;background:#fff}
+.idc.dupe{background:#FECACA}
+.idc.new{background:#BBF7D0}
+.idc.miss{background:#FEF3C7;border-style:dashed}

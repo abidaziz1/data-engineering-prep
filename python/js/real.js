@@ -83,7 +83,16 @@ LAB.real = {
   "m7/load_strategies.py": "\"\"\"Five ways to load one day of orders, and what each does when the job runs twice, crashes or sees a changed file.\"\"\"\nimport sqlite3\n\nDAY = \"2026-03-14\"\nFILE = [(\"O-1\", 1250), (\"O-2\", 475), (\"O-3\", 820), (\"O-4\", 1990), (\"O-5\", 3100), (\"O-6\", 640)]  # cents\nCORRECTED = [(\"O-1\", 1250), (\"O-2\", 475), (\"O-3\", 920), (\"O-4\", 1990), (\"O-5\", 3100), (\"O-6\", 640)]\nCANCELLED = FILE[:5]  # O-6 is gone from the source file\n\n\nclass Crash(Exception):\n    pass\n\n\ndef new_db(with_key):\n    db = sqlite3.connect(\":memory:\", isolation_level=None)  # autocommit: we say BEGIN and COMMIT ourselves\n    db.execute(f\"CREATE TABLE orders (order_id TEXT {'PRIMARY KEY' if with_key else ''}, day TEXT, total_cents INTEGER)\")\n    return db\n\n\nINSERT = \"INSERT INTO orders VALUES (?, ?, ?)\"\nUPSERT = INSERT + \" ON CONFLICT (order_id) DO UPDATE SET total_cents = excluded.total_cents\"\n\n\ndef write(db, rows, sql, crash):\n    for i, (order_id, cents) in enumerate(rows):\n        if crash and i == 3:\n            raise Crash(\"the job died after 3 rows\")\n        db.execute(sql, (order_id, DAY, cents))\n\n\ndef append(db, rows, crash):                  # a table with no key\n    write(db, rows, INSERT, crash)\n\n\ndef insert_key(db, rows, crash):              # a table with a primary key\n    write(db, rows, INSERT, crash)\n\n\ndef delete_insert(db, rows, crash):           # no transaction: every statement commits on its own\n    db.execute(\"DELETE FROM orders WHERE day = ?\", (DAY,))\n    write(db, rows, INSERT, crash)\n\n\ndef delete_insert_tx(db, rows, crash):        # one transaction: all of it, or none of it\n    db.execute(\"BEGIN\")\n    try:\n        db.execute(\"DELETE FROM orders WHERE day = ?\", (DAY,))\n        write(db, rows, INSERT, crash)\n        db.execute(\"COMMIT\")\n    except Exception:\n        db.execute(\"ROLLBACK\")\n        raise\n\n\ndef upsert(db, rows, crash):                  # a key, and ON CONFLICT DO UPDATE\n    write(db, rows, UPSERT, crash)\n\n\nSTRATEGIES = {\n    \"append\": (append, False),\n    \"insert with a key\": (insert_key, True),\n    \"delete, then insert\": (delete_insert, True),\n    \"delete, then insert, in a transaction\": (delete_insert_tx, True),\n    \"upsert\": (upsert, True),\n}\nSCENARIOS = {  # what happens to the job, in order\n    \"run once\": [(\"run\", FILE)],\n    \"run twice\": [(\"run\", FILE), (\"run\", FILE)],\n    \"crash, then run again\": [(\"crash\", FILE), (\"run\", FILE)],\n    \"the source corrects O-3\": [(\"run\", FILE), (\"run\", CORRECTED)],\n    \"the source drops O-6\": [(\"run\", FILE), (\"run\", CANCELLED)],\n}\nTRUTH = {\"run once\": FILE, \"run twice\": FILE, \"crash, then run again\": FILE, \"the source corrects O-3\": CORRECTED, \"the source drops O-6\": CANCELLED}\n\n\ndef state(db):\n    return db.execute(\"SELECT order_id, total_cents FROM orders ORDER BY order_id, total_cents\").fetchall()\n\n\ndef play(strategy, scenario):\n    fn, with_key = STRATEGIES[strategy]\n    db = new_db(with_key)\n    runs = []\n    for kind, rows in SCENARIOS[scenario]:\n        try:\n            fn(db, rows, kind == \"crash\")\n            outcome = \"finished\"\n        except Crash as err:\n            outcome = f\"crashed: {err}\"\n        except sqlite3.IntegrityError as err:\n            outcome = f\"failed: {err}\"\n        runs.append({\"outcome\": outcome, \"rows\": len(state(db)), \"cents\": sum(c for _, c in state(db))})\n    final = state(db)\n    want = sorted(TRUTH[scenario])\n    return {\"runs\": runs, \"final\": final, \"right\": final == want, \"want_rows\": len(want), \"want_cents\": sum(c for _, c in want)}\n\n\nif __name__ == \"__main__\":\n    for scenario in SCENARIOS:\n        print(scenario)\n        for strategy in STRATEGIES:\n            r = play(strategy, scenario)\n            last = r[\"runs\"][-1]\n            verdict = \"right\" if r[\"right\"] else \"WRONG\"\n            print(f\"  {strategy:<40} {last['rows']} rows, {last['cents'] / 100:7.2f}  {verdict}\")\n",
   "m7/watermark.py": "\"\"\"An incremental load with a watermark: what it loses when it is saved too early, and when a row arrives late.\"\"\"\nimport sqlite3\nfrom datetime import datetime, timedelta\n\nCOLS = \"order_id TEXT PRIMARY KEY, total_cents INTEGER, updated_at TEXT\"\nUPSERT = (\"INSERT INTO orders VALUES (?, ?, ?) ON CONFLICT (order_id) DO UPDATE \"\n          \"SET total_cents = excluded.total_cents, updated_at = excluded.updated_at\")\n\n\ndef make(*rows):\n    src = sqlite3.connect(\":memory:\", isolation_level=None)\n    dst = sqlite3.connect(\":memory:\", isolation_level=None)\n    for db in (src, dst):\n        db.execute(f\"CREATE TABLE orders ({COLS})\")\n    src.executemany(\"INSERT INTO orders VALUES (?, ?, ?)\", rows)\n    return src, dst, {\"watermark\": \"2026-03-14 00:00\"}\n\n\ndef rows(n):\n    return f\"{n} row\" + (\"\" if n == 1 else \"s\")\n\n\ndef count(db):\n    return db.execute(\"SELECT count(*) FROM orders\").fetchone()[0]\n\n\ndef load(src, dst, state, overlap=0, save_first=False, crash=False):\n    since = datetime.fromisoformat(state[\"watermark\"]) - timedelta(minutes=overlap)\n    rows = src.execute(\"SELECT * FROM orders WHERE updated_at > ? ORDER BY updated_at\", (f\"{since:%Y-%m-%d %H:%M}\",)).fetchall()\n    if rows and save_first:\n        state[\"watermark\"] = rows[-1][2]  # saved before the rows are written\n    if crash:\n        raise RuntimeError(\"the job died before writing\")\n    dst.executemany(UPSERT, rows)\n    if rows and not save_first:\n        state[\"watermark\"] = max(state[\"watermark\"], rows[-1][2])  # saved after the rows are written\n    return len(rows)\n\n\nprint(\"1. the watermark is saved first, then the job dies\")\nsrc, dst, state = make((\"O-1\", 1250, \"2026-03-14 08:00\"), (\"O-2\", 475, \"2026-03-14 08:05\"), (\"O-3\", 820, \"2026-03-14 08:10\"))\ntry:\n    load(src, dst, state, save_first=True, crash=True)\nexcept RuntimeError as err:\n    print(\"   run 1:\", err, \"| watermark is now\", state[\"watermark\"])\nprint(\"   run 2 reads\", rows(load(src, dst, state, save_first=True)) + \"; the target has\", count(dst), \"of 3\")\n\nprint(\"2. the watermark is saved after the rows are written\")\nsrc, dst, state = make((\"O-1\", 1250, \"2026-03-14 08:00\"), (\"O-2\", 475, \"2026-03-14 08:05\"), (\"O-3\", 820, \"2026-03-14 08:10\"))\ntry:\n    load(src, dst, state, crash=True)\nexcept RuntimeError as err:\n    print(\"   run 1:\", err, \"| watermark is still\", state[\"watermark\"])\nprint(\"   run 2 reads\", rows(load(src, dst, state)) + \"; the target has\", count(dst), \"of 3\")\n\nprint(\"3. a row arrives late: a slow writer commits updated_at 08:07 after the load has passed 08:10\")\nfor overlap in (0, 15):\n    src, dst, state = make((\"O-1\", 1250, \"2026-03-14 08:00\"), (\"O-3\", 820, \"2026-03-14 08:10\"))\n    load(src, dst, state, overlap=overlap)\n    src.execute(\"INSERT INTO orders VALUES ('O-4', 640, '2026-03-14 08:07')\")  # late, with an old timestamp\n    src.execute(\"INSERT INTO orders VALUES ('O-5', 3100, '2026-03-14 08:20')\")\n    n = load(src, dst, state, overlap=overlap)\n    print(f\"   overlap {overlap:>2} min: run 2 reads {rows(n)}; the target has {count(dst)} of 4\")\n",
   "m7/idempotent_load.py": "\"\"\"Coding round: load one day of orders so that running it twice, or after a crash, leaves the same table.\"\"\"\nimport sqlite3\n\n\ndef load_day(db, day, rows):\n    \"\"\"Replace the orders of `day` with `rows`, a list of (order_id, total_cents). All or nothing. Returns the rows written.\"\"\"\n    db.execute(\"BEGIN\")\n    try:\n        db.execute(\"DELETE FROM orders WHERE day = ?\", (day,))\n        db.executemany(\"INSERT INTO orders (order_id, day, total_cents) VALUES (?, ?, ?)\", [(i, day, c) for i, c in rows])\n        db.execute(\"COMMIT\")\n    except Exception:\n        db.execute(\"ROLLBACK\")\n        raise\n    return len(rows)\n\n\ndef table(db):\n    return db.execute(\"SELECT order_id, day, total_cents FROM orders ORDER BY day, order_id\").fetchall()\n\n\ndb = sqlite3.connect(\":memory:\", isolation_level=None)\ndb.execute(\"CREATE TABLE orders (order_id TEXT PRIMARY KEY, day TEXT NOT NULL, total_cents INTEGER NOT NULL)\")\nmonday = [(\"O-1\", 1250), (\"O-2\", 475)]\ntuesday = [(\"O-3\", 820), (\"O-4\", 1990), (\"O-5\", 3100)]\n\nload_day(db, \"2026-03-09\", monday)\nload_day(db, \"2026-03-10\", tuesday)\nonce = table(db)\nprint(\"Monday and Tuesday loaded:\", len(once), \"rows\")\n\nload_day(db, \"2026-03-10\", tuesday)\nassert table(db) == once, \"the second run changed the table\"\nprint(\"Tuesday loaded again:\", len(table(db)), \"rows, the same table\")\n\ntry:\n    load_day(db, \"2026-03-10\", [(\"O-3\", 820), (\"O-4\", None)])  # None breaks NOT NULL halfway through\nexcept sqlite3.IntegrityError as err:\n    print(\"a run that fails halfway:\", err)\nassert table(db) == once, \"a failed run changed the table\"\nprint(\"after the failed run:\", len(table(db)), \"rows, the same table\")\n\nload_day(db, \"2026-03-10\", [(\"O-3\", 920), (\"O-4\", 1990)])  # the source corrected O-3 and dropped O-5\nafter = table(db)\nassert [r for r in after if r[1] == \"2026-03-09\"] == [r for r in once if r[1] == \"2026-03-09\"], \"Monday changed\"\nassert [r[0] for r in after if r[1] == \"2026-03-10\"] == [\"O-3\", \"O-4\"], \"Tuesday did not follow the file\"\nprint(\"a corrected Tuesday:\", len(after), \"rows, Monday untouched\")\nprint(\"tests passed\")\n",
-  "m7/call_with_retry.py": "\"\"\"Coding round: a retry function that retries only what is worth retrying, and that tests can run without waiting.\"\"\"\nimport random\n\n\nclass Transient(Exception):\n    pass\n\n\ndef call_with_retry(fn, *, retry_on=(Transient,), attempts=4, base=0.5, cap=8.0, sleep, rng):\n    \"\"\"Call fn(). On an exception in retry_on, wait a random time between 0 and min(cap, base * 2 ** (n - 1)) and try again.\n    Give up after `attempts` calls and raise the last error. Any other exception is raised at once.\"\"\"\n    for attempt in range(1, attempts + 1):\n        try:\n            return fn()\n        except retry_on:\n            if attempt == attempts:\n                raise\n            sleep(rng.uniform(0, min(cap, base * 2 ** (attempt - 1))))\n\n\nclass Upper:\n    \"\"\"A stand-in for random: always picks the top of the range, so the waits are the bounds themselves.\"\"\"\n    def uniform(self, a, b):\n        return b\n\n\nclass Script:\n    \"\"\"A function that raises the given errors, one for each call, then returns \"ok\".\"\"\"\n    def __init__(self, *errors):\n        self.errors, self.calls = list(errors), 0\n\n    def __call__(self):\n        self.calls += 1\n        if self.errors:\n            raise self.errors.pop(0)\n        return \"ok\"\n\n\nwaits = []\nfn = Script(Transient(\"503\"), Transient(\"503\"))\nassert call_with_retry(fn, sleep=waits.append, rng=random.Random(7)) == \"ok\" and fn.calls == 3\nassert len(waits) == 2 and 0 <= waits[0] <= 0.5 and 0 <= waits[1] <= 1.0\nprint(\"fails twice, then works:\", fn.calls, \"calls, waits\", [round(w, 2) for w in waits])\n\nwaits = []\nfn = Script(ValueError(\"400\"))\ntry:\n    call_with_retry(fn, sleep=waits.append, rng=random.Random(7))\n    raise AssertionError(\"a ValueError must not be swallowed\")\nexcept ValueError:\n    pass\nassert fn.calls == 1 and waits == []\nprint(\"a ValueError is not retried:\", fn.calls, \"call, no waits\")\n\nwaits = []\nfn = Script(*[Transient(f\"503 #{i}\") for i in range(10)])\ntry:\n    call_with_retry(fn, sleep=waits.append, rng=random.Random(7))\n    raise AssertionError(\"it must give up\")\nexcept Transient as err:\n    assert str(err) == \"503 #3\" and fn.calls == 4 and len(waits) == 3\nprint(\"always fails: gave up after\", fn.calls, \"calls, with the last error\")\n\nwaits = []\nfn = Script(*[Transient(\"503\") for _ in range(7)])\nassert call_with_retry(fn, attempts=8, sleep=waits.append, rng=Upper()) == \"ok\"\nassert waits == [0.5, 1.0, 2.0, 4.0, 8.0, 8.0, 8.0], waits\nprint(\"the longest waits, with the cap at 8 s:\", waits)\nprint(\"tests passed\")\n"
+  "m7/call_with_retry.py": "\"\"\"Coding round: a retry function that retries only what is worth retrying, and that tests can run without waiting.\"\"\"\nimport random\n\n\nclass Transient(Exception):\n    pass\n\n\ndef call_with_retry(fn, *, retry_on=(Transient,), attempts=4, base=0.5, cap=8.0, sleep, rng):\n    \"\"\"Call fn(). On an exception in retry_on, wait a random time between 0 and min(cap, base * 2 ** (n - 1)) and try again.\n    Give up after `attempts` calls and raise the last error. Any other exception is raised at once.\"\"\"\n    for attempt in range(1, attempts + 1):\n        try:\n            return fn()\n        except retry_on:\n            if attempt == attempts:\n                raise\n            sleep(rng.uniform(0, min(cap, base * 2 ** (attempt - 1))))\n\n\nclass Upper:\n    \"\"\"A stand-in for random: always picks the top of the range, so the waits are the bounds themselves.\"\"\"\n    def uniform(self, a, b):\n        return b\n\n\nclass Script:\n    \"\"\"A function that raises the given errors, one for each call, then returns \"ok\".\"\"\"\n    def __init__(self, *errors):\n        self.errors, self.calls = list(errors), 0\n\n    def __call__(self):\n        self.calls += 1\n        if self.errors:\n            raise self.errors.pop(0)\n        return \"ok\"\n\n\nwaits = []\nfn = Script(Transient(\"503\"), Transient(\"503\"))\nassert call_with_retry(fn, sleep=waits.append, rng=random.Random(7)) == \"ok\" and fn.calls == 3\nassert len(waits) == 2 and 0 <= waits[0] <= 0.5 and 0 <= waits[1] <= 1.0\nprint(\"fails twice, then works:\", fn.calls, \"calls, waits\", [round(w, 2) for w in waits])\n\nwaits = []\nfn = Script(ValueError(\"400\"))\ntry:\n    call_with_retry(fn, sleep=waits.append, rng=random.Random(7))\n    raise AssertionError(\"a ValueError must not be swallowed\")\nexcept ValueError:\n    pass\nassert fn.calls == 1 and waits == []\nprint(\"a ValueError is not retried:\", fn.calls, \"call, no waits\")\n\nwaits = []\nfn = Script(*[Transient(f\"503 #{i}\") for i in range(10)])\ntry:\n    call_with_retry(fn, sleep=waits.append, rng=random.Random(7))\n    raise AssertionError(\"it must give up\")\nexcept Transient as err:\n    assert str(err) == \"503 #3\" and fn.calls == 4 and len(waits) == 3\nprint(\"always fails: gave up after\", fn.calls, \"calls, with the last error\")\n\nwaits = []\nfn = Script(*[Transient(\"503\") for _ in range(7)])\nassert call_with_retry(fn, attempts=8, sleep=waits.append, rng=Upper()) == \"ok\"\nassert waits == [0.5, 1.0, 2.0, 4.0, 8.0, 8.0, 8.0], waits\nprint(\"the longest waits, with the cap at 8 s:\", waits)\nprint(\"tests passed\")\n",
+  "m8/api_basics.py": "\"\"\"Calling an API: a session, a timeout, a status check and JSON. The server is a fake Brewline API that runs on this machine.\"\"\"\nimport requests\nfrom brewline_api import serve\n\nbase = serve()\nwith requests.Session() as http:  # one session reuses the connection\n    r = http.get(f\"{base}/orders\", params={\"page\": 1, \"per_page\": 3}, timeout=5)\n    print(r.status_code, r.headers[\"Content-Type\"])\n    page = r.json()\n    print(\"keys:\", sorted(page), \"ids:\", [o[\"id\"] for o in page[\"items\"]])\n\n    r = http.get(f\"{base}/orders/O-999\", timeout=5)\n    print(r.status_code, r.reason, r.json())\n    try:\n        r.raise_for_status()\n    except requests.HTTPError as err:\n        print(\"raise_for_status:\", err)\n\n    try:\n        http.get(f\"{base}/slow\", params={\"delay\": 2}, timeout=0.5)\n    except requests.Timeout as err:\n        print(\"timeout:\", type(err).__name__)\n",
+  "m8/paginate.py": "\"\"\"Two ways to page through an API while the data changes: offset pages and cursor pages. The server is the fake Brewline API.\"\"\"\nimport requests\nfrom brewline_api import serve\n\nbase = serve()\nhttp = requests.Session()\n\n\ndef ids(sid):\n    return http.get(f\"{base}/admin/ids\", params={\"sid\": sid}, timeout=5).json()[\"ids\"]\n\n\ndef fetch_offset(sid, scenario, per_page=5):\n    got, page = [], 1\n    while True:\n        items = http.get(f\"{base}/orders\", params={\"sid\": sid, \"scenario\": scenario, \"page\": page, \"per_page\": per_page}, timeout=5).json()[\"items\"]\n        got += [o[\"id\"] for o in items]\n        if len(items) < per_page:\n            return got\n        page += 1\n\n\ndef fetch_cursor(sid, scenario, limit=5):\n    got, after = [], None\n    while True:\n        params = {\"sid\": sid, \"scenario\": scenario, \"limit\": limit}\n        if after:\n            params[\"after\"] = after\n        data = http.get(f\"{base}/orders/cursor\", params=params, timeout=5).json()\n        got += [o[\"id\"] for o in data[\"items\"]]\n        after = data[\"next_cursor\"]\n        if after is None:\n            return got\n\n\nprint(f\"{'style':<8}{'while we read':<30}{'rows':>5}{'unique':>8}{'repeated':>10}{'missed':>8}\")\nfor style, fetch in ((\"offset\", fetch_offset), (\"cursor\", fetch_cursor)):\n    for scenario, what in ((\"none\", \"nothing changes\"), (\"insert\", \"3 new orders arrive\"), (\"delete\", \"3 newest are cancelled\")):\n        sid = f\"{style}-{scenario}\"\n        before = set(ids(sid))\n        got = fetch(sid, scenario)\n        stayed = before & set(ids(sid))  # orders that existed for the whole run\n        print(f\"{style:<8}{what:<30}{len(got):>5}{len(set(got)):>8}{len(got) - len(set(got)):>10}{len(stayed - set(got)):>8}\")\n",
+  "m8/rate_limit.py": "\"\"\"A client that obeys 429 and Retry-After. The fake API allows 3 requests in each second.\"\"\"\nimport time\n\nimport requests\nfrom brewline_api import serve\n\nbase = serve()\n\n\ndef get_json(http, url, **params):\n    for attempt in range(1, 6):\n        r = http.get(url, params=params, timeout=5)\n        if r.status_code == 429:\n            wait = float(r.headers.get(\"Retry-After\", 1))\n            print(f\"    429 Too Many Requests, Retry-After: {wait:g}, so wait {wait:g} s\")\n            time.sleep(wait)\n            continue\n        r.raise_for_status()\n        return r.json()\n    raise RuntimeError(\"still limited after 5 tries\")\n\n\nwith requests.Session() as http:\n    for n in range(1, 7):\n        t0 = time.monotonic()\n        get_json(http, f\"{base}/limited\", sid=\"demo\")\n        print(f\"call {n}: ok in {time.monotonic() - t0:.0f} s\")\n",
+  "m8/fetch_all.py": "\"\"\"Coding round: read every page of a cursor API, wait when the server says 429, and never read a page twice.\"\"\"\nimport time\n\nimport requests\nfrom brewline_api import serve\n\n\ndef fetch_all(http, url, limit=5, sleep=time.sleep, **params):\n    \"\"\"Return every item of a cursor-paged listing. `url` takes `limit` and `after`, and answers {\"items\": [...], \"next_cursor\": ...}.\n    On a 429, wait for the Retry-After seconds and ask for the same page again. Any other error status raises.\"\"\"\n    items, after = [], None\n    while True:\n        query = dict(params, limit=limit)\n        if after:\n            query[\"after\"] = after\n        r = http.get(url, params=query, timeout=5)\n        if r.status_code == 429:\n            sleep(float(r.headers.get(\"Retry-After\", 1)))\n            continue\n        r.raise_for_status()\n        data = r.json()\n        items += data[\"items\"]\n        after = data[\"next_cursor\"]\n        if after is None:\n            return items\n\n\nbase = serve()\nhttp = requests.Session()\n\ngot = fetch_all(http, f\"{base}/orders/cursor\", sid=\"t1\")\nassert [o[\"id\"] for o in got] == [f\"O-{n}\" for n in range(100, 123)], \"all 23 orders, once each, in order\"\nprint(\"a quiet API:\", len(got), \"orders, from\", got[0][\"id\"], \"to\", got[-1][\"id\"])\n\ngot = fetch_all(http, f\"{base}/orders/cursor\", limit=7, sid=\"t2\", scenario=\"insert\")\nassert len({o[\"id\"] for o in got}) == len(got) == 26, \"the 3 new orders arrive at the end, with no repeats\"\nprint(\"3 orders arrive while reading:\", len(got), \"orders, none twice\")\n\nwaits = []\n\n\nclass Limited:\n    \"\"\"Answers 429 once, then forwards to the real session.\"\"\"\n    def __init__(self):\n        self.tripped = False\n\n    def get(self, url, **kw):\n        if not self.tripped:\n            self.tripped = True\n            r = requests.Response()\n            r.status_code, r.headers[\"Retry-After\"] = 429, \"2\"\n            return r\n        return http.get(url, **kw)\n\n\ngot = fetch_all(Limited(), f\"{base}/orders/cursor\", sid=\"t3\", sleep=waits.append)\nassert waits == [2.0] and len(got) == 23\nprint(\"one 429 with Retry-After 2: waited\", waits, \"then read\", len(got), \"orders\")\ntry:\n    fetch_all(http, f\"{base}/orders/O-999\")\n    raise AssertionError(\"a 404 must raise\")\nexcept requests.HTTPError as err:\n    print(\"a 404 raises:\", err.response.status_code)\nprint(\"tests passed\")\n",
+  "m8/sql_params.py": "\"\"\"Putting a value into SQL with an f-string, and with a parameter. SQLite, in memory.\"\"\"\nimport sqlite3\n\nconn = sqlite3.connect(\":memory:\")\nconn.executescript(\"\"\"\nCREATE TABLE customers (id INTEGER PRIMARY KEY, name TEXT, city TEXT);\nINSERT INTO customers (name, city) VALUES ('Ana Tan', 'Singapore'), ('Ben Lee', 'London'), ('Cy Park', 'London');\n\"\"\")\n\n\ndef find_unsafe(name):\n    sql = f\"SELECT name, city FROM customers WHERE name = '{name}'\"\n    print(\"  sql:\", sql)\n    return conn.execute(sql).fetchall()\n\n\ndef find_safe(name):\n    return conn.execute(\"SELECT name, city FROM customers WHERE name = ?\", (name,)).fetchall()\n\n\nprint(\"a normal name, with an f-string:\", find_unsafe(\"Ana Tan\"))\nprint(\"a name with an apostrophe:\")\ntry:\n    find_unsafe(\"Conan O'Brien\")\nexcept sqlite3.OperationalError as err:\n    print(\"  error:\", err)\nprint(\"a name that changes the query:\")\nrows = find_unsafe(\"x' OR '1'='1\")\nprint(\"  rows returned:\", len(rows), \"of\", conn.execute(\"SELECT count(*) FROM customers\").fetchone()[0])\n\nprint(\"the same two names, with a parameter:\")\nprint(\"  Conan O'Brien ->\", find_safe(\"Conan O'Brien\"))\nprint(\"  x' OR '1'='1 ->\", find_safe(\"x' OR '1'='1\"))\n",
+  "m8/transactions.py": "\"\"\"A transaction: either both updates happen or neither does. SQLite, in memory.\"\"\"\nimport sqlite3\n\nconn = sqlite3.connect(\":memory:\")\nconn.execute(\"CREATE TABLE stock (store TEXT PRIMARY KEY, beans_kg INTEGER NOT NULL CHECK (beans_kg >= 0))\")\nconn.executemany(\"INSERT INTO stock VALUES (?, ?)\", [(\"Singapore\", 40), (\"London\", 10)])\nconn.commit()\n\n\ndef levels():\n    return dict(conn.execute(\"SELECT store, beans_kg FROM stock ORDER BY store\"))\n\n\ndef move(kg, src, dst, use_transaction):\n    try:\n        if use_transaction:\n            with conn:  # commits when the block ends, rolls back when it raises\n                conn.execute(\"UPDATE stock SET beans_kg = beans_kg + ? WHERE store = ?\", (kg, dst))\n                conn.execute(\"UPDATE stock SET beans_kg = beans_kg - ? WHERE store = ?\", (kg, src))\n        else:\n            conn.execute(\"UPDATE stock SET beans_kg = beans_kg + ? WHERE store = ?\", (kg, dst))\n            conn.commit()                         # the first update is saved on its own\n            conn.execute(\"UPDATE stock SET beans_kg = beans_kg - ? WHERE store = ?\", (kg, src))\n            conn.commit()\n    except sqlite3.IntegrityError as err:\n        print(\"  error:\", err)\n\n\nprint(\"start:\", levels())\nprint(\"move 5 kg, London to Singapore, with a transaction (London has 10):\")\nmove(5, \"London\", \"Singapore\", True)\nprint(\"  now:\", levels())\nprint(\"move 30 kg, London to Singapore, with a transaction (London only has 5 left):\")\nmove(30, \"London\", \"Singapore\", True)\nprint(\"  now:\", levels())\nprint(\"the same move, with each update committed on its own:\")\nmove(30, \"London\", \"Singapore\", False)\nprint(\"  now:\", levels(), \"-> total\", sum(levels().values()), \"kg, and it was 50\")\n",
+  "m8/sqlalchemy_core.py": "\"\"\"The same ideas in SQLAlchemy Core: an engine, a text query with bind parameters, and a transaction block.\"\"\"\nimport sqlalchemy as sa\n\nengine = sa.create_engine(\"sqlite:///:memory:\")\nwith engine.begin() as conn:  # BEGIN ... COMMIT, or ROLLBACK when the block raises\n    conn.execute(sa.text(\"CREATE TABLE orders (order_id TEXT PRIMARY KEY, store TEXT, total_cents INTEGER)\"))\n    conn.execute(sa.text(\"INSERT INTO orders VALUES (:id, :store, :cents)\"), [\n        {\"id\": \"O-1\", \"store\": \"London\", \"cents\": 1250}, {\"id\": \"O-2\", \"store\": \"London\", \"cents\": 475}, {\"id\": \"O-3\", \"store\": \"Singapore\", \"cents\": 820}])\n\nwith engine.connect() as conn:\n    rows = conn.execute(sa.text(\"SELECT store, sum(total_cents) AS cents FROM orders WHERE total_cents >= :min GROUP BY store ORDER BY store\"), {\"min\": 500}).mappings().all()\n    print(\"rows:\", [dict(r) for r in rows])\n    print(\"column names:\", list(rows[0].keys()))\nprint(\"sqlalchemy\", sa.__version__)\n",
+  "m8/upsert_batches.py": "\"\"\"Coding round: write many rows in batches, safe to run twice. SQLite, in memory.\"\"\"\nimport sqlite3\nfrom itertools import batched\n\n\ndef upsert_orders(conn, rows, batch_size=1000):\n    \"\"\"rows are (order_id, store, total_cents). Insert new orders and update the ones that exist. One transaction for each batch.\n    Return the number of batches written.\"\"\"\n    sql = (\"INSERT INTO orders (order_id, store, total_cents) VALUES (?, ?, ?) \"\n           \"ON CONFLICT (order_id) DO UPDATE SET store = excluded.store, total_cents = excluded.total_cents\")\n    n = 0\n    for chunk in batched(rows, batch_size):\n        with conn:\n            conn.executemany(sql, chunk)\n        n += 1\n    return n\n\n\nconn = sqlite3.connect(\":memory:\")\nconn.execute(\"CREATE TABLE orders (order_id TEXT PRIMARY KEY, store TEXT NOT NULL, total_cents INTEGER NOT NULL)\")\nrows = [(f\"O-{i}\", \"London\" if i % 2 else \"Singapore\", 100 + i) for i in range(2500)]\n\nn = upsert_orders(conn, rows, batch_size=1000)\ncount = lambda: conn.execute(\"SELECT count(*), sum(total_cents) FROM orders\").fetchone()\nassert n == 3 and count() == (2500, sum(r[2] for r in rows))\nprint(\"2,500 rows in batches of 1,000:\", n, \"batches,\", count()[0], \"rows\")\n\nupsert_orders(conn, rows, batch_size=1000)\nassert count() == (2500, sum(r[2] for r in rows))\nprint(\"run again:\", count()[0], \"rows, the same total\")\n\nchanged = [(\"O-0\", \"Singapore\", 9999)] + rows[1:]\nupsert_orders(conn, changed, batch_size=1000)\nassert conn.execute(\"SELECT total_cents FROM orders WHERE order_id = 'O-0'\").fetchone() == (9999,) and count()[0] == 2500\nprint(\"one changed row: updated in place, still\", count()[0], \"rows\")\n\nbad = rows[:3] + [(\"O-9000\", None, 1)]\ntry:\n    upsert_orders(conn, bad, batch_size=2)\nexcept sqlite3.IntegrityError as err:\n    print(\"a bad row in the second batch:\", err)\nassert conn.execute(\"SELECT count(*) FROM orders WHERE order_id = 'O-9000'\").fetchone() == (0,)\nprint(\"tests passed\")\n",
+  "m8/batch_insert.py": "\"\"\"Four ways to write 5,000 rows into SQLite, in a file on disk. The timings come from the machine that runs this file.\"\"\"\nimport os\nimport sqlite3\nimport statistics\nimport tempfile\nimport time\n\nROWS = [(f\"O-{i}\", \"London\" if i % 2 else \"Singapore\", 100 + i) for i in range(5000)]\nSQL = \"INSERT INTO orders VALUES (?, ?, ?)\"\n\n\ndef commit_each(conn, rows):          # a transaction for every row\n    for r in rows:\n        conn.execute(SQL, r)\n        conn.commit()\n\n\ndef one_transaction(conn, rows):      # one transaction, one execute for every row\n    for r in rows:\n        conn.execute(SQL, r)\n    conn.commit()\n\n\ndef many(conn, rows):                 # one transaction, one executemany call\n    conn.executemany(SQL, rows)\n    conn.commit()\n\n\ndef batches(conn, rows, size=1000):   # executemany, and a commit for every 1,000 rows\n    for i in range(0, len(rows), size):\n        conn.executemany(SQL, rows[i:i + size])\n        conn.commit()\n\n\nMETHODS = {\"commit for every row\": commit_each, \"one transaction, execute in a loop\": one_transaction, \"one transaction, executemany\": many, \"executemany, commit every 1,000\": batches}\n\n\ndef seconds(method, rows=ROWS):\n    with tempfile.TemporaryDirectory() as folder:\n        conn = sqlite3.connect(os.path.join(folder, \"orders.db\"))\n        conn.execute(\"CREATE TABLE orders (order_id TEXT PRIMARY KEY, store TEXT, total_cents INTEGER)\")\n        conn.commit()\n        t0 = time.perf_counter()\n        METHODS[method](conn, rows)\n        took = time.perf_counter() - t0\n        assert conn.execute(\"SELECT count(*) FROM orders\").fetchone()[0] == len(rows)\n        conn.close()\n        return took\n\n\nif __name__ == \"__main__\":\n    print(f\"{'method':<38}{'seconds':>9}{'rows per second':>18}\")\n    for name in METHODS:\n        s = statistics.median(seconds(name) for _ in range(3))\n        print(f\"{name:<38}{s:>9.3f}{len(ROWS) / s:>18,.0f}\")\n"
  },
  "text": {
   "m1/load_orders_v7.py#1": "loaded 6 rows\n(6, 6, 78.85)\n(1,)",
@@ -141,7 +150,16 @@ LAB.real = {
   "m7/watermark.py": "1. the watermark is saved first, then the job dies\n   run 1: the job died before writing | watermark is now 2026-03-14 08:10\n   run 2 reads 0 rows; the target has 0 of 3\n2. the watermark is saved after the rows are written\n   run 1: the job died before writing | watermark is still 2026-03-14 00:00\n   run 2 reads 3 rows; the target has 3 of 3\n3. a row arrives late: a slow writer commits updated_at 08:07 after the load has passed 08:10\n   overlap  0 min: run 2 reads 1 row; the target has 3 of 4\n   overlap 15 min: run 2 reads 4 rows; the target has 4 of 4",
   "m7/idempotent_load.py": "Monday and Tuesday loaded: 5 rows\nTuesday loaded again: 5 rows, the same table\na run that fails halfway: NOT NULL constraint failed: orders.total_cents\nafter the failed run: 5 rows, the same table\na corrected Tuesday: 4 rows, Monday untouched\ntests passed",
   "m7/call_with_retry.py": "fails twice, then works: 3 calls, waits [0.16, 0.15]\na ValueError is not retried: 1 call, no waits\nalways fails: gave up after 4 calls, with the last error\nthe longest waits, with the cap at 8 s: [0.5, 1.0, 2.0, 4.0, 8.0, 8.0, 8.0]\ntests passed",
-  "m7/exit_codes": "$ python swallowed.py; echo \"exit code: $?\"\nloaded 4 of 6 rows\nstatus: success\nexit code: 0\n$ python fail_loud.py; echo \"exit code: $?\"\nloaded 4 of 6 rows\n  rejected O-3: could not convert string to float: '8,20'\n  rejected O-5: could not convert string to float: ''\nstatus: failed, 2 of 6 rows rejected (limit 5%)\nexit code: 1"
+  "m7/exit_codes": "$ python swallowed.py; echo \"exit code: $?\"\nloaded 4 of 6 rows\nstatus: success\nexit code: 0\n$ python fail_loud.py; echo \"exit code: $?\"\nloaded 4 of 6 rows\n  rejected O-3: could not convert string to float: '8,20'\n  rejected O-5: could not convert string to float: ''\nstatus: failed, 2 of 6 rows rejected (limit 5%)\nexit code: 1",
+  "m8/api_basics.py": "200 application/json\nkeys: ['items', 'page'] ids: ['O-122', 'O-121', 'O-120']\n404 Not Found {'error': 'no such order'}\nraise_for_status: 404 Client Error: Not Found for url: http://127.0.0.1:PORT/orders/O-999\ntimeout: ReadTimeout",
+  "m8/paginate.py": "style   while we read                  rows  unique  repeated  missed\noffset  nothing changes                  23      23         0       0\noffset  3 new orders arrive              26      23         3       0\noffset  3 newest are cancelled           20      20         0       3\ncursor  nothing changes                  23      23         0       0\ncursor  3 new orders arrive              26      26         0       0\ncursor  3 newest are cancelled           20      20         0       0",
+  "m8/rate_limit.py": "call 1: ok in 0 s\ncall 2: ok in 0 s\ncall 3: ok in 0 s\n    429 Too Many Requests, Retry-After: 1, so wait 1 s\ncall 4: ok in 1 s\ncall 5: ok in 0 s\ncall 6: ok in 0 s",
+  "m8/fetch_all.py": "a quiet API: 23 orders, from O-100 to O-122\n3 orders arrive while reading: 26 orders, none twice\none 429 with Retry-After 2: waited [2.0] then read 23 orders\na 404 raises: 404\ntests passed",
+  "m8/sql_params.py": "  sql: SELECT name, city FROM customers WHERE name = 'Ana Tan'\na normal name, with an f-string: [('Ana Tan', 'Singapore')]\na name with an apostrophe:\n  sql: SELECT name, city FROM customers WHERE name = 'Conan O'Brien'\n  error: near \"Brien\": syntax error\na name that changes the query:\n  sql: SELECT name, city FROM customers WHERE name = 'x' OR '1'='1'\n  rows returned: 3 of 3\nthe same two names, with a parameter:\n  Conan O'Brien -> []\n  x' OR '1'='1 -> []",
+  "m8/transactions.py": "start: {'London': 10, 'Singapore': 40}\nmove 5 kg, London to Singapore, with a transaction (London has 10):\n  now: {'London': 5, 'Singapore': 45}\nmove 30 kg, London to Singapore, with a transaction (London only has 5 left):\n  error: CHECK constraint failed: beans_kg >= 0\n  now: {'London': 5, 'Singapore': 45}\nthe same move, with each update committed on its own:\n  error: CHECK constraint failed: beans_kg >= 0\n  now: {'London': 5, 'Singapore': 75} -> total 80 kg, and it was 50",
+  "m8/sqlalchemy_core.py": "rows: [{'store': 'London', 'cents': 1250}, {'store': 'Singapore', 'cents': 820}]\ncolumn names: ['store', 'cents']\nsqlalchemy 2.1.8",
+  "m8/upsert_batches.py": "2,500 rows in batches of 1,000: 3 batches, 2500 rows\nrun again: 2500 rows, the same total\none changed row: updated in place, still 2500 rows\na bad row in the second batch: NOT NULL constraint failed: orders.store\ntests passed",
+  "m8/batch_insert.py": "method                                  seconds   rows per second\ncommit for every row                      6.251               800\none transaction, execute in a loop        0.010           516,047\none transaction, executemany              0.007           695,004\nexecutemany, commit every 1,000           0.017           301,644"
  },
  "tables": {
   "m3.structs": {
@@ -285,7 +303,16 @@ LAB.real = {
    "m7/idempotent_load.py": 0,
    "m7/call_with_retry.py": 0,
    "m7/exit_codes|/tmp/claude-0/-home-user/a3635923-0dcc-5766-9df4-bde417681138/scratchpad/python/venv/bin/python swallowed.py; echo \"exit code: $?\"": 0,
-   "m7/exit_codes|/tmp/claude-0/-home-user/a3635923-0dcc-5766-9df4-bde417681138/scratchpad/python/venv/bin/python fail_loud.py; echo \"exit code: $?\"": 0
+   "m7/exit_codes|/tmp/claude-0/-home-user/a3635923-0dcc-5766-9df4-bde417681138/scratchpad/python/venv/bin/python fail_loud.py; echo \"exit code: $?\"": 0,
+   "m8/api_basics.py": 0,
+   "m8/paginate.py": 0,
+   "m8/rate_limit.py": 0,
+   "m8/fetch_all.py": 0,
+   "m8/sql_params.py": 0,
+   "m8/transactions.py": 0,
+   "m8/sqlalchemy_core.py": 0,
+   "m8/upsert_batches.py": 0,
+   "m8/batch_insert.py": 0
   },
   "m2.specifiers.pandas": {
    "versions": [
@@ -4121,6 +4148,336 @@ LAB.real = {
     "seed": 11
    },
    "note": "a simulation: the delay function is the one in lessons/m7/retry_backoff.py, time is a number, and there is no network. Each whole second the service accepts 10 requests and answers 429 to the rest."
+  },
+  "m8.paging": {
+   "per_page": 5,
+   "cases": [
+    {
+     "style": "offset",
+     "scenario": "none",
+     "pages": [
+      [
+       "O-122",
+       "O-121",
+       "O-120",
+       "O-119",
+       "O-118"
+      ],
+      [
+       "O-117",
+       "O-116",
+       "O-115",
+       "O-114",
+       "O-113"
+      ],
+      [
+       "O-112",
+       "O-111",
+       "O-110",
+       "O-109",
+       "O-108"
+      ],
+      [
+       "O-107",
+       "O-106",
+       "O-105",
+       "O-104",
+       "O-103"
+      ],
+      [
+       "O-102",
+       "O-101",
+       "O-100"
+      ]
+     ],
+     "rows": 23,
+     "unique": 23,
+     "repeated": [],
+     "missed": [],
+     "new": [],
+     "cancelled": [],
+     "before": 23,
+     "after": 23
+    },
+    {
+     "style": "offset",
+     "scenario": "insert",
+     "pages": [
+      [
+       "O-122",
+       "O-121",
+       "O-120",
+       "O-119",
+       "O-118"
+      ],
+      [
+       "O-120",
+       "O-119",
+       "O-118",
+       "O-117",
+       "O-116"
+      ],
+      [
+       "O-115",
+       "O-114",
+       "O-113",
+       "O-112",
+       "O-111"
+      ],
+      [
+       "O-110",
+       "O-109",
+       "O-108",
+       "O-107",
+       "O-106"
+      ],
+      [
+       "O-105",
+       "O-104",
+       "O-103",
+       "O-102",
+       "O-101"
+      ],
+      [
+       "O-100"
+      ]
+     ],
+     "rows": 26,
+     "unique": 23,
+     "repeated": [
+      "O-118",
+      "O-119",
+      "O-120"
+     ],
+     "missed": [],
+     "new": [],
+     "cancelled": [],
+     "before": 23,
+     "after": 26
+    },
+    {
+     "style": "offset",
+     "scenario": "delete",
+     "pages": [
+      [
+       "O-122",
+       "O-121",
+       "O-120",
+       "O-119",
+       "O-118"
+      ],
+      [
+       "O-114",
+       "O-113",
+       "O-112",
+       "O-111",
+       "O-110"
+      ],
+      [
+       "O-109",
+       "O-108",
+       "O-107",
+       "O-106",
+       "O-105"
+      ],
+      [
+       "O-104",
+       "O-103",
+       "O-102",
+       "O-101",
+       "O-100"
+      ]
+     ],
+     "rows": 20,
+     "unique": 20,
+     "repeated": [],
+     "missed": [
+      "O-115",
+      "O-116",
+      "O-117"
+     ],
+     "new": [],
+     "cancelled": [
+      "O-120",
+      "O-121",
+      "O-122"
+     ],
+     "before": 23,
+     "after": 20
+    },
+    {
+     "style": "cursor",
+     "scenario": "none",
+     "pages": [
+      [
+       "O-100",
+       "O-101",
+       "O-102",
+       "O-103",
+       "O-104"
+      ],
+      [
+       "O-105",
+       "O-106",
+       "O-107",
+       "O-108",
+       "O-109"
+      ],
+      [
+       "O-110",
+       "O-111",
+       "O-112",
+       "O-113",
+       "O-114"
+      ],
+      [
+       "O-115",
+       "O-116",
+       "O-117",
+       "O-118",
+       "O-119"
+      ],
+      [
+       "O-120",
+       "O-121",
+       "O-122"
+      ]
+     ],
+     "rows": 23,
+     "unique": 23,
+     "repeated": [],
+     "missed": [],
+     "new": [],
+     "cancelled": [],
+     "before": 23,
+     "after": 23
+    },
+    {
+     "style": "cursor",
+     "scenario": "insert",
+     "pages": [
+      [
+       "O-100",
+       "O-101",
+       "O-102",
+       "O-103",
+       "O-104"
+      ],
+      [
+       "O-105",
+       "O-106",
+       "O-107",
+       "O-108",
+       "O-109"
+      ],
+      [
+       "O-110",
+       "O-111",
+       "O-112",
+       "O-113",
+       "O-114"
+      ],
+      [
+       "O-115",
+       "O-116",
+       "O-117",
+       "O-118",
+       "O-119"
+      ],
+      [
+       "O-120",
+       "O-121",
+       "O-122",
+       "O-123",
+       "O-124"
+      ],
+      [
+       "O-125"
+      ]
+     ],
+     "rows": 26,
+     "unique": 26,
+     "repeated": [],
+     "missed": [],
+     "new": [
+      "O-123",
+      "O-124",
+      "O-125"
+     ],
+     "cancelled": [],
+     "before": 23,
+     "after": 26
+    },
+    {
+     "style": "cursor",
+     "scenario": "delete",
+     "pages": [
+      [
+       "O-100",
+       "O-101",
+       "O-102",
+       "O-103",
+       "O-104"
+      ],
+      [
+       "O-105",
+       "O-106",
+       "O-107",
+       "O-108",
+       "O-109"
+      ],
+      [
+       "O-110",
+       "O-111",
+       "O-112",
+       "O-113",
+       "O-114"
+      ],
+      [
+       "O-115",
+       "O-116",
+       "O-117",
+       "O-118",
+       "O-119"
+      ]
+     ],
+     "rows": 20,
+     "unique": 20,
+     "repeated": [],
+     "missed": [],
+     "new": [],
+     "cancelled": [
+      "O-120",
+      "O-121",
+      "O-122"
+     ],
+     "before": 23,
+     "after": 20
+    }
+   ],
+   "note": "every case is a run of the functions in lessons/m8/paginate.py against the fake API (support/brewline_api.py): the first page is read, then the data changes, then the rest is read"
+  },
+  "m8.batch": {
+   "rows": 5000,
+   "methods": {
+    "commit for every row": {
+     "seconds": 6.251,
+     "rows_per_second": 800
+    },
+    "one transaction, execute in a loop": {
+     "seconds": 0.01,
+     "rows_per_second": 516047
+    },
+    "one transaction, executemany": {
+     "seconds": 0.007,
+     "rows_per_second": 695004
+    },
+    "executemany, commit every 1,000": {
+     "seconds": 0.017,
+     "rows_per_second": 301644
+    }
+   },
+   "note": "median of 3 runs for each method, SQLite in a file in a temporary folder, on this machine. Parsed from the recorded output of lessons/m8/batch_insert.py."
   }
  }
 };

@@ -100,6 +100,8 @@ class Rec:
         s = re.sub(r'(?:/[\w.+-]+)+/site-packages/', 'site-packages/', s)
         s = re.sub(r'File "/work/[^"]*/([^"/]+)"', r'File "\1"', s)
         s = re.sub(r'0x[0-9a-f]{6,}', '0x...', s)
+        s = re.sub(r'127\.0\.0\.1:\d{4,5}', '127.0.0.1:PORT', s)
+        s = re.sub(r'\bport=\d{4,5}', 'port=PORT', s)
         s = re.sub(r'[ \t]+\n', '\n', s)
         s = re.sub(r'^warning: The `UV_NATIVE_TLS`.*\n', '', s, flags=re.M)
         return s
