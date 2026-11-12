@@ -7,7 +7,9 @@ What is real:     the log on disk, partitions and keys, producers, replication a
 What is not:      a network (the brokers share one machine), a real load, Kerberos, OAuth, the Confluent Schema Registry (a stand-in of forty lines is used and labelled), ksqlDB, tiered storage,
                   MirrorMaker 2, Kubernetes, Confluent Cloud, Amazon MSK and every other managed service. Those parts of the course are from documentation, and the screens say so.
 
-Usage:   KAFKA_HOME=<unpacked kafka_2.13-4.4.0> DEBEZIUM_PLUGINS=<folder with debezium-connector-postgres/> python3 kafka/verify/capture_kafka.py [--out kafka/js/real.js] [--only world,log,...]
+Usage:   KAFKA_HOME=<unpacked kafka_2.13-4.4.0> DEBEZIUM_PLUGINS=<folder with debezium-connector-postgres/> python3 kafka/verify/capture_kafka.py [--out kafka/js/real.js] [--only world,log,...] [--parts DIR]
+         The whole recording takes about forty minutes. With --parts DIR the result of every section is kept in DIR, and a section that is already there is not run again, so that a run that was
+         interrupted can be finished.
 Needs:   Java 17 or 21, pip install -r kafka/verify/requirements.txt, PostgreSQL 16 server binaries (for the cdc section), openssl and keytool (for the security section).
 """
 import argparse
@@ -49,7 +51,7 @@ SECTIONS = [
 # the source of what ran, for the code screens of the course
 CODE_FILES = ['cluster.py', 'kx.py', 'world.py', 'keys.py', 'producers.py', 'replication.py', 'consumers.py', 'delivery.py', 'lossy_proxy.py', 'retention.py', 'connect.py', 'cdc.py', 'schemas.py',
               'streams.py', 'security.py', 'ops.py', 'tests.py', 'postgres.py', 'app/pipeline.py', 'app/StoreCounts.java', 'app/order_totals.py', 'app/order_totals_bug.py',
-              'app/test_order_totals.py', 'app/conftest.py']
+              'app/test_order_totals.py', 'app/conftest.py', 'app/idempotent.py', 'app/test_idempotent.py']
 
 
 def version(pkg):
@@ -68,7 +70,10 @@ def java_version():
 def meta():
     import cluster as C
     import confluent_kafka
-    pg = subprocess.run(['/usr/lib/postgresql/16/bin/postgres', '--version'], capture_output=True, text=True).stdout.strip().split()[-1] if os.path.exists('/usr/lib/postgresql/16/bin/postgres') else None
+    pg = None
+    if os.path.exists('/usr/lib/postgresql/16/bin/postgres'):
+        m = re.search(r'(\d+\.\d+)', subprocess.run(['/usr/lib/postgresql/16/bin/postgres', '--version'], capture_output=True, text=True).stdout)
+        pg = m.group(1) if m else None
     dbz = None
     plugins = os.environ.get('DEBEZIUM_PLUGINS')
     if plugins:
@@ -101,13 +106,15 @@ def main():
     ap.add_argument('--out', default=str(HERE.parent / 'js' / 'real.js'))
     ap.add_argument('--only', default=','.join(s[0] for s in SECTIONS))
     ap.add_argument('--json', help='also write the recording as plain JSON')
+    ap.add_argument('--parts', help='keep the result of each section in this folder, and reuse the sections that are already there')
     ap.add_argument('--child')
     ap.add_argument('--part')
     args = ap.parse_args()
     if args.child:
         run_child(args.child, args.part)
     only = set(args.only.split(','))
-    work = tempfile.mkdtemp(prefix='kafka-record-')
+    work = args.parts or tempfile.mkdtemp(prefix='kafka-record-')
+    os.makedirs(work, exist_ok=True)
     out = {'meta': meta(), 'files': {}, 'text': {}, 'tables': {}, 'counts': {}}
     try:
         for name, kind, module, func in SECTIONS:
@@ -115,15 +122,18 @@ def main():
                 continue
             t0 = time.time()
             part = os.path.join(work, 'part-%s.json' % name)
-            r = subprocess.run([sys.executable, str(pathlib.Path(__file__).resolve()), '--child', name, '--part', part], capture_output=True, text=True)
-            if r.returncode or not os.path.exists(part):
-                print(r.stdout[-1500:], r.stderr[-3000:])
-                raise SystemExit('section %s failed' % name)
+            reused = bool(args.parts and os.path.exists(part))
+            if not reused:
+                r = subprocess.run([sys.executable, str(pathlib.Path(__file__).resolve()), '--child', name, '--part', part], capture_output=True, text=True)
+                if r.returncode or not os.path.exists(part):
+                    print(r.stdout[-1500:], r.stderr[-3000:])
+                    raise SystemExit('section %s failed' % name)
             for k, v in json.loads(pathlib.Path(part).read_text()).items():
                 out[k].update(v)
-            print('  %-12s %.0fs' % (name, time.time() - t0), flush=True)
+            print('  %-12s %s' % (name, 'kept from an earlier run' if reused else '%.0fs' % (time.time() - t0)), flush=True)
     finally:
-        shutil.rmtree(work, ignore_errors=True)
+        if not args.parts:
+            shutil.rmtree(work, ignore_errors=True)
     for f in CODE_FILES:
         out['files']['code/' + f] = (HERE / f).read_text().rstrip('\n')
     dest = pathlib.Path(args.out)

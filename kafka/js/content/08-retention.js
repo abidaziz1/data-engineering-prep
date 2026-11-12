@@ -167,7 +167,7 @@
             notes: ['Recorded. The dirty section is the part of the log that has not been cleaned yet.']
           },
           {
-            say: 'Compaction is not only for your topics. **Kafka\'s own `__consumer_offsets` is a compacted topic**: the last commit of each group, topic and partition is the one that matters.',
+            say: 'Compaction is also used for Kafka\'s own data. **Kafka\'s own `__consumer_offsets` is a compacted topic**: the last commit of each group, topic and partition is the one that matters.',
             tabs: [{ layer: 'RECORDED', name: 'kafka-configs.sh --describe on __consumer_offsets', c: 'raw', cols: ['Line'], rows: OC.split('\n').map(function (l) { return [l]; }), trk: 2 }],
             notes: ['Recorded.']
           }

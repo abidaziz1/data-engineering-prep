@@ -44,7 +44,7 @@
       }),
 
       B.flow({
-        id: 'm3-flow', t: 1, src: 'docs', title: 'From a key to a partition', g: 'partitions', legend: true,
+        id: 'm3-flow', t: 1, src: 'docs', title: 'How a key becomes a partition', g: 'partitions', legend: true,
         steps: [
           { say: 'This is what the producer does for every record that has a key. Press Next to follow one.', cap: 'A key becomes a partition.' },
           { say: 'Step 1. The record has a key, here the store `s01`, and a value, an order.', on: ['k1'], focus: ['p_rec', 'p_hash'], cap: 'A record with a key.' },
@@ -334,7 +334,7 @@
           ['Look at how the consumers are spread', 'Idle consumers next to one busy one is the mark of a hot partition.']
         ],
         tell: 'One store makes more than half of the records in one partition, and a partition has one consumer at most, so that consumer is the limit. We split the hot store\'s key into buckets, which spreads it over partitions, and the loader merges the buckets.',
-        prevent: ['Look at the partition sizes after every launch', 'Alert on lag per partition, not only on the group', 'Design keys with the biggest customer or store in mind']
+        prevent: ['Look at the partition sizes after every launch', 'Alert on lag per partition as well as on the group', 'Design keys with the biggest customer or store in mind']
       }),
 
       B.qa({

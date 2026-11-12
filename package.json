@@ -3,7 +3,7 @@
   "private": true,
   "description": "Interactive data engineering tutorials. The site itself needs no build step. These scripts only check it.",
   "scripts": {
-    "lint": "node dev/lint-content.js snowflake && node dev/lint-content.js dbt && node dev/lint-content.js snowflake-dbt && node dev/lint-content.js databricks && node dev/lint-content.js aws && node dev/lint-content.js azure && node dev/lint-content.js ai && node dev/lint-content.js gcp && node dev/lint-content.js spark",
+    "lint": "node dev/lint-content.js snowflake && node dev/lint-content.js dbt && node dev/lint-content.js snowflake-dbt && node dev/lint-content.js databricks && node dev/lint-content.js aws && node dev/lint-content.js azure && node dev/lint-content.js ai && node dev/lint-content.js gcp && node dev/lint-content.js spark && node dev/lint-content.js kafka",
     "lint:snowflake": "node dev/lint-content.js snowflake",
     "lint:dbt": "node dev/lint-content.js dbt",
     "smoke": "node dev/smoke.js snowflake --path all",
@@ -48,6 +48,11 @@
     "e2e:spark": "node dev/e2e.js spark",
     "stats:spark": "node dev/stats.js spark",
     "verify:spark": "python3 spark/verify/verify_spark.py",
+    "lint:kafka": "node dev/lint-content.js kafka",
+    "smoke:kafka": "node dev/smoke.js kafka --path all",
+    "e2e:kafka": "node dev/e2e.js kafka",
+    "stats:kafka": "node dev/stats.js kafka",
+    "verify:kafka": "python3 kafka/verify/verify_kafka.py",
     "test:analytics": "node dev/analytics-test.js"
   },
   "devDependencies": {

@@ -4,7 +4,6 @@
 # folder that holds debezium-connector-postgres/) and the PostgreSQL 16 server binaries.
 #   python3 -m venv kafka-env && kafka-env/bin/pip install -r kafka/verify/requirements.txt
 #   KAFKA_HOME=... DEBEZIUM_PLUGINS=... kafka-env/bin/python kafka/verify/verify_kafka.py
-confluent-kafka
-fastavro
-pytest
-sqlglot
+confluent-kafka==2.16.1
+fastavro==1.13.1
+pytest==9.2.0

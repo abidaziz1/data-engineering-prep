@@ -84,3 +84,5 @@ python-hcl2
 fastavro
 # spark/verify has its own requirements file, because it needs pyspark==4.0.1 and delta-spark==4.0.1 and this file pins other releases for the Databricks tutorial:
 #   python3 -m venv spark-env && spark-env/bin/pip install -r spark/verify/requirements.txt && spark-env/bin/python spark/verify/verify_spark.py
+# kafka/verify has its own requirements file, and needs an unpacked Apache Kafka 4.4.0 (KAFKA_HOME), Java 17 or 21, and for the change data capture section the Debezium PostgreSQL plugin and PostgreSQL 16:
+#   python3 -m venv kafka-env && kafka-env/bin/pip install -r kafka/verify/requirements.txt && KAFKA_HOME=... DEBEZIUM_PLUGINS=... kafka-env/bin/python kafka/verify/verify_kafka.py

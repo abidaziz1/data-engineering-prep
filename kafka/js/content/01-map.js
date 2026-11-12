@@ -164,7 +164,7 @@
       }),
 
       B.cmp({
-        id: 'm1-eco', t: 2, src: 'docs', title: 'The ecosystem, and what is Apache and what is not',
+        id: 'm1-eco', t: 2, src: 'docs', title: 'The tools around Kafka, and what is Apache and what is not',
         say: 'Job descriptions mix names from the Apache project and from companies around it. Press Next to sort them.',
         cols: ['Name', 'What it is', 'In the Apache Kafka download?', 'Where in this course'],
         hl: 3,
@@ -197,7 +197,7 @@
         ],
         steps: [
           { upto: 2, say: 'The core is the most asked. Partitions, offsets, groups and replicas appear in almost every posting, and exactly-once appears as a senior expectation.' },
-          { upto: 5, say: 'The ecosystem comes next: Connect and Debezium, schemas, and stream processing. Many postings accept Flink or Spark in place of Kafka Streams.' },
+          { upto: 5, say: 'The tools around Kafka come next: Connect and Debezium, schemas, and stream processing. Many postings accept Flink or Spark in place of Kafka Streams.' },
           { upto: 8, say: 'Security and operations are common in platform roles. Python, SQL and an orchestrator are named as the skills around Kafka.' }
         ],
         pick: 'Read these as examples from a sample, not as a survey. The README of this course lists the search questions and says that.'

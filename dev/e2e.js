@@ -1406,6 +1406,186 @@ const ok = (c, m) => { if (c) pass++; else { fail++; console.log('FAIL:', m); } 
     ok(combos === 32 && CK.all_fixed.failed_count === 0 && CK.all_fixed.passed === 15, 'Terraform lab: all 32 sets were tried, and the scan of the fully fixed file says 0 failing and 15 passing');
   }
 
+  if (name === 'kafka') {
+    const bigs = () => page.$$eval('.lab-out .big b', els => els.map(e => e.textContent));
+    const qboxes = () => page.$$eval('.lab .qbox b', els => els.map(e => e.textContent));
+    const pick = async (act, v) => { await page.click('[data-act="' + act + '"][data-v="' + v + '"]'); await page.waitForTimeout(12); };
+    const press = async act => { await page.click('[data-act="' + act + '"]'); await page.waitForTimeout(12); };
+    const chipVals = act => page.$$eval('[data-act="' + act + '"]', els => els.map(e => e.getAttribute('data-v')));
+    const scene = kind => S.find(x => x.type === 'widget' && x.kind === kind);
+    const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+    const counts = k => page.evaluate(k => LAB.real.counts[k], k);
+    const table = k => page.evaluate(k => LAB.real.tables[k], k);
+    const reset = (k, v) => page.evaluate(([k, v]) => { LAB.app.local[k] = v; LAB.app.render(true); }, [k, v === undefined ? null : v]).then(() => page.waitForTimeout(20));
+    const fmtN = (x, d) => (Math.round(x * Math.pow(10, d || 0)) / Math.pow(10, d || 0)).toLocaleString('en-US', { minimumFractionDigits: d || 0, maximumFractionDigits: d || 0 });
+    const TIB = 1099511627776, GIB = 1073741824, MIB = 1048576;
+    const mb = n => n >= TIB ? fmtN(n / TIB, 2) + ' TiB' : n >= GIB ? fmtN(n / GIB, 2) + ' GiB' : n >= MIB ? fmtN(n / MIB, 1) + ' MiB' : n >= 1024 ? fmtN(n / 1024, 1) + ' KiB' : fmtN(n) + ' B';
+    const bodyText = () => page.evaluate(() => document.querySelector('#stage-body').innerText);
+    const KINDS = { offsetlab: 2, partitionlab: 2, isrlab: 2, grouplab: 2, crashlab: 2, compactlab: 2, connectlab: 2, cdclab: 2, schemalab: 2, streamlab: 2, aclslab: 2, opslab: 2 };
+    for (const k of Object.keys(KINDS)) ok(scene(k) && scene(k).n === KINDS[k], 'lab "' + k + '" exists with ' + KINDS[k] + ' step(s)');
+    ok(await page.evaluate(() => LAB.config.coach.name === 'Mara' && LAB.chapters.length === 16 && LAB.config.levels.length === 16), 'the course has coach Mara, 16 missions and 16 levels');
+
+    // the offset lab: the real index, and the rule of the broker, worked out here again
+    const IX = await counts('log.index'); let pos = 0, first = 0;
+    const BS = IX.batch_last_offsets.map((last, i) => { const b = { first, last, pos, size: IX.batch_sizes[i] }; pos += b.size; first = last + 1; return b; });
+    const mkEntries = iv => { let since = 0; const out = []; BS.forEach(b => { if (since > iv) { out.push([b.last, b.pos]); since = 0; } since += b.size; }); return out; };
+    const find = (es, off) => { let e = null; es.forEach(x => { if (x[0] <= off) e = x; }); let i = e ? BS.findIndex(b => b.pos === e[1]) : 0; const sc = []; for (; i < BS.length; i++) { sc.push(BS[i]); if (BS[i].last >= off) break; } return { e, sc }; };
+    const OFFS = [0, 99, 100, 250, 1234, 5000, 8699];
+    await go(scene('offsetlab').id + ':0'); await reset('ol', { off: 250, iv: 4096 });
+    ok(same(await chipVals('ol-off'), OFFS.map(String)), 'offset lab: one chip for each offset');
+    for (const o of OFFS) {
+      await pick('ol-off', o);
+      const r = find(IX.all_entries, o), b = await bigs(), inB = BS.findIndex(x => x.first <= o && o <= x.last) + 1;
+      ok(same(b, [r.e ? String(r.e[0]) : 'none', fmtN(r.sc[0].pos), String(r.sc.length), mb(r.sc.reduce((a, x) => a + x.size, 0)), String(inB)]), 'offset lab, offset ' + o + ': the entry, the start, the batches, the bytes (got ' + b.join(' | ') + ')');
+    }
+    await go(scene('offsetlab').id + ':1');
+    for (const iv of [4096, 16384, 65536, 262144]) for (const o of [0, 250, 5000, 8699]) {
+      await pick('ol-iv', iv); await pick('ol-off', o);
+      const es = mkEntries(iv), r = find(es, o), b = await bigs();
+      ok(same(b, [String(es.length), mb(es.length * IX.bytes_per_entry), String(r.sc.length)]), 'offset lab, interval ' + iv + ', offset ' + o + ': ' + es.length + ' entries (got ' + b.join(' | ') + ')');
+    }
+    ok(mkEntries(4096).length === IX.entries, 'offset lab: an interval of 4096 gives the recorded number of entries');
+
+    // the partition lab: placements of a real broker and the real number of records of each store
+    const PL = await table('keys.placement'), PC = await table('keys.placement_other_client'), SR = await table('keys.store_records');
+    await go(scene('partitionlab').id + ':0'); await reset('pl', { n: 6, c: 'java', from: 3, to: 6 });
+    for (const c of ['java', 'crc']) for (const n of [3, 6, 12]) {
+      await pick('pl-c', c); await pick('pl-n', n);
+      const T = c === 'java' ? PL : PC, ci = n === 3 ? 1 : n === 6 ? 2 : 3, per = Array(n).fill(0); T.rows.forEach((r, i) => { per[r[ci]] += SR.rows[i][1]; });
+      const total = per.reduce((a, x) => a + x, 0), mx = Math.max(...per), b = await bigs();
+      ok(same(b, [fmtN(mx / (total / n), 2) + ' x', fmtN(mx), String(per.filter(x => x === 0).length)]), 'partition lab, ' + c + ' on ' + n + ' partitions: the busiest is ' + mx + ' (got ' + b.join(' | ') + ')');
+    }
+    await go(scene('partitionlab').id + ':1');
+    for (const [f, t] of [[3, 6], [3, 12], [6, 12]]) {
+      await pick('pl-f', f); await pick('pl-t', t);
+      const fi = f === 3 ? 1 : 2, ti = t === 6 ? 2 : 3, moved = PL.rows.filter(r => r[fi] !== r[ti]).length, b = await bigs();
+      ok(same(b, [moved + ' of 12', String(12 - moved)]), 'partition lab, from ' + f + ' to ' + t + ' partitions: ' + moved + ' keys move (got ' + b.join(' | ') + ')');
+    }
+    const AD = await counts('keys.adding_summary'); await pick('pl-f', 3); await pick('pl-t', 6); ok(same((await bigs())[0], AD.moved + ' of 12'), 'partition lab: growing 3 to 6 moves the keys of the recorded run');
+
+    // the replication lab: every combination of brokers, acks and minimum, then the two election settings
+    await go(scene('isrlab').id + ':0'); await reset('is', { a: 3, k: 'all', m: 2, u: 'false' });
+    for (const a of [3, 2, 1, 0]) for (const k of ['1', 'all']) for (const m of [1, 2, 3]) {
+      await pick('is-a', a); await pick('is-k', k); await pick('is-m', m);
+      const ok2 = a > 0 && !(k === 'all' && a < m), copies = !ok2 ? 0 : k === 'all' ? a : 1, head = ok2 ? 'delivered' : a === 0 ? 'refused' : 'NOT_ENOUGH_REPLICAS', b = await bigs();
+      ok(same(b, [head, String(copies), ok2 ? (copies >= 2 ? 'yes' : 'no') : 'n/a']), 'replication lab, ' + a + ' up, acks=' + k + ', min ' + m + ': ' + head + ' with ' + copies + ' copies (got ' + b.join(' | ') + ')');
+    }
+    await go(scene('isrlab').id + ':1'); const UE = await table('replication.unclean_election'), UR = await table('replication.unclean_result');
+    for (const [u, key] of [['false', 'safe'], ['true', 'lossy']]) {
+      await pick('is-u', u); const ue = UE.rows.find(r => r[0] === key), rs = UR.rows.find(r => r[0] === key), b = await bigs();
+      ok(same(b, [String(ue[3]), String(rs[3]), fmtN(rs[5])]), 'replication lab, unclean election ' + u + ': leader ' + ue[3] + ', ' + rs[5] + ' missing (got ' + b.join(' | ') + ')');
+    }
+
+    // the consumer group lab: the range rule for any number of members, and the recorded rebalances
+    await go(scene('grouplab').id + ':0'); await reset('gl', { n: 3, p: 'range', e: 'B joins' });
+    for (const n of [1, 2, 3, 4, 6, 8]) {
+      await pick('gl-n', n);
+      const base = Math.floor(6 / n), extra = 6 % n, most = base + (extra ? 1 : 0), idle = Math.max(0, n - 6), b = await bigs();
+      ok(same(b, ['6', String(most), String(idle)]), 'group lab, ' + n + ' members: most partitions of a member ' + most + ', idle ' + idle + ' (got ' + b.join(' | ') + ')');
+    }
+    ok((await bodyText()).includes('idle: nothing to read'), 'group lab: eight members leave two idle');
+    await pick('gl-n', 3); const txt3 = await bodyText(); ok(['partitions 0, 1', 'partitions 2, 3', 'partitions 4, 5'].every(x => txt3.includes(x)), 'group lab: three members get 0 and 1, 2 and 3, 4 and 5 (the recorded assignment)');
+    await go(scene('grouplab').id + ':1'); const RS = await counts('consumers.rebalance_summary');
+    for (const [p, key] of [['range', 'range'], ['cooperative', 'cooperative'], ['newp', 'new_protocol']]) for (const e of ['B joins', 'C joins', 'B leaves']) {
+      await pick('gl-p', p); await pick('gl-e', e); const s = RS[key][e], b = await bigs();
+      ok(same(b, [String(s.partitions_revoked_in_all), String(s.partitions_revoked_from_members_that_stay), String(s.callbacks_with_no_partitions)]), 'group lab, ' + p + ', ' + e + ': ' + s.partitions_revoked_in_all + ' revoked (got ' + b.join(' | ') + ')');
+    }
+
+    // the crash lab: both strategies, several commit intervals and crash points, and the sink
+    const CR = await table('delivery.crash'); await go(scene('crashlab').id + ':0'); await reset('cr', { s: 'process', k: 10, n: 65, k2: 'sink', iso: 'read_committed' });
+    const model = (s, k, n, sink) => { if (s === 'commit') return { never: 1, twice: 0, rows: 99, written: 99 }; const c = Math.floor((n - 1) / k) * k, w = n + 100 - c; return { never: 0, twice: n - c, rows: sink === 'overwrite' ? 100 : w, written: w }; };
+    for (const sink of ['sink', 'overwrite']) for (const n of [20, 45, 61, 65, 70, 99]) for (const k of [1, 5, 10, 20]) {
+      await pick('cr-s', 'process'); await pick('cr-k', k); await pick('cr-n', n); await pick('cr-q', sink);
+      const m = model('process', k, n, sink), b = await bigs();
+      ok(same(b, [String(m.never), String(m.twice), String(m.rows), String(m.written)]), 'crash lab, process then commit every ' + k + ', dying after ' + n + ', ' + sink + ': ' + m.twice + ' twice, ' + m.rows + ' rows (got ' + b.join(' | ') + ')');
+    }
+    for (const n of [20, 61, 99]) { await pick('cr-s', 'commit'); await pick('cr-n', n); const b = await bigs(); ok(same(b, ['1', '0', '99', '99']), 'crash lab, commit first, dying after ' + n + ': one order lost, 99 rows (got ' + b.join(' | ') + ')'); }
+    await pick('cr-s', 'commit'); await pick('cr-n', 61); await pick('cr-q', 'sink'); ok(same((await bigs()).slice(0, 3), [String(CR.rows[0][5]), String(CR.rows[0][6]), String(CR.rows[0][7])]), 'crash lab: commit first and 61 is the recorded row');
+    await pick('cr-s', 'process'); await pick('cr-k', 10); await pick('cr-n', 65); await pick('cr-q', 'sink'); ok(same((await bigs()).slice(0, 3), [String(CR.rows[1][5]), String(CR.rows[1][6]), String(CR.rows[1][7])]), 'crash lab: process first, every 10, 65, a sink that adds rows, is the recorded row');
+    await pick('cr-q', 'overwrite'); ok(same((await bigs()).slice(0, 3), [String(CR.rows[2][5]), String(CR.rows[2][6]), String(CR.rows[2][7])]), 'crash lab: the same into a sink that overwrites by order id is the recorded row');
+    await go(scene('crashlab').id + ':1'); const TA = await counts('delivery.tx_after_crash'), TR = await counts('delivery.tx_after_restart');
+    await pick('cr-i', 'read_committed'); ok(same(await bigs(), [String(TA.records_seen_by_a_read_committed_consumer), String(TA.records_of_the_open_transaction), String(TR.read_committed_records), 'none']), 'crash lab: read_committed sees 60, then 100');
+    await pick('cr-i', 'read_uncommitted'); ok(same(await bigs(), [String(TA.records_seen_by_a_read_uncommitted_consumer), String(TA.records_of_the_open_transaction), String(TR.read_uncommitted_records), TR.orders_seen_twice_by_read_uncommitted.length + ' orders']), 'crash lab: read_uncommitted sees 70, then 110');
+
+    // the compaction lab: predict, run, and the two moments of a tombstone
+    const CP = await table('retention.compacted'), KEEP = CP.rows.map(r => r[0]); await go(scene('compactlab').id + ':0'); await reset('co', { pick: {}, ran: false, later: false });
+    ok(await cnt('button.rec') === 63, 'compaction lab: 63 records to click');
+    for (const o of KEEP) await pick('co-p', o);
+    ok((await bodyText()).includes('You picked ' + KEEP.length + ' records'), 'compaction lab: the count of picks'); await press('co-run');
+    ok(same(await bigs(), [String(KEEP.length), KEEP.length + ' of ' + KEEP.length, '0', String(63 - KEEP.length)]), 'compaction lab: every pick right (got ' + (await bigs()).join(' | ') + ')');
+    ok(await cnt('.strip .rec.right') === KEEP.length && await cnt('.strip .rec.miss') === 0 && await cnt('.strip .rec.wrong') === 0, 'compaction lab: all thirteen are marked right');
+    await press('co-reset'); for (const o of [48, 49, 50, 58, 59]) await pick('co-p', o); await press('co-run');
+    ok(same(await bigs(), [String(KEEP.length), '3 of ' + KEEP.length, '2', String(63 - KEEP.length)]) && await cnt('.strip .rec.wrong') === 2 && await cnt('.strip .rec.miss') === KEEP.length - 3, 'compaction lab: a wrong guess is marked (got ' + (await bigs()).join(' | ') + ')');
+    await go(scene('compactlab').id + ':1'); const CA = await counts('retention.compaction_after'), CG = await counts('retention.compaction_tombstones_gone');
+    ok(same(await bigs(), [String(CA.records), String(CA.tombstones_still_there), String(CA.gaps_in_the_offsets)]), 'compaction lab: after the first cleaning there are 13 records and 2 tombstones');
+    await pick('co-m', 'later'); ok(same(await bigs(), [String(CG.keys.length), CG.keys_that_were_deleted.join(' and '), String(CG.records)]), 'compaction lab: later the tombstones are gone');
+
+    // the Connect lab: converters and error handling
+    const CV = await table('connect.converters'), FT = await counts('connect.failed_task'), DL = await counts('connect.dead_letter'); await go(scene('connectlab').id + ':0'); await reset('cn', { c: 0, e: 'none' });
+    for (let n = 0; n < CV.rows.length; n++) { await pick('cn-c', n); ok(same(await bigs(), [fmtN(CV.rows[n][3]) + ' bytes', String(CV.rows[n][1])]), 'connect lab, ' + CV.rows[n][0] + ': ' + CV.rows[n][3] + ' bytes'); }
+    await go(scene('connectlab').id + ':1');
+    await pick('cn-e', 'none'); ok(same(await qboxes(), ['bad-lines', 'sink task: ' + FT.task_state, 'output file: ' + FT.lines_written_before_it_failed + ' lines']), 'connect lab: the strict sink fails with 0 lines (got ' + (await qboxes()).join(' | ') + ')');
+    await pick('cn-e', 'all'); ok(same(await qboxes(), ['bad-lines', 'sink task: ' + DL.task_state, 'output file: ' + DL.lines_written + ' lines', 'bad-lines-dlq: ' + DL.records_in_the_dead_letter_topic + ' record']), 'connect lab: the tolerant sink writes 10 lines and keeps one record (got ' + (await qboxes()).join(' | ') + ')');
+
+    // the change data capture lab: the recorded events, then the arithmetic of the log
+    const CH = await table('cdc.changes'), RF = await counts('cdc.replica_identity_full'), WH = await counts('cdc.wal_held_back'); await go(scene('cdclab').id + ':0'); await reset('cd', { s: 'UPDATE', id: 'default', r: 1000000, hr: 24 });
+    const exp = (s, id) => s === 'snapshot' ? ['r', 'null', 'a row'] : s === 'INSERT' ? ['c', 'null', 'a row'] : s === 'UPDATE' && id === 'default' ? ['u', 'null', 'a row'] : s === 'UPDATE' ? ['u', 'a row', 'a row'] : s === 'DELETE' && id === 'default' ? ['d', 'a row', 'null'] : [];
+    for (const s of ['snapshot', 'INSERT', 'UPDATE', 'DELETE']) for (const id of ['default', 'full']) { await pick('cd-s', s); await pick('cd-i', id); const b = await bigs(); ok(same(b, exp(s, id)), 'CDC lab, ' + s + ' with ' + id + ': ' + exp(s, id).join(' | ') + ' (got ' + b.join(' | ') + ')'); }
+    await pick('cd-s', 'UPDATE'); await pick('cd-i', 'full'); ok((await bodyText()).includes('"total_cents": ' + RF.before.total_cents) || (await bodyText()).includes('"total_cents":' + RF.before.total_cents), 'CDC lab: the FULL update shows the old total');
+    await go(scene('cdclab').id + ':1'); const per = WH.backlog_bytes_while_stopped / WH.rows_changed_while_stopped;
+    for (const r of [100000, 1000000, 10000000]) for (const hr of [1, 8, 24, 72]) { await pick('cd-r', r); await pick('cd-h', hr); const b = await bigs(); ok(same(b, [fmtN(per) + ' bytes', mb(r * hr * per), fmtN(100 * GIB / (r * per), 1) + ' h']), 'CDC lab, ' + r + ' changes an hour for ' + hr + ' hours (got ' + b.join(' | ') + ')'); }
+
+    // the schema lab: nine changes and four modes, then the order of the upgrade
+    const SC = await table('schemas.changes');
+    const LABELS = ['add the field channel, with', 'add the field channel, no', 'remove the field status', 'remove the field customer_id', 'rename total_cents to amount_cents', 'rename total_cents to amount_cents, with', 'widen', 'narrow', 'make customer_id required'];
+    const rowOf = i => SC.rows.filter(r => r[0].indexOf(LABELS[i]) === 0 && (i !== 4 || !/alias/.test(r[0])))[0];
+    await go(scene('schemalab').id + ':0'); await reset('sc', { c: 0, m: 'BACKWARD', u: 'producers' });
+    for (let i = 0; i < 9; i++) for (const m of ['BACKWARD', 'FORWARD', 'FULL', 'NONE']) {
+      await pick('sc-c', i); await pick('sc-m', m); const r = rowOf(i), bk = r[1] === 'yes', fw = r[2] === 'yes', acc = m === 'NONE' || (m === 'BACKWARD' ? bk : m === 'FORWARD' ? fw : bk && fw), b = await bigs();
+      ok(same(b, [acc ? 'accepted' : 'refused', bk ? 'works' : 'FAILS', fw ? 'works' : 'FAILS', r[3]]), 'schema lab, change ' + i + ' on ' + m + ': ' + (acc ? 'accepted' : 'refused') + ' (got ' + b.join(' | ') + ')');
+    }
+    await go(scene('schemalab').id + ':1');
+    for (let i = 0; i < 9; i++) for (const u of ['producers', 'consumers']) {
+      await pick('sc-c', i); await pick('sc-u', u); const r = rowOf(i), bad = u === 'producers' ? r[2] !== 'yes' : r[1] !== 'yes', q = await qboxes();
+      ok(q[1] === (bad ? 'Readers fail' : 'Everything reads'), 'schema lab, change ' + i + ', ' + u + ' first: ' + (bad ? 'readers fail' : 'everything reads') + ' (got ' + q[1] + ')');
+    }
+
+    // the Streams lab: the rule of the grace, then the tasks
+    await go(scene('streamlab').id + ':0'); await reset('sl', { g: 30, l: 20, n: 3 }); const T = 599, mmss = x => Math.floor(x / 60) + ':' + ('0' + (x % 60)).slice(-2);
+    for (const g of [0, 30, 120]) for (const l of [10, 20, 45, 90, 200, 594]) {
+      await pick('sl-g', g); await pick('sl-l', l); const t = T - l, we = Math.floor(t / 60) * 60 + 60, counted = we + g > T, b = await bigs();
+      ok(same(b, [counted ? 'counted' : 'dropped', mmss(T), mmss(we + g), counted ? '+0' : '+1']), 'streams lab, grace ' + g + ', ' + l + ' s late: ' + (counted ? 'counted' : 'dropped') + ' (got ' + b.join(' | ') + ')');
+    }
+    await go(scene('streamlab').id + ':1'); const tasks = (await counts('streams.state_on_disk')).task_folders;
+    for (const n of [1, 2, 3, 6, 8]) { await pick('sl-n', n); const by = Array.from({ length: n }, () => 0); tasks.forEach((x, i) => { by[i % n]++; }); ok(same(await bigs(), [String(tasks.length), String(Math.max(...by)), String(by.filter(x => !x).length)]), 'streams lab, ' + n + ' copies: ' + Math.max(...by) + ' tasks at most, ' + by.filter(x => !x).length + ' idle'); }
+
+    // the ACL lab: the authorizer, worked out here again, for every set of rules and every request
+    const RULES = { r1: ['allow', 'alice', ['Write', 'Describe'], 'Topic', 'orders', 0], r2: ['allow', 'bob', ['Read', 'Describe'], 'Topic', 'orders', 0], r3: ['allow', 'bob', ['Read'], 'Group', 'bob-group', 0], r4: ['deny', 'bob', ['Read'], 'Topic', 'orders', 0], r5: ['allow', 'alice', ['Write', 'Describe'], 'Topic', 'brewline.', 1] };
+    const REQS = { q1: ['alice', [['Describe', 'Topic', 'orders'], ['Write', 'Topic', 'orders']]], q2: ['bob', [['Read', 'Group', 'bob-group'], ['Describe', 'Topic', 'orders'], ['Read', 'Topic', 'orders']]], q3: ['alice', [['Describe', 'Topic', 'brewline.orders'], ['Write', 'Topic', 'brewline.orders']]], q4: ['alice', [['Describe', 'Topic', 'other.topic'], ['Write', 'Topic', 'other.topic']]] };
+    const decide = (on, q) => { const [who, steps] = REQS[q]; for (const [op, res, nm] of steps) { const m = on.map(i => RULES[i]).filter(r => r[1] === who && r[2].includes(op) && r[3] === res && (r[5] ? nm.startsWith(r[4]) : nm === r[4])); if (m.some(r => r[0] === 'deny') || !m.length) return res.toUpperCase() + '_AUTHORIZATION_FAILED'; } return 'delivered'; };
+    await go(scene('aclslab').id + ':0'); await reset('ac', { on: {}, q: 'q1', t: 4 });
+    for (let mask = 0; mask < 32; mask++) {
+      const on = ['r1', 'r2', 'r3', 'r4', 'r5'].filter((x, i) => mask & (1 << i));
+      await reset('ac', { on: Object.fromEntries(on.map(x => [x, true])), q: 'q1', t: 4 });
+      for (const q of ['q1', 'q2', 'q3', 'q4']) { await pick('ac-q', q); const b = await bigs(); ok(same(b, [decide(on, q)]), 'ACL lab, rules ' + (on.join(' ') || 'none') + ', ' + q + ': ' + decide(on, q) + ' (got ' + b.join(' | ') + ')'); }
+    }
+    await reset('ac', { on: { r1: true, r2: true, r3: true, r5: true }, q: 'q3', t: 4 }); ok((await bodyText()).includes('This exact combination ran on the real broker'), 'ACL lab: a recorded combination is marked as recorded');
+    await reset('ac', { on: { r1: true }, q: 'q4', t: 4 }); ok(!(await bodyText()).includes('This exact combination ran on the real broker'), 'ACL lab: a combination that was not run is not marked as recorded');
+    await go(scene('aclslab').id + ':1'); const TLS = await table('security.tls'); const TKEYS = ['no trusted authority given', 'a different authority is trusted', 'trusted authority given, no client certificate', 'connecting to 127.0.0.1', 'trusted authority and a client certificate (carol)', 'an ACL for the principal written as the subject', 'an ACL for the principal exactly as the broker names it'];
+    for (let n = 0; n < TKEYS.length; n++) { await pick('ac-t', n); const r = TLS.rows.find(x => x[0].indexOf(TKEYS[n]) === 0), door = /^(_SSL|_TRANSPORT)/.test(r[3]) ? 'stopped at the handshake' : r[1] === 'delivered' ? 'both doors open' : 'stopped at the authorizer', b = await bigs(); ok(same(b, [r[1], door]), 'ACL lab, TLS case ' + n + ': ' + r[1] + ', ' + door + ' (got ' + b.join(' | ') + ')'); }
+
+    // the operations lab: the five numbers of both situations, and the size of a cluster
+    const MT = await table('ops.metrics'); await go(scene('opslab').id + ':0'); await reset('op', { sit: 0, mbps: 20, days: 7, rf: 3, codec: 4, groups: 3 });
+    for (const sit of [0, 1]) { await pick('op-s', sit); const col = sit ? 3 : 2; const t = await page.$$eval('.lab .tbl tbody tr', trs => trs.map(tr => [...tr.children].map(td => td.innerText.trim()))); ok(same(t.map(r => r[2]), MT.rows.map(r => String(r[col]))) && same(t.map(r => r[3]), MT.rows.map(r => { const v = String(r[col]); return ((/under-replicated|below the minimum|offline/.test(r[0]) && /[1-9]/.test(v)) || (/active controllers/.test(r[0]) && v.split(' / ').some(x => x !== '1'))) ? 'ALARM' : 'ok'; })), 'operations lab, situation ' + sit + ': the five recorded numbers and which are alarms'); }
+    await go(scene('opslab').id + ':1'); const CO = await table('producers.compression'), ASSUME = 8 * TIB;
+    for (const mbps of [5, 20, 100]) for (const days of [1, 7, 30]) for (const rf of [1, 3]) for (const codec of [0, 4]) {
+      await pick('op-m', mbps); await pick('op-d', days); await pick('op-f', rf); await pick('op-c', codec);
+      const share = CO.rows[codec][4], disk = mbps * MIB * 86400 * days * rf * share, need = disk * 1.35, brokers = Math.max(3, Math.ceil(need / ASSUME)), b = await bigs();
+      ok(same(b.slice(0, 3), [mb(disk), mb(need), String(brokers)]), 'operations lab, ' + mbps + ' MiB/s, ' + days + ' days, ' + rf + ' copies, ' + CO.rows[codec][0] + ': ' + mb(disk) + ' (got ' + b.slice(0, 3).join(' | ') + ')');
+    }
+    for (const g of [1, 3, 6]) { await pick('op-g', g); const share = CO.rows[CO.rows.length - 1][4], net = 20 * MIB * share; await pick('op-m', 20); await pick('op-c', 4); const b = await bigs(); ok(b[5] === mb(net * g) + '/s', 'operations lab, ' + g + ' consumer groups read ' + mb(net * g) + ' a second (got ' + b[5] + ')'); }
+  }
+
   if (name === 'spark') {
     const bigs = () => page.$$eval('.lab-out .big b', els => els.map(e => e.textContent));
     const tables = () => page.$$eval('.lab .tbl', ts => ts.map(t => [...t.querySelectorAll('tbody tr')].map(r => [...r.children].map(td => td.innerText.trim()))));

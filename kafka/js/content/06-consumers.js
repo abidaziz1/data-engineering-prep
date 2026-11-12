@@ -97,7 +97,7 @@
         steps: [
           {
             say: 'A group\'s positions live in `__consumer_offsets`, a topic of 50 partitions. The partition for a group is found with a hash of its name: the Java **hashCode** of `' + OT.group + '`, which is **' + OT.java_hash + '**, made positive, modulo **' + OT.partitions_of_the_topic + '**. That is partition **' + OT.partition_computed + '**. The leader of that partition is the group\'s coordinator.',
-            tabs: [{ layer: 'RECORDED', name: 'From a group name to a partition', c: 'raw', cols: ['Step', 'Value'], rows: [['Group name', OT.group], ['Java hashCode', OT.java_hash], ['Absolute value modulo 50', OT.partition_computed], ['Commit records for the group found in that partition', OT.offset_commit_records_for_the_group_found_there]], trk: 0 }],
+            tabs: [{ layer: 'RECORDED', name: 'How a group name picks a partition', c: 'raw', cols: ['Step', 'Value'], rows: [['Group name', OT.group], ['Java hashCode', OT.java_hash], ['Absolute value modulo 50', OT.partition_computed], ['Commit records for the group found in that partition', OT.offset_commit_records_for_the_group_found_there]], trk: 0 }],
             notes: ['Recorded: I computed the partition, then opened that partition\'s log with kafka-dump-log --offsets-decoder and found the commits of the group in it.']
           },
           {

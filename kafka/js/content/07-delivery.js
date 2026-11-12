@@ -8,7 +8,7 @@
   var PY = G.file('code/delivery.py'), PX = G.file('code/lossy_proxy.py'), PL = G.file('code/app/pipeline.py');
   var WORKER = G.lines(PY, G.at(PY, /^def worker/), G.at(PY, /^    return read$/));
   var RETRY = G.lines(PY, G.at(PY, /^            proxy\.arm\(1\)/), G.at(PY, /^            p\.flush\(60\)/));
-  var DROP = G.lines(PX, G.at(PX, /^        def to_client/), G.at(PX, /client\.sendall\(head \+ body\)/));
+  var DROP = G.lines(PX, G.at(PX, /^        def to_client/), G.at(PX, /threading\.Thread\(target=to_broker/) - 1);
   var PIPE = G.lines(PL, G.at(PL, /^def run_pipeline/), G.at(PL, /^    consumer\.close\(\)/));
   var n0 = function (x) { return Number(x).toLocaleString('en-US'); };
   var off = LA.rows.filter(function (r) { return /false/.test(r[0]); })[0], on = LA.rows.filter(function (r) { return /true/.test(r[0]); })[0];

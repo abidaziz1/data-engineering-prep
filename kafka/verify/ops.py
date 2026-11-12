@@ -154,11 +154,12 @@ def run(c, rec):
 
 
 def record_quota(c, rec):
-    """A quota: the broker slows a client down that sends more bytes per second than it may. The client is told how long to wait, and the producer simply takes longer."""
+    """A quota: the broker slows a client down that sends more bytes per second than it may. The client is told how long to wait, and the producer simply takes longer.
+    The broker measures the rate over a window of 11 one second samples by default, so a short burst of up to rate x 11 bytes is not throttled: the experiment must send more than that."""
     kx.delete_topics(c.bootstrap, ['quota'])
     kx.create_topic(c.bootstrap, 'quota', assignment=[[1]], config={'retention.ms': '-1'})
     cli = 'quota-client'
-    n, rate = 60000, 1_000_000
+    n, rate = 60000, 200_000
     body = [kx.value(i) for i in range(n)]
     size = sum(len(b) for b in body)
 
@@ -175,6 +176,10 @@ def record_quota(c, rec):
         p.poll(1)
         thr = max([b.get('throttle', {}).get('max', 0) for s in stats for b in s.get('brokers', {}).values()] or [0])
         return took, thr
+    rc, out, err = c.tool('kafka-configs', '--describe', '--all', '--entity-type', 'brokers', '--entity-name', '1')
+    win_num = int(re.search(r'quota\.window\.num=(\d+)', out).group(1))
+    win_size = int(re.search(r'quota\.window\.size\.seconds=(\d+)', out).group(1))
+    burst = rate * win_num * win_size
     free_took, free_thr = send_all('no-quota-client')
     rc, out, err = c.tool('kafka-configs', '--alter', '--entity-type', 'clients', '--entity-name', cli, '--add-config', 'producer_byte_rate=%d' % rate)
     rec.text('ops.quota_set', out.strip() or err.strip())
@@ -182,7 +187,8 @@ def record_quota(c, rec):
     rec.text('ops.quota_described', out.strip() or err.strip())
     time.sleep(2)
     slow_took, slow_thr = send_all(cli)
-    rec.counts('ops.quota', {'quota_bytes_per_second': rate, 'bytes_sent': size, 'seconds_the_quota_allows_at_least': round(size / rate, 1), 'client_without_a_quota_waited_ms': free_thr,
+    rec.counts('ops.quota', {'quota_bytes_per_second': rate, 'bytes_sent': size, 'window_samples': win_num, 'window_seconds_each': win_size, 'burst_the_window_allows_bytes': burst,
+                             'sent_more_than_the_burst': size > burst, 'seconds_the_quota_forces_at_least': round(max(0, size - burst) / rate, 1), 'client_without_a_quota_waited_ms': free_thr,
                              'client_with_the_quota_waited_ms_at_most': slow_thr, 'the_broker_asked_the_client_to_wait': slow_thr > 0 and free_thr == 0,
                              'the_client_with_the_quota_took_longer': slow_took > 2 * free_took})
     c.tool('kafka-configs', '--alter', '--entity-type', 'clients', '--entity-name', cli, '--delete-config', 'producer_byte_rate')

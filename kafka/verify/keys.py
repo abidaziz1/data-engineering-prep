@@ -54,6 +54,7 @@ def record_keys(c, rec):
     rec.counts('keys.skew_summary', {'records': total, 'partitions': 6, 'busiest_partition_records': busiest, 'even_share_records': total // 6,
                                      'busiest_over_even': round(busiest / (total / 6), 2), 'busiest_store': 's01', 'busiest_store_records': per_store['s01'],
                                      'busiest_store_share': round(per_store['s01'] / total, 3)})
+    rec.table('keys.store_records', ['key', 'records among the 12,000'], [[st, per_store[st]] for st in kx.STORES])
     # order inside a partition: the order ids of one partition always rise; across the topic they do not
     by_part = collections.defaultdict(list)
     for part, o, k, v, ts in msgs:

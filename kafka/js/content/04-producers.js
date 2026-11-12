@@ -5,7 +5,7 @@
   var AK = G.table('producers.acks'), BA = G.table('producers.batching'), CO = G.table('producers.compression'), ER = G.table('producers.errors'), ID = G.table('producers.idempotence');
   var TS = G.counts('producers.timestamps'), HD = G.text('producers.headers_dump');
   var PY = G.file('code/producers.py');
-  var ACKS = G.lines(PY, G.at(PY, /^def acks_experiment/), G.at(PY, /rec\.table\('producers\.acks'/));
+  var ACKS = G.lines(PY, G.at(PY, /^def acks_experiment/), G.at(PY, /'what the report means'\], rows\)/));
   var BAT = G.lines(PY, G.at(PY, /^def batching_experiment/), G.at(PY, /rec\.table\('producers\.batching'/));
   var n0 = function (x) { return Number(x).toLocaleString('en-US'); };
   var ack = function (a) { return AK.rows.filter(function (r) { return String(r[0]) === a; })[0]; };
