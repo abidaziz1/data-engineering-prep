@@ -28,6 +28,8 @@ parliament
 setuptools<81
 awscli
 aws-lambda-powertools
+# sql/verify (the recorder, verify_sq.py and its --recapture). Needs the PostgreSQL 16 server programs (apt install postgresql-16):
+psycopg[binary]
 # azure/verify (the recorder, verify_az.py and its --recapture). Azurite and the Kusto language service come from `npm install --prefix azure/verify` (Node 20 or later).
 # The lakehouse section also needs pyspark==4.0.1 and delta-spark==4.0.1 in an interpreter named by AZ_SPARK_PYTHON (Java 17 or 21), and the Bicep and workflow checks need
 # checkov, check-jsonschema and pycep-parser in the interpreter named by AZ_IAC_PYTHON. The az command check needs the Azure CLI (AZ_CLI). A check whose tool is missing says so and is skipped.
