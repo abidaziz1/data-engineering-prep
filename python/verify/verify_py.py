@@ -222,7 +222,7 @@ if args.recapture:
         if k.startswith(TIMING_KEYS):
             a, b = TIMING_TEXT.sub('#', a), TIMING_TEXT.sub('#', b)
         if k.startswith(TIMING_COLUMNS):
-            a, b = (re.sub(r'(?<=  )\d[\d,]*(?:\.\d+)?', '#', t) for t in (a, b))
+            a, b = (re.sub(r' +', ' ', re.sub(r'(?<=  )\d[\d,]*(?:\.\d+)?', '#', t)) for t in (a, b))   # the padding of the columns follows the width of the numbers
         ok(a == b, f'text {k} differs from its recapture:\n--- recording\n{a[:300]}\n--- recapture\n{b[:300]}')
     bad = []
     for k in sorted(set(REAL['counts']) | set(NEW['counts'])):
