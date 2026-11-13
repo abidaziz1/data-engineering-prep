@@ -975,6 +975,44 @@ def sec_watcher():
     counts('af.watcher', out)
 
 
+def sec_rounds():
+    """The coding rounds of the boss mission. Round 1: pytest on a model solution. Round 2: a broken DAG fails to import, and the fixed one imports, passes ruff, and gives the same table after two runs."""
+    migrate(HOME_TEST)
+    d = WORK / 'pytest_round'
+    if d.exists():
+        shutil.rmtree(d)
+    shutil.copytree(HERE / 'project_round', d)
+    env = env_for(HOME_TEST, d / 'dags')
+    env['AIRFLOW__LOGGING__LOGGING_LEVEL'] = 'CRITICAL'
+    r = subprocess.run([PY, '-m', 'pytest', '-q', '-p', 'no:cacheprovider', '--no-header', '-rf', str(d / 'tests')], capture_output=True, text=True, env=env, cwd=str(d))
+    body = '\n'.join(ln for ln in (r.stdout + r.stderr).splitlines() if not NOISE.search(ln) and not ln.startswith('  warnings.warn'))
+    body = re.sub(r'in \d+\.\d+s', 'in <seconds>s', body)
+    text('af.round1_pytest', norm(body.replace(str(d) + '/', '')).strip())
+    for f in sorted((HERE / 'project_round').rglob('*.py')):
+        file('round1/' + str(f.relative_to(HERE / 'project_round')), f.read_text())
+    out = {'round1': {'rc': r.returncode, 'summary': body.strip().splitlines()[-1] if body.strip() else ''}}
+    for name in ('fix_me.py', 'fix_me_fixed.py'):
+        file('rounds/' + name, (HERE / 'rounds' / name).read_text())
+    broken = WORK / 'round2_broken'
+    fixed = WORK / 'round2_fixed'
+    for dd, src in ((broken, 'fix_me.py'), (fixed, 'fix_me_fixed.py')):
+        if dd.exists():
+            shutil.rmtree(dd)
+        dd.mkdir()
+        shutil.copy(HERE / 'rounds' / src, dd / src)
+    bag_b = probe('dagbag', dags=broken)
+    bag_f = probe('dagbag', dags=fixed)
+    db = OUTDIR / 'brewline.db'
+    if db.exists():
+        db.unlink()
+    runs = probe('idem', 'brewline_nightly_fix_me', 'orders', db, '2026-03-14,2026-03-14', dags=fixed)
+    ruff = subprocess.run([str(pathlib.Path(PY).parent / 'ruff'), 'check', str(fixed), '--select', 'AIR'], capture_output=True, text=True)
+    fdag = bag_f['dags'].get('brewline_nightly_fix_me', {})
+    out['round2'] = {'broken_error': next(iter(bag_b.get('import_errors', {}).values()), ''), 'fixed_imports': 'brewline_nightly_fix_me' in bag_f['dags'], 'fixed_ruff_clean': ruff.returncode == 0,
+                     'rows_after_two_runs': [x['rows'] for x in runs], 'notify_rule': fdag.get('trigger_rules', {}).get('notify'), 'load_retries': fdag.get('retries', {}).get('load'), 'catchup': fdag.get('catchup'), 'schedule': fdag.get('schedule')}
+    counts('af.rounds', out)
+
+
 def sec_parse_cost():
     d = WORK / 'parse'
     d.mkdir(exist_ok=True)
@@ -1570,6 +1608,7 @@ section('idempotent')(sec_idempotent)
 section('incremental')(sec_incremental)
 section('loops')(sec_loops)
 section('watcher')(sec_watcher)
+section('rounds')(sec_rounds)
 section('parse_cost')(sec_parse_cost)
 section('retries')(sec_retries)
 section('failed_deps')(sec_failed_deps)
