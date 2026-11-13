@@ -94,5 +94,5 @@ Add to the sentence about the coaches: "Juno teaches Apache Airflow." For exampl
 ## Other notes
 
 - The tutorial id and storage key are `airflow` and `dep.airflow.v1`. Nothing else in the repository refers to them.
-- `airflow/verify/verify_af.py --recapture` takes about 30 minutes, because the recorder starts the real scheduler, DAG processor, API server and triggerer and waits for runs, sensors and retries. The plain run takes about 8 minutes, most of it the lab tests in the browser and the DAG runs.
+- `airflow/verify/verify_af.py --recapture` takes about 30 minutes: about 10 minutes of checks, then about 18 minutes for the recorder, which starts the real scheduler, DAG processor, API server and triggerer and waits for runs, sensors and retries. The plain run takes about 10 minutes, most of it the lab tests in the browser (five runs of about 45 seconds, four of them with a deliberate fault) and the DAG runs; with `--no-browser` it takes about 5 minutes.
 - `airflow/verify/.cache/` is created by `--recapture` and holds the new recording. A `.gitignore` inside `airflow/verify/` keeps it out of git. You can also add `airflow/verify/.cache/` to the root `.gitignore` next to the other tutorials.
