@@ -154,7 +154,12 @@ def ensure_db():
 # 0. the environment
 # ======================================================================================================================
 ver = run([PY, '-c', 'import airflow; print(airflow.__version__)']).stdout.strip()
-if ver != M['apache-airflow']:
+HAVE_AF = bool(ver)
+if not HAVE_AF:
+    SKIPPED.append('everything that needs Apache Airflow (snippet imports and signatures, DAG files, runs, pytest, ruff, commands, --recapture): it is not installed in %s. '
+                   'Create the environment as airflow/verify/INTEGRATION.md says and set AF_PYTHON' % PY)
+    args.no_run = True
+elif ver != M['apache-airflow']:
     bad('this machine has Airflow %s but the recording and the lessons are for %s' % (ver, M['apache-airflow']))
 else:
     tick('Airflow version matches the recording (%s)' % ver)
@@ -723,6 +728,8 @@ IGNORE = [r'^meta\.recorded_on$', r'^counts\.af\.waiting\.\w+\.segments', r'^cou
 
 
 def normtext(s):
+    # a clock value of the machine (microseconds that are not all zero) differs on every recording. The dates that the course chose have no such fraction.
+    s = re.sub(r'\d{4}-\d\d-\d\d[T ]\d\d:\d\d:\d\d\.(?!0+\b)\d+(Z|\+00:00)?', '<clock>', s)
     s = re.sub(r'\[\d{3,6}\]', '[N]', s)
     s = re.sub(r'PID: \d+', 'PID: N', s)
     s = re.sub(r'pytest-of-\w+/pytest-\d+', 'pytest-of-X/pytest-N', s)
@@ -768,11 +775,15 @@ def compare(old, new):
     return diffs
 
 
-if args.recapture:
+if args.recapture and not HAVE_AF:
+    SKIPPED.append('--recapture needs Apache Airflow')
+elif args.recapture:
     keep = HERE / '.cache'
     keep.mkdir(exist_ok=True)
     out = keep / 'real_recaptured.js'
     if not args.reuse or not out.exists():
+        if out.exists():
+            out.unlink()  # the recorder merges into an existing file: start from nothing so that no old key survives
         t0 = time.time()
         env = dict(os.environ, AF_PYTHON=PY)
         r = subprocess.run([PY, str(HERE / 'capture_af.py'), '--out', str(out)], env=env, capture_output=True, text=True)
