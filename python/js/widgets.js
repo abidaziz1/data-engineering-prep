@@ -288,6 +288,9 @@
   /* ====================== Mission 5: text, bytes and encodings ====================== */
   (function () {
     function data() { return G.counts('m5.encoding'); }
+    /* the oldest encoding first, and the one to use last */
+    var ORDER = ['ascii', 'latin-1', 'cp1252', 'utf-16', 'utf-8'];
+    function oldestFirst(list) { return list.slice().sort(function (a, b) { return ORDER.indexOf(a) - ORDER.indexOf(b); }); }
     function cell(d, t, fe, ra) { var c = d.cells[t + '|' + fe + '|' + ra]; if (!c) throw new Error('no recorded cell for ' + t + '|' + fe + '|' + ra); return c; }
     /* the verdict for one combination: right text, wrong text without an error, or an error */
     function verdict(d, t, fe, ra) {
@@ -307,8 +310,8 @@
         var d = data(), st = A.local.en || (A.local.en = { t: 'café', fe: 'utf-8', ra: 'latin-1' }), v = verdict(d, st.t, st.fe, st.ra), c = v.c;
         var msg = { ok: 'The text came back as it was written. Reading with the encoding that was used for saving is the rule.', garbled: 'No error, and the text is wrong. This is mojibake: every bad character is a valid character of the other encoding. It is the worst case, because nothing fails.', error: 'The reader refused the bytes. A loud error is better than quiet garbage. It names the problem and the byte where it starts.', noenc: 'The encoding cannot represent this text at all. Python refuses to write it.' }[v.k];
         var h = '<div class="lab"><div class="lab-row"><span class="lab-l">Text</span><div class="sel-chips">' + chips(d.texts, st.t, 'en-t') + '</div></div>' +
-          '<div class="lab-row"><span class="lab-l">Saved as</span><div class="sel-chips">' + chips(d.file_encodings, st.fe, 'en-f') + '</div></div>' +
-          '<div class="lab-row"><span class="lab-l">Read as</span><div class="sel-chips">' + chips(d.readers, st.ra, 'en-r') + '</div></div>' +
+          '<div class="lab-row"><span class="lab-l">Saved as</span><div class="sel-chips">' + chips(oldestFirst(d.file_encodings), st.fe, 'en-f') + '</div></div>' +
+          '<div class="lab-row"><span class="lab-l">Read as</span><div class="sel-chips">' + chips(oldestFirst(d.readers), st.ra, 'en-r') + '</div></div>' +
           code('python', 'python', 'text = ' + JSON.stringify(st.t).replace(/"/g, "'") + '\ndata = text.encode(' + "'" + st.fe + "'" + ')\ntext.encode(...).decode(' + "'" + st.ra + "'" + ')') +
           '<div class="lab-out"><div class="big"><b>' + (c.bytes === null ? 'none' : c.length) + '</b><span>bytes in the file</span></div>' +
           '<div class="big ' + (v.k === 'ok' ? 'good' : v.k === 'garbled' ? 'warn' : 'bad') + '"><b>' + esc(v.k === 'ok' ? 'correct' : v.k === 'garbled' ? 'garbled' : v.k === 'error' ? 'error' : 'cannot save') + '</b><span>what reading gives</span></div></div>' +

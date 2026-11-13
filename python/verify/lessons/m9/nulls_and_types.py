@@ -8,7 +8,7 @@ data = {"order_id": ["O-1", "O-2", "O-3", "O-4"], "total": [12.5, None, 8.2, Non
 p = pd.DataFrame(data)
 print("pandas  dtypes:", {k: str(v) for k, v in p.dtypes.items()})
 print("pandas  rows:", len(p), " count of total:", p["total"].count(), " sum:", p["total"].sum(), " mean:", round(p["total"].mean(), 2))
-print("pandas  NaN == NaN:", p["total"][1] == p["total"][1], " isna:", p["total"].isna().tolist())
+print("pandas  nan == nan:", p["total"][1] == p["total"][1], " isna:", p["total"].isna().tolist())
 print("pandas  rows per store:", p.groupby("store").size().to_dict(), "(the missing store is dropped)")
 print("pandas  with dropna=False:", p.groupby("store", dropna=False).size().to_dict())
 

@@ -186,7 +186,7 @@
         cols: ['The probe', 'pandas ' + OLDV, 'pandas ' + NEWV, 'What it can break'],
         hl: 3,
         rows: [
-          ['dtype of a column of strings', 'object', 'str', 'A schema check or a type map that expects `object` fails, and missing strings are now NaN-aware in a new way.'],
+          ['dtype of a column of strings', 'object', 'str', 'A schema check or a type map that expects `object` fails on the new dtype, and so does any code that tests for it by name.'],
           ['change a column object, then read the frame', 'parent changed: [99, 2, 3]', 'parent unchanged: [1, 2, 3]', 'Code that relied on a view writing through to the frame silently stops working.'],
           ['dtype of parsed timestamps', 'datetime64[ns]', 'datetime64[us]', 'Parquet files and database columns get another time unit, and exact comparisons with an `ns` value differ.'],
           ['chained assignment, `df[mask]["a"] = 0`', 'SettingWithCopyWarning', 'ChainedAssignmentError', 'Both leave the frame unchanged. Pandas 3 says so loudly. Use `df.loc[mask, "a"] = 0`.']

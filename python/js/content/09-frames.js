@@ -59,7 +59,7 @@
         steps: [
           { say: 'The same four orders, in each engine. Two totals and one store are missing. The output is real.', lines: null },
           { say: 'The data: `None` in a list of numbers, and `None` in a list of names.', lines: G.span(NUF, /^data = /, /^data = /) },
-          { say: 'pandas turns a missing number into `NaN`, a float. `count` skips it, `sum` and `mean` skip it, and `NaN == NaN` is `False`.', lines: G.span(NUF, /^p = pd\.DataFrame/, /print\("pandas  NaN/) },
+          { say: 'pandas turns a missing number into a float that Python writes as `nan`, short for not a number. `count` skips it, `sum` and `mean` skip it, and `nan == nan` is `False`.', lines: G.span(NUF, /^p = pd\.DataFrame/, /print\("pandas  nan == nan/) },
           { say: '`groupby` in pandas **drops** the rows whose key is missing, unless you pass `dropna=False`. The totals per group no longer add up to the table.', lines: G.span(NUF, /print\("pandas  rows per store/, /dropna=False/) },
           { say: 'Polars has a real null. `count` skips nulls and `null_count` counts them. `group_by` keeps the null group.', lines: G.span(NUF, /^q = pl\.DataFrame/, /print\("polars  rows per store/) },
           { say: 'DuckDB follows SQL: `count(*)` counts rows, `count(total)` skips NULL, and `GROUP BY` keeps the NULL group.', lines: G.span(NUF, /^print\("duckdb  rows per store/, /duckdb  count/) }

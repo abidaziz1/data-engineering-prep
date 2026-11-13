@@ -6,7 +6,7 @@ LAB.real = {
   "python": "3.14.6",
   "python_build": "3.14.6 (main, Jul 18 2026, 17:01:31) [Clang 22.1.3 ]",
   "implementation": "CPython",
-  "platform": "Linux-6.18.44-fc-v378-x86_64-with-glibc2.39",
+  "platform": "Linux-6.18.44-fc-v445-x86_64-with-glibc2.39",
   "cpus": 4,
   "uv": "0.11.32",
   "pandas": "3.1.1",
@@ -30,7 +30,7 @@ LAB.real = {
   "tzdata": "2026.6",
   "python-dateutil": "4.0.0",
   "packaging": "26.3",
-  "captured": "2026-11-12",
+  "captured": "2026-11-13",
   "python_free_threaded": "3.14.6"
  },
  "files": {
@@ -93,7 +93,7 @@ LAB.real = {
   "m8/sqlalchemy_core.py": "\"\"\"The same ideas in SQLAlchemy Core: an engine, a text query with bind parameters, and a transaction block.\"\"\"\nimport sqlalchemy as sa\n\nengine = sa.create_engine(\"sqlite:///:memory:\")\nwith engine.begin() as conn:  # BEGIN ... COMMIT, or ROLLBACK when the block raises\n    conn.execute(sa.text(\"CREATE TABLE orders (order_id TEXT PRIMARY KEY, store TEXT, total_cents INTEGER)\"))\n    conn.execute(sa.text(\"INSERT INTO orders VALUES (:id, :store, :cents)\"), [\n        {\"id\": \"O-1\", \"store\": \"London\", \"cents\": 1250}, {\"id\": \"O-2\", \"store\": \"London\", \"cents\": 475}, {\"id\": \"O-3\", \"store\": \"Singapore\", \"cents\": 820}])\n\nwith engine.connect() as conn:\n    rows = conn.execute(sa.text(\"SELECT store, sum(total_cents) AS cents FROM orders WHERE total_cents >= :min GROUP BY store ORDER BY store\"), {\"min\": 500}).mappings().all()\n    print(\"rows:\", [dict(r) for r in rows])\n    print(\"column names:\", list(rows[0].keys()))\nprint(\"sqlalchemy\", sa.__version__)\n",
   "m8/upsert_batches.py": "\"\"\"Coding round: write many rows in batches, safe to run twice. SQLite, in memory.\"\"\"\nimport sqlite3\nfrom itertools import batched\n\n\ndef upsert_orders(conn, rows, batch_size=1000):\n    \"\"\"rows are (order_id, store, total_cents). Insert new orders and update the ones that exist. One transaction for each batch.\n    Return the number of batches written.\"\"\"\n    sql = (\"INSERT INTO orders (order_id, store, total_cents) VALUES (?, ?, ?) \"\n           \"ON CONFLICT (order_id) DO UPDATE SET store = excluded.store, total_cents = excluded.total_cents\")\n    n = 0\n    for chunk in batched(rows, batch_size):\n        with conn:\n            conn.executemany(sql, chunk)\n        n += 1\n    return n\n\n\nconn = sqlite3.connect(\":memory:\")\nconn.execute(\"CREATE TABLE orders (order_id TEXT PRIMARY KEY, store TEXT NOT NULL, total_cents INTEGER NOT NULL)\")\nrows = [(f\"O-{i}\", \"London\" if i % 2 else \"Singapore\", 100 + i) for i in range(2500)]\n\nn = upsert_orders(conn, rows, batch_size=1000)\ncount = lambda: conn.execute(\"SELECT count(*), sum(total_cents) FROM orders\").fetchone()\nassert n == 3 and count() == (2500, sum(r[2] for r in rows))\nprint(\"2,500 rows in batches of 1,000:\", n, \"batches,\", count()[0], \"rows\")\n\nupsert_orders(conn, rows, batch_size=1000)\nassert count() == (2500, sum(r[2] for r in rows))\nprint(\"run again:\", count()[0], \"rows, the same total\")\n\nchanged = [(\"O-0\", \"Singapore\", 9999)] + rows[1:]\nupsert_orders(conn, changed, batch_size=1000)\nassert conn.execute(\"SELECT total_cents FROM orders WHERE order_id = 'O-0'\").fetchone() == (9999,) and count()[0] == 2500\nprint(\"one changed row: updated in place, still\", count()[0], \"rows\")\n\nbad = rows[:3] + [(\"O-9000\", None, 1)]\ntry:\n    upsert_orders(conn, bad, batch_size=2)\nexcept sqlite3.IntegrityError as err:\n    print(\"a bad row in the second batch:\", err)\nassert conn.execute(\"SELECT count(*) FROM orders WHERE order_id = 'O-9000'\").fetchone() == (0,)\nprint(\"tests passed\")\n",
   "m8/batch_insert.py": "\"\"\"Four ways to write 5,000 rows into SQLite, in a file on disk. The timings come from the machine that runs this file.\"\"\"\nimport os\nimport sqlite3\nimport statistics\nimport tempfile\nimport time\n\nROWS = [(f\"O-{i}\", \"London\" if i % 2 else \"Singapore\", 100 + i) for i in range(5000)]\nSQL = \"INSERT INTO orders VALUES (?, ?, ?)\"\n\n\ndef commit_each(conn, rows):          # a transaction for every row\n    for r in rows:\n        conn.execute(SQL, r)\n        conn.commit()\n\n\ndef one_transaction(conn, rows):      # one transaction, one execute for every row\n    for r in rows:\n        conn.execute(SQL, r)\n    conn.commit()\n\n\ndef many(conn, rows):                 # one transaction, one executemany call\n    conn.executemany(SQL, rows)\n    conn.commit()\n\n\ndef batches(conn, rows, size=1000):   # executemany, and a commit for every 1,000 rows\n    for i in range(0, len(rows), size):\n        conn.executemany(SQL, rows[i:i + size])\n        conn.commit()\n\n\nMETHODS = {\"commit for every row\": commit_each, \"one transaction, execute in a loop\": one_transaction, \"one transaction, executemany\": many, \"executemany, commit every 1,000\": batches}\n\n\ndef seconds(method, rows=ROWS):\n    with tempfile.TemporaryDirectory() as folder:\n        conn = sqlite3.connect(os.path.join(folder, \"orders.db\"))\n        conn.execute(\"CREATE TABLE orders (order_id TEXT PRIMARY KEY, store TEXT, total_cents INTEGER)\")\n        conn.commit()\n        t0 = time.perf_counter()\n        METHODS[method](conn, rows)\n        took = time.perf_counter() - t0\n        assert conn.execute(\"SELECT count(*) FROM orders\").fetchone()[0] == len(rows)\n        conn.close()\n        return took\n\n\nif __name__ == \"__main__\":\n    print(f\"{'method':<38}{'seconds':>9}{'rows per second':>18}\")\n    for name in METHODS:\n        s = statistics.median(seconds(name) for _ in range(3))\n        print(f\"{name:<38}{s:>9.3f}{len(ROWS) / s:>18,.0f}\")\n",
-  "m9/nulls_and_types.py": "\"\"\"Missing values in pandas, Polars and DuckDB: what counts, what sums and what groups.\"\"\"\nimport duckdb\nimport pandas as pd\nimport polars as pl\n\ndata = {\"order_id\": [\"O-1\", \"O-2\", \"O-3\", \"O-4\"], \"total\": [12.5, None, 8.2, None], \"store\": [\"London\", \"London\", None, \"Singapore\"]}\n\np = pd.DataFrame(data)\nprint(\"pandas  dtypes:\", {k: str(v) for k, v in p.dtypes.items()})\nprint(\"pandas  rows:\", len(p), \" count of total:\", p[\"total\"].count(), \" sum:\", p[\"total\"].sum(), \" mean:\", round(p[\"total\"].mean(), 2))\nprint(\"pandas  NaN == NaN:\", p[\"total\"][1] == p[\"total\"][1], \" isna:\", p[\"total\"].isna().tolist())\nprint(\"pandas  rows per store:\", p.groupby(\"store\").size().to_dict(), \"(the missing store is dropped)\")\nprint(\"pandas  with dropna=False:\", p.groupby(\"store\", dropna=False).size().to_dict())\n\nq = pl.DataFrame(data)\nprint(\"polars  dtypes:\", {k: str(v) for k, v in q.schema.items()})\nprint(\"polars  rows:\", q.height, \" count of total:\", q[\"total\"].count(), \" null_count:\", q[\"total\"].null_count(), \" sum:\", q[\"total\"].sum(), \" mean:\", round(q[\"total\"].mean(), 2))\nprint(\"polars  rows per store:\", dict(q.group_by(\"store\").len().sort(\"store\", nulls_last=True).iter_rows()))\n\nprint(\"duckdb  rows per store:\", dict(duckdb.sql(\"SELECT store, count(*) FROM p GROUP BY store ORDER BY store NULLS LAST\").fetchall()))\nprint(\"duckdb  count(*), count(total), sum, avg:\", duckdb.sql(\"SELECT count(*), count(total), sum(total), round(avg(total), 2) FROM p\").fetchall()[0])\n",
+  "m9/nulls_and_types.py": "\"\"\"Missing values in pandas, Polars and DuckDB: what counts, what sums and what groups.\"\"\"\nimport duckdb\nimport pandas as pd\nimport polars as pl\n\ndata = {\"order_id\": [\"O-1\", \"O-2\", \"O-3\", \"O-4\"], \"total\": [12.5, None, 8.2, None], \"store\": [\"London\", \"London\", None, \"Singapore\"]}\n\np = pd.DataFrame(data)\nprint(\"pandas  dtypes:\", {k: str(v) for k, v in p.dtypes.items()})\nprint(\"pandas  rows:\", len(p), \" count of total:\", p[\"total\"].count(), \" sum:\", p[\"total\"].sum(), \" mean:\", round(p[\"total\"].mean(), 2))\nprint(\"pandas  nan == nan:\", p[\"total\"][1] == p[\"total\"][1], \" isna:\", p[\"total\"].isna().tolist())\nprint(\"pandas  rows per store:\", p.groupby(\"store\").size().to_dict(), \"(the missing store is dropped)\")\nprint(\"pandas  with dropna=False:\", p.groupby(\"store\", dropna=False).size().to_dict())\n\nq = pl.DataFrame(data)\nprint(\"polars  dtypes:\", {k: str(v) for k, v in q.schema.items()})\nprint(\"polars  rows:\", q.height, \" count of total:\", q[\"total\"].count(), \" null_count:\", q[\"total\"].null_count(), \" sum:\", q[\"total\"].sum(), \" mean:\", round(q[\"total\"].mean(), 2))\nprint(\"polars  rows per store:\", dict(q.group_by(\"store\").len().sort(\"store\", nulls_last=True).iter_rows()))\n\nprint(\"duckdb  rows per store:\", dict(duckdb.sql(\"SELECT store, count(*) FROM p GROUP BY store ORDER BY store NULLS LAST\").fetchall()))\nprint(\"duckdb  count(*), count(total), sum, avg:\", duckdb.sql(\"SELECT count(*), count(total), sum(total), round(avg(total), 2) FROM p\").fetchall()[0])\n",
   "m9/merge_fanout.py": "\"\"\"A join that multiplies rows: the customer table has two rows for customer 3. The same join in pandas, Polars and DuckDB.\"\"\"\nimport duckdb\nimport pandas as pd\nimport polars as pl\n\norders = pd.DataFrame({\"order_id\": [\"O-1\", \"O-2\", \"O-3\", \"O-4\", \"O-5\", \"O-6\"], \"customer_id\": [1, 2, 2, 3, 1, 3], \"total_cents\": [1250, 475, 820, 1990, 3100, 640]})\ncustomers = pd.DataFrame({\"customer_id\": [1, 2, 3, 3], \"city\": [\"London\", \"London\", \"Singapore\", \"Singapore\"]})  # 3 appears twice, like a history table\n\nprint(\"orders:\", len(orders), \"rows, total\", orders[\"total_cents\"].sum(), \"cents\")\n\nmerged = orders.merge(customers, on=\"customer_id\", how=\"left\")\nprint(\"pandas  left join:\", len(merged), \"rows, total\", merged[\"total_cents\"].sum(), \"cents\")\n\njoined = pl.from_pandas(orders).join(pl.from_pandas(customers), on=\"customer_id\", how=\"left\")\nprint(\"polars  left join:\", joined.height, \"rows, total\", joined[\"total_cents\"].sum(), \"cents\")\n\nrow = duckdb.sql(\"SELECT count(*), sum(total_cents) FROM orders LEFT JOIN customers USING (customer_id)\").fetchall()[0]\nprint(\"duckdb  left join:\", row[0], \"rows, total\", row[1], \"cents\")\n\nprint(\"who is repeated:\", merged[merged[\"order_id\"].duplicated(keep=False)][\"order_id\"].tolist())\n\ntry:\n    orders.merge(customers, on=\"customer_id\", how=\"left\", validate=\"m:1\")\nexcept Exception as err:\n    print(\"pandas  validate m:1 ->\", type(err).__name__ + \":\", err)\ntry:\n    pl.from_pandas(orders).join(pl.from_pandas(customers), on=\"customer_id\", how=\"left\", validate=\"m:1\")\nexcept Exception as err:\n    print(\"polars  validate m:1 ->\", type(err).__name__ + \":\", err)\nprint(\"duckdb  has no validate. Check the key yourself:\",\n      duckdb.sql(\"SELECT customer_id, count(*) AS rows FROM customers GROUP BY customer_id HAVING count(*) > 1\").fetchall())\n\nfixed = orders.merge(customers.drop_duplicates(\"customer_id\"), on=\"customer_id\", how=\"left\", validate=\"m:1\")\nprint(\"after drop_duplicates and validate m:1:\", len(fixed), \"rows, total\", fixed[\"total_cents\"].sum(), \"cents\")\n",
   "m9/safe_join.py": "\"\"\"Coding round: a left join that cannot multiply rows.\"\"\"\nimport pandas as pd\n\n\ndef safe_join(orders, customers, key=\"customer_id\"):\n    \"\"\"Left join orders to customers. Raise ValueError, naming the keys, when customers has more than one row for a key.\n    The result has exactly one row for each order, in the order of `orders`.\"\"\"\n    repeated = customers.loc[customers[key].duplicated(keep=False), key].unique().tolist()\n    if repeated:\n        raise ValueError(f\"customers has more than one row for {key} {repeated}\")\n    out = orders.merge(customers, on=key, how=\"left\", validate=\"m:1\")\n    assert len(out) == len(orders)\n    return out\n\n\norders = pd.DataFrame({\"order_id\": [\"O-1\", \"O-2\", \"O-3\", \"O-4\"], \"customer_id\": [1, 2, 3, 9], \"total_cents\": [1250, 475, 820, 1990]})\ncustomers = pd.DataFrame({\"customer_id\": [1, 2, 3], \"city\": [\"London\", \"London\", \"Singapore\"]})\n\nout = safe_join(orders, customers)\nassert out[\"order_id\"].tolist() == [\"O-1\", \"O-2\", \"O-3\", \"O-4\"] and out[\"total_cents\"].sum() == orders[\"total_cents\"].sum()\nprint(\"a clean join:\", len(out), \"rows, total\", out[\"total_cents\"].sum(), \"cents\")\nassert bool(out[\"city\"].isna().iloc[3]) and out[\"city\"].iloc[0] == \"London\"\nprint(\"an order with no customer is kept:\", out[\"order_id\"].iloc[3], \"with a missing city\")\ntry:\n    safe_join(orders, pd.concat([customers, customers.iloc[[2]]]))\n    raise AssertionError(\"a repeated key must raise\")\nexcept ValueError as err:\n    print(\"a repeated key raises:\", err)\nprint(\"tests passed\")\n",
   "m9/latest_per_order.py": "\"\"\"Coding round: the latest row for each order, in SQL, with DuckDB.\"\"\"\nimport duckdb\nimport pandas as pd\n\n\ndef latest_per_order(rows):\n    \"\"\"rows are (order_id, status, updated_at). Return one row for each order_id, the one with the latest updated_at, sorted by order_id.\"\"\"\n    df = pd.DataFrame(rows, columns=[\"order_id\", \"status\", \"updated_at\"])\n    return duckdb.sql(\"\"\"\n        SELECT order_id, status, updated_at FROM df\n        QUALIFY row_number() OVER (PARTITION BY order_id ORDER BY updated_at DESC) = 1\n        ORDER BY order_id\"\"\").fetchall()\n\n\nrows = [(\"O-1\", \"placed\", \"2026-03-14 08:00\"), (\"O-2\", \"placed\", \"2026-03-14 09:00\"), (\"O-1\", \"paid\", \"2026-03-14 08:05\"),\n        (\"O-3\", \"placed\", \"2026-03-14 07:00\"), (\"O-1\", \"refunded\", \"2026-03-15 10:00\"), (\"O-2\", \"paid\", \"2026-03-14 09:30\")]\ngot = latest_per_order(rows)\nassert got == [(\"O-1\", \"refunded\", \"2026-03-15 10:00\"), (\"O-2\", \"paid\", \"2026-03-14 09:30\"), (\"O-3\", \"placed\", \"2026-03-14 07:00\")]\nprint(\"latest status of each order:\", [(o, s) for o, s, _ in got])\nassert latest_per_order([]) == []\nprint(\"no rows:\", latest_per_order([]))\nassert latest_per_order(rows[:1]) == [rows[0]]\nprint(\"one row:\", len(latest_per_order(rows[:1])), \"row\")\nprint(\"tests passed\")\n",
@@ -201,7 +201,7 @@ LAB.real = {
   "m8/sqlalchemy_core.py": "rows: [{'store': 'London', 'cents': 1250}, {'store': 'Singapore', 'cents': 820}]\ncolumn names: ['store', 'cents']\nsqlalchemy 2.1.8",
   "m8/upsert_batches.py": "2,500 rows in batches of 1,000: 3 batches, 2500 rows\nrun again: 2500 rows, the same total\none changed row: updated in place, still 2500 rows\na bad row in the second batch: NOT NULL constraint failed: orders.store\ntests passed",
   "m8/batch_insert.py": "method                                  seconds   rows per second\ncommit for every row                      4.700             1,064\none transaction, execute in a loop        0.009           586,396\none transaction, executemany              0.006           868,926\nexecutemany, commit every 1,000           0.012           427,005",
-  "m9/nulls_and_types.py": "pandas  dtypes: {'order_id': 'str', 'total': 'float64', 'store': 'str'}\npandas  rows: 4  count of total: 2  sum: 20.7  mean: 10.35\npandas  NaN == NaN: False  isna: [False, True, False, True]\npandas  rows per store: {'London': 2, 'Singapore': 1} (the missing store is dropped)\npandas  with dropna=False: {'London': 2, 'Singapore': 1, nan: 1}\npolars  dtypes: {'order_id': 'String', 'total': 'Float64', 'store': 'String'}\npolars  rows: 4  count of total: 2  null_count: 2  sum: 20.7  mean: 10.35\npolars  rows per store: {'London': 2, 'Singapore': 1, None: 1}\nduckdb  rows per store: {'London': 2, 'Singapore': 1, None: 1}\nduckdb  count(*), count(total), sum, avg: (4, 2, 20.7, 10.35)",
+  "m9/nulls_and_types.py": "pandas  dtypes: {'order_id': 'str', 'total': 'float64', 'store': 'str'}\npandas  rows: 4  count of total: 2  sum: 20.7  mean: 10.35\npandas  nan == nan: False  isna: [False, True, False, True]\npandas  rows per store: {'London': 2, 'Singapore': 1} (the missing store is dropped)\npandas  with dropna=False: {'London': 2, 'Singapore': 1, nan: 1}\npolars  dtypes: {'order_id': 'String', 'total': 'Float64', 'store': 'String'}\npolars  rows: 4  count of total: 2  null_count: 2  sum: 20.7  mean: 10.35\npolars  rows per store: {'London': 2, 'Singapore': 1, None: 1}\nduckdb  rows per store: {'London': 2, 'Singapore': 1, None: 1}\nduckdb  count(*), count(total), sum, avg: (4, 2, 20.7, 10.35)",
   "m9/merge_fanout.py": "orders: 6 rows, total 8275 cents\npandas  left join: 8 rows, total 10905 cents\npolars  left join: 8 rows, total 10905 cents\nduckdb  left join: 8 rows, total 10905 cents\nwho is repeated: ['O-4', 'O-4', 'O-6', 'O-6']\npandas  validate m:1 -> MergeError: Merge keys are not unique in right dataset; not a many-to-one merge\n\nDuplicates in right:\n  customer_id\n           3 ...\npolars  validate m:1 -> ComputeError: join keys did not fulfill m:1 validation\nduckdb  has no validate. Check the key yourself: [(3, 2)]\nafter drop_duplicates and validate m:1: 6 rows, total 8275 cents",
   "m9/safe_join.py": "a clean join: 4 rows, total 4535 cents\nan order with no customer is kept: O-4 with a missing city\na repeated key raises: customers has more than one row for customer_id [3]\ntests passed",
   "m9/latest_per_order.py": "latest status of each order: [('O-1', 'refunded'), ('O-2', 'paid'), ('O-3', 'placed')]\nno rows: []\none row: 1 row\ntests passed",
@@ -4615,51 +4615,51 @@ LAB.real = {
    "file_mb": 12.9,
    "engines": {
     "pandas": {
-     "seconds": 0.1701,
-     "extra_mb": 272.5,
-     "peak_mb": 378.6,
+     "seconds": 0.1508,
+     "extra_mb": 268.2,
+     "peak_mb": 373.9,
      "runs": [
-      0.165,
-      0.1653,
-      0.1701,
-      0.2172,
-      0.1824
+      0.1499,
+      0.1508,
+      0.1677,
+      0.1554,
+      0.1331
      ]
     },
     "polars eager": {
-     "seconds": 0.0918,
-     "extra_mb": 223.9,
-     "peak_mb": 276.3,
+     "seconds": 0.0705,
+     "extra_mb": 230.0,
+     "peak_mb": 276.4,
      "runs": [
-      0.1114,
-      0.0918,
-      0.078,
-      0.0956,
-      0.0768
+      0.0697,
+      0.0705,
+      0.0745,
+      0.0744,
+      0.0698
      ]
     },
     "polars lazy": {
-     "seconds": 0.0217,
-     "extra_mb": 48.1,
-     "peak_mb": 100.5,
+     "seconds": 0.0173,
+     "extra_mb": 53.8,
+     "peak_mb": 100.3,
      "runs": [
-      0.0242,
-      0.0217,
-      0.0225,
-      0.0195,
-      0.0208
+      0.0209,
+      0.0173,
+      0.0163,
+      0.0167,
+      0.0184
      ]
     },
     "duckdb": {
-     "seconds": 0.0446,
-     "extra_mb": 22.4,
-     "peak_mb": 74.9,
+     "seconds": 0.0382,
+     "extra_mb": 37.9,
+     "peak_mb": 74.6,
      "runs": [
+      0.0356,
+      0.0382,
       0.0446,
-      0.0494,
-      0.0433,
-      0.0511,
-      0.0368
+      0.0346,
+      0.0395
      ]
     }
    },
