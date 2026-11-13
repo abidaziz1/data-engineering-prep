@@ -115,6 +115,8 @@ def cmd_files():
     spec = json.loads(sys.stdin.read())
     out = {}
     for sid, path in spec.items():
+        # the DAG processor has the folder of the DAGs on sys.path, so a DAG file can import the modules next to it
+        sys.path.insert(0, os.path.dirname(path))
         stdout, stderr = sys.stdout, sys.stderr
         sys.stdout, sys.stderr = io.StringIO(), io.StringIO()
         try:

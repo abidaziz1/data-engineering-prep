@@ -26,8 +26,8 @@
     '    def build_report():',
     '        raise RuntimeError("the warehouse is down")',
     '',
-    '    alert = BashOperator(task_id="alert_team", bash_command="echo the report failed")',
-    '    build_report() >> alert',
+    '    alert_team = BashOperator(task_id="alert_team", bash_command="echo the report failed")',
+    '    build_report() >> alert_team',
     '',
     '',
     'brewline_report()'
@@ -372,7 +372,7 @@
 
       B.bug({
         id: 'm6-bug1', t: 1, q: 'This DAG should alert the team when the report fails. The alert task never runs when `build_report` fails. Click the line that is wrong.',
-        file: 'brewline_report.py', lang: 'python', code: NOTIFY_BUG, bad: [G.at(NOTIFY_BUG, /alert = BashOperator/)],
+        file: 'brewline_report.py', lang: 'python', code: NOTIFY_BUG, bad: [G.at(NOTIFY_BUG, /alert_team = BashOperator/)],
         hint: 'With the default trigger rule, what happens to a child of a failed task?',
         why: 'The alert has the default `all_success`, so a failed parent makes it `upstream_failed` and it never starts. Give the alert a rule that fits: `one_failed` runs it when a parent failed.',
         fix: NOTIFY_FIX,

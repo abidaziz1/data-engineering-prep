@@ -43,7 +43,7 @@
     'brewline_customers()'
   ].join('\n');
   var TRUNC_FIX = TRUNC_BUG.replace('    empty = SQLExecuteQueryOperator(task_id="empty_table", conn_id="warehouse", sql="TRUNCATE TABLE dim_customers")\n    fill = SQLExecuteQueryOperator(task_id="fill_table", conn_id="warehouse", sql="INSERT INTO dim_customers SELECT * FROM staging.customers")\n    empty >> fill',
-    '    build = SQLExecuteQueryOperator(task_id="build_and_swap", conn_id="warehouse", sql=[\n        "CREATE OR REPLACE TABLE dim_customers_{{ ds_nodash }} AS SELECT * FROM staging.customers",\n        "ALTER TABLE dim_customers_{{ ds_nodash }} SWAP WITH dim_customers",\n    ])');
+    '    build_and_swap = SQLExecuteQueryOperator(task_id="build_and_swap", conn_id="warehouse", sql=[\n        "CREATE OR REPLACE TABLE dim_customers_{{ ds_nodash }} AS SELECT * FROM staging.customers",\n        "ALTER TABLE dim_customers_{{ ds_nodash }} SWAP WITH dim_customers",\n    ])');
 
   function stepsRows() {
     return INC.map(function (s) { return [s.step, s.source.join(', '), s.brewline_incr_window.join(', ') || 'none', s.brewline_incr_lookback.join(', ') || 'none']; });
