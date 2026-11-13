@@ -305,7 +305,7 @@
         pts: ['It splits rows into groups and returns one row for each group', 'Aggregates reduce each group', 'A column that is not grouped has many values in a group', 'DuckDB and PostgreSQL refuse it, SQLite does not'],
         short: 'GROUP BY splits the rows into groups that share the same values in the grouping columns, and the query returns one row for each group. Aggregate functions such as count, sum and avg reduce each group to one value. A column that is neither grouped nor aggregated has many different values inside a group, so there is no single value to return, and DuckDB and PostgreSQL stop with an error. SQLite is lenient and returns the value of some row, which looks fine and is arbitrary. I treat that as a bug: I add the column to GROUP BY, or I aggregate it, for example with `min`.',
         fu: [['What is the grain of a grouped result?', 'The grouping columns: one row for each store, or for each store and channel.']],
-        trap: 'Relying on SQLite or MySQL to pick a value for a bare column.',
+        trap: 'Relying on SQLite, or on MySQL with ONLY_FULL_GROUP_BY switched off, to pick a value for a bare column.',
         real: 'Tell about a report where a bare column returned the wrong value.'
       }),
 
