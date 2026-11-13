@@ -1,0 +1,146 @@
+/* Styles for the labs of the Python for data engineers tutorial. The engine styles are in shared/css/app.css. */
+:root{--blue:#306998;--blue-bg:#E0ECF7}
+a.logo{background:#306998}
+a.logo:hover{background:#25527A}
+
+.lab{display:flex;flex-direction:column;gap:.7rem}
+.lab-row{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem .9rem}
+.lab-l{font-weight:800;min-width:8rem}
+.lab-note{font-size:.9rem;font-weight:600;color:var(--ink2);margin:.1rem 0 0}
+.lab button:disabled{opacity:.45}
+.lab-out{display:flex;flex-wrap:wrap;gap:.6rem}
+.lab-out .big{flex:1 1 9rem;background:#fff;border:3px solid var(--ink);border-radius:12px;padding:.4rem .8rem;box-shadow:0 3px 0 var(--ink)}
+.lab-out .big b{display:block;font:800 1.5rem Manrope,sans-serif}
+.lab-out .big span{font-size:.9rem;font-weight:700;color:var(--ink2)}
+.lab-out .big.warn{background:#FEF3C7}
+.lab-out .big.bad{background:#FEE2E2}
+.lab-out .big.good{background:#DCFCE7}
+.lab-h{font:800 1.05rem Manrope,sans-serif;margin:.3rem 0 .1rem}
+.tbl td code{font-size:.96em}
+.tbl td.wbad{background:#FEE2E2;font-weight:800}
+.tbl td.wgood{background:#DCFCE7;font-weight:800}
+.tbl tr.dup td{background:#FEE2E2}
+.tbl tr.old td{color:#64748B;text-decoration:line-through}
+.tbl tr.new td{background:#DCFCE7}
+
+/* two panels side by side */
+.pair{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:.8rem}
+.pair .code{margin:0}
+@media (max-width:900px){.pair{grid-template-columns:minmax(0,1fr)}}
+
+/* selector chips */
+.sel-chips{display:flex;flex-wrap:wrap;gap:.45rem}
+.sel-chip{background:#fff;border:3px solid var(--ink);border-radius:12px;padding:.35rem .7rem;font:600 .9rem 'IBM Plex Mono',monospace;cursor:pointer;text-align:left}
+.sel-chip:hover{background:var(--blue-bg)}
+.sel-chip.on{background:#FEF3C7;box-shadow:0 3px 0 var(--ink)}
+.sel-chip.yes{background:#DCFCE7}
+.sel-chip.no{background:#FEE2E2}
+.pill{display:inline-block;border:2px solid var(--ink);border-radius:999px;padding:.05rem .65rem;font:800 .85rem Manrope,sans-serif;letter-spacing:.04em;text-transform:uppercase;background:#fff}
+.pill.good{background:#BBF7D0}.pill.bad{background:#FECACA}.pill.warn{background:#FEF3C7}
+
+/* reasons under a verdict */
+.why{margin:.2rem 0 0;padding-left:1.3rem;display:flex;flex-direction:column;gap:.3rem;font-weight:600}
+
+/* bars with a number at the end */
+.gantt{display:flex;flex-direction:column;gap:.35rem}
+.lane{display:flex;align-items:center;gap:.6rem}
+.lane-n{min-width:6rem;font-weight:800;font-size:.9rem}
+.lane-wide{min-width:11.5rem}
+.lane-track{position:relative;flex:1;height:2.3rem;background:#E2E8F0;border:3px solid var(--ink);border-radius:8px;overflow:hidden}
+.gbar{position:absolute;top:0;bottom:0;background:#FB923C;border-right:2px solid var(--ink);font:700 .85rem 'IBM Plex Mono',monospace;padding:.3rem .3rem;overflow:hidden;white-space:nowrap}
+.gbar.bad{background:#F87171}
+.gbar.sel{background:#F97316}
+.gbar.off{background:#CBD5E1}
+.lane-v{min-width:5.2rem;text-align:right;font:700 .95rem 'IBM Plex Mono',monospace}
+
+/* blob listing lab */
+.keylist{list-style:none;margin:.2rem 0 0;padding:0;display:flex;flex-direction:column;gap:.25rem}
+.keylist li{border:2px solid var(--ink);border-radius:8px;padding:.15rem .55rem;font:600 .9rem 'IBM Plex Mono',monospace;background:#fff;word-break:break-all}
+.keylist li.cp{background:#DBEAFE}
+
+/* queue boxes */
+.qrow{display:grid;grid-template-columns:repeat(auto-fit,minmax(13rem,1fr));gap:.6rem}
+.qbox{border:3px solid var(--ink);border-radius:12px;padding:.5rem .8rem;background:#F1F5F9;display:flex;flex-direction:column;gap:.2rem}
+.qbox b{font:800 1.05rem Manrope,sans-serif}
+.qbox span{font-weight:600;font-size:.92rem}
+.qbox.here{background:#FDE68A;box-shadow:0 3px 0 var(--ink)}
+.qbox.ready{background:#DBEAFE}
+.qbox.dl.here{background:#FECACA}
+
+/* the distributions of a dedicated SQL pool: one bar for each of the 60 */
+.dist{display:grid;grid-template-columns:repeat(30,1fr);gap:3px;align-items:end;height:8.5rem;border:3px solid var(--ink);border-radius:12px;background:#fff;padding:.4rem .4rem 0}
+.dist i{display:block;background:#F97316;border:1.5px solid var(--ink);border-bottom:0;border-radius:3px 3px 0 0;min-height:2px}
+.dist i.empty{background:#CBD5E1;border-color:#94A3B8}
+.dist i.max{background:#DC2626}
+.dist-wrap{display:flex;flex-direction:column;gap:.15rem}
+.dist-wrap .dist+.dist{height:8.5rem}
+
+/* a resource tree for the scope lab */
+.tree{border:3px solid var(--ink);border-radius:14px;background:#fff;padding:.4rem .7rem}
+.tn{display:flex;align-items:center;gap:.5rem;padding:.12rem .3rem;border-radius:8px;font:600 .92rem 'IBM Plex Mono',monospace;margin-left:calc(var(--d,0) * 1.4rem)}
+.tn .ty{font:800 .78rem Manrope,sans-serif;letter-spacing:.05em;text-transform:uppercase;background:#E2E8F0;border:2px solid var(--ink);border-radius:6px;padding:0 .4rem}
+.tn button{background:none;border:0;font:inherit;text-align:left;padding:0;cursor:pointer;color:inherit}
+.tn.pick{background:#FEF3C7;outline:2px solid var(--ink)}
+.tn.in{background:#DBEAFE}
+.tn .ok{margin-left:auto;display:flex;gap:.35rem}
+.tn .tag{font:800 .78rem Manrope,sans-serif;border:2px solid var(--ink);border-radius:999px;padding:0 .5rem;background:#fff}
+.tn .tag.y{background:#BBF7D0}.tn .tag.n{background:#F1F5F9;color:#64748B;border-color:#94A3B8}
+
+/* credential chain */
+.chain{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.3rem;counter-reset:c}
+.chain li{counter-increment:c;display:flex;gap:.6rem;align-items:flex-start;border:3px solid var(--ink);border-radius:12px;padding:.3rem .7rem;background:#fff;font-weight:600}
+.chain li::before{content:counter(c);flex:none;width:1.6rem;height:1.6rem;border-radius:50%;background:var(--ink);color:#fff;display:grid;place-items:center;font:800 .85rem Manrope,sans-serif}
+.chain li b{font:700 .92rem 'IBM Plex Mono',monospace}
+.chain li span{font-size:.9rem;color:var(--ink2)}
+.chain li.skip{background:#F1F5F9;opacity:.75}
+.chain li.used{background:#DCFCE7;border-color:#15803D;box-shadow:0 3px 0 #15803D}
+
+/* data file tiles: one tile for each file a wildcard reads */
+.skipgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(3.2rem,1fr));gap:.35rem}
+.skf{border:3px solid var(--ink);border-radius:10px;padding:.3rem .4rem;font:700 .8rem 'IBM Plex Mono',monospace;display:flex;flex-direction:column;gap:.1rem;min-height:2.4rem;justify-content:center}
+.skf b{font-weight:800}
+.skf span{font-weight:600;font-size:.78rem}
+.skf.read{background:#FDBA74}
+.skf.skipped{background:#E2E8F0;color:#475569;opacity:.75}
+
+/* an expression box */
+.expr{font:600 .95rem 'IBM Plex Mono',monospace;background:#0B1220;color:#E2E8F0;border:3px solid var(--ink);border-radius:12px;padding:.55rem .8rem;white-space:pre-wrap;overflow-wrap:anywhere}
+.expr.res{background:#ECFDF5;color:var(--ink);border-color:var(--green)}
+.expr.err{background:#FEE2E2;color:var(--ink);border-color:var(--red)}
+
+/* long identifiers such as AuthorizationPermissionMismatch must wrap on a phone */
+.qtext,.alertbox,.alertbox *,.prompt,.opt .ot,.callout,.clues li,.triage li,.lab-out .big b,.lab-out .big span{overflow-wrap:anywhere}
+
+/* things that must wrap on a phone: notes and cards with long names, layer names, and the scope tree */
+.lab-note,.lab-note *,.cheat-card,.cheat-card *,.lname,.layer-h,.callout code{overflow-wrap:anywhere}
+.lname{min-width:0}
+@media (max-width:640px){
+  .tn{flex-wrap:wrap;margin-left:calc(var(--d,0) * .8rem)}
+  .tn .ok{margin-left:0;flex-basis:100%}
+}
+
+/* one small square for every task, a new colour for every wave */
+.sqs{display:flex;flex-wrap:wrap;gap:3px;margin:.2rem 0}
+.sq{display:inline-block;width:13px;height:13px;border:2px solid var(--ink);border-radius:3px;background:#FB923C}
+.sq.w1{background:#60A5FA}.sq.w2{background:#4ADE80}.sq.w3{background:#FACC15}
+.sq-more{font:700 .8rem 'IBM Plex Mono',monospace;margin-left:.3rem;align-self:center}
+
+/* mission 7: the retry chart and the idempotency grid */
+.rchart{display:flex;align-items:flex-end;gap:1px;height:150px;background:#fff;border:3px solid var(--ink);border-radius:12px;padding:.5rem .6rem 0;box-shadow:0 3px 0 var(--ink);margin-top:.6rem}
+.rchart .rb{flex:1 1 0;min-width:1px;max-width:14px;height:100%;display:flex;flex-direction:column;justify-content:flex-end}
+.rchart .rb i{display:block;width:100%}
+.rchart .rb .ok,.rkey .ok{background:#22C55E}
+.rchart .rb .rj,.rkey .rj{background:#EF4444}
+.raxis{display:flex;justify-content:space-between;gap:.5rem;font:700 .8rem 'IBM Plex Mono',monospace;color:var(--ink2);padding:.2rem .3rem 0}
+.rkey{font:700 .85rem Manrope,sans-serif;color:var(--ink2);padding:.15rem .3rem .4rem}
+.rkey i{display:inline-block;width:.9rem;height:.9rem;border:2px solid var(--ink);border-radius:3px;vertical-align:-.15rem;margin:0 .2rem 0 .6rem}
+.tbl td.wgood{background:#DCFCE7;font-weight:800}
+
+/* mission 8: pages of ids */
+.pgs{display:grid;gap:.4rem;margin:.5rem 0}
+.pg{display:flex;align-items:center;gap:.35rem;flex-wrap:wrap}
+.pg b{min-width:5.2rem;font:800 .9rem Manrope,sans-serif}
+.idc{font:700 .85rem 'IBM Plex Mono',monospace;border:2px solid var(--ink);border-radius:8px;padding:.1rem .4rem;background:#fff}
+.idc.dupe{background:#FECACA}
+.idc.new{background:#BBF7D0}
+.idc.miss{background:#FEF3C7;border-style:dashed}

@@ -1,0 +1,27 @@
+# The environment that recorded js/real.js, and that verify_py.py expects: Python 3.14.6, and the free-threaded build 3.14.6t for the GIL lab.
+# Install:  uv venv --python 3.14 && uv pip install -r python/verify/requirements-py.txt
+# The recorder (capture_py.py) also needs uv itself (recorded with 0.11.32), the builds from  uv python install 3.14 3.14t 3.13,
+# and access to PyPI, because the lessons run uv add, uv lock and uv sync in fresh projects.
+pandas==3.1.1
+numpy==2.5.4
+polars==2.1.0
+pyarrow==26.0.1
+duckdb==2.0.0
+sqlalchemy==2.1.8
+pydantic==2.14.3
+mypy==2.4.1
+ruff==0.17.4
+pytest==9.2.0
+pytest-cov==7.1.0
+hypothesis==6.170.15
+requests==2.34.2
+httpx==0.28.1
+tenacity==9.2.1
+typer==0.29.1
+psutil==7.2.2
+tzdata==2026.6
+python-dateutil==4.0.0
+packaging==26.3
+# For the workflow checks of verify_py.py (the file is read as YAML and compared with the SchemaStore schema):
+pyyaml==6.0.3
+jsonschema==4.26.0

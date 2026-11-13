@@ -1,0 +1,22 @@
+[project]
+name = "brewline-loader"
+version = "0.1.0"
+description = "Load one day of Brewline orders"
+requires-python = ">=3.12"
+dependencies = ["typer>=0.12"]
+
+[project.scripts]
+brewline-load = "brewline_loader.cli:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/brewline_loader"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 140
