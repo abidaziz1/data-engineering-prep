@@ -1,4 +1,4 @@
-"""A DAG written for Airflow 2.x. It still imports in 3.4.0, with warnings, and ruff can find what to change before Airflow 4."""
+"""A DAG written for Airflow 2.x. It does not import in Airflow 3.4.0, because days_ago was removed, and ruff finds what to change."""
 from datetime import datetime
 
 from airflow import DAG
