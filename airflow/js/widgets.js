@@ -232,8 +232,8 @@
         } else {
           var ex = ['success', 'failed', 'none'], acts = backfill(ex, q.beh), bf = G.counts('af.backfill');
           h += '<div class="lab-row"><span class="lab-l">--reprocess-behavior</span><div class="sel-chips">' + chips(['none', 'failed', 'completed'], q.beh, 'cu-b') + '</div></div>' +
-            table(['Day', 'Run that exists', 'What the backfill does'], ex.map(function (e, k) { return ['2026-03-' + (5 + k), e === 'none' ? 'no run' : e, acts[k] === 'create' ? 'creates the run' : acts[k] === 'rerun' ? 'clears the run and runs it again' : 'leaves it alone']; }), function (r, k) { return acts[k] === 'keep' ? '' : 'new'; }) +
-            '<div class="callout tip">Recorded: three backfill runs were created for the window ' + esc(bf.window[0].slice(0, 10)) + ' to ' + esc(bf.window[1].slice(0, 10)) + '. A second call with `none` made <b>' + (bf.runs_after_second_call - bf.runs_after_first_call) + '</b> new runs. A call with `completed` raised the clear number of each run from ' + bf.clear_numbers_after_none.join(', ') + ' to ' + bf.clear_numbers_after_completed.join(', ') + '. The `failed` behavior is from the command help, not from a run.</div>';
+            table(['Day', 'Run that exists', 'What the backfill does'], ex.map(function (e, k) { return ['2026-03-0' + (5 + k), e === 'none' ? 'no run' : e, acts[k] === 'create' ? 'creates the run' : acts[k] === 'rerun' ? 'clears the run and runs it again' : 'leaves it alone']; }), function (r, k) { return acts[k] === 'keep' ? '' : 'new'; }) +
+            '<div class="callout tip">Recorded: three backfill runs were created for the window ' + esc(bf.window[0].slice(0, 10)) + ' to ' + esc(bf.window[1].slice(0, 10)) + '. A second call with `none` made <b>' + (bf.runs_after_second_call - bf.runs_after_first_call) + '</b> new runs. A call with `completed` raised the try number of the task of each run from ' + bf.tries_after_none.join(', ') + ' to ' + bf.tries_after_completed.join(', ') + '. The `failed` behavior is from the command help, not from a run.</div>';
         }
         box.innerHTML = h + '</div>';
         bindCodes(box);

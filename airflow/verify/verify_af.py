@@ -118,8 +118,22 @@ def check_names(snips):
     return check('af_check.py', 'names', stdin=json.dumps(snips))
 
 
-def check_files(paths, dags=None):
-    return check('af_check.py', 'files', stdin=json.dumps({k: str(v) for k, v in paths.items()}), dags=dags)
+def check_files(paths, dags=None, env_extra=None):
+    return check('af_check.py', 'files', stdin=json.dumps({k: str(v) for k, v in paths.items()}), dags=dags, env_extra=env_extra)
+
+
+def own_warning(statement, message):
+    """A deprecation warning counts when it names the module or the object that the lesson imports.
+    Warnings that Airflow's own provider code raises about its own internals are not the lesson's problem."""
+    try:
+        node = ast.parse(statement).body[0]
+    except (SyntaxError, IndexError):
+        return True
+    if isinstance(node, ast.ImportFrom):
+        wanted = [node.module or ''] + ['%s.%s' % (node.module, a.name) for a in node.names]
+    else:
+        wanted = [a.name for a in node.names]
+    return any(w and w in message for w in wanted)
 
 
 def ruff_aira(path):
@@ -164,7 +178,6 @@ IMPORT_FAILS = {  # the lesson says that the file does not import, and why
 KWARG_BAD = {'m2-bug1': 'schedule_interval', 'm11-bug1': 'schedule_interval', 'm14-r2-bug': 'schedule_interval'}
 PARTIAL = {'m14-r3-code', 'm14-r3-bug', 'm14-r3-bug_fix', 'm9-code-db_unused'}          # an excerpt of a file: no imports of its own
 NOT_DAG = {'m10-code-logic', 'm10-code-tests', 'm14-r1-test', 'm10-bug2', 'm10-bug2_fix'}  # a module or a test file
-NEEDS = {'m10-code-dag': ['orders_logic'], 'm14-r1-dag': ['store_logic'], 'm6-code-deadline': ['brewline_alerts']}   # helper modules that sit next to the file
 
 if not args.no_run:
     names = check_names(snips_by_id)
@@ -180,10 +193,12 @@ if not args.no_run:
             bad('%s: an import fails: %s' % (name, r['imports_failed']))
         if (not isfix) and sid in IMPORT_FAILS and sid == 'm11-bug1' and not r['imports_failed']:
             bad('%s: the lesson says the old import fails, and it does not' % name)
-        if r['warnings'] and (isfix or not sid.endswith('bug') and 'bug' not in sid):
-            bad('%s: the code of a lesson imports through a deprecated path: %s' % (name, r['warnings'][0]))
-        if isfix and r['warnings']:
-            pass
+        own = [w for w in r['warnings'] if own_warning(w[0], w[1])]
+        if own and (isfix or 'bug' not in sid):
+            bad('%s: the code of a lesson imports through a deprecated path: %s' % (name, own[0]))
+        for w in r['warnings']:
+            if w not in own:
+                note('%s: Airflow raises a deprecation warning inside its own code for "%s": %s' % (name, w[0], w[1][:100]))
         want = KWARG_BAD.get(sid) if not isfix else None
         got = [k for _, k in r['bad_kwargs']]
         if want and want not in got:
@@ -235,10 +250,24 @@ if not args.no_run:
             elif errs:
                 bad('%s: unexpected import error: %s' % (name, errs[0]))
             continue
+        if sid == 'm13-bug2' and not isfix:
+            # the top level of the file asks for a variable on every parse: with no variable the file cannot even be read
+            if errs and 'brewline_region' in errs[0]:
+                tick('Broken DAGs fail to import with the error that the lesson quotes')
+            else:
+                bad('%s: the top-level Variable.get must run when the file is parsed, and the file imported with no variable: %s' % (name, errs))
+            continue
         if errs:
             bad('%s: the file does not import: %s' % (name, errs[0]))
         else:
             tick('DAG files import: the lessons, the bug hunts and the fixes' if True else '')
+    # the same two files when the variable exists: both import, so the difference is the work that the parse does, which is the point of the lesson
+    if 'm13-bug2' in paths and 'm13-bug2_fix' in paths:
+        both = check_files({k: paths[k] for k in ('m13-bug2', 'm13-bug2_fix')}, dags=SNIPDIR, env_extra={'AIRFLOW_VAR_BREWLINE_REGION': 'eu'})
+        if any(v['errors'] for v in both.values()) or not all(v['dags'] for v in both.values()):
+            bad('m13-bug2: with the variable set, both files must import and define a DAG: %s' % both)
+        else:
+            tick('DAG files import: the lessons, the bug hunts and the fixes', 2)
     # ruff with the AIR rules on every file that must be clean: the lessons, the recorded DAGs and the fixes
     clean_dir = WORK / 'clean'
     clean_dir.mkdir()
@@ -254,7 +283,7 @@ if not args.no_run:
     if okr:
         tick('Files that pass ruff with the AIR rules', len(list(clean_dir.glob('*.py'))))
     else:
-        bad('ruff with the AIR rules reports findings on the code of the lessons:\n' + out[:900])
+        bad('ruff with the AIR rules reports findings on the code of the lessons:\n' + out[:3000])
 
 # ======================================================================================================================
 # 3. runs
@@ -601,18 +630,24 @@ if not args.no_run:
     control('a DAG that imports a module that is missing', bool(r['noimp']['errors']))
     okr, _ = ruff_aira(old)
     control('a DAG in the Airflow 2 style under ruff with the AIR rules', not okr)
-    # a changed recording must fail the widget checker
-    bad_real = WORK / 'real_changed.js'
-    txt = (ROOT / 'airflow' / 'js' / 'real.js').read_text()
-    changed = txt.replace('"all_done_min_one_success":{"102":"skipped"', '"all_done_min_one_success":{"102":"success"', 1)
-    bad_real.write_text(changed)
-    r = run(['node', str(HERE / 'check_widgets.js')], env=dict(os.environ, AF_REAL=str(bad_real)))
-    control('a changed trigger-rule cell in the recording fails the widget checker', changed != txt and r.returncode != 0)
-    changed2 = txt.replace('"0 6 * * 1","interval"', '"0 6 * * 2","interval"', 1)
-    changed2 = re.sub(r'("weekly_interval":\{[^}]*?"runs":\[\{"interval_end":")2026-03-09', r'\g<1>2026-03-10', txt, count=1)
-    bad_real.write_text(changed2)
-    r = run(['node', str(HERE / 'check_widgets.js')], env=dict(os.environ, AF_REAL=str(bad_real)))
-    control('a changed timetable run in the recording fails the widget checker', changed2 != txt and r.returncode != 0)
+    # a changed recording must fail the widget checker: it compares every lab with what Airflow returned
+    def widget_checker_on(mutate):
+        data = json.loads(json.dumps(real))
+        mutate(data)
+        p = WORK / 'real_changed.js'
+        p.write_text('window.LAB = window.LAB || {};\nLAB.real = ' + json.dumps(data, indent=1, sort_keys=True) + ';\n')
+        return run(['node', str(HERE / 'check_widgets.js')], env=dict(os.environ, AF_REAL=str(p)))
+
+    base = run(['node', str(HERE / 'check_widgets.js')], env=dict(os.environ, AF_REAL=str(ROOT / 'airflow' / 'js' / 'real.js')))
+    control('the widget checker passes on the unchanged recording (so that the changes below are the cause of a failure)', base.returncode == 0)
+    for label, mutate in (
+        ('a trigger-rule cell in the recording is changed', lambda d: d['counts']['af.trigger_rules']['results']['all_done_min_one_success'].__setitem__('102', 'success')),
+        ('the run_after of a timetable run is changed', lambda d: d['counts']['af.timetables']['cron_interval_utc']['runs'][0].__setitem__('run_after', '2026-03-02 03:00:00+00:00')),
+        ('the number of catch-up runs is changed', lambda d: d['counts']['af.catchup']['variants']['brewline_catchup_on'].__setitem__('run_count', 6)),
+        ('the recorded retry delays are changed', lambda d: d['counts']['af.backoff']['delays_from_formula'].__setitem__(3, 11)),
+        ('a cell of the retry grid is changed', lambda d: d['counts']['af.retry_grid']['rows'][0].__setitem__(list(d['counts']['af.retry_grid']['rows'][0])[-1], 999)),
+    ):
+        control(label + ': the widget checker fails', widget_checker_on(mutate).returncode != 0)
 
 # ======================================================================================================================
 # 7. the widget checker and the lint
