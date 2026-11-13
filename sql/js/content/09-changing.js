@@ -33,7 +33,7 @@
   G.expect(CHC.rows.length === 5 && CHC.rows[2].slice(4).join() === '2026-03-09,false' && CHU.rows.length === 11 && flat(CHU) === flat(UPT) && inFile('m9.upsert', "(1, '2026-03-02', 57.50), (2, '2026-03-05', 50.00), (1, '2026-03-06', 44.00)"), 'the coding rounds');
 
   function res(key, e) { var t = e ? G.on(key, e) : G.table(key); return { msg: t.rows.length + ' rows', cols: t.cols, rows: t.rows }; }
-  var STORE_DAY = G.table('data.daily_revenue');
+  var STORE_DAY = G.cols('data.daily_revenue', ['store_id', 'day', 'revenue']);
   var INCOMING = { cols: ['store_id', 'day', 'revenue'], rows: [['1', '2026-03-02', '57.50'], ['2', '2026-03-05', '50.00'], ['1', '2026-03-06', '44.00']], types: ['INTEGER', 'DATE', 'DECIMAL(10,2)'] };
   var DIM = G.table('data.customer_dim'), CHG = G.table('data.customer_changes');
 
