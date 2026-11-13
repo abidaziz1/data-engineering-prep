@@ -314,7 +314,7 @@ const secs = s => { const m = /^([\d.,]+) (ms|s|min)\b/.exec(String(s).trim()); 
     for (const d of [1, 5, 30]) for (const m of [0, 2, 3]) for (const c of [0, 10, 60]) {
       const rec = RG.rows.find(x => x.delay === d && x.mult === m && (x.cap || 0) === c);
       await pick('rt-d', d); await pick('rt-m', m); await pick('rt-c', c);
-      for (const r of [0, 1, 3, 5]) {
+      for (const r of [0, 1, 2, 3, 4, 5]) {
         await pick('rt-r', r);
         const waits = rec.waits.slice(0, r), b = await bigs(), t = (await tables())[0] || [];
         const where = 'retry lab, retries ' + r + ', delay ' + d + ', multiplier ' + (m || 'off') + ', cap ' + (c || 'none');
