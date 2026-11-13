@@ -964,6 +964,17 @@ def sec_loops():
     counts('af.loops', out)
 
 
+def sec_watcher():
+    """A cleanup task with all_done decides the state of the run. The watcher pattern of the Airflow best practices makes the run fail when any task failed."""
+    d = mini('brewline_watcher.py')
+    migrate(HOME_TEST)
+    out = {}
+    for key, dag_id in (('hides', 'brewline_teardown_hides'), ('watcher', 'brewline_teardown_watcher')):
+        r = probe('test', dag_id, '2026-03-14', dags=d)
+        out[key] = {'dag_id': dag_id, 'run_state': r['state'], 'tasks': {t['task_id']: t['state'] for t in r['tis']}}
+    counts('af.watcher', out)
+
+
 def sec_parse_cost():
     d = WORK / 'parse'
     d.mkdir(exist_ok=True)
@@ -1558,6 +1569,7 @@ section('xcom')(sec_xcom)
 section('idempotent')(sec_idempotent)
 section('incremental')(sec_incremental)
 section('loops')(sec_loops)
+section('watcher')(sec_watcher)
 section('parse_cost')(sec_parse_cost)
 section('retries')(sec_retries)
 section('failed_deps')(sec_failed_deps)
