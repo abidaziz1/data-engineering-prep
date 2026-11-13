@@ -60,10 +60,10 @@
       ['s_raw', 2, 0, 'RAW AND STAGING', ['raw tables', 'cleaned views', 'types and NULLs'], 'stg', 'layer', { h: 170 }],
       ['s_mart', 3, 0, 'BUSINESS TABLES', ['joins and groups', 'windows and patterns', 'one grain each'], 'mart', 'layer', { h: 170 }],
       ['s_use', 4, 0, 'USE', ['Dashboards', 'Analysts', 'Other jobs'], 'con', 'layer', { h: 170 }],
-      ['x_chk', 0, 1.8, 'Checks', 'counts, keys, NULL rates', 'qual', 'pill', { w: 165, h: 56 }],
-      ['x_plan', 0.84, 1.8, 'Plans', 'indexes and statistics', 'sf', 'pill', { w: 165, h: 56 }],
+      ['x_chk', 0, 1.8, 'Checks', 'counts, keys, NULLs', 'qual', 'pill', { w: 165, h: 56 }],
+      ['x_plan', 0.84, 1.8, 'Plans', 'indexes, statistics', 'sf', 'pill', { w: 165, h: 56 }],
       ['x_tx', 1.68, 1.8, 'Transactions', 'locks and isolation', 'air', 'pill', { w: 165, h: 56 }],
-      ['x_dia', 2.52, 1.8, 'Dialects', 'what changes by engine', 'mon', 'pill', { w: 165, h: 56 }],
+      ['x_dia', 2.52, 1.8, 'Dialects', 'engine differences', 'mon', 'pill', { w: 165, h: 56 }],
       ['x_mod', 3.36, 1.8, 'Modelling', 'grain, keys, stars', 'snap', 'pill', { w: 165, h: 56 }]
     ],
     edges: [
@@ -146,10 +146,10 @@
     h: 340, cw: 190, dx: 216,
     label: 'A join that changes the grain. Orders have one row for each order. Payments have one row for each payment. Joining them gives one row for each payment, so an order with two payments appears twice, and a sum of the order total counts it twice.',
     nodes: [
-      ['f_o', 0, 0, 'orders', 'one row for each order', 'src'],
-      ['f_p', 0, 1, 'payments', 'one row for each payment', 'raw'],
-      ['f_j', 1.7, 0.5, 'joined rows', 'one row for each payment', 'stg'],
-      ['f_s', 3.4, 0.5, 'sum(o.total)', 'order 1002 counted twice', 'int']
+      ['f_o', 0, 0, 'orders', 'a row for each order', 'src'],
+      ['f_p', 0, 1, 'payments', 'a row for each payment', 'raw'],
+      ['f_j', 1.7, 0.5, 'joined rows', 'a row for each payment', 'stg'],
+      ['f_s', 3.4, 0.5, 'sum(o.total)', 'order 1002 twice', 'int']
     ],
     edges: [
       ['x1', 'f_o', 'f_j', 1],
@@ -170,7 +170,7 @@
     nodes: [
       ['g_rows', 0, 0, 'Rows after WHERE', 'one row for each paid order', 'src'],
       ['g_split', 1, 0, 'Split into groups', 'one group for each store', 'raw'],
-      ['g_agg', 2, 0, 'Aggregate', 'count, sum, avg of each group', 'stg'],
+      ['g_agg', 2, 0, 'Aggregate', 'count, sum, avg of a group', 'stg'],
       ['g_out', 3, 0, 'Result', 'one row for each group', 'mart']
     ],
     edges: [
@@ -217,7 +217,7 @@
     label: 'What a window function does. The rows that remain after WHERE, GROUP BY and HAVING are split into partitions, sorted inside each partition, and for every row a frame of nearby rows is chosen. The function reads the frame and writes one value on the row. No row is removed.',
     nodes: [
       ['w_rows', 0, 0, 'Input rows', 'after the filters', 'src'],
-      ['w_part', 1, 0, 'PARTITION BY', 'separate groups of rows', 'raw'],
+      ['w_part', 1, 0, 'PARTITION BY', 'groups of rows', 'raw'],
       ['w_order', 2, 0, 'ORDER BY', 'sort inside each group', 'stg'],
       ['w_frame', 3, 0, 'Frame', 'rows the function sees', 'int'],
       ['w_fn', 4, 0, 'Function', 'sum, rank, lag and more', 'mart'],
@@ -245,7 +245,7 @@
       ['s_ev', 0, 0, 'Events', 'sorted by time', 'src'],
       ['s_lag', 1, 0, 'LAG', 'time of the last event', 'raw'],
       ['s_flag', 2, 0, 'New session?', 'gap longer than N', 'stg'],
-      ['s_sum', 3, 0, 'Running sum', 'counts the new sessions', 'int'],
+      ['s_sum', 3, 0, 'Running sum', 'counts new sessions', 'int'],
       ['s_id', 4, 0, 'Session number', 'same inside a session', 'mart'],
       ['s_out', 4, 1.3, 'GROUP BY session', 'a row for each session', 'qual']
     ],
@@ -297,9 +297,9 @@
     nodes: [
       ['v_w', 0, 0.65, 'Writer B', 'UPDATE, then COMMIT', 'src'],
       ['v_old', 1.2, 0, 'Old version', 'balance 100, still stored', 'raw'],
-      ['v_new', 1.2, 1.3, 'New version', 'balance 150, after COMMIT', 'stg'],
-      ['v_rr', 3, 0, 'REPEATABLE READ', 'snapshot from the first read', 'int'],
-      ['v_rc', 3, 1.3, 'READ COMMITTED', 'a new snapshot each statement', 'mart']
+      ['v_new', 1.2, 1.3, 'New version', 'balance 150 committed', 'stg'],
+      ['v_rr', 3, 0, 'REPEATABLE READ', 'snapshot of first read', 'int'],
+      ['v_rc', 3, 1.3, 'READ COMMITTED', 'snapshot per query', 'mart']
     ],
     edges: [
       ['m1', 'v_w', 'v_old', 1],
@@ -324,7 +324,7 @@
       ['p_plan', 2, 0.65, 'Planner', 'picks the cheapest plan', 'stg'],
       ['p_exec', 3, 0.65, 'Executor', 'runs the plan', 'int'],
       ['p_rows', 4, 0.65, 'Result rows', 'plus real row counts', 'mart'],
-      ['p_stats', 2, 1.75, 'Statistics, indexes', 'row counts, value spread', 'qual']
+      ['p_stats', 2, 1.75, 'Statistics, indexes', 'counts, value spread', 'qual']
     ],
     edges: [
       ['n1', 'p_sql', 'p_parse', 1],
@@ -369,12 +369,12 @@
     h: 400, cw: 190, dx: 216,
     label: 'Where data quality checks sit. Checks run at each layer where a problem can enter: on the source tables (not null, accepted values), in staging (unique keys, duplicates), after joins (foreign keys, no fan-out), on the marts (totals reconcile to the source) and on the dashboards (fresh data, normal volume). A failed check raises an alert or stops the load before the problem moves on.',
     nodes: [
-      ['d_src', 0, 0, 'Source tables', 'not null, accepted values', 'src'],
+      ['d_src', 0, 0, 'Source tables', 'not null, valid values', 'src'],
       ['d_stg', 1, 0, 'Staging', 'unique keys, duplicates', 'raw'],
       ['d_int', 2, 0, 'After joins', 'foreign keys, fan-out', 'stg'],
       ['d_mart', 3, 0, 'Marts', 'totals reconcile', 'mart'],
       ['d_dash', 4, 0, 'Dashboards', 'fresh, normal volume', 'int'],
-      ['d_alert', 2, 1.3, 'Alert or stop', 'a failed check blocks the load', 'qual']
+      ['d_alert', 2, 1.3, 'Alert or stop', 'blocks the load', 'qual']
     ],
     edges: [
       ['c1', 'd_src', 'd_stg', 1],

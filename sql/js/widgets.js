@@ -111,7 +111,8 @@
           var res = lookup(st.op, st.e, st.a, st.b), b3 = toBool(res);
           var sql = 'SELECT ' + st.a + ' ' + (st.op === 'IS NOT DISTINCT FROM' || st.op === 'IS DISTINCT FROM' ? st.op : st.op) + ' ' + st.b;
           h += '<div class="lab-row"><span class="lab-l">Operator</span><div class="sel-chips">' + chips(opNames(), st.op, 'nu-op') + '</div></div>' +
-            '<div class="lab-row"><span class="lab-l">Left</span><div class="sel-chips">' + chips(VALS, st.a, 'nu-a') + '</div><span class="lab-l">Right</span><div class="sel-chips">' + chips(VALS, st.b, 'nu-b') + '</div></div>' +
+            '<div class="lab-row"><span class="lab-l">Left value</span><div class="sel-chips">' + chips(VALS, st.a, 'nu-a') + '</div></div>' +
+            '<div class="lab-row"><span class="lab-l">Right value</span><div class="sel-chips">' + chips(VALS, st.b, 'nu-b') + '</div></div>' +
             '<div class="lab-row"><span class="lab-l">Engine</span><div class="sel-chips">' + chips(ENGINES, st.e, 'nu-e', function (k) { return G.engine(k); }) + '</div></div>' +
             code(G.engine(st.e), 'sql', sql) +
             '<div class="lab-out"><div class="big ' + (b3 === 'TRUE' ? 'good' : b3 === 'FALSE' ? 'bad' : 'warn') + '"><b>' + esc(res) + '</b><span>what ' + esc(ENGINE_LABEL[st.e]) + ' returned' + (st.e === 'sqlite' && res !== 'NULL' ? ' (SQLite has no boolean type, so it returns 1 and 0)' : '') + '</span></div>' +
@@ -226,7 +227,7 @@
         if (i === 0) {
           var st = A.local.fo || (A.local.fo = { items: false, pay: true, m: 'sum' }), c = find(st.items, st.pay, st.m), r = c.result.duckdb;
           var good = num(r[2]) === num(truth()), same = ['postgres', 'sqlite'].every(function (e) { return num(c.result[e][2]) === num(r[2]) && c.result[e][0] === r[0]; });
-          h += '<div class="lab-row"><span class="lab-l">Join lines</span><div class="sel-chips">' + chips(['no', 'yes'], st.items ? 'yes' : 'no', 'fo-i') + '</div><span class="lab-l">Join payments</span><div class="sel-chips">' + chips(['no', 'yes'], st.pay ? 'yes' : 'no', 'fo-p') + '</div></div>' +
+          h += '<div class="lab-row"><div class="lab-group"><span class="lab-l">Join lines</span><div class="sel-chips">' + chips(['no', 'yes'], st.items ? 'yes' : 'no', 'fo-i') + '</div></div><div class="lab-group"><span class="lab-l">Join payments</span><div class="sel-chips">' + chips(['no', 'yes'], st.pay ? 'yes' : 'no', 'fo-p') + '</div></div></div>' +
             '<div class="lab-row"><span class="lab-l">Total with</span><div class="sel-chips">' + chips(METHODS.map(function (m) { return m[0]; }), st.m, 'fo-m', function (k) { return METHODS.filter(function (m) { return m[0] === k; })[0][1]; }) + '</div></div>' +
             code('revenue of paid orders', 'sql', c.sql) +
             '<div class="lab-out"><div class="big"><b>' + r[0] + '</b><span>rows after the joins</span></div><div class="big"><b>' + r[1] + '</b><span>different orders</span></div><div class="big ' + (good ? 'good' : 'bad') + '"><b>' + esc(r[2]) + '</b><span>' + (good ? 'revenue: correct, ' + truth() + ' is the true total' : 'revenue: wrong, the true total is ' + truth()) + '</span></div></div>' +

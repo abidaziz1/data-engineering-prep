@@ -1,8 +1,9 @@
-// Browser tests for the 15 labs of the SQL tutorial. Every lab is driven through its controls in Chromium, and the numbers it shows are compared
+// Browser tests for the 15 labs and the 13 diagrams of the SQL tutorial. Every lab is driven through its controls in Chromium, and the numbers it shows are compared
 // with values that were worked out by hand, shown in the comments. They are not read from js/real.js, which the labs themselves read.
 // Needs Playwright:  npm install playwright && npx playwright install chromium
 // Run: node sql/verify/e2e_labs.js      (the generic part of the tests is: node dev/e2e.js sql)
-// SQ_REAL=/path/to/real.js serves another recording: verify_sq.py --browser uses it to check that a changed recording makes these tests fail.
+// SQ_REAL=/path/to/real.js serves another recording and SQ_GRAPHS=/path/to/graphs.js other diagrams: verify_sq.py --browser uses them to check that a changed
+// recording and a label that is too wide make these tests fail.
 const { chromium } = require('playwright');
 const http = require('http'), fs = require('fs'), path = require('path');
 const name = 'sql', root = path.join(__dirname, '..', '..');
@@ -16,7 +17,8 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
     let p = decodeURIComponent(req.url.split('?')[0]); if (p.endsWith('/')) p += 'index.html';
     let f = path.join(root, p);
     if (process.env.SQ_REAL && p === '/' + name + '/js/real.js') f = process.env.SQ_REAL;      // a changed recording, for the controls of verify_sq.py
-    if ((!f.startsWith(root) && f !== process.env.SQ_REAL) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { res.statusCode = 404; return res.end(); }
+    if (process.env.SQ_GRAPHS && p === '/' + name + '/js/graphs.js') f = process.env.SQ_GRAPHS;      // changed diagrams, for the same
+    if ((!f.startsWith(root) && f !== process.env.SQ_REAL && f !== process.env.SQ_GRAPHS) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { res.statusCode = 404; return res.end(); }
     res.setHeader('Content-Type', types[path.extname(f)] || 'application/octet-stream'); fs.createReadStream(f).pipe(res);
   });
   await new Promise(r => srv.listen(0, '127.0.0.1', r));
@@ -379,6 +381,29 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
     const bx = await boxes();
     ok(bx.length === 2 && bx[1].split('\n').slice(1).join('\n') === SQL[key], 'translator, ' + q + ' to ' + t + ': the text that sqlglot writes');
   }
+
+  // ---------------------------------------------------------------------------------------------------------------------------------
+  // The diagrams. Every title and subtitle must fit inside its box. One planner node had a subtitle that was 5 units wider than its box,
+  // and 14 labels of 106 nodes were too wide before they were shortened.
+  // ---------------------------------------------------------------------------------------------------------------------------------
+  const flows = await page.evaluate(() => LAB.chapters.flatMap(c => c.scenes).filter(s => s.type === 'flow').map(s => s.id));
+  ok(flows.length === 13, 'diagrams: thirteen flow screens (got ' + flows.length + ')');
+  let nodeCount = 0;
+  for (const id of flows) {
+    await go(id + ':0'); lab = 'diagram ' + id;
+    const r = await page.evaluate(() => {
+      const wide = []; let n = 0;
+      document.querySelectorAll('svg.graph g').forEach(g => {
+        const rect = g.querySelector(':scope > rect'), ts = g.querySelectorAll(':scope > text'); if (!rect || !ts.length) return;
+        n++; const rw = rect.getBBox().width;
+        ts.forEach(t => { if (t.getBBox().width > rw - 2) wide.push(t.textContent.slice(0, 30)); });
+      });
+      return { wide, n };
+    });
+    nodeCount += r.n;
+    ok(r.n > 0 && r.wide.length === 0, 'diagram ' + id + ': every label fits its box (wider than the box: ' + r.wide.join(', ') + ')');
+  }
+  ok(nodeCount === 106, 'diagrams: 106 boxes measured (got ' + nodeCount + ')');
 
   ok(errs.length === 0, 'no page errors or console errors during the lab tests: ' + errs.slice(0, 3).join(' | '));
   console.log('e2e labs: ' + pass + ' passed, ' + fail + ' failed');

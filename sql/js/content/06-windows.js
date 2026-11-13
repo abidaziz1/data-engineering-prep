@@ -2,6 +2,7 @@
    filtering on a window function, and what a window costs in a plan. Every result and plan was returned by the engines when the recorder ran the queries. */
 (function () {
   var B = LAB.b, G = LAB.get;
+  G.expect(LAB.sq.info.frame.check().length === 0, 'the frame rule of the lab gives the sums that DuckDB, PostgreSQL and SQLite returned for all 27 settings');
   var OV = G.on('m6.over', 'duckdb'), GB = G.on('m6.group_by', 'duckdb'), RK = G.on('m6.rank', 'duckdb'), NT = G.on('m6.ntile', 'duckdb'), RP = G.on('m6.rank_partition', 'duckdb');
   var RW = G.on('m6.rank_after_where', 'duckdb'), RA = G.on('m6.rank_all_orders', 'duckdb'), LG = G.on('m6.lag', 'duckdb'), LGP = G.on('m6.lag', 'postgres'), RU = G.on('m6.running', 'duckdb');
   var RTY = G.on('m6.running_ties', 'duckdb'), MV = G.on('m6.moving', 'duckdb'), MVP = G.on('m6.moving', 'postgres'), LV = G.on('m6.last_value', 'duckdb'), SH = G.on('m6.share', 'duckdb');

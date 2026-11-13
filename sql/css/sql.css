@@ -11,6 +11,8 @@ a.logo:hover{background:#3730A3}
 .lab{display:flex;flex-direction:column;gap:.7rem}
 .lab-row{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem .9rem}
 .lab-l{font-weight:800;min-width:8rem}
+.lab-group{display:flex;align-items:center;gap:.5rem .9rem}
+.lab-group .lab-l{min-width:0}
 .lab-note{font-size:.9rem;font-weight:600;color:var(--ink2);margin:.1rem 0 0}
 .lab button:disabled{opacity:.45}
 .lab-out{display:flex;flex-wrap:wrap;gap:.6rem}
@@ -95,3 +97,6 @@ a.logo:hover{background:#3730A3}
 .tx td code{display:block;font:600 .85rem 'IBM Plex Mono',monospace;white-space:pre-wrap;overflow-wrap:anywhere}
 .tx-out{margin-top:.2rem;font:700 .85rem 'IBM Plex Mono',monospace;color:var(--ink2);overflow-wrap:anywhere}
 .tx-out.bad{color:#991B1B;background:#FEE2E2;border-radius:6px;padding:.1rem .35rem}
+
+/* a long coach speech must not run under the bottom bar on a window of 800 px or less: the column scrolls instead (the shared css pins it) */
+@media (min-width:981px){.coachcol{max-height:calc(100vh - 11.25rem);overflow-y:auto;scrollbar-width:thin}}

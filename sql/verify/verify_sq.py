@@ -980,10 +980,12 @@ def shutil_rmtree(p):
     shutil.rmtree(p, ignore_errors=True)
 
 
-def run_labs(real_path=None):
+def run_labs(real_path=None, graphs_path=None):
     env = dict(os.environ)
     if real_path:
         env['SQ_REAL'] = str(real_path)
+    if graphs_path:
+        env['SQ_GRAPHS'] = str(graphs_path)
     r = subprocess.run(['node', str(HERE / 'e2e_labs.js')], capture_output=True, text=True, env=env, cwd=str(ROOT))
     m = re.search(r'e2e labs: (\d+) passed, (\d+) failed', r.stdout)
     return r.returncode, (int(m.group(1)), int(m.group(2))) if m else None, r.stdout + r.stderr
@@ -1009,6 +1011,17 @@ def browser_checks():
         else:
             tick('controls: a changed recording is rejected by the lab browser tests')
         shutil_rmtree(path.parent)
+    # a diagram label that is wider than its box
+    src = (ROOT / 'sql' / 'js' / 'graphs.js').read_text()
+    assert 'counts, value spread' in src
+    tmp = pathlib.Path(tempfile.mkdtemp(prefix='sq-ctl-')) / 'graphs.js'
+    tmp.write_text(src.replace('counts, value spread', 'row counts and the spread of the values'))
+    code, counts, out = run_labs(None, tmp)
+    if code == 0 or 'FAIL: diagram m11-flow' not in out:
+        bad('control "a label that is wider than its box": the lab browser tests did not reject it')
+    else:
+        tick('controls: a diagram label that is too wide is rejected by the lab browser tests')
+    shutil_rmtree(tmp.parent)
 
 
 # ======================================================================================================================
