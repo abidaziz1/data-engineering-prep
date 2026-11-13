@@ -84,3 +84,10 @@ gcp-storage-emulator
 functions-framework
 python-hcl2
 fastavro
+# airflow/verify (the recorder, verify_af.py and its --recapture). Apache Airflow 3.4.0 needs its own Python 3.12 environment, installed with the official constraints file.
+# Name its interpreter in AF_PYTHON when you run the check. No npm install is needed.
+#   python3.12 -m venv .venv-airflow
+#   .venv-airflow/bin/pip install "apache-airflow==3.4.0" pytest==9.2.0 ruff==0.17.4 --constraint https://raw.githubusercontent.com/apache/airflow/constraints-3.4.0/constraints-3.12.txt
+#   AF_PYTHON=$PWD/.venv-airflow/bin/python python3 airflow/verify/verify_af.py
+# Versions the recording was made with: apache-airflow 3.4.0, apache-airflow-task-sdk 1.4.0, providers standard 1.21.0, sqlite 4.3.4, http 6.3.0, smtp 3.2.0,
+# common-sql 2.4.0, common-io 1.11.0, common-compat 1.23.0 (these seven come with apache-airflow), pytest 9.2.0, ruff 0.17.4, pendulum 3.3.0, croniter 6.2.4.
