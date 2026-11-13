@@ -258,7 +258,7 @@
     };
     function data() { return G.counts('m5.formats'); }
     function logw(x, lo, hi) { return Math.max(1, Math.round((Math.log10(x) - Math.log10(lo)) / (Math.log10(hi) - Math.log10(lo)) * 99)); }
-    function ms(x) { return x >= 100 ? fmtN(x, 0) + ' ms' : x >= 10 ? fmtN(x, 1) + ' ms' : fmtN(x, 2) + ' ms'; }
+    function ms(x) { return (x >= 100 ? fmtN(x, 0) : x >= 10 ? fmtN(x, 1) : fmtN(x, 2)) + '\u00a0ms'; }   /* a no-break space keeps the unit on the line of its number */
     W.formats = {
       steps: function () { return 1; },
       hint: 'Pick size or time. Read the notes in the table.',
