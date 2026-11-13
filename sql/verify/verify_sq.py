@@ -25,12 +25,14 @@ dialects that did not run anywhere ("translated, not run"). This script checks w
    that the recording no longer shows.
 7. Controls: broken inputs that the checkers above must reject, including a changed recording that the widget checker must reject.
 8. With --recapture, capture_sq.py runs again as its own process and its output is compared with js/real.js, as data and as bytes.
+9. With --browser, e2e_labs.js drives every lab in Chromium and measures every diagram label against its box. Two changed recordings and a
+   label that is too wide are served to it, and it must reject all three.
 
 What this cannot show: how a cloud warehouse behaves, that a translation to Snowflake, BigQuery, Redshift, MySQL, SQL Server, Oracle or
 Spark runs, how an engine behaves under load, what anything costs, or that a feature, limit or version is current. Those screens carry the
 "From documentation" tag and the README lists the pages they come from.
 
-Run:    python3 sql/verify/verify_sq.py [--no-run] [--recapture] [--reuse] [--verbose]
+Run:    python3 sql/verify/verify_sq.py [--no-run] [--recapture] [--reuse] [--browser] [--verbose]
 Needs:  pip install -r dev/requirements.txt (duckdb, sqlglot, psycopg[binary]), Node 20 or later, and PostgreSQL 16 server programs
         (apt install postgresql-16) or SQ_PG_DSN pointing at a running server (a database called sq_course is created and dropped there).
 """
