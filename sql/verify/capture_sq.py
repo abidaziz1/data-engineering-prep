@@ -1,0 +1,67 @@
+#!/usr/bin/env python3
+"""Record what DuckDB, PostgreSQL and SQLite do with the Brewline data, for the SQL tutorial.
+
+Everything here ran. The recording comes from:
+  DuckDB       an embedded analytical engine (the version is in the recording)
+  PostgreSQL   a real server on 127.0.0.1 in a temporary directory, with two client sessions for the transaction lessons
+  SQLite       the version that ships with Python's sqlite3 module
+  sqlglot      a parser and translator. It only rewrites text: a query that sqlglot translates for Snowflake, BigQuery, Redshift,
+               MySQL, SQL Server or Oracle was NOT run there, and the lessons say "translated, not run".
+Nothing ran on a cloud warehouse. Plans, row counts and result tables are real. Times are not recorded, because they change from run to run.
+
+Usage:   python3 sql/verify/capture_sq.py [--out sql/js/real.js] [--json FILE]
+Needs:   pip install duckdb sqlglot "psycopg[binary]" pyarrow     and PostgreSQL 16 server programs (apt install postgresql-16), or SQ_PG_DSN
+         set to a running server (the script then creates and drops a database called sq_course there).
+"""
+import argparse
+import importlib
+import json
+import pathlib
+import platform
+import sys
+
+HERE = pathlib.Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+import rec as R  # noqa: E402
+import world  # noqa: E402
+
+SECTIONS = ['s_map', 's_nulls', 's_joins', 's_agg', 's_sub', 's_windows', 's_dates', 's_patterns', 's_changing', 's_tx', 's_plans', 's_model', 's_dialects']
+
+
+def record_all(rec):
+    """Run every .sql block and then every Python section on the engines that world.open_world opened."""
+    for f in sorted((HERE / 'q').glob('*.sql')):
+        R.run_file(rec, f)
+    for name in SECTIONS:
+        if (HERE / (name + '.py')).exists():
+            importlib.import_module(name).run(rec)
+
+
+def main():
+    import sqlglot
+    import psycopg
+    ap = argparse.ArgumentParser()
+    ap.add_argument('--out', default=str(HERE.parent / 'js' / 'real.js'))
+    ap.add_argument('--json')
+    args = ap.parse_args()
+    rec = R.Rec()
+    pgs = world.open_world(rec)
+    try:
+        o = rec.out['meta']
+        o.update({'duckdb': rec.eng['duckdb'].version, 'postgres': rec.eng['postgres'].version, 'sqlite': rec.eng['sqlite'].version,
+                  'sqlglot': sqlglot.__version__, 'psycopg': psycopg.__version__, 'python': platform.python_version(),
+                  'note': 'Recorded by sql/verify/capture_sq.py: DuckDB, PostgreSQL and SQLite ran every query on this machine with made-up Brewline data. '
+                          'sqlglot translated some queries for other dialects, and those were not run. Nothing ran on a cloud warehouse.'})
+        record_all(rec)
+        # ---- write
+        body = 'window.LAB = window.LAB || {};\nLAB.real = ' + json.dumps(rec.out, indent=1, ensure_ascii=False, sort_keys=True) + ';\n'
+        pathlib.Path(args.out).write_text(body)
+        if args.json:
+            pathlib.Path(args.json).write_text(json.dumps(rec.out, indent=1, ensure_ascii=False, sort_keys=True))
+        print('wrote', args.out, '(%d bytes)' % len(body), {k: len(v) for k, v in rec.out.items()}, 'blocks:', rec.blocks, 'statements:', rec.statements)
+    finally:
+        pgs.stop()
+
+
+if __name__ == '__main__':
+    main()
