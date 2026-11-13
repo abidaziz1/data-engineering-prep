@@ -794,6 +794,26 @@ def walk(a, b, path, diffs):
 
 def compare(old, new):
     diffs = []
+    old, new = json.loads(json.dumps(old)), json.loads(json.dumps(new))
+    oc, nc = old['counts'], new['counts']
+    # Three places where the recorder repeats a step, so that two recordings differ in what was repeated. For each one the claim that the lessons make is checked
+    # in the new recording instead, and the repeated parts are then taken from the old one.
+    # 1. brewline_backoff is run again on the next day when the poll missed one of the waits, and the jitter (and so each wait) changes with the date.
+    ob, nb = oc['af.backoff'], nc['af.backoff']
+    if ob['logical_date'] != nb['logical_date']:
+        if [float(x) for x in nb['delays_in_database']] != [float(x) for x in nb['delays_from_formula']]:
+            diffs.append('counts.af.backoff: the waits in the database %s are not the waits of the formula %s' % (nb['delays_in_database'], nb['delays_from_formula']))
+        for k in ('logical_date', 'delays_in_database', 'delays_from_formula', 'seconds_between_end_and_next_start'):
+            nb[k] = ob[k]
+    # 2. Airflow refuses a second backfill while the scheduler has not marked the first one completed, so the recorder asks again, and a repeated request adds rows.
+    obf, nbf = oc['af.backfill'], nc['af.backfill']
+    if nbf['backfill_rows'] != obf['backfill_rows'] or nbf['tries_after_completed'] != obf['tries_after_completed']:
+        if len(nbf['backfill_rows']) < 3 or not all(b > a for a, b in zip(nbf['tries_after_none'], nbf['tries_after_completed'])):
+            diffs.append('counts.af.backfill: the completed call must give every task another try: %s then %s' % (nbf['tries_after_none'], nbf['tries_after_completed']))
+        nbf['backfill_rows'], nbf['tries_after_completed'] = obf['backfill_rows'], obf['tries_after_completed']
+    # 3. The table of tasks with the most tries is ordered by the count, and equal counts come in any order.
+    for c in (oc, nc):
+        c['af.metadb']['tries']['rows'] = sorted(c['af.metadb']['tries']['rows'])
     for bag in ('meta', 'files', 'text', 'tables', 'counts'):
         walk(old[bag], new[bag], bag, diffs)
     return diffs
