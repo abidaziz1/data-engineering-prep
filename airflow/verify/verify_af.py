@@ -727,15 +727,18 @@ TIMING = [  # path regex -> (relative tolerance, absolute tolerance). Machine-de
 ]
 # Texts whose lines come in another order from run to run: a log has the print of a task and the log line of the supervisor in either order, and
 # airflow tasks failed-deps prints its dependency checks from a set. They are compared as sorted lines.
-ORDERLESS = [r'^counts\.af\.assets\.(consumer_logs|and_consumer_logs_all)\[\d+\]$', r'^counts\.af\.ctx\.\w+\.(show_log|templated_log)$', r'^counts\.af\.failed_deps\.\w+\.failed_deps$']
+ORDERLESS = [r'^counts\.af\.assets\.(consumer_logs|and_consumer_logs|and_consumer_logs_all)\[\d+\]$', r'^counts\.af\.ctx\.\w+\.(show_log|templated_log)$', r'^counts\.af\.failed_deps\.\w+\.failed_deps$']
 # Tasks that start in the same second start in either order: compare the order wave by wave (the pool and the DAG limit of these two runs are 2).
 WAVE_ORDER = {r'^counts\.af\.pools\.(brewline_dag_limit|brewline_pool_two_slots)\.start_order$': 2}
-IGNORE = [r'^meta\.recorded_on$', r'^counts\.af\.waiting\.\w+\.segments', r'^counts\.af\.waiting\.\w+\.states_seen', r'^counts\.af\.pools\.\w+\.tasks\[\d+\]\.task$']
+# the recorder runs the backoff DAG again on the next day when it missed one of the waits (the jitter changes with the date), which moves the logical date and adds runs to the database
+IGNORE = [r'^meta\.recorded_on$', r'^counts\.af\.backoff\.logical_date$', r'^counts\.af\.waiting\.\w+\.segments', r'^counts\.af\.waiting\.\w+\.states_seen', r'^counts\.af\.pools\.\w+\.tasks\[\d+\]\.task$']
 
 
 def normtext(s):
     # a clock value of the machine (microseconds that are not all zero) differs on every recording. The dates that the course chose have no such fraction.
     s = re.sub(r'\d{4}-\d\d-\d\d[T ]\d\d:\d\d:\d\d\.(?!0+\b)\d+(Z|\+00:00)?', '<clock>', s)
+    # the number of rows that a cleanup would delete grows with the number of runs in the database, and a repeated run of one DAG adds a few
+    s = re.sub(r'Found \d+ rows meeting deletion criteria', 'Found <n> rows meeting deletion criteria', s)
     # the values that belong to the day of the recording (the next run of a DAG, the time it was parsed) and a signed token
     s = re.sub(r'^((?:next_dagrun\w*|last_parsed_time|file_token)\s*\|\s*).*$', r'\1<varies>', s, flags=re.M)
     s = re.sub(r'\[\d{3,6}\]', '[N]', s)
@@ -773,6 +776,9 @@ def walk(a, b, path, diffs):
                 diffs.append('%s: %s against %s is outside the tolerance of %s' % (path, a, b, (rel, ab)))
                 return
         diffs.append('%s: %s against %s' % (path, a, b))
+    elif isinstance(a, str) and isinstance(b, str) and a.isdigit() and b.isdigit() and path.startswith('counts.af.metadb.'):
+        if abs(int(a) - int(b)) > 3:   # row counts of the metadata database: a repeated run of one DAG adds a few
+            diffs.append('%s: %s against %s is more than 3 rows apart' % (path, a, b))
     elif isinstance(a, str) and isinstance(b, str) and any(re.search(p, path) for p in ORDERLESS):
         if sorted(normtext(a).splitlines()) != sorted(normtext(b).splitlines()):
             diffs.append('%s: the lines differ (%r against %r)' % (path, normtext(a)[:70], normtext(b)[:70]))
