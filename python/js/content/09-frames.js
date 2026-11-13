@@ -322,8 +322,8 @@
       B.qa({
         id: 'qa-nullsframes', t: 1, tag: 'Dataframes', secs: 60,
         q: 'How do missing values behave in pandas, Polars and DuckDB?',
-        pts: ['pandas: NaN in float columns, and groupby drops missing keys', 'Polars and DuckDB: a real null, and the group is kept', 'count skips missing, sum and mean skip them', 'NaN does not equal NaN'],
-        short: 'pandas stores a missing number as `NaN`, and `NaN == NaN` is false, so I use `isna`. `count`, `sum` and `mean` skip missing values in all three engines. The difference is in grouping: in a recording, `groupby` in pandas dropped the row with a missing store and returned 3 rows in 2 groups, while Polars and DuckDB kept it as a null group and returned 4 rows in 3. I pass `dropna=False` in pandas, or I fill or check the key first, so the groups add up to the table.',
+        pts: ['pandas: nan in float columns, and groupby drops missing keys', 'Polars and DuckDB: a real null, and the group is kept', 'count skips missing, sum and mean skip them', 'nan does not equal nan'],
+        short: 'pandas stores a missing number as `nan`, and `nan == nan` is false, so I use `isna`. `count`, `sum` and `mean` skip missing values in all three engines. The difference is in grouping: in a recording, `groupby` in pandas dropped the row with a missing store and returned 3 rows in 2 groups, while Polars and DuckDB kept it as a null group and returned 4 rows in 3. I pass `dropna=False` in pandas, or I fill or check the key first, so the groups add up to the table.',
         fu: [['What about integers with gaps?', 'A plain integer column becomes a float in older pandas. Use a nullable integer type, or Polars and DuckDB, which have a real null.'], ['How do you test for it?', 'Assert that the counts of the groups add up to the number of rows.']],
         trap: 'Assuming that all engines group the same way.',
         real: 'Tell about a report where rows went missing in a groupby.'

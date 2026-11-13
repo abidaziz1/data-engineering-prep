@@ -206,7 +206,7 @@
         id: 'm11-bug1', t: 1, src: 'rec', q: 'This code loads a CSV. Last week a partner started sending totals like "12,50", and the revenue fell by 8 percent without an error. Click the line that hides the problem.',
         file: 'load_orders.py', lang: 'python', code: BUG_COERCE, bad: [3],
         hint: 'What happens to the rows that `to_numeric` could not read?',
-        why: '`errors="coerce"` turns every bad value into `NaN`, and `dropna` removes those rows. The rows vanish with no message, which is the "drop silently" policy of the lab: success, and a smaller table. Keep the bad rows in a quarantine file, and fail the run when their share is over a limit.',
+        why: '`errors="coerce"` turns every bad value into `nan`, and `dropna` removes those rows. The rows vanish with no message, which is the "drop silently" policy of the lab: success, and a smaller table. Keep the bad rows in a quarantine file, and fail the run when their share is over a limit.',
         fix: BUG_COERCE_FIX,
         cheer: 'Set bad rows aside, with a limit, and say so.'
       }),
