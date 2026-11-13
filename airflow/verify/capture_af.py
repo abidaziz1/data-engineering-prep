@@ -1237,6 +1237,7 @@ CONFIG_KEYS = [
     ('core', 'dag_ignore_file_syntax'), ('core', 'dag_discovery_safe_mode'),
     ('dag_processor', 'bundle_refresh_check_interval'), ('dag_processor', 'stale_dag_threshold'),
     ('scheduler', 'orphaned_tasks_check_interval'), ('scheduler', 'task_queued_timeout'), ('scheduler', 'max_dagruns_per_loop_to_schedule'),
+    ('sensors', 'default_timeout'), ('triggerer', 'job_heartbeat_sec'),
 ]
 
 

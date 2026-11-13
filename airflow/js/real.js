@@ -5181,6 +5181,14 @@ LAB.real = {
     [
      "scheduler.max_dagruns_per_loop_to_schedule",
      "20"
+    ],
+    [
+     "sensors.default_timeout",
+     "604800"
+    ],
+    [
+     "triggerer.job_heartbeat_sec",
+     "5"
     ]
    ]
   },
