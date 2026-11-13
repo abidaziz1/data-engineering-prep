@@ -130,6 +130,11 @@ class Rec:
             self.data['counts'].setdefault('exit', {})[k] = rc
         return cwd
 
+    @staticmethod
+    def cmd_key(c):
+        """A command as a key of the exit codes, without the folder of the interpreter or of uv, which differs from machine to machine."""
+        return re.sub(r'(?<![\w./-])/[^\s"\']*/bin/(python[\d.]*|uv)\b', r'\1', c)
+
     def shell(self, key, cmds, cwd, env=None, timeout=300, show=None):
         """Run shell commands one after another and write down a terminal transcript: the command, then what it printed."""
         lines = []
@@ -140,7 +145,7 @@ class Rec:
             out = (p.stdout + p.stderr).rstrip('\n')
             if out:
                 lines.append(out)
-            self.data['counts'].setdefault('exit', {})[key + '|' + c] = p.returncode
+            self.data['counts'].setdefault('exit', {})[key + '|' + self.cmd_key(c)] = p.returncode
         self.text(key, '\n'.join(lines))
 
     def median_runs(self, fn, n=5):
@@ -226,7 +231,7 @@ def main():
         old = load_existing(args.out) or {'meta': {}, 'files': {}, 'text': {}, 'tables': {}, 'counts': {}}
         for k in ('files', 'text', 'tables', 'counts'):
             if k == 'counts':
-                ex_old = old['counts'].get('exit', {})
+                ex_old = {k: v for k, v in old['counts'].get('exit', {}).items() if REC.cmd_key(k) == k}   # keys with the folder of an interpreter come from an older version of this script
                 ex_new = out['counts'].get('exit', {})
                 old['counts'].update(out['counts'])
                 old['counts']['exit'] = {**ex_old, **ex_new}

@@ -9,7 +9,7 @@ For the parent. The tutorial itself only touches `python/`, so these parts could
         <span class="chip ready">Ready</span>
         <h3>Python for data engineers</h3>
         <p>Python in a data platform, environments and uv, data structures and what they cost, generators, files and formats, dates and money, retries and loads that can run twice, APIs and databases, pandas, Polars and DuckDB, speed and the GIL, validation, tests, shipping and design. Fifteen missions with a boss round. Every output was recorded from real runs of Python 3.14 and its libraries, and a fake partner API runs on the machine.</p>
-        <div class="paths"><span>Junior path about @JUNIOR@ hours</span><span>Senior path about @SENIOR@ hours</span></div>
+        <div class="paths"><span>Junior path about 8.5 hours</span><span>Senior path about 12 hours</span></div>
         <span class="go">Open the tutorial &rarr;</span>
       </a>
 ```

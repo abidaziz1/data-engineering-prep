@@ -180,6 +180,7 @@ print('  ', r.stdout.strip().split('\n')[-1])
 
 # ---- 6. record everything again and compare ----------------------------------------------------------------------------------------------------------
 TIMING_TEXT = re.compile(r'(?<![\w.])(\d+(?:\.\d+)?)(?= ?(?:ms|s|us|seconds)\b)|\bin [\d.]+s\b|\b\d+\.\d{2,}\b|^\s+\d+\s+[\d.]+\s+[\d.]+\s+[\d.]+\s+[\d.]+\s', re.M)
+TIMING_COLUMNS = ('m10/vectorize', 'm8/batch_insert')   # tables whose numbers are all timings or rates: every number after two spaces is masked
 TIMING_KEYS = ('m2/', 'm8/batch_insert', 'm10/profile_first', 'm10/vectorize', 'm10/concurrency', 'm12/pytest', 'm12/coverage', 'm12/hypothesis', 'm12/run_mutants', 'm13/checks', 'm14/pytest', 'm8/rate_limit', 'm9/', 'm4/')
 LOOSE = {'m3.lookup': 5.0, 'm5.formats': 5.0, 'm8.batch': 5.0, 'm9.engines': 5.0, 'm10.profile': 5.0, 'm10.vector': 5.0, 'm10.concurrency': 3.0, 'm10.memory': 1.2, 'm3.idset': 1.2, 'm4.genmem': 1.1}
 
@@ -220,6 +221,8 @@ if args.recapture:
         a, b = norm(REAL['text'].get(k, '<missing>')), norm(NEW['text'].get(k, '<missing>'))
         if k.startswith(TIMING_KEYS):
             a, b = TIMING_TEXT.sub('#', a), TIMING_TEXT.sub('#', b)
+        if k.startswith(TIMING_COLUMNS):
+            a, b = (re.sub(r'(?<=  )\d[\d,]*(?:\.\d+)?', '#', t) for t in (a, b))
         ok(a == b, f'text {k} differs from its recapture:\n--- recording\n{a[:300]}\n--- recapture\n{b[:300]}')
     bad = []
     for k in sorted(set(REAL['counts']) | set(NEW['counts'])):
