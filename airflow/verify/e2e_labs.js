@@ -46,13 +46,16 @@ const secs = s => { const m = /^([\d.,]+) (ms|s|min)\b/.exec(String(s).trim()); 
   const pick = async (act, v) => { await page.click('[data-act="' + act + '"][data-v="' + v + '"]'); await page.waitForTimeout(15); };
   const press = async act => { await page.click('[data-act="' + act + '"]'); await page.waitForTimeout(15); };
   const reset = key => page.evaluate(k => { LAB.app.local[k] = undefined; LAB.app.render(true); }, key).then(() => page.waitForTimeout(20));
-  const tables = () => page.$$eval('.lab .tbl', ts => ts.map(t => [...t.querySelectorAll('tbody tr')].map(r => [...r.children].map(td => td.innerText.trim()))));
+  const tables = () => page.$$eval('.lab .tbl', ts => ts.map(t => [...t.querySelectorAll('tbody tr')].map(r => [...r.children].map(td => td.innerText.trim().replace(/\s*\n\s*/g, ' ')))));
   const heads = () => page.$$eval('.lab .tbl', ts => ts.map(t => [...t.querySelectorAll('thead th')].map(x => x.innerText.trim())));
   const bigs = () => page.$$eval('.lab .big', els => els.map(e => ({ b: e.querySelector('b').textContent, s: e.querySelector('span').textContent })));
   const chipd = () => page.$$eval('.lab .chip-d', els => els.map(e => e.textContent));
   const chipVals = act => page.$$eval('[data-act="' + act + '"]', els => els.map(e => e.getAttribute('data-v')));
   const chipOn = act => page.$$eval('[data-act="' + act + '"].on', els => els.map(e => e.getAttribute('data-v')));
   const labText = () => page.$eval('.lab', e => e.innerText.replace(/\s+/g, ' ').trim());
+  const looseText = () => page.$eval('.lab', el => { const c = el.cloneNode(true); c.querySelectorAll('.code').forEach(x => x.remove()); return c.innerText; });
+  // no markup shows as text: backticks and double asterisks outside the code blocks mean that a string skipped the formatter
+  const noRaw = async where => { const t = await looseText(); ok(!/[`]|\*\*|undefined|NaN/.test(t), where + ' shows no raw markup, undefined or NaN: ' + (t.match(/.{0,30}([`]|\*\*|undefined|NaN).{0,30}/) || [''])[0]); };
   const section = async (name, fn) => { try { await fn(); } catch (e) { fail++; console.log('FAIL:', name, 'threw', String(e.message).split('\n')[0]); } };
 
   // ------------------------------------------------------------------------------------------------------------------------------
@@ -169,6 +172,7 @@ const secs = s => { const m = /^([\d.,]+) (ms|s|min)\b/.exec(String(s).trim()); 
       const runs = c === 'on' ? d + 1 : 1, peak = Math.min(runs, m), waves = Math.ceil(runs / m);
       const b = await bigs(), chips = await chipd();
       ok(same(b.map(x => x.b), [String(runs), String(peak), String(waves)]), 'catchup lab, ' + d + ' days behind, catchup ' + c + ', max_active_runs ' + m + ': ' + runs + ' runs, ' + peak + ' at a time, ' + waves + ' waves (got ' + b.map(x => x.b).join(', ') + ')');
+      if (m === 16) await noRaw('catchup lab, ' + d + ' days, catchup ' + c);
       ok(chips.length === runs && chips[chips.length - 1] === '2026-03-14' && chips[0] === day(Date.UTC(2026, 2, 14) - (runs - 1) * 86400000), 'catchup lab, ' + d + ' days, catchup ' + c + ': the logical dates run from ' + day(Date.UTC(2026, 2, 14) - (runs - 1) * 86400000) + ' to 2026-03-14 (got ' + chips[0] + ' to ' + chips[chips.length - 1] + ')');
     }
     await pick('cu-d', 4); await pick('cu-c', 'on'); await pick('cu-m', 2);
@@ -182,6 +186,7 @@ const secs = s => { const m = /^([\d.,]+) (ms|s|min)\b/.exec(String(s).trim()); 
     for (const beh of ['none', 'failed', 'completed']) {
       await pick('cu-b', beh);
       const rows = (await tables())[0];
+      await noRaw('catchup lab, ' + beh);
       ok(same(rows, [['2026-03-05', 'success', WANT[beh][0]], ['2026-03-06', 'failed', WANT[beh][1]], ['2026-03-07', 'no run', WANT[beh][2]]]), 'catchup lab, --reprocess-behavior ' + beh + ': ' + JSON.stringify(rows));
     }
     const txt = await labText();
@@ -313,6 +318,7 @@ const secs = s => { const m = /^([\d.,]+) (ms|s|min)\b/.exec(String(s).trim()); 
         await pick('rt-r', r);
         const waits = rec.waits.slice(0, r), b = await bigs(), t = (await tables())[0] || [];
         const where = 'retry lab, retries ' + r + ', delay ' + d + ', multiplier ' + (m || 'off') + ', cap ' + (c || 'none');
+        await noRaw(where);
         if (r === 0) { ok(b.length === 0 && t.length === 0 && (await labText()).includes('the first failure is the last'), where + ': with no retries the lab says that the first failure is the last and shows no wait'); continue; }
         ok(b[0].b === String(r + 1), where + ': ' + (r + 1) + ' tries at most (got ' + b[0].b + ')');
         ok(Math.abs(secs(b[1].b) - waits.reduce((x, y) => x + y, 0)) < 0.5, where + ': waiting in total ' + waits.reduce((x, y) => x + y, 0) + ' s (got ' + b[1].b + ')');
@@ -363,6 +369,7 @@ const secs = s => { const m = /^([\d.,]+) (ms|s|min)\b/.exec(String(s).trim()); 
       for (const rule of TR.rules) {
         await pick('tr-r', rule);
         const b = await bigs(), txt = await labText();
+        if (mix === TR.mixes[0]) await noRaw('trigger rules lab, ' + rule);
         ok(b[0].b === TR.results[rule][mix], 'trigger rules lab, ' + rule + ' with ' + s + ' succeeded, ' + f + ' failed, ' + k + ' skipped: the child is ' + TR.results[rule][mix] + ' (got ' + b[0].b + ')');
         ok(txt.includes('Mix of parents: ' + s + ' succeeded, ' + f + ' failed, ' + k + ' skipped.'), 'trigger rules lab: the note names the mix ' + mix);
         cells++;
@@ -436,6 +443,7 @@ const secs = s => { const m = /^([\d.,]+) (ms|s|min)\b/.exec(String(s).trim()); 
     for (const c of CAUSES) {
       await pick('wi-c', c);
       const txt = await labText(), rec = FD[c].failed_deps.replace(/\s+/g, ' ');
+      await noRaw('why-idle lab, ' + c);
       ok(txt.toLowerCase().includes(PHRASE[c].toLowerCase()), 'why-idle lab, ' + c + ': the page shows "' + PHRASE[c] + '"');
       ok(rec.toLowerCase().includes(PHRASE[c].toLowerCase()), 'recorded: the output of failed-deps for ' + c + ' contains "' + PHRASE[c] + '"');
       ok(txt.includes(FD[c].task_id) || txt.includes(FD[c].dag_id), 'why-idle lab, ' + c + ': the page names the task or the DAG that was asked');
@@ -465,7 +473,11 @@ const secs = s => { const m = /^([\d.,]+) (ms|s|min)\b/.exec(String(s).trim()); 
   // ------------------------------------------------------------------------------------------------------------------------------
   const ws = await page.evaluate(() => { const o = []; LAB.chapters.forEach(c => c.scenes.forEach(s => { if (s.type === 'widget') o.push([s.id, LAB.R.widget.steps(s)]); })); return o; });
   ok(ws.length === 13, 'the course has 13 labs, found ' + ws.length);
-  for (const [id, n] of ws) for (let i = 0; i < n; i++) { await go(id + ':' + i); ok(await page.$eval('.lab', e => e.innerText.length > 40), 'lab ' + id + ' step ' + (i + 1) + ' renders'); }
+  for (const [id, n] of ws) for (let i = 0; i < n; i++) {
+    await go(id + ':' + i);
+    ok(await page.$eval('.lab', e => e.innerText.length > 40), 'lab ' + id + ' step ' + (i + 1) + ' renders');
+    await noRaw('lab ' + id + ' step ' + (i + 1));
+  }
   ok(errs.length === 0, 'no console or page errors: ' + errs.slice(0, 3).join(' | '));
 
   console.log(pass + ' checks passed' + (fail ? ', ' + fail + ' failed' : ''));

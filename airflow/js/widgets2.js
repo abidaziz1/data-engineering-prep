@@ -263,7 +263,7 @@
           '<div class="lab-row"><span class="lab-l">Seconds to import one</span><div class="sel-chips">' + chips(SECS, q.secs, 'pc-s', function (x) { return x === 0.002 ? '0.002 (a light file)' : x === 2 ? '2 (a sleep or a call at the top)' : String(x); }) + '</div></div>' +
           '<div class="lab-row"><span class="lab-l">parsing_processes</span><div class="sel-chips">' + chips(PROCS, q.procs, 'pc-p') + '</div></div>' +
           big([[t < 1 ? num(t * 1000) + ' ms' : t < 120 ? num(t, 1) + ' s' : num(t / 60, 1) + ' min', 'one pass over all files', t > 300 ? 'bad' : t > 30 ? 'warn' : 'good']]) +
-          '<div class="callout tip">Recorded on this machine: a light file imported in about ' + num(pc.median_seconds['light.py'] * 1000, 1) + ' ms, and the file with `time.sleep(' + pc.sleep_at_top_level_seconds + ')` at the top level took ' + num(pc.median_seconds['toplevel_slow.py'], 2) + ' seconds every time. Hundred light files took ' + num(pc.hundred_files_seconds[0], 2) + ' seconds in one process once the imports were warm. ' + esc(pc.note) + '</div>' +
+          '<div class="callout tip">Recorded on this machine: a light file imported in about ' + num(pc.median_seconds['light.py'] * 1000, 1) + ' ms, and the file with <code>time.sleep(' + pc.sleep_at_top_level_seconds + ')</code> at the top level took ' + num(pc.median_seconds['toplevel_slow.py'], 2) + ' seconds every time. Hundred light files took ' + num(pc.hundred_files_seconds[0], 2) + ' seconds in one process once the imports were warm. The timings are the ' + esc(pc.note) + '.</div>' +
           '<p class="lab-note">The pass time is arithmetic, not a measurement of your setup. In Airflow 3 the DAG processor is its own process, so slow files delay new DAG versions and do not block the scheduler.</p></div>';
         box.innerHTML = h;
         A.bindWidget = function (act, el) { var v = +el.getAttribute('data-v'); if (act === 'pc-f') q.files = v; if (act === 'pc-s') q.secs = v; if (act === 'pc-p') q.procs = v; A.render(true); };
@@ -297,3 +297,18 @@
     };
   })();
 })();
+
+  /* A string that a lab builds by hand can carry `code` and **bold** marks that nobody turned into markup. After every render of a lab, turn them into <code> and <b> in the notes,
+     the callouts and the table heads. The code blocks are left alone. */
+  Object.keys(LAB.W).forEach(function (k) {
+    var w = LAB.W[k];
+    if (!w || typeof w.render !== 'function') return;
+    var orig = w.render;
+    w.render = function (box) {
+      var r = orig.apply(this, arguments);
+      Array.prototype.forEach.call(box.querySelectorAll('.callout, .lab-note, .tbl th'), function (el) {
+        if (el.textContent.indexOf('`') >= 0 || el.textContent.indexOf('**') >= 0) el.innerHTML = el.innerHTML.replace(/`([^`<]+)`/g, '<code>$1</code>').replace(/\*\*([^*<]+)\*\*/g, '<b>$1</b>');
+      });
+      return r;
+    };
+  });

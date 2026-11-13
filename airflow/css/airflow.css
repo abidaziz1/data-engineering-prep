@@ -79,10 +79,10 @@ a.logo:hover{background:#155E75}
 .chip-d.skip{background:#FBCFE8}
 
 /* grids of tasks and mapped instances */
-.tgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(5.4rem,1fr));gap:.35rem}
+.tgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(6.8rem,1fr));gap:.35rem}
 .tcell{border:3px solid var(--ink);border-radius:10px;padding:.25rem .35rem;font:700 .8rem 'IBM Plex Mono',monospace;background:#E2E8F0;display:flex;flex-direction:column;gap:.05rem}
 .tcell b{font-weight:800}
-.tcell span{font-weight:600;font-size:.74rem}
+.tcell span{font-weight:600;font-size:.8rem}
 .tcell.success{background:#BBF7D0}.tcell.failed{background:#FECACA}.tcell.skipped{background:#FBCFE8}.tcell.upstream_failed{background:#FED7AA}
 .tcell.running{background:#A7F3D0}.tcell.deferred{background:#DDD6FE}.tcell.up_for_retry{background:#FDE68A}.tcell.queued{background:#E2E8F0}
 
@@ -95,3 +95,4 @@ a.logo:hover{background:#155E75}
 .fmark{position:absolute;top:0;bottom:0;border-left:3px dashed #9A3412;z-index:2;pointer-events:none}
 .gbar.s-running{background:#34D399}.gbar.s-queued{background:#E2E8F0}.gbar.s-scheduled{background:#E7E5E4}
 .gbar.s-deferred{background:#C4B5FD}.gbar.s-up_for_reschedule{background:#99F6E4}.gbar.s-success{background:#BBF7D0}
+.tbl td.dt{white-space:nowrap}

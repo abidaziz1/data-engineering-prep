@@ -14,6 +14,9 @@
     return '<div class="tbl-wrap"><table class="tbl"><thead><tr>' + cols.map(function (c) { return '<th>' + esc(c) + '</th>'; }).join('') + '</tr></thead><tbody>' +
       rows.map(function (r, ri) { return '<tr class="' + (rowCls ? rowCls(r, ri) || '' : '') + '">' + r.map(function (c, ci) { return '<td class="' + (cellCls ? cellCls(r, ri, ci) || '' : '') + '">' + md(String(c)) + '</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table></div>';
   }
+  /* a date and a time on two lines, so that a narrow column breaks between them and never inside the date */
+  function dt(s) { return String(s).replace(' ', '\n'); }
+  function isDt(r, ri, ci) { return ci >= 1 && ci <= 4 ? 'dt' : ''; }
   function code(file, lang, text, hl) { return H.code({ file: file, lang: lang, code: text, hl: hl || null }); }
   function bindCodes(box) { box.querySelectorAll('.code').forEach(function (c) { H.bindCode(c, c.textContent); }); }
   function st(s) { return '<span class="st ' + s + '">' + esc(s) + '</span>'; }
@@ -165,7 +168,7 @@
           var r = runs(q.kind, q.expr, START, 3);
           h += '<div class="lab-row"><span class="lab-l">Timetable</span><div class="sel-chips">' + chips(['trigger', 'interval'], q.kind, 'iv-k', function (k) { return KINDS[k]; }) + '</div></div>' +
             '<div class="lab-row"><span class="lab-l">Cron</span><div class="sel-chips">' + chips(EXPRS, q.expr, 'iv-e') + '</div></div>' +
-            table(['Run', 'logical_date', 'data_interval_start', 'data_interval_end', 'run_after (starts)', 'ds'], r.map(function (x, k) { return [String(k + 1), fmt(x.logical), fmt(x.start), fmt(x.end), fmt(x.runAfter), fmtDay(x.logical)]; })) +
+            table(['Run', 'logical_date', 'data_interval_start', 'data_interval_end', 'run_after (starts)', 'ds'], r.map(function (x, k) { return [String(k + 1), dt(fmt(x.logical)), dt(fmt(x.start)), dt(fmt(x.end)), dt(fmt(x.runAfter)), fmtDay(x.logical)]; }), null, isDt) +
             '<p class="lab-note">Start date 2026-03-01, UTC, catchup on so that you can see the first runs. Airflow 3.4.0 returned the same rows for these cases.</p>';
         } else if (i === 1) {
           var tt = G.counts('af.timetables'), ci = tt.cron_trigger_interval.runs[1];
@@ -177,9 +180,9 @@
             '<div class="callout tip">With the default trigger timetable, `ds` is the day the run **starts**. To read the day before, use a timetable with an interval, or `macros.ds_add(ds, -1)`. Recorded: the `cron_trigger_interval` timetable returned the interval ' + ci.interval_start.slice(0, 16) + ' to ' + ci.interval_end.slice(0, 16) + ' for the run that starts at ' + ci.run_after.slice(0, 16) + '.</div>';
         } else {
           var when = Date.UTC(2026, 2, 14, q.hour, 30), ctx = G.counts('af.ctx'), sch = ctx.scheduled.show_log, man = ctx.manual.show_log;
-          var rowsM = ['trigger', 'interval', 'trigger_iv'].map(function (k) { var m = manual(k, '0 2 * * *', when); return [KINDS[k], fmt(m.start), fmt(m.end)]; });
+          var rowsM = ['trigger', 'interval', 'trigger_iv'].map(function (k) { var m = manual(k, '0 2 * * *', when); return [KINDS[k], dt(fmt(m.start)), dt(fmt(m.end))]; });
           h += '<div class="lab-row"><span class="lab-l">Click at</span><div class="sel-chips">' + chips(HOURS, q.hour, 'iv-h', function (k) { return '2026-03-14 ' + two(+k) + ':30'; }) + '</div></div>' +
-            table(['Timetable (cron `0 2 * * *`)', 'data_interval_start', 'data_interval_end'], rowsM) +
+            table(['Timetable (cron `0 2 * * *`)', 'data_interval_start', 'data_interval_end'], rowsM, null, function (r, ri, ci) { return ci >= 1 ? 'dt' : ''; }) +
             '<div class="lab-h">A manual run without a logical date (recorded)</div>' +
             table(['Value in the task', 'Scheduled run', 'Manual run, no date'], [['logical_date', kv(sch, 'logical_date'), kv(man, 'logical_date')], ['data_interval_start', kv(sch, 'data_interval_start'), kv(man, 'data_interval_start')], ['ds', kv(sch, 'ds'), kv(man, 'ds')], ['`ds` as a function argument', kv(ctx.scheduled.templated_log, 'ds argument'), kv(ctx.manual.templated_log, 'ds argument')]]);
         }
@@ -300,7 +303,7 @@
         var q = A.local.fo || (A.local.fo = { n: 5, size: '1 MB' }), h = '<div class="lab">';
         if (i === 0) {
           var o = outcome(q.n), e = G.counts('af.mapping_edge'), cells = '';
-          for (var k = 0; k < Math.min(o.tasks, 24); k++) cells += '<div class="tcell success"><b>load_store[' + k + ']</b><span>success</span></div>';
+          for (var k = 0; k < Math.min(o.tasks, 24); k++) cells += '<div class="tcell success"><b>load_store<wbr>[' + k + ']</b><span>success</span></div>';
           if (o.tasks > 24) cells += '<div class="tcell success"><b>...</b><span>' + (o.tasks - 24) + ' more</span></div>';
           if (o.kind === 'empty') cells = '<div class="tcell skipped"><b>load_store</b><span>skipped</span></div>';
           if (o.kind === 'toolong') cells = '<div class="tcell upstream_failed"><b>load_store</b><span>upstream_failed</span></div>';
