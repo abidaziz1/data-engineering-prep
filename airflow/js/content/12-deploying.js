@@ -137,12 +137,12 @@
         hl: 2,
         rows: [
           ['Self-managed on your own hosts or with Helm on Kubernetes', 'Everything: the processes, the database, the upgrades, the image, the logs.', 'Nothing.', 'Operating it is a job for someone. You choose the version and the day to upgrade.'],
-          ['A cloud managed service: Amazon MWAA, Google Cloud Composer', 'Your DAGs, requirements and settings, inside the limits of the service.', 'The processes, the database, the scaling and the upgrades of its supported versions.', 'The service supports versions on its own timetable, and the newest Airflow may not be there yet. Some settings and plugins are limited.'],
+          ['A cloud managed service: Amazon MWAA, Google Cloud Composer (renamed Managed Service for Apache Airflow in 2026)', 'Your DAGs, requirements and settings, inside the limits of the service.', 'The processes, the database, the scaling and the upgrades of its supported versions.', 'The service supports versions on its own timetable, and the newest Airflow may not be there yet. Some settings and plugins are limited.'],
           ['A vendor managed service: Astronomer', 'Your DAGs and your project, built into an image.', 'The platform and its release line, called Astro Runtime.', 'The Runtime is a vendor release of Airflow with its own numbering and Python versions.']
         ],
         steps: [
           { upto: 1, say: 'Self-managed gives you every choice and every task. It fits a team that has a platform group, or that needs the newest version at once.' },
-          { upto: 3, say: 'Managed services remove the operation of the platform and add a version policy. When I looked on 13 November 2026, Amazon MWAA listed Airflow 3.3.1, the Composer release notes mentioned 3.2.2 for its generation 3, and Astro Runtime 3.3-2 was the newest Runtime I found. Airflow 3.4.0 had been released a week earlier and I did not find it on those pages. Check the pages before you plan.' }
+          { upto: 3, say: 'Managed services remove the operation of the platform and add a version policy. When I looked on 13 November 2026, Amazon MWAA listed Airflow 3.3.1, the release notes of the Google service (Cloud Composer, renamed Managed Service for Apache Airflow in 2026) mentioned 3.2.2 for its generation 3, and Astro Runtime 3.3-2 was the newest Runtime I found. Airflow 3.4.0 had been released a week earlier and I did not find it on those pages. Check the pages before you plan.' }
         ]
       }),
 

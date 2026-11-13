@@ -47,6 +47,7 @@ BIN = pathlib.Path(PY).parent
 ap = argparse.ArgumentParser()
 ap.add_argument('--no-run', action='store_true', help='skip the runs of DAGs, pytest and the command line')
 ap.add_argument('--offline', action='store_true', help='do not check the URL of the constraints file')
+ap.add_argument('--no-browser', action='store_true', help='skip e2e_labs.js and its controls (they need Playwright and Chromium)')
 ap.add_argument('--full', action='store_true', help='run all thirteen trigger rules and all 36 cron expressions again (slow)')
 ap.add_argument('--recapture', action='store_true', help='record everything again and compare with js/real.js')
 ap.add_argument('--reuse', action='store_true', help='with --recapture: compare the recording kept from the last --recapture')
@@ -56,6 +57,7 @@ args = ap.parse_args()
 problems = 0
 TALLY = {}
 CONTROLS = []
+SKIPPED = []
 
 
 def bad(msg):
@@ -665,6 +667,47 @@ else:
     tick('Content lint clean (ids, tiers, ranges, diagrams, answers, writing rules, quoted numbers)')
 
 # ======================================================================================================================
+# 7b. the labs in a browser
+# ======================================================================================================================
+MUTATIONS = [  # a change to the widget code that a lab test has to notice: label, file, old text, new text
+    ('the backfill table of the catchup lab shows days without a leading zero', 'airflow/js/widgets.js', "['2026-03-0' + (5 + k)", "['2026-03-' + (5 + k)"),
+    ('the parse lab multiplies by the number of processes where it must divide', 'airflow/js/widgets2.js', 'return files * secs / procs;', 'return files * secs * procs;'),
+    ('the backfill callout reads a key that the recording does not have', 'airflow/js/widgets.js', 'bf.tries_after_none.join', 'bf.clear_numbers_after_none.join'),
+    ('the retry lab starts its waits from the second failed try', 'airflow/js/widgets2.js', 'Math.pow(mult, k - 1)', 'Math.pow(mult, k)'),
+]
+
+
+def labs_e2e(js):
+    r = run(['node', str(js)], env=dict(os.environ), timeout=900)
+    m = re.search(r'(\d+) checks passed(, (\d+) failed)?', r.stdout)
+    return r, m
+
+
+if args.no_browser:
+    SKIPPED.append('the lab checks in a browser (--no-browser)')
+elif run(['node', '-e', "require('playwright')"], env=dict(os.environ)).returncode != 0:
+    SKIPPED.append('the lab checks in a browser: Playwright is not installed (npm install playwright && npx playwright install chromium)')
+else:
+    r, m = labs_e2e(HERE / 'e2e_labs.js')
+    if r.returncode != 0 or not m or m.group(2):
+        bad('e2e_labs.js fails:\n' + r.stdout[-1500:] + r.stderr[-400:])
+    else:
+        tick('Lab checks in a browser: every chip of 13 labs against the recording and hand-worked values', int(m.group(1)))
+    for label, rel, old, new in MUTATIONS:
+        copy = WORK / ('labs_' + str(abs(hash(label)) % 10 ** 6))
+        for part in ('shared', 'airflow'):
+            shutil.copytree(ROOT / part, copy / part, ignore=shutil.ignore_patterns('__pycache__', '.cache', 'node_modules', '.git'))
+        target = copy / rel
+        src = target.read_text()
+        if src.count(old) != 1:
+            bad('control cannot be set up: "%s" is not in %s exactly once' % (old, rel))
+            continue
+        target.write_text(src.replace(old, new))
+        r2, m2 = labs_e2e(copy / 'airflow' / 'verify' / 'e2e_labs.js')
+        control('lab test fails when ' + label, r2.returncode != 0)
+        shutil.rmtree(copy, ignore_errors=True)
+
+# ======================================================================================================================
 # 8. --recapture
 # ======================================================================================================================
 TIMING = [  # path regex -> (relative tolerance, absolute tolerance). Machine-dependent timings and counts of samples.
@@ -755,5 +798,7 @@ print()
 for k in sorted(TALLY):
     print('%6d  %s' % (TALLY[k], k))
 print('%d controls: %s' % (len(CONTROLS), 'all rejected' if all(c for _, c in CONTROLS) else 'SOME NOT REJECTED'))
+for s_ in SKIPPED:
+    print('SKIPPED: ' + s_)
 print('verify_af: %s' % ('%d problem(s)' % problems if problems else 'clean'))
 sys.exit(1 if problems else 0)
