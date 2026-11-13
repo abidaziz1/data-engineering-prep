@@ -3363,8 +3363,8 @@ LAB.real = {
    },
    "final_state": "success",
    "gap_seconds_between_tries": [
-    5.9,
-    2.8
+    2.8,
+    2.9
    ],
    "max_tries": 3,
    "retries": 3,
@@ -3769,9 +3769,9 @@ LAB.real = {
    ]
   },
   "af.timeout": {
-   "error": "AirflowTaskTimeout: Timeout, PID: 15806",
+   "error": "AirflowTaskTimeout: Timeout, PID: 2369",
    "execution_timeout_seconds": 3,
-   "log": "[error] Process timed out\n[error] Task failed with exception\nAirflowTaskTimeout: Timeout, PID: 15806",
+   "log": "[error] Process timed out\n[error] Task failed with exception\nAirflowTaskTimeout: Timeout, PID: 2369",
    "seconds_until_failed": 3,
    "sleep_seconds": 10,
    "state": "failed"
