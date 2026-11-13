@@ -77,3 +77,7 @@ jsonschema
 ## i. CI
 
 `node python/verify/e2e_labs.js` is standalone and needs no arguments. `python/verify/check_widgets.js` is run by `verify_py.py`, and it can also be run alone with `node python/verify/check_widgets.js`.
+
+## j. Two words that dev/e2e.js and dev/smoke.js treat as bugs
+
+Both tools fail a screen whose text contains `undefined` or `NaN`. The Python course teaches both words: pandas writes a missing number as `NaN`, and Python's own message for a character that cp1252 cannot encode says `character maps to <undefined>`. The course keeps the checks as they are and works around them: it writes `nan` in lower case, as Python prints it for a float, and the encoding lab lists the encodings oldest first, so the last state of the walk is UTF-8 and not the cp1252 error. The message is still shown when you pick cp1252. If `dev/e2e.js` gets an allow-list for quoted language, those two workarounds can go. Until then, keep the lower-case `nan` when you edit scenes of mission 9.
