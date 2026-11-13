@@ -827,12 +827,21 @@ def sec_backfill():
     rc, again = st.cli('backfill', 'create', '--dag-id', 'brewline_backfill_demo', '--from-date', f, '--to-date', t, '--reprocess-behavior', 'none')
     backfill_done()
     _, cn0 = st.sql("SELECT run_id, try_number FROM task_instance WHERE dag_id = 'brewline_backfill_demo' AND task_id = 'load' AND working_set = 1 AND run_id LIKE 'backfill%' ORDER BY run_id")
-    rc, comp = st.cli('backfill', 'create', '--dag-id', 'brewline_backfill_demo', '--from-date', f, '--to-date', t, '--reprocess-behavior', 'completed')
+    # Airflow allows one running backfill per DAG, and the scheduler marks the one before as completed on its own time: ask again until it is accepted
+    for _ in range(40):
+        rc, comp = st.cli('backfill', 'create', '--dag-id', 'brewline_backfill_demo', '--from-date', f, '--to-date', t, '--reprocess-behavior', 'completed')
+        if rc == 0 or 'AlreadyRunningBackfill' not in comp:
+            break
+        time.sleep(5)
     if rc != 0:
         print('backfill completed call failed: rc=%s %s' % (rc, comp[-500:]), file=sys.stderr)
     backfill_done()
-    time.sleep(6)
-    _, cn1 = st.sql("SELECT run_id, try_number FROM task_instance WHERE dag_id = 'brewline_backfill_demo' AND task_id = 'load' AND working_set = 1 AND run_id LIKE 'backfill%' ORDER BY run_id")
+    # every run gets another try, but not in the same second: wait until the try number of each task has gone up, then read it
+    for _ in range(60):
+        _, cn1 = st.sql("SELECT run_id, try_number FROM task_instance WHERE dag_id = 'brewline_backfill_demo' AND task_id = 'load' AND working_set = 1 AND run_id LIKE 'backfill%' ORDER BY run_id")
+        if len(cn1) == len(cn0) and all(b[1] > a[1] for a, b in zip(cn0, cn1)):
+            break
+        time.sleep(1)
     runs_after = st.runs('brewline_backfill_demo')
     n_after = len([r for r in runs_after if r[1] == 'backfill'])
     _, bf = st.sql('SELECT dag_id, from_date, to_date, max_active_runs, reprocess_behavior FROM backfill ORDER BY id')
@@ -1334,6 +1343,7 @@ def sec_secrets():
         'AIRFLOW_CONN_BREWLINE_API': json.dumps({'conn_type': 'https', 'host': 'api.partner.example', 'login': 'brewline', 'password': 'env-s3cret-pass'}),
         'AIRFLOW_VAR_BREWLINE_REGION': 'sg', 'AIRFLOW_VAR_BREWLINE_API_SECRET': 'hunter2-api-key',
     }
+    close_stack()  # the shared stack would pick up the run of this one from the same database, and it has no environment variables
     st = Stack(st_extra)
     st.start()
     try:

@@ -718,18 +718,26 @@ else:
 TIMING = [  # path regex -> (relative tolerance, absolute tolerance). Machine-dependent timings and counts of samples.
     (r'^counts\.af\.waiting\.\w+\.facts\.(slot_seconds|seconds_until_all_done)$', (0.6, 6.0)),
     (r'^counts\.af\.pools\.\w+\.tasks\[\d+\]\.(start|end)$', (0.5, 3.0)),
-    (r'^counts\.af\.retries\.gap_seconds_between_tries\[\d+\]$', (0.5, 3.0)),
+    (r'^counts\.af\.retries\.gap_seconds_between_tries\[\d+\]$', (0.5, 5.0)),   # the retry delay plus the time that the scheduler takes to notice it
+    (r'^counts\.af\.waiting\.\w+\.facts\.(max_running|max_holding_a_slot|max_deferred)$', (0, 2.0)),   # counted in samples of one second: a task that runs for less than a second is seen or missed
     (r'^counts\.af\.backoff\.seconds_between_end_and_next_start\[\d+\]$', (0.5, 6.0)),
     (r'^counts\.af\.timeout\.seconds_until_failed$', (0.5, 2.0)),
     (r'^counts\.af\.parse_cost\.', (2.0, 0.02)),
     (r'^counts\.af\.deadline\.(task_seconds)$', (0.2, 3.0)),
 ]
+# Texts whose lines come in another order from run to run: a log has the print of a task and the log line of the supervisor in either order, and
+# airflow tasks failed-deps prints its dependency checks from a set. They are compared as sorted lines.
+ORDERLESS = [r'^counts\.af\.assets\.(consumer_logs|and_consumer_logs_all)\[\d+\]$', r'^counts\.af\.ctx\.\w+\.(show_log|templated_log)$', r'^counts\.af\.failed_deps\.\w+\.failed_deps$']
+# Tasks that start in the same second start in either order: compare the order wave by wave (the pool and the DAG limit of these two runs are 2).
+WAVE_ORDER = {r'^counts\.af\.pools\.(brewline_dag_limit|brewline_pool_two_slots)\.start_order$': 2}
 IGNORE = [r'^meta\.recorded_on$', r'^counts\.af\.waiting\.\w+\.segments', r'^counts\.af\.waiting\.\w+\.states_seen', r'^counts\.af\.pools\.\w+\.tasks\[\d+\]\.task$']
 
 
 def normtext(s):
     # a clock value of the machine (microseconds that are not all zero) differs on every recording. The dates that the course chose have no such fraction.
     s = re.sub(r'\d{4}-\d\d-\d\d[T ]\d\d:\d\d:\d\d\.(?!0+\b)\d+(Z|\+00:00)?', '<clock>', s)
+    # the values that belong to the day of the recording (the next run of a DAG, the time it was parsed) and a signed token
+    s = re.sub(r'^((?:next_dagrun\w*|last_parsed_time|file_token)\s*\|\s*).*$', r'\1<varies>', s, flags=re.M)
     s = re.sub(r'\[\d{3,6}\]', '[N]', s)
     s = re.sub(r'PID: \d+', 'PID: N', s)
     s = re.sub(r'pytest-of-\w+/pytest-\d+', 'pytest-of-X/pytest-N', s)
@@ -746,6 +754,10 @@ def walk(a, b, path, diffs):
                 diffs.append('%s.%s: only in the %s recording' % (path, k, 'old' if k in a else 'new'))
             else:
                 walk(a[k], b[k], path + '.' + k, diffs)
+    elif isinstance(a, list) and isinstance(b, list) and any(re.search(p, path) for p in WAVE_ORDER):
+        size = [n for p, n in WAVE_ORDER.items() if re.search(p, path)][0]
+        if [set(a[i:i + size]) for i in range(0, len(a), size)] != [set(b[i:i + size]) for i in range(0, len(b), size)]:
+            diffs.append('%s: the waves of %d differ: %s against %s' % (path, size, a, b))
     elif isinstance(a, list) and isinstance(b, list):
         if len(a) != len(b):
             diffs.append('%s: %d items in the old recording, %d in the new' % (path, len(a), len(b)))
@@ -761,9 +773,15 @@ def walk(a, b, path, diffs):
                 diffs.append('%s: %s against %s is outside the tolerance of %s' % (path, a, b, (rel, ab)))
                 return
         diffs.append('%s: %s against %s' % (path, a, b))
+    elif isinstance(a, str) and isinstance(b, str) and any(re.search(p, path) for p in ORDERLESS):
+        if sorted(normtext(a).splitlines()) != sorted(normtext(b).splitlines()):
+            diffs.append('%s: the lines differ (%r against %r)' % (path, normtext(a)[:70], normtext(b)[:70]))
     elif isinstance(a, str) and isinstance(b, str):
-        if normtext(a) != normtext(b):
-            diffs.append('%s: text differs (%r against %r)' % (path, normtext(a)[:70], normtext(b)[:70]))
+        na, nb = normtext(a), normtext(b)
+        if na != nb:
+            la, lb = na.splitlines(), nb.splitlines()
+            i = next((k for k in range(min(len(la), len(lb))) if la[k] != lb[k]), min(len(la), len(lb)))
+            diffs.append('%s: text differs at line %d (%r against %r)' % (path, i + 1, (la[i] if i < len(la) else '')[:80], (lb[i] if i < len(lb) else '')[:80]))
     elif a != b:
         diffs.append('%s: %r against %r' % (path, a, b))
 

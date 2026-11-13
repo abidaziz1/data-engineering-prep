@@ -24,7 +24,7 @@ LAB.real = {
     }
    ],
    "consumer_logs": [
-    "[info] Done. Returned value was: None\ntriggered by orders_raw: 1 event(s)",
+    "triggered by orders_raw: 1 event(s)\n[info] Done. Returned value was: None",
     "triggered by orders_raw: 1 event(s)\n[info] Done. Returned value was: None",
     "triggered by orders_raw: 1 event(s)\n[info] Done. Returned value was: None"
    ],
@@ -132,10 +132,10 @@ LAB.real = {
    "retries": 4,
    "retry_delay_seconds": 1,
    "seconds_between_end_and_next_start": [
-    1.3,
-    2.4,
-    5.9,
-    11.0
+    1.9,
+    3.0,
+    5.1,
+    10.6
    ],
    "task_id": "call_partner",
    "tries": 5
@@ -703,7 +703,7 @@ LAB.real = {
     "run_id": "manual__2026-03-14T09:00:00.000000+00:00",
     "show_log": "run_id = manual__2026-03-14T09:00:00.000000+00:00\nlogical_date = <missing>\ndata_interval_start = <missing>\ndata_interval_end = <missing>\nds = <missing>\nts = <missing>\nrun_type = manual\n[info] Done. Returned value was: None",
     "state": "success",
-    "templated_log": "[info] Done. Returned value was: None\nds argument = None"
+    "templated_log": "ds argument = None\n[info] Done. Returned value was: None"
    },
    "scheduled": {
     "has_data_interval": true,
@@ -716,7 +716,7 @@ LAB.real = {
    }
   },
   "af.dagbag": {
-   "count": 31,
+   "count": 37,
    "dags": {
     "brewline_backoff": {
      "catchup": false,
@@ -1131,6 +1131,66 @@ LAB.real = {
       "load": "all_success"
      }
     },
+    "brewline_incr_lookback": {
+     "catchup": false,
+     "edges": [
+      [
+       "load",
+       []
+      ]
+     ],
+     "file": "brewline_incremental.py",
+     "max_active_runs": 16,
+     "max_active_tasks": 16,
+     "operators": {
+      "load": "_PythonDecoratedOperator"
+     },
+     "owner": [
+      "airflow"
+     ],
+     "retries": {
+      "load": 0
+     },
+     "schedule": "@daily",
+     "tags": [],
+     "tasks": [
+      "load"
+     ],
+     "timetable": "CronTriggerTimetable",
+     "trigger_rules": {
+      "load": "all_success"
+     }
+    },
+    "brewline_incr_window": {
+     "catchup": false,
+     "edges": [
+      [
+       "load",
+       []
+      ]
+     ],
+     "file": "brewline_incremental.py",
+     "max_active_runs": 16,
+     "max_active_tasks": 16,
+     "operators": {
+      "load": "_PythonDecoratedOperator"
+     },
+     "owner": [
+      "airflow"
+     ],
+     "retries": {
+      "load": 0
+     },
+     "schedule": "@daily",
+     "tags": [],
+     "tasks": [
+      "load"
+     ],
+     "timetable": "CronTriggerTimetable",
+     "trigger_rules": {
+      "load": "all_success"
+     }
+    },
     "brewline_land_customers": {
      "catchup": false,
      "edges": [
@@ -1279,6 +1339,110 @@ LAB.real = {
      "timetable": "CronTriggerTimetable",
      "trigger_rules": {
       "load": "all_success"
+     }
+    },
+    "brewline_loop_fixed": {
+     "catchup": false,
+     "edges": [
+      [
+       "accumulate.increment",
+       [
+        "accumulate.__loop_gate"
+       ]
+      ],
+      [
+       "accumulate.__loop_gate",
+       []
+      ]
+     ],
+     "file": "brewline_loop.py",
+     "max_active_runs": 16,
+     "max_active_tasks": 16,
+     "operators": {
+      "accumulate.__loop_gate": "LoopGateOperator",
+      "accumulate.increment": "_PythonDecoratedOperator"
+     },
+     "owner": [
+      "airflow"
+     ],
+     "retries": {
+      "accumulate.__loop_gate": 0,
+      "accumulate.increment": 0
+     },
+     "schedule": "None",
+     "tags": [
+      "brewline"
+     ],
+     "tasks": [
+      "accumulate.increment",
+      "accumulate.__loop_gate"
+     ],
+     "timetable": "NullTimetable",
+     "trigger_rules": {
+      "accumulate.__loop_gate": "all_success",
+      "accumulate.increment": "all_success"
+     }
+    },
+    "brewline_loop_until": {
+     "catchup": false,
+     "edges": [
+      [
+       "refine.improve",
+       [
+        "refine.evaluate"
+       ]
+      ],
+      [
+       "refine.evaluate",
+       [
+        "refine.accurate_enough"
+       ]
+      ],
+      [
+       "refine.accurate_enough",
+       [
+        "finished"
+       ]
+      ],
+      [
+       "finished",
+       []
+      ]
+     ],
+     "file": "brewline_loop.py",
+     "max_active_runs": 16,
+     "max_active_tasks": 16,
+     "operators": {
+      "finished": "_PythonDecoratedOperator",
+      "refine.accurate_enough": "LoopGateOperator",
+      "refine.evaluate": "_PythonDecoratedOperator",
+      "refine.improve": "_PythonDecoratedOperator"
+     },
+     "owner": [
+      "airflow"
+     ],
+     "retries": {
+      "finished": 0,
+      "refine.accurate_enough": 0,
+      "refine.evaluate": 0,
+      "refine.improve": 0
+     },
+     "schedule": "None",
+     "tags": [
+      "brewline"
+     ],
+     "tasks": [
+      "refine.improve",
+      "refine.evaluate",
+      "refine.accurate_enough",
+      "finished"
+     ],
+     "timetable": "NullTimetable",
+     "trigger_rules": {
+      "finished": "all_success",
+      "refine.accurate_enough": "all_success",
+      "refine.evaluate": "all_success",
+      "refine.improve": "all_success"
      }
     },
     "brewline_map_big": {
@@ -1734,6 +1898,118 @@ LAB.real = {
       "use_secrets": "all_success"
      }
     },
+    "brewline_teardown_hides": {
+     "catchup": false,
+     "edges": [
+      [
+       "check_quality",
+       [
+        "publish"
+       ]
+      ],
+      [
+       "publish",
+       [
+        "cleanup"
+       ]
+      ],
+      [
+       "cleanup",
+       []
+      ]
+     ],
+     "file": "brewline_watcher.py",
+     "max_active_runs": 16,
+     "max_active_tasks": 16,
+     "operators": {
+      "check_quality": "_PythonDecoratedOperator",
+      "cleanup": "_PythonDecoratedOperator",
+      "publish": "_PythonDecoratedOperator"
+     },
+     "owner": [
+      "airflow"
+     ],
+     "retries": {
+      "check_quality": 0,
+      "cleanup": 0,
+      "publish": 0
+     },
+     "schedule": "None",
+     "tags": [],
+     "tasks": [
+      "check_quality",
+      "publish",
+      "cleanup"
+     ],
+     "timetable": "NullTimetable",
+     "trigger_rules": {
+      "check_quality": "all_success",
+      "cleanup": "all_done",
+      "publish": "all_success"
+     }
+    },
+    "brewline_teardown_watcher": {
+     "catchup": false,
+     "edges": [
+      [
+       "check_quality",
+       [
+        "publish",
+        "watcher"
+       ]
+      ],
+      [
+       "publish",
+       [
+        "cleanup",
+        "watcher"
+       ]
+      ],
+      [
+       "cleanup",
+       [
+        "watcher"
+       ]
+      ],
+      [
+       "watcher",
+       []
+      ]
+     ],
+     "file": "brewline_watcher.py",
+     "max_active_runs": 16,
+     "max_active_tasks": 16,
+     "operators": {
+      "check_quality": "_PythonDecoratedOperator",
+      "cleanup": "_PythonDecoratedOperator",
+      "publish": "_PythonDecoratedOperator",
+      "watcher": "_PythonDecoratedOperator"
+     },
+     "owner": [
+      "airflow"
+     ],
+     "retries": {
+      "check_quality": 0,
+      "cleanup": 0,
+      "publish": 0,
+      "watcher": 0
+     },
+     "schedule": "None",
+     "tags": [],
+     "tasks": [
+      "check_quality",
+      "publish",
+      "cleanup",
+      "watcher"
+     ],
+     "timetable": "NullTimetable",
+     "trigger_rules": {
+      "check_quality": "all_success",
+      "cleanup": "all_done",
+      "publish": "all_success",
+      "watcher": "one_failed"
+     }
+    },
     "brewline_templates": {
      "catchup": false,
      "edges": [
@@ -2097,8 +2373,8 @@ LAB.real = {
    "bundles": [
     "dags-folder"
    ],
-   "dags": 44,
-   "paused": 44
+   "dags": 52,
+   "paused": 52
   },
   "af.db_access": {
    "error": "RuntimeError: Direct database access via the ORM is not allowed in Airflow 3.0",
@@ -2371,7 +2647,7 @@ LAB.real = {
    },
    "depends_on_past": {
     "dag_id": "brewline_blocked_past",
-    "failed_deps": "Task instance dependencies not met:\nTask Instance State: Task is in the 'None' state.\nPrevious Dagrun State: depends_on_past is true for this task, but 1 previous task instance(s) are not in a successful state.",
+    "failed_deps": "Task instance dependencies not met:\nPrevious Dagrun State: depends_on_past is true for this task, but 1 previous task instance(s) are not in a successful state.\nTask Instance State: Task is in the 'None' state.",
     "state": null,
     "task_id": "load"
    },
@@ -2383,7 +2659,7 @@ LAB.real = {
    },
    "upstream_running": {
     "dag_id": "brewline_blocked",
-    "failed_deps": "Task instance dependencies not met:\nTrigger Rule: Task's trigger rule 'all_success' requires all upstream tasks to have succeeded, but found 1 non-success(es). upstream_states=_UpstreamTIStates(success=0, skipped=0, failed=0, upstream_failed=0, removed=0, done=0, success_setup=0, skipped_setup=0), upstream_task_ids={'slow_extract'}\nTask Instance State: Task is in the 'None' state.",
+    "failed_deps": "Task instance dependencies not met:\nTask Instance State: Task is in the 'None' state.\nTrigger Rule: Task's trigger rule 'all_success' requires all upstream tasks to have succeeded, but found 1 non-success(es). upstream_states=_UpstreamTIStates(success=0, skipped=0, failed=0, upstream_failed=0, removed=0, done=0, success_setup=0, skipped_setup=0), upstream_task_ids={'slow_extract'}",
     "state": null,
     "task_id": "load_after_extract"
    }
@@ -2945,7 +3221,7 @@ LAB.real = {
     "rows": [
      [
       "asset_triggered",
-      "4"
+      "6"
      ],
      [
       "backfill",
@@ -2953,7 +3229,7 @@ LAB.real = {
      ],
      [
       "manual",
-      "23"
+      "25"
      ],
      [
       "scheduled",
@@ -2994,11 +3270,6 @@ LAB.real = {
       "brewline_timeout",
       "1",
       "1"
-     ],
-     [
-      "brewline_wait_reschedule",
-      "1",
-      "1"
      ]
     ],
     "sql": "SELECT dag_id, count(*) AS runs, sum(CASE WHEN state = 'failed' THEN 1 ELSE 0 END) AS failed FROM dag_run GROUP BY dag_id HAVING failed > 0 ORDER BY failed DESC, dag_id"
@@ -3012,11 +3283,11 @@ LAB.real = {
     "rows": [
      [
       "success",
-      "75"
+      "80"
      ],
      [
       "failed",
-      "6"
+      "5"
      ],
      [
       "None",
@@ -3047,6 +3318,11 @@ LAB.real = {
       "brewline_retry_policy",
       "call_partner",
       "3"
+     ],
+     [
+      "brewline_backfill_demo",
+      "load",
+      "2"
      ],
      [
       "brewline_callbacks",
@@ -3162,29 +3438,29 @@ LAB.real = {
   },
   "af.parse_cost": {
    "hundred_files_seconds": [
-    0.1392,
-    0.1646,
-    0.1673
+    0.075,
+    0.0773,
+    0.0826
    ],
    "median_seconds": {
-    "light.py": 0.0019,
-    "toplevel_slow.py": 2.0027
+    "light.py": 0.001,
+    "toplevel_slow.py": 2.0024
    },
    "note": "wall time of a fresh DagBag in one process on this machine, including the import of Airflow code",
    "single_file_seconds": {
     "light.py": [
-     0.0018,
-     0.0018,
-     0.0019,
-     0.002,
-     0.0055
+     0.001,
+     0.001,
+     0.001,
+     0.0013,
+     0.0043
     ],
     "toplevel_slow.py": [
-     2.0026,
-     2.0026,
-     2.0027,
-     2.0028,
-     2.0059
+     2.0022,
+     2.0023,
+     2.0024,
+     2.0032,
+     2.0047
     ]
    },
    "sleep_at_top_level_seconds": 2
@@ -3199,8 +3475,8 @@ LAB.real = {
      "load_2",
      "load_4",
      "load_3",
-     "load_6",
-     "load_5"
+     "load_5",
+     "load_6"
     ],
     "tasks": [
      {
@@ -3216,28 +3492,28 @@ LAB.real = {
       "task": "load_2"
      },
      {
-      "end": 6.9,
+      "end": 7.0,
       "priority_weight": 1,
-      "start": 3.7,
+      "start": 3.9,
       "task": "load_4"
      },
      {
-      "end": 6.9,
+      "end": 7.0,
       "priority_weight": 1,
-      "start": 3.7,
+      "start": 3.9,
       "task": "load_3"
      },
      {
-      "end": 10.1,
+      "end": 10.8,
       "priority_weight": 1,
-      "start": 6.9,
-      "task": "load_6"
+      "start": 7.7,
+      "task": "load_5"
      },
      {
-      "end": 10.1,
+      "end": 10.8,
       "priority_weight": 1,
-      "start": 7.0,
-      "task": "load_5"
+      "start": 7.7,
+      "task": "load_6"
      }
     ],
     "tasks_count": 6
@@ -3261,27 +3537,27 @@ LAB.real = {
       "task": "report_5"
      },
      {
-      "end": 4.3,
+      "end": 5.1,
       "priority_weight": 4,
-      "start": 2.2,
+      "start": 3.0,
       "task": "report_4"
      },
      {
-      "end": 7.4,
+      "end": 8.2,
       "priority_weight": 3,
-      "start": 5.3,
+      "start": 6.1,
       "task": "report_3"
      },
      {
-      "end": 9.5,
+      "end": 11.1,
       "priority_weight": 2,
-      "start": 7.4,
+      "start": 9.0,
       "task": "report_2"
      },
      {
-      "end": 12.1,
+      "end": 13.7,
       "priority_weight": 1,
-      "start": 10.0,
+      "start": 11.6,
       "task": "report_1"
      }
     ],
@@ -3313,27 +3589,27 @@ LAB.real = {
       "task": "load_2"
      },
      {
-      "end": 6.3,
+      "end": 6.4,
       "priority_weight": 1,
       "start": 3.2,
       "task": "load_3"
      },
      {
-      "end": 6.3,
+      "end": 6.4,
       "priority_weight": 1,
       "start": 3.2,
       "task": "load_4"
      },
      {
-      "end": 9.7,
+      "end": 10.2,
       "priority_weight": 1,
-      "start": 6.5,
+      "start": 7.1,
       "task": "load_6"
      },
      {
-      "end": 9.7,
+      "end": 10.2,
       "priority_weight": 1,
-      "start": 6.5,
+      "start": 7.1,
       "task": "load_5"
      }
     ],
@@ -3363,8 +3639,8 @@ LAB.real = {
    },
    "final_state": "success",
    "gap_seconds_between_tries": [
-    2.8,
-    2.9
+    2.7,
+    2.4
    ],
    "max_tries": 3,
    "retries": 3,
@@ -3761,7 +4037,7 @@ LAB.real = {
   },
   "af.stack_startup": {
    "api-server": [
-    "[info] Started server process [6118]",
+    "[info] Started server process [27547]",
     "[info] Waiting for application startup.",
     "[info] Application startup complete.",
     "[info] Uvicorn running on http://127.0.0.1:<port> (Press CTRL+C to quit)"
@@ -3776,7 +4052,7 @@ LAB.real = {
     "[info] Checking for new files in bundle dags-folder every 3 seconds",
     "[info] Refreshing bundle dags-folder",
     "[info] Searching for Dag definitions in dags-folder at /opt/airflow/dags",
-    "[info] Found 24 files for bundle dags-folder (dag_discovery_safe_mode=True)"
+    "[info] Found 27 files for bundle dags-folder (dag_discovery_safe_mode=True)"
    ],
    "scheduler": [
     "[info] Loaded executor: :LocalExecutor:",
@@ -3788,9 +4064,9 @@ LAB.real = {
    ]
   },
   "af.timeout": {
-   "error": "AirflowTaskTimeout: Timeout, PID: 2369",
+   "error": "AirflowTaskTimeout: Timeout, PID: 2721",
    "execution_timeout_seconds": 3,
-   "log": "[error] Process timed out\n[error] Task failed with exception\nAirflowTaskTimeout: Timeout, PID: 2369",
+   "log": "[error] Process timed out\n[error] Task failed with exception\nAirflowTaskTimeout: Timeout, PID: 2721",
    "seconds_until_failed": 3,
    "sleep_seconds": 10,
    "state": "failed"
@@ -5822,10 +6098,10 @@ LAB.real = {
   "af.backfill_dry_run": "Performing dry run of backfill.\nPrinting params:\n    - dag_id = brewline_backfill_demo\n    - from_date = 2026-03-05 00:00:00+00:00\n    - to_date = 2026-03-07 23:59:59+00:00\n    - max_active_runs = None\n    - reverse = False\n    - dag_run_conf = None\n    - reprocess_behavior = None\n    - run_on_latest_version = True\nRuns to be attempted:\n+---------------------------+-----------------+------------------+\n| logical_date              | partition_key   | partition_date   |\n+===========================+=================+==================+\n| 2026-03-05 00:00:00+00:00 |                 |                  |\n+---------------------------+-----------------+------------------+\n| 2026-03-06 00:00:00+00:00 |                 |                  |\n+---------------------------+-----------------+------------------+\n| 2026-03-07 00:00:00+00:00 |                 |                  |\n+---------------------------+-----------------+------------------+",
   "af.cheat_sheet": "Miscellaneous commands                                                                                 \nairflow api-server                             | Start an Airflow API server instance                  \nairflow cheat-sheet                            | Display cheat sheet                                   \nairflow dag-processor                          | Start a dag processor instance                        \nairflow info                                   | Show information about current Airflow and environment\nairflow kerberos                               | Start a kerberos ticket renewer                       \nairflow plugins                                | Dump information about loaded plugins                 \nairflow rotate-fernet-key                      | Rotate encrypted connection credentials and variables \nairflow scheduler                              | Start a scheduler instance                            \nairflow standalone                             | Run an all-in-one copy of Airflow                     \nairflow triggerer                              | Start a triggerer instance                            \nairflow version                                | Show the version                                      \n                                                                                                       \nManage assets                                                        \nairflow assets details                         | Show asset details  \nairflow assets list                            | List assets         \nairflow assets materialize                     | Materialize an asset\n                                                                     \nManage backfills                                                             \nairflow backfill create                        | Create a backfill for a dag.\n                                                                             \nView configuration                                                                                                                           \nairflow config get-value                       | Print the value of the configuration                                                        \nairflow config lint                            | lint options for the configuration changes while migrating from Airflow 2.x to Airflow 3.0  \nairflow config list                            | List options for the configuration                                                          \nairflow config update                          | update options for the configuration changes while migrating from Airflow 2.x to Airflow 3.0\n                                                                                                                                             \nManage connections                                                                                         \nairflow connections add                        | Add a connection                                          \nairflow connections create-default-connections | Creates all the default connections from all the providers\nairflow connections delete                     | Delete a connection                                       \nairflow connections export                     | Export all connections                                    \nairflow connections get                        | Get a connection                                          \nairflow connections import                     | Import connections from a file                            \nairflow connections list                       | List connections                                          \nairflow connections test                       | Test a connection                                         \n                                                                                                           \nManage DAGs                                                                                                                                           \nairflow dags clear                             | Clear Dag runs selected by run_id, partition_key, or a partition_date window                         \nairflow dags delete                            | Delete all DB records related to the specified DAG                                                   ",
   "af.connections_list": "conn_id            | conn_type\n===================+==========\nbrewline_api       | generic  \nbrewline_warehouse | postgres \n                              \nWarning: This list only includes connections stored in the metadata database. `AIRFLOW_CONN_*` environment variables may also define connections -- including ones that override a database entry with \nthe same ID -- that will not appear here.",
-  "af.db_check": "2026-11-12T13:23:23.192906Z [info     ] Connection successful.         [airflow.utils.db] loc=db.py:1579",
-  "af.db_clean_dry_run": "Performing dry run for db cleanup.\nData prior to 2026-03-15 00:00:00+00:00 would be purged from tables ['xcom_v1', 'xcom_v2', 'task_reschedule', 'task_instance', 'task_state_store', 'deadline', 'dag_run'] with the following config:\ntable            | recency_column              | dag_id_column                            | keep_last | keep_last_filters           | keep_last_group_by\n=================+=============================+==========================================+===========+=============================+===================\nxcom_v1          | xcom_v1.timestamp           | xcom_v1.dag_id                           | False     | None                        | None\nxcom_v2          | xcom_v2.timestamp           | task_instance_id -> task_instance.dag_id | False     | None                        | None\ntask_reschedule  | task_reschedule.start_date  | ti_id -> task_instance.dag_id            | False     | None                        | None\ntask_instance    | task_instance.start_date    | task_instance.dag_id                     | False     | None                        | None\ntask_state_store | task_state_store.expires_at | task_state_store.dag_id                  | False     | None                        | None\ndeadline         | deadline.deadline_time      | dagrun_id -> dag_run.dag_id              | False     | None                        | None\ndag_run          | dag_run.start_date          | dag_run.dag_id                           | True      | ['run_type != :run_type_1'] | ['dag_id']\nPerforming dry run for table xcom_v1\nChecking table xcom_v1\nFound 0 rows meeting deletion criteria.\nPerforming dry run for table xcom_v2\nChecking table xcom_v2\nFound 46 rows meeting deletion criteria.\nPerforming dry run for table task_reschedule\nChecking table task_reschedule\nFound 18 rows meeting deletion criteria.\nPerforming dry run for table task_instance\nChecking table task_instance\nFound 90 rows meeting deletion criteria.\nPerforming dry run for table task_state_store\nChecking table task_state_store\nFound 0 rows meeting deletion criteria.\nPerforming dry run for table deadline\nChecking table deadline\nFound 1 rows meeting deletion criteria.\nPerforming dry run for table dag_run\nChecking table dag_run\nFound 36 rows meeting deletion criteria.",
+  "af.db_check": "2026-11-13T13:48:51.448672Z [info     ] Connection successful.         [airflow.utils.db] loc=db.py:1579",
+  "af.db_clean_dry_run": "Performing dry run for db cleanup.\nData prior to 2026-03-15 00:00:00+00:00 would be purged from tables ['xcom_v1', 'xcom_v2', 'task_reschedule', 'task_instance', 'task_state_store', 'deadline', 'dag_run'] with the following config:\ntable            | recency_column              | dag_id_column                            | keep_last | keep_last_filters           | keep_last_group_by\n=================+=============================+==========================================+===========+=============================+===================\nxcom_v1          | xcom_v1.timestamp           | xcom_v1.dag_id                           | False     | None                        | None\nxcom_v2          | xcom_v2.timestamp           | task_instance_id -> task_instance.dag_id | False     | None                        | None\ntask_reschedule  | task_reschedule.start_date  | ti_id -> task_instance.dag_id            | False     | None                        | None\ntask_instance    | task_instance.start_date    | task_instance.dag_id                     | False     | None                        | None\ntask_state_store | task_state_store.expires_at | task_state_store.dag_id                  | False     | None                        | None\ndeadline         | deadline.deadline_time      | dagrun_id -> dag_run.dag_id              | False     | None                        | None\ndag_run          | dag_run.start_date          | dag_run.dag_id                           | True      | ['run_type != :run_type_1'] | ['dag_id']\nPerforming dry run for table xcom_v1\nChecking table xcom_v1\nFound 0 rows meeting deletion criteria.\nPerforming dry run for table xcom_v2\nChecking table xcom_v2\nFound 49 rows meeting deletion criteria.\nPerforming dry run for table task_reschedule\nChecking table task_reschedule\nFound 22 rows meeting deletion criteria.\nPerforming dry run for table task_instance\nChecking table task_instance\nFound 97 rows meeting deletion criteria.\nPerforming dry run for table task_state_store\nChecking table task_state_store\nFound 0 rows meeting deletion criteria.\nPerforming dry run for table deadline\nChecking table deadline\nFound 1 rows meeting deletion criteria.\nPerforming dry run for table dag_run\nChecking table dag_run\nFound 40 rows meeting deletion criteria.",
   "af.deadline_log": "[info] Callback executed successfully\n[info] Workload finished\n[info] Received executor event with state success for callback <id>",
-  "af.details_raw": "property_name                   | property_value                                                                                                                                                        \n================================+=======================================================================================================================================================================\ndag_id                          | brewline_nightly                                                                                                                                                      \ndag_display_name                | brewline_nightly                                                                                                                                                      \nis_paused                       | True                                                                                                                                                                  \nscheduling_state                | paused                                                                                                                                                                \nis_stale                        | False                                                                                                                                                                 \nlast_parsed_time                | 2026-11-12 13:06:29.866313+00:00                                                                                                                                      \nlast_parse_duration             | None                                                                                                                                                                  \nlast_expired                    | None                                                                                                                                                                  \nbundle_name                     | dags-folder                                                                                                                                                           \nbundle_version                  | None                                                                                                                                                                  \nrelative_fileloc                | brewline_nightly.py                                                                                                                                                   \nfileloc                         | /opt/airflow/dags/brewline_nightly.py                                                                                                                     \ndescription                     | Nightly orders pipeline                                                                                                                                               \ntimetable_summary               | 0 2 * * *                                                                                                                                                             \ntimetable_description           | At 02:00                                                                                                                                                              \ntimetable_partitioned           | False                                                                                                                                                                 \ntimetable_periodic              | True                                                                                                                                                                  \ntags                            | {'name': 'brewline', 'dag_id': 'brewline_nightly', 'dag_display_name': 'brewline_nightly'},{'name': 'nightly', 'dag_id': 'brewline_nightly', 'dag_display_name':      \n                                | 'brewline_nightly'}                                                                                                                                                   \nmax_active_tasks                | 16                                                                                                                                                                    \nmax_active_runs                 | 16                                                                                                                                                                    \nmax_consecutive_failed_dag_runs | 0                                                                                                                                                                     \nhas_task_concurrency_limits     | False                                                                                                                                                                 \nhas_import_errors               | False                                                                                                                                                                 \nnext_dagrun_logical_date        | 2026-11-12 02:00:00+00:00                                                                                                                                             \nnext_dagrun_data_interval_start | 2026-11-12 02:00:00+00:00                                                                                                                                             \nnext_dagrun_data_interval_end   | 2026-11-12 02:00:00+00:00                                                                                                                                             \nnext_dagrun_run_after           | 2026-11-12 02:00:00+00:00                                                                                                                                             \nallowed_run_types               | None                                                                                                                                                                  \nowners                          | data-team                                                                                                                                                             \nis_backfillable                 | True                                                                                                                                                                  \nfile_token                      | eyJidW5kbGVfbmFtZSI6ImRhZ3MtZm9sZGVyIiwicmVsYXRpdmVfZmlsZWxvYyI6ImJyZXdsaW5lX25pZ2h0bHkucHkifQ.k7z0-hdqjTK-cwMkKsfplG4g-LM                                            \n                                                                                                                                                                                                        ",
+  "af.details_raw": "property_name                   | property_value                                                                                                                                                        \n================================+=======================================================================================================================================================================\ndag_id                          | brewline_nightly                                                                                                                                                      \ndag_display_name                | brewline_nightly                                                                                                                                                      \nis_paused                       | True                                                                                                                                                                  \nscheduling_state                | paused                                                                                                                                                                \nis_stale                        | False                                                                                                                                                                 \nlast_parsed_time                | 2026-11-13 13:33:36.393552+00:00                                                                                                                                      \nlast_parse_duration             | None                                                                                                                                                                  \nlast_expired                    | None                                                                                                                                                                  \nbundle_name                     | dags-folder                                                                                                                                                           \nbundle_version                  | None                                                                                                                                                                  \nrelative_fileloc                | brewline_nightly.py                                                                                                                                                   \nfileloc                         | /opt/airflow/dags/brewline_nightly.py                                                                                                                     \ndescription                     | Nightly orders pipeline                                                                                                                                               \ntimetable_summary               | 0 2 * * *                                                                                                                                                             \ntimetable_description           | At 02:00                                                                                                                                                              \ntimetable_partitioned           | False                                                                                                                                                                 \ntimetable_periodic              | True                                                                                                                                                                  \ntags                            | {'name': 'brewline', 'dag_id': 'brewline_nightly', 'dag_display_name': 'brewline_nightly'},{'name': 'nightly', 'dag_id': 'brewline_nightly', 'dag_display_name':      \n                                | 'brewline_nightly'}                                                                                                                                                   \nmax_active_tasks                | 16                                                                                                                                                                    \nmax_active_runs                 | 16                                                                                                                                                                    \nmax_consecutive_failed_dag_runs | 0                                                                                                                                                                     \nhas_task_concurrency_limits     | False                                                                                                                                                                 \nhas_import_errors               | False                                                                                                                                                                 \nnext_dagrun_logical_date        | 2026-11-13 02:00:00+00:00                                                                                                                                             \nnext_dagrun_data_interval_start | 2026-11-13 02:00:00+00:00                                                                                                                                             \nnext_dagrun_data_interval_end   | 2026-11-13 02:00:00+00:00                                                                                                                                             \nnext_dagrun_run_after           | 2026-11-13 02:00:00+00:00                                                                                                                                             \nallowed_run_types               | None                                                                                                                                                                  \nowners                          | data-team                                                                                                                                                             \nis_backfillable                 | True                                                                                                                                                                  \nfile_token                      | eyJidW5kbGVfbmFtZSI6ImRhZ3MtZm9sZGVyIiwicmVsYXRpdmVfZmlsZWxvYyI6ImJyZXdsaW5lX25pZ2h0bHkucHkifQ.fUPIjIjKM3VherGIPlkJij1Jueo                                            \n                                                                                                                                                                                                        ",
   "af.first_run": "[info] [DAG TEST] starting task_id=extract map_index=-1\n[info] Task started\nextracted 2 orders for 2026-03-14\n[info] Done. Returned value was: [{'order_id': 'O-1', 'total': 12.5}, {'order_id': 'O-2', 'total': 8.0}]\n[info] Pushing xcom\n[info] Task instance state updated: new_state=success\n[info] [DAG TEST] end task task_id=extract map_index=-1\n[info] [DAG TEST] starting task_id=transform map_index=-1\n[info] Task started\ntotal is 20.5\n[info] Done. Returned value was: {'orders': 2, 'total': 20.5}\n[info] Pushing xcom\n[info] Task instance state updated: new_state=success\n[info] [DAG TEST] end task task_id=transform map_index=-1\n[info] [DAG TEST] starting task_id=load map_index=-1\n[info] Task started\nwrote summary_2026-03-14.json\n[info] Done. Returned value was: None\n[info] Task instance state updated: new_state=success\n[info] [DAG TEST] end task task_id=load map_index=-1\n[info] Marking run <DagRun brewline_first @ 2026-03-14 00:00:00+00:00: manual__2026-03-14T09:00:00.000000+00:00, state:running, queued_at: None. run_type: manual> successful\n[info] DagRun Finished: dag_id=brewline_first, logical_date=2026-03-14, state=success, run_type=manual",
   "af.jobs_check": "Found one alive job.",
   "af.jobs_check_triggerer": "Found one alive job.",
