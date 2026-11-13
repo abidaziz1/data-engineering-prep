@@ -343,7 +343,7 @@
           ['Old days', 'Do a dry run of a backfill for the range you really need, then create it with `--max-active-runs`.']
         ],
         tell: 'I paused the DAG, fixed the start date and the catchup setting, set max_active_runs from what the warehouse could take, and backfilled the days we actually needed with a dry run first.',
-        prevent: 'Review start_date and catchup in code review, and keep `catchup_by_default` at its Airflow 3 default of off.'
+        prevent: ['Review **start_date** and **catchup** in code review', 'Keep `catchup_by_default` at its Airflow 3 default of **off**', 'Make every task safe to run twice before anyone starts a backfill']
       }),
 
       B.qa({

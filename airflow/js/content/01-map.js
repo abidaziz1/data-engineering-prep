@@ -210,7 +210,7 @@
           ['Catch up', 'After the restart, the scheduler creates the runs that it missed only for DAGs with catchup on. Look at the runs of last night and trigger the missing ones on purpose.']
         ],
         tell: 'The scheduler stopped at 02:00 and I restarted it. I found the reason in its log, then listed the DAGs that missed a run and triggered them with their logical dates so that no day is loaded twice.',
-        prevent: 'Run two schedulers where your setup allows it, alert on the scheduler heartbeat, and keep the metadata database healthy.'
+        prevent: ['Run **two schedulers** where your setup allows it', 'Alert on the **scheduler heartbeat** instead of relying on the UI', 'Keep the **metadata database** healthy']
       }),
 
       B.talk({

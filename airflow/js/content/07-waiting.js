@@ -265,7 +265,7 @@
           ['Cap it', 'Set a `timeout` on every sensor, so that a missing file fails after hours and not after seven days.']
         ],
         tell: 'Forty sensors in poke mode filled a pool of two slots, and the other work waited. I moved the waits to reschedule mode, then to deferrable mode once a triggerer was running, and set a timeout on every sensor.',
-        prevent: 'Make `mode` and `timeout` required in review for every sensor.'
+        prevent: ['Make **`mode`** and **`timeout`** required in review for every sensor', 'Use **`reschedule`** or a **deferrable** sensor for waits of more than a few minutes', 'Watch the **slots in use** by sensors in the pool view']
       }),
 
       B.talk({

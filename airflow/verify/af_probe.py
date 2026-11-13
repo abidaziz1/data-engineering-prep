@@ -76,6 +76,8 @@ def cmd_test(dag_id, logical_date=None):
     kw = {}
     if logical_date and logical_date != "none":
         kw["logical_date"] = pendulum.parse(logical_date)
+    if os.environ.get("AF_PROBE_CONF"):
+        kw["run_conf"] = json.loads(os.environ["AF_PROBE_CONF"])
     t0 = time.perf_counter()
     run, console = quiet(dag.test, **kw)
     seconds = time.perf_counter() - t0

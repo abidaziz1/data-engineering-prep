@@ -322,7 +322,7 @@
           ['Prevent', 'Alert on the heartbeat of every part, run more than one triggerer where you can, and keep a timeout on every sensor.']
         ],
         tell: 'The triggerer had stopped, so the deferred sensors never got their event. I restarted it, confirmed that the sensors woke up, and added an alert on the heartbeat of the triggerer.',
-        prevent: 'A health check for every part, because the UI check alone proves only that the API server is up.'
+        prevent: ['Check the **health of every part**: scheduler, DAG processor, triggerer and API server', 'Alert on the **heartbeat of the triggerer** as you do for the scheduler', 'Remember that the UI check alone proves only that the API server is up']
       }),
 
       B.talk({

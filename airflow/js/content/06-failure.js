@@ -440,7 +440,7 @@
           ['Close the gap', 'A timeout on every task that calls outside Airflow, and an alert on runs that exceed a time (a deadline alert).']
         ],
         tell: 'A task without a timeout hung on the partner API and held the only allowed run. I unblocked the queue, then added a timeout, retries with a backoff, and a deadline alert so that a late run tells us at once.',
-        prevent: 'Require `execution_timeout` in code review for every task that calls a network service.'
+        prevent: ['Require **`execution_timeout`** in code review for every task that calls a network service', 'Set `retries` and a retry delay next to every timeout', 'Alert on tasks that run much longer than their usual duration']
       }),
 
       B.talk({

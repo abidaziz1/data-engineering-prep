@@ -306,7 +306,7 @@
           ['After the fix', 'Wait for the next parse, or restart the DAG processor, and check that the DAG is listed and that the import error is gone.']
         ],
         tell: 'I read the import error, saw that the helper module was missing in the DAG processor environment, shipped the module with the DAG bundle, and confirmed that the DAG appeared and that no import error remained.',
-        prevent: 'Add an import test to CI that loads every DAG file in the production image. Mission 10 builds it.'
+        prevent: ['Add an **import test** to CI that loads every DAG file in the production image (mission 10 builds it)', 'Show the **import error count** on a dashboard and alert when it is above 0', 'Run the same image in CI and in production']
       }),
 
       B.decide({

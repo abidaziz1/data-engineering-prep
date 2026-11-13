@@ -303,7 +303,7 @@
           ['Drain', 'A DAG can be set to draining before a deploy, so that no new run starts and the running ones finish.']
         ],
         tell: 'The local bundle has no versioning, so a deploy during the run changed the code under it. I reran the run, moved to a Git bundle that records the commit for each run, and made deploys wait for draining.',
-        prevent: 'A versioned bundle, and a deploy window that respects running runs.'
+        prevent: ['Use a **versioned bundle**, so each run records the code it ran', 'Deploy only in a **window that respects running runs**', 'Never change the files that a run is reading']
       }),
 
       B.talk({

@@ -471,7 +471,7 @@
           ['Alert on tasks', 'Alert on failed task instances as well as runs, so that a masked failure still pages somebody.']
         ],
         tell: 'The cleanup was the last task and it succeeded, so the run was green although the checks failed. I added a watcher task as a child of every task and an alert on failed task instances.',
-        prevent: 'A review question for every DAG that ends in a cleanup: what is the state of the run when a task fails?'
+        prevent: ['Add a **review question** for every DAG that ends in a cleanup: what is the state of the run when a task fails?', 'Make a **watcher** a child of every task that matters', 'Alert on **failed task instances** and on the state of the run']
       }),
 
       B.talk({

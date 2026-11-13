@@ -330,7 +330,7 @@
           ['Prevent it', 'Keep one source for each connection id, and document it. A secrets backend is better still, because it has one owner.']
         ],
         tell: 'A Kubernetes secret defined the connection as an environment variable, and that wins over the database. I updated the secret, restarted the workers, and decided that this id lives only in the vault from now on.',
-        prevent: 'One source of truth for each connection id, owned by the team that owns the secret.'
+        prevent: ['Keep **one source of truth** for each connection id', 'Let the **team that owns the secret** own the connection', 'Read the order of lookup (secrets backend, environment variables, metadata database) before you edit a connection in the UI']
       }),
 
       B.talk({

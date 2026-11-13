@@ -327,7 +327,7 @@
           ['Then change one thing', 'Raise `parallelism` only if the workers and the target systems can take more, and keep the pools to protect the targets.']
         ],
         tell: 'The 32 running tasks were exactly the parallelism of the scheduler. I found which DAG held them, moved its waits out of the slots, and raised parallelism after checking the worker capacity.',
-        prevent: 'Alert when running tasks sit at the executor limit for more than a few minutes.'
+        prevent: ['Alert when running tasks sit at the **executor limit** for more than a few minutes', 'Give sensors and calls to rate-limited services their own **pool**', 'Review the limits together, not one at a time']
       }),
 
       B.talk({

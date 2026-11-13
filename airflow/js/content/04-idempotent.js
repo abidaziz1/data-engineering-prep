@@ -292,7 +292,7 @@
           ['Close the gap', 'Add a unique key or a delete-then-insert in one transaction, and a test that runs the task twice and checks the count (mission 10).']
         ],
         tell: 'The first try had already committed its insert when it timed out, so the retry inserted the day twice. I repaired 14 March with a delete-then-insert, added a unique key, and added a test that runs the load twice.',
-        prevent: 'Give every load a key or a slice to replace, and test that two runs equal one.'
+        prevent: ['Give every load a **key** to upsert on, or a **slice** to replace', 'Test that **two runs equal one**', 'Do not append without a key']
       }),
 
       B.talk({

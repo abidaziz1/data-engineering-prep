@@ -327,7 +327,7 @@
           ['Repair', 'Backfill the days since Friday with a dry run first (mission 3). The loads are idempotent, so it is safe.']
         ],
         tell: 'A cleanup replaced round with int, which truncates amounts like 19.99 to 1998 cents. I reverted it, added a unit test with awkward amounts, and backfilled the days since Friday.',
-        prevent: 'A unit test for every rule that touches money, and a review rule: no float arithmetic on amounts.'
+        prevent: ['Write a **unit test for every rule that touches money**', 'Add a review rule: **no float arithmetic on amounts**', 'Run the tests in **CI** before every merge']
       }),
 
       B.talk({

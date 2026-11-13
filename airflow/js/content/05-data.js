@@ -404,7 +404,7 @@
           ['Clean', '`airflow db clean` with a dry run first removes old rows (mission 11). Set a retention that your audit rules allow.']
         ],
         tell: 'One DAG returned millions of rows through XCom. I changed it to write to storage and return a path, cleaned the old rows with a dry run first, and added an alert on the size of the table.',
-        prevent: 'Review return values in code review, and alert on the growth of the XCom table.'
+        prevent: ['Review **return values** in code review: a task returns a small fact, not the data', 'Alert on the **growth of the XCom table**', 'Pass a **path or a key** to the data']
       }),
 
       B.talk({
