@@ -183,7 +183,7 @@
   /* ------------------------------------------------------------------ */
   S.deploy = {
     w: 1000, h: 400,
-    label: 'From a laptop to production. You change DAG files, push to git, CI runs checks, a release becomes a DAG bundle or an image, and an Airflow deployment picks it up. The deployment can be self-managed or a managed service.',
+    label: 'A DAG change travels from a laptop to production. You change DAG files, push to git, CI runs checks, a release becomes a DAG bundle or an image, and an Airflow deployment picks it up. The deployment can be self-managed or a managed service.',
     nodes: [
       { id: 'dev', x: 0, y: 40, w: 210, h: 76, t: 'Your laptop', s: 'edit DAGs, run tests', c: 'src', k: 'chip' },
       { id: 'git', x: 250, y: 40, w: 210, h: 76, t: 'Git', s: 'pull request, review', c: 'ci', k: 'chip' },
