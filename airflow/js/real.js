@@ -2782,6 +2782,115 @@ LAB.real = {
     }
    ]
   },
+  "af.loops": {
+   "fixed": {
+    "dag_id": "brewline_loop_fixed",
+    "rc": 0,
+    "task_instances": [
+     {
+      "map_index": 1,
+      "state": "success",
+      "task_id": "accumulate.increment"
+     },
+     {
+      "map_index": 1,
+      "state": "success",
+      "task_id": "accumulate.__loop_gate"
+     },
+     {
+      "map_index": 2,
+      "state": "success",
+      "task_id": "accumulate.increment"
+     },
+     {
+      "map_index": 2,
+      "state": "success",
+      "task_id": "accumulate.__loop_gate"
+     },
+     {
+      "map_index": 3,
+      "state": "success",
+      "task_id": "accumulate.increment"
+     },
+     {
+      "map_index": 3,
+      "state": "success",
+      "task_id": "accumulate.__loop_gate"
+     }
+    ]
+   },
+   "until": {
+    "dag_id": "brewline_loop_until",
+    "rc": 0,
+    "task_instances": [
+     {
+      "map_index": 1,
+      "state": "success",
+      "task_id": "refine.improve"
+     },
+     {
+      "map_index": 1,
+      "state": "success",
+      "task_id": "refine.evaluate"
+     },
+     {
+      "map_index": 1,
+      "state": "success",
+      "task_id": "refine.accurate_enough"
+     },
+     {
+      "map_index": 2,
+      "state": "success",
+      "task_id": "refine.improve"
+     },
+     {
+      "map_index": 2,
+      "state": "success",
+      "task_id": "refine.evaluate"
+     },
+     {
+      "map_index": 2,
+      "state": "success",
+      "task_id": "refine.accurate_enough"
+     },
+     {
+      "map_index": 3,
+      "state": "success",
+      "task_id": "refine.improve"
+     },
+     {
+      "map_index": 3,
+      "state": "success",
+      "task_id": "refine.evaluate"
+     },
+     {
+      "map_index": 3,
+      "state": "success",
+      "task_id": "refine.accurate_enough"
+     },
+     {
+      "map_index": 4,
+      "state": "success",
+      "task_id": "refine.improve"
+     },
+     {
+      "map_index": 4,
+      "state": "success",
+      "task_id": "refine.evaluate"
+     },
+     {
+      "map_index": 4,
+      "state": "success",
+      "task_id": "refine.accurate_enough"
+     },
+     {
+      "map_index": -1,
+      "state": "success",
+      "task_id": "finished"
+     }
+    ]
+   }
+  },
   "af.mapping_edge": {
    "big": {
     "list_stores": "failed",
@@ -4831,6 +4940,7 @@ LAB.real = {
   "dags/brewline_load_append.py": "\"\"\"A load that appends. Run it twice for the same day and the day is in the table twice.\"\"\"\nimport os\nimport sqlite3\n\nimport pendulum\nfrom airflow.sdk import dag, task\n\nDB = os.environ.get(\"BREWLINE_DB\", \"/tmp/brewline.db\")\nORDERS = [(\"O-1\", 12.5), (\"O-2\", 8.0), (\"O-3\", 21.0)]\n\n\n@dag(dag_id=\"brewline_load_append\", schedule=\"@daily\", start_date=pendulum.datetime(2026, 3, 1, tz=\"UTC\"), catchup=False)\ndef brewline_load_append():\n    @task\n    def load(ds=None):\n        with sqlite3.connect(DB) as con:\n            con.execute(\"CREATE TABLE IF NOT EXISTS orders_append (order_id TEXT, dt TEXT, total REAL)\")\n            con.executemany(\"INSERT INTO orders_append VALUES (?, ?, ?)\", [(i, ds, t) for i, t in ORDERS])\n        print(f\"inserted {len(ORDERS)} rows for {ds}\")\n\n    load()\n\n\nbrewline_load_append()\n",
   "dags/brewline_load_replace.py": "\"\"\"A load that replaces its own day: delete and insert in one transaction. Run it twice and the table is the same.\"\"\"\nimport os\nimport sqlite3\n\nimport pendulum\nfrom airflow.sdk import dag, task\n\nDB = os.environ.get(\"BREWLINE_DB\", \"/tmp/brewline.db\")\nORDERS = [(\"O-1\", 12.5), (\"O-2\", 8.0), (\"O-3\", 21.0)]\n\n\n@dag(dag_id=\"brewline_load_replace\", schedule=\"@daily\", start_date=pendulum.datetime(2026, 3, 1, tz=\"UTC\"), catchup=False)\ndef brewline_load_replace():\n    @task\n    def load(ds=None):\n        with sqlite3.connect(DB) as con:  # one transaction: both statements commit together or not at all\n            con.execute(\"CREATE TABLE IF NOT EXISTS orders_replace (order_id TEXT, dt TEXT, total REAL)\")\n            con.execute(\"DELETE FROM orders_replace WHERE dt = ?\", (ds,))\n            con.executemany(\"INSERT INTO orders_replace VALUES (?, ?, ?)\", [(i, ds, t) for i, t in ORDERS])\n        print(f\"replaced the rows of {ds}: {len(ORDERS)}\")\n\n    load()\n\n\nbrewline_load_replace()\n",
   "dags/brewline_load_upsert.py": "\"\"\"A load that upserts on the order id. Run it twice and the table is the same, and rows of other days stay.\"\"\"\nimport os\nimport sqlite3\n\nimport pendulum\nfrom airflow.sdk import dag, task\n\nDB = os.environ.get(\"BREWLINE_DB\", \"/tmp/brewline.db\")\nORDERS = [(\"O-1\", 12.5), (\"O-2\", 8.0), (\"O-3\", 21.0)]\n\n\n@dag(dag_id=\"brewline_load_upsert\", schedule=\"@daily\", start_date=pendulum.datetime(2026, 3, 1, tz=\"UTC\"), catchup=False)\ndef brewline_load_upsert():\n    @task\n    def load(ds=None):\n        with sqlite3.connect(DB) as con:\n            con.execute(\"CREATE TABLE IF NOT EXISTS orders_upsert (order_id TEXT PRIMARY KEY, dt TEXT, total REAL)\")\n            con.executemany(\n                \"INSERT INTO orders_upsert VALUES (?, ?, ?) ON CONFLICT(order_id) DO UPDATE SET dt = excluded.dt, total = excluded.total\",\n                [(f\"{ds}-{i}\", ds, t) for i, t in ORDERS],\n            )\n        print(f\"upserted {len(ORDERS)} rows for {ds}\")\n\n    load()\n\n\nbrewline_load_upsert()\n",
+  "dags/brewline_loop.py": "\"\"\"Task loops (new in Airflow 3.4): a task group that repeats. One loop runs a fixed number of times, the other until a condition is met.\"\"\"\nfrom __future__ import annotations\n\nfrom airflow.sdk import LoopDecision, dag, task, task_group\n\n\n@dag(dag_id=\"brewline_loop_fixed\", schedule=None, catchup=False, tags=[\"brewline\"])\ndef loop_fixed():\n    @task_group\n    def accumulate():\n        @task\n        def increment(*, loop):\n            total = (0 if loop.index == 1 else loop.previous) + 1\n            print(f\"iteration {loop.index}: total is {total}\")\n            return total\n\n        increment()\n\n    accumulate.loop(max_iterations=3)\n\n\n@dag(dag_id=\"brewline_loop_until\", schedule=None, catchup=False, tags=[\"brewline\"])\ndef loop_until():\n    @task_group\n    def refine():\n        @task\n        def improve(*, loop):\n            estimate = 1.0 if loop.index == 1 else loop.previous[\"estimate\"]\n            return (estimate + 2.0 / estimate) / 2.0\n\n        @task\n        def evaluate(estimate, *, loop):\n            error = abs(estimate * estimate - 2.0)\n            print(f\"iteration {loop.index}: estimate {estimate:.6f}, error {error:.2g}\")\n            return {\"estimate\": estimate, \"error\": error}\n\n        evaluate(improve())\n\n    def accurate_enough(*, loop):\n        error = loop.result[\"error\"]\n        return LoopDecision(stop=error < 0.000001, reason=f\"error {error:.2g}\")\n\n    @task\n    def finished():\n        print(\"refinement finished\")\n\n    refine.loop(max_iterations=10, until=accurate_enough) >> finished()\n\n\nloop_fixed()\nloop_until()\n",
   "dags/brewline_mapping.py": "\"\"\"Dynamic task mapping: one task definition, one task instance for each store, decided when the DAG runs.\"\"\"\nimport pendulum\nfrom airflow.sdk import dag, task\n\n\n@dag(dag_id=\"brewline_mapping\", schedule=None, start_date=pendulum.datetime(2026, 3, 1, tz=\"UTC\"), catchup=False)\ndef brewline_mapping():\n    @task\n    def list_stores():\n        return [\"SG-01\", \"SG-02\", \"SG-03\", \"SG-04\", \"SG-05\"]\n\n    @task\n    def load_store(store, region):\n        print(f\"loading {store} in {region}\")\n        return {\"store\": store, \"orders\": len(store) * 10}\n\n    @task\n    def summarize(results):\n        results = list(results)\n        print(f\"loaded {len(results)} stores, {sum(r['orders'] for r in results)} orders\")\n\n    summarize(load_store.partial(region=\"sg\").expand(store=list_stores()))\n\n\nbrewline_mapping()\n",
   "dags/brewline_mapping_edge.py": "\"\"\"Dynamic task mapping, two edge cases: an empty list, and a list longer than max_map_length.\"\"\"\nimport pendulum\nfrom airflow.sdk import dag, task\n\n\n@dag(dag_id=\"brewline_map_empty\", schedule=None, start_date=pendulum.datetime(2026, 3, 1, tz=\"UTC\"), catchup=False)\ndef map_empty():\n    @task\n    def list_stores():\n        return []\n\n    @task\n    def load_store(store):\n        print(\"loading\", store)\n\n    @task(trigger_rule=\"all_done\")\n    def summarize():\n        print(\"summarize ran\")\n\n    load_store.expand(store=list_stores()) >> summarize()\n\n\n@dag(dag_id=\"brewline_map_big\", schedule=None, start_date=pendulum.datetime(2026, 3, 1, tz=\"UTC\"), catchup=False)\ndef map_big():\n    @task\n    def list_stores():\n        return list(range(1100))\n\n    @task\n    def load_store(store):\n        return store\n\n    load_store.expand(store=list_stores())\n\n\nmap_empty()\nmap_big()\n",
   "dags/brewline_nightly.py": "\"\"\"The Brewline nightly pipeline, written with classic operators.\n\nFive tasks in a row, then a notification that runs whatever happened. Airflow reads this file to build the DAG.\n\"\"\"\nfrom datetime import timedelta\n\nimport pendulum\nfrom airflow.sdk import DAG\nfrom airflow.providers.standard.operators.bash import BashOperator\nfrom airflow.providers.standard.operators.empty import EmptyOperator\nfrom airflow.providers.standard.operators.python import PythonOperator\n\n\ndef check_order_files(**context):\n    print(\"checking the files of\", context[\"ds\"])\n\n\nwith DAG(\n    dag_id=\"brewline_nightly\",\n    description=\"Nightly orders pipeline\",\n    schedule=\"0 2 * * *\",\n    start_date=pendulum.datetime(2026, 3, 1, tz=\"UTC\"),\n    catchup=False,\n    default_args={\"owner\": \"data-team\", \"retries\": 2, \"retry_delay\": timedelta(minutes=5)},\n    tags=[\"brewline\", \"nightly\"],\n) as dag:\n    start = EmptyOperator(task_id=\"start\")\n    extract_orders = BashOperator(task_id=\"extract_orders\", bash_command=\"echo extracting {{ ds }}\")\n    validate_orders = PythonOperator(task_id=\"validate_orders\", python_callable=check_order_files)\n    load_orders = BashOperator(task_id=\"load_orders\", bash_command=\"echo loading {{ ds }}\")\n    build_marts = BashOperator(task_id=\"build_marts\", bash_command=\"echo building marts\")\n    notify = BashOperator(task_id=\"notify\", bash_command=\"echo done\", trigger_rule=\"all_done\")\n\n    start >> extract_orders >> validate_orders >> load_orders >> build_marts >> notify\n",
@@ -5201,6 +5311,161 @@ LAB.real = {
     ]
    ]
   },
+  "af.loop_fixed_ti": {
+   "cols": [
+    "task_id",
+    "map_index",
+    "state",
+    "try_number",
+    "operator"
+   ],
+   "rows": [
+    [
+     "accumulate.increment",
+     "1",
+     "success",
+     "1",
+     "_PythonDecoratedOperator"
+    ],
+    [
+     "accumulate.__loop_gate",
+     "1",
+     "success",
+     "1",
+     "LoopGateOperator"
+    ],
+    [
+     "accumulate.increment",
+     "2",
+     "success",
+     "1",
+     "_PythonDecoratedOperator"
+    ],
+    [
+     "accumulate.__loop_gate",
+     "2",
+     "success",
+     "1",
+     "LoopGateOperator"
+    ],
+    [
+     "accumulate.increment",
+     "3",
+     "success",
+     "1",
+     "_PythonDecoratedOperator"
+    ],
+    [
+     "accumulate.__loop_gate",
+     "3",
+     "success",
+     "1",
+     "LoopGateOperator"
+    ]
+   ]
+  },
+  "af.loop_until_ti": {
+   "cols": [
+    "task_id",
+    "map_index",
+    "state",
+    "try_number",
+    "operator"
+   ],
+   "rows": [
+    [
+     "refine.improve",
+     "1",
+     "success",
+     "1",
+     "_PythonDecoratedOperator"
+    ],
+    [
+     "refine.evaluate",
+     "1",
+     "success",
+     "1",
+     "_PythonDecoratedOperator"
+    ],
+    [
+     "refine.accurate_enough",
+     "1",
+     "success",
+     "1",
+     "LoopGateOperator"
+    ],
+    [
+     "refine.improve",
+     "2",
+     "success",
+     "1",
+     "_PythonDecoratedOperator"
+    ],
+    [
+     "refine.evaluate",
+     "2",
+     "success",
+     "1",
+     "_PythonDecoratedOperator"
+    ],
+    [
+     "refine.accurate_enough",
+     "2",
+     "success",
+     "1",
+     "LoopGateOperator"
+    ],
+    [
+     "refine.improve",
+     "3",
+     "success",
+     "1",
+     "_PythonDecoratedOperator"
+    ],
+    [
+     "refine.evaluate",
+     "3",
+     "success",
+     "1",
+     "_PythonDecoratedOperator"
+    ],
+    [
+     "refine.accurate_enough",
+     "3",
+     "success",
+     "1",
+     "LoopGateOperator"
+    ],
+    [
+     "refine.improve",
+     "4",
+     "success",
+     "1",
+     "_PythonDecoratedOperator"
+    ],
+    [
+     "refine.evaluate",
+     "4",
+     "success",
+     "1",
+     "_PythonDecoratedOperator"
+    ],
+    [
+     "refine.accurate_enough",
+     "4",
+     "success",
+     "1",
+     "LoopGateOperator"
+    ],
+    [
+     "finished",
+     "-1",
+     "success",
+     "1",
+     "_PythonDecoratedOperator"
+    ]
+   ]
+  },
   "af.mapping_ti": {
    "cols": [
     "task_id",
@@ -5508,6 +5773,8 @@ LAB.real = {
   "af.first_run": "[info] [DAG TEST] starting task_id=extract map_index=-1\n[info] Task started\nextracted 2 orders for 2026-03-14\n[info] Done. Returned value was: [{'order_id': 'O-1', 'total': 12.5}, {'order_id': 'O-2', 'total': 8.0}]\n[info] Pushing xcom\n[info] Task instance state updated: new_state=success\n[info] [DAG TEST] end task task_id=extract map_index=-1\n[info] [DAG TEST] starting task_id=transform map_index=-1\n[info] Task started\ntotal is 20.5\n[info] Done. Returned value was: {'orders': 2, 'total': 20.5}\n[info] Pushing xcom\n[info] Task instance state updated: new_state=success\n[info] [DAG TEST] end task task_id=transform map_index=-1\n[info] [DAG TEST] starting task_id=load map_index=-1\n[info] Task started\nwrote summary_2026-03-14.json\n[info] Done. Returned value was: None\n[info] Task instance state updated: new_state=success\n[info] [DAG TEST] end task task_id=load map_index=-1\n[info] Marking run <DagRun brewline_first @ 2026-03-14 00:00:00+00:00: manual__2026-03-14T09:00:00.000000+00:00, state:running, queued_at: None. run_type: manual> successful\n[info] DagRun Finished: dag_id=brewline_first, logical_date=2026-03-14, state=success, run_type=manual",
   "af.jobs_check": "Found one alive job.",
   "af.jobs_check_triggerer": "Found one alive job.",
+  "af.loop_fixed": "[info] [DAG TEST] starting task_id=accumulate.increment map_index=-1\n[info] Task started\niteration 1: total is 1\n[info] Done. Returned value was: 1\n[info] Pushing xcom\n[info] Task instance state updated: new_state=success\n[info] [DAG TEST] end task task_id=accumulate.increment map_index=-1\n[info] [DAG TEST] starting task_id=accumulate.__loop_gate map_index=-1\n[info] Task started\n[info] Task instance state updated: new_state=success\n[info] [DAG TEST] end task task_id=accumulate.__loop_gate map_index=-1\n[info] [DAG TEST] starting task_id=accumulate.increment map_index=-1\n[info] Task started\niteration 2: total is 2\n[info] Done. Returned value was: 2\n[info] Pushing xcom\n[info] Task instance state updated: new_state=success\n[info] [DAG TEST] end task task_id=accumulate.increment map_index=-1\n[info] [DAG TEST] starting task_id=accumulate.__loop_gate map_index=-1\n[info] Task started\n[info] Task instance state updated: new_state=success\n[info] [DAG TEST] end task task_id=accumulate.__loop_gate map_index=-1\n[info] [DAG TEST] starting task_id=accumulate.increment map_index=-1\n[info] Task started\niteration 3: total is 3\n[info] Done. Returned value was: 3\n[info] Pushing xcom\n[info] Task instance state updated: new_state=success\n[info] [DAG TEST] end task task_id=accumulate.increment map_index=-1\n[info] [DAG TEST] starting task_id=accumulate.__loop_gate map_index=-1\n[info] Task started\n[info] Task instance state updated: new_state=success\n[info] [DAG TEST] end task task_id=accumulate.__loop_gate map_index=-1\n[info] Marking run <DagRun brewline_loop_fixed @ 2026-03-14 00:00:00+00:00: manual__2026-03-14T09:00:00.000000+00:00, state:running, queued_at: None. run_type: manual> successful\n[info] DagRun Finished: dag_id=brewline_loop_fixed, logical_date=2026-03-14, state=success, run_type=manual",
+  "af.loop_until": "[info] [DAG TEST] starting task_id=refine.improve map_index=-1\n[info] Task started\n[info] Done. Returned value was: 1.5\n[info] Pushing xcom\n[info] Task instance state updated: new_state=success\n[info] [DAG TEST] end task task_id=refine.improve map_index=-1\n[info] [DAG TEST] starting task_id=refine.evaluate map_index=-1\n[info] Task started\niteration 1: estimate 1.500000, error 0.25\n[info] Done. Returned value was: {'estimate': 1.5, 'error': 0.25}\n[info] Pushing xcom\n[info] Task instance state updated: new_state=success\n[info] [DAG TEST] end task task_id=refine.evaluate map_index=-1\n[info] [DAG TEST] starting task_id=refine.accurate_enough map_index=-1\n[info] Task started\n[info] Task instance state updated: new_state=success\n[info] [DAG TEST] end task task_id=refine.accurate_enough map_index=-1\n[info] [DAG TEST] starting task_id=refine.improve map_index=-1\n[info] Task started\n[info] Done. Returned value was: 1.4166666666666665\n[info] Pushing xcom\n[info] Task instance state updated: new_state=success\n[info] [DAG TEST] end task task_id=refine.improve map_index=-1\n[info] [DAG TEST] starting task_id=refine.evaluate map_index=-1\n[info] Task started\niteration 2: estimate 1.416667, error 0.0069\n[info] Done. Returned value was: {'estimate': 1.4166666666666665, 'error': 0.006944444444444198}\n[info] Pushing xcom\n[info] Task instance state updated: new_state=success\n[info] [DAG TEST] end task task_id=refine.evaluate map_index=-1\n[info] [DAG TEST] starting task_id=refine.accurate_enough map_index=-1\n[info] Task started\n[info] Task instance state updated: new_state=success\n[info] [DAG TEST] end task task_id=refine.accurate_enough map_index=-1\n[info] [DAG TEST] starting task_id=refine.improve map_index=-1\n[info] Task started\n[info] Done. Returned value was: 1.4142156862745097\n[info] Pushing xcom\n[info] Task instance state updated: new_state=success\n[info] [DAG TEST] end task task_id=refine.improve map_index=-1\n[info] [DAG TEST] starting task_id=refine.evaluate map_index=-1\n[info] Task started\niteration 3: estimate 1.414216, error 6e-06\n[info] Done. Returned value was: {'estimate': 1.4142156862745097, 'error': 6.007304882427178e-06}\n[info] Pushing xcom\n[info] Task instance state updated: new_state=success\n[info] [DAG TEST] end task task_id=refine.evaluate map_index=-1\n[info] [DAG TEST] starting task_id=refine.accurate_enough map_index=-1\n[info] Task started\n[info] Task instance state updated: new_state=success\n[info] [DAG TEST] end task task_id=refine.accurate_enough map_index=-1\n[info] [DAG TEST] starting task_id=refine.improve map_index=-1\n[info] Task started\n[info] Done. Returned value was: 1.4142135623746899\n[info] Pushing xcom\n[info] Task instance state updated: new_state=success\n[info] [DAG TEST] end task task_id=refine.improve map_index=-1\n[info] [DAG TEST] starting task_id=refine.evaluate map_index=-1\n[info] Task started\niteration 4: estimate 1.414214, error 4.5e-12\n[info] Done. Returned value was: {'estimate': 1.4142135623746899, 'error': 4.510614104447086e-12}\n[info] Pushing xcom\n[info] Task instance state updated: new_state=success\n[info] [DAG TEST] end task task_id=refine.evaluate map_index=-1\n[info] [DAG TEST] starting task_id=refine.accurate_enough map_index=-1\n[info] Task started\n[info] Task instance state updated: new_state=success\n[info] [DAG TEST] end task task_id=refine.accurate_enough map_index=-1\n[info] [DAG TEST] starting task_id=finished map_index=-1\n[info] Task started\nrefinement finished\n[info] Done. Returned value was: None\n[info] Task instance state updated: new_state=success\n[info] [DAG TEST] end task task_id=finished map_index=-1\n[info] Marking run <DagRun brewline_loop_until @ 2026-03-14 00:00:00+00:00: manual__2026-03-14T09:00:00.000000+00:00, state:running, queued_at: None. run_type: manual> successful\n[info] DagRun Finished: dag_id=brewline_loop_until, logical_date=2026-03-14, state=success, run_type=manual",
   "af.mapping_run": "loaded 5 stores, 250 orders\nloading SG-01 in sg\nloading SG-02 in sg\nloading SG-03 in sg\nloading SG-04 in sg\nloading SG-05 in sg",
   "af.nightly_run": "[info] [DAG TEST] starting task_id=start map_index=-1\n[info] Task started\n[info] Task instance state updated: new_state=success\n[info] [DAG TEST] end task task_id=start map_index=-1\n[info] [DAG TEST] starting task_id=extract_orders map_index=-1\n[info] Task started\n[info] Pushing xcom\n[info] Task instance state updated: new_state=success\n[info] [DAG TEST] end task task_id=extract_orders map_index=-1\n[info] [DAG TEST] starting task_id=validate_orders map_index=-1\n[info] Task started\nchecking the files of 2026-03-14\n[info] Done. Returned value was: None\n[info] Task instance state updated: new_state=success\n[info] [DAG TEST] end task task_id=validate_orders map_index=-1\n[info] [DAG TEST] starting task_id=load_orders map_index=-1\n[info] Task started\n[info] Pushing xcom\n[info] Task instance state updated: new_state=success\n[info] [DAG TEST] end task task_id=load_orders map_index=-1\n[info] [DAG TEST] starting task_id=build_marts map_index=-1\n[info] Task started\n[info] Pushing xcom\n[info] Task instance state updated: new_state=success\n[info] [DAG TEST] end task task_id=build_marts map_index=-1\n[info] [DAG TEST] starting task_id=notify map_index=-1\n[info] Task started\n[info] Pushing xcom\n[info] Task instance state updated: new_state=success\n[info] [DAG TEST] end task task_id=notify map_index=-1\n[info] Marking run <DagRun brewline_nightly @ 2026-03-14 00:00:00+00:00: manual__2026-03-14T09:00:00.000000+00:00, state:running, queued_at: None. run_type: manual> successful\n[info] DagRun Finished: dag_id=brewline_nightly, logical_date=2026-03-14, state=success, run_type=manual",
   "af.pools_list": "pool           | slots | description                 | include_deferred | team_name\n===============+=======+=============================+==================+==========\ndefault_pool   | 128   | Default pool                | False            | None     \ntiny_pool      | 1     | one slot                    | False            | None     \npartner_pool   | 2     | two slots for partner files | False            | None     \nwarehouse_pool | 2     | two slots for the warehouse | False            | None     \nsingle_pool    | 1     | one slot                    | False            | None",

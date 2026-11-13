@@ -951,6 +951,19 @@ def sec_incremental():
     counts('af.incremental', {'steps': steps, 'late_row': {'order_id': 'O-4', 'updated_at': '2026-03-14 23:30:00', 'arrived': 'after the run of 14 March'}})
 
 
+def sec_loops():
+    """Task loops, new in Airflow 3.4: a task group that repeats a fixed number of times, and one that repeats until a condition is met."""
+    d = mini('brewline_loop.py')
+    migrate(HOME_TEST)
+    out = {}
+    for key, dag_id in (('fixed', 'brewline_loop_fixed'), ('until', 'brewline_loop_until')):
+        rc, raw = af('dags', 'test', dag_id, '2026-03-14', dags=d)
+        text('af.loop_' + key, clean_console(raw))
+        rows = tis_table(HOME_TEST, dag_id, 'af.loop_%s_ti' % key)
+        out[key] = {'rc': rc, 'dag_id': dag_id, 'task_instances': [{'task_id': r[0], 'map_index': r[1], 'state': r[2]} for r in rows]}
+    counts('af.loops', out)
+
+
 def sec_parse_cost():
     d = WORK / 'parse'
     d.mkdir(exist_ok=True)
@@ -1543,6 +1556,7 @@ section('mapping')(sec_mapping)
 section('xcom')(sec_xcom)
 section('idempotent')(sec_idempotent)
 section('incremental')(sec_incremental)
+section('loops')(sec_loops)
 section('parse_cost')(sec_parse_cost)
 section('retries')(sec_retries)
 section('failed_deps')(sec_failed_deps)
