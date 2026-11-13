@@ -68,6 +68,7 @@ ap = argparse.ArgumentParser()
 ap.add_argument('--no-run', action='store_true', help='skip everything that needs the engines (the parse checks, the widget checker and the lint still run)')
 ap.add_argument('--recapture', action='store_true', help='run capture_sq.py as its own process and compare its output with js/real.js')
 ap.add_argument('--reuse', action='store_true', help='with --recapture: compare the recording kept in verify/.cache from the last --recapture')
+ap.add_argument('--browser', action='store_true', help='also run e2e_labs.js in Chromium, and with two changed recordings that it must reject (needs Playwright)')
 ap.add_argument('--verbose', action='store_true')
 args = ap.parse_args()
 
@@ -979,11 +980,44 @@ def shutil_rmtree(p):
     shutil.rmtree(p, ignore_errors=True)
 
 
+def run_labs(real_path=None):
+    env = dict(os.environ)
+    if real_path:
+        env['SQ_REAL'] = str(real_path)
+    r = subprocess.run(['node', str(HERE / 'e2e_labs.js')], capture_output=True, text=True, env=env, cwd=str(ROOT))
+    m = re.search(r'e2e labs: (\d+) passed, (\d+) failed', r.stdout)
+    return r.returncode, (int(m.group(1)), int(m.group(2))) if m else None, r.stdout + r.stderr
+
+
+BROWSER_MUTATIONS = [
+    ('a changed funnel step', 'sessions lab', lambda r: r['counts']['m8.sessions_lab']['combos']['30']['funnel'].__setitem__(0, 99)),
+    ('a changed dimension row', 'dimension lab', lambda r: r['tables']['m9.scd2_final.duckdb']['rows'][5].__setitem__(2, 'platinum')),
+]
+
+
+def browser_checks():
+    code, counts, out = run_labs()
+    if code != 0 or not counts or counts[1]:
+        bad('the lab browser tests failed:\n' + out[-1500:])
+    else:
+        tick('browser: lab checks in Chromium against values worked out by hand', counts[0])
+    for label, lab, mutate in BROWSER_MUTATIONS:
+        path = tampered_recording(mutate)
+        code, counts, out = run_labs(path)
+        if code == 0 or ('FAIL: ' + lab) not in out:
+            bad('control "%s": the lab browser tests did not reject a changed recording in the %s' % (label, lab))
+        else:
+            tick('controls: a changed recording is rejected by the lab browser tests')
+        shutil_rmtree(path.parent)
+
+
 # ======================================================================================================================
 # main
 # ======================================================================================================================
 check_widgets_and_lint()
 widget_controls()
+if args.browser:
+    browser_checks()
 if not args.no_run:
     fresh = R.Rec()
     pgs = world.open_world(fresh)

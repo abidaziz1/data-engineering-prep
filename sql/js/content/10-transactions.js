@@ -3,6 +3,8 @@
 (function () {
   var B = LAB.b, G = LAB.get;
   var LAB10 = G.counts('m10.lab'), TR = G.counts('m10.transfer'), DI = G.counts('m10.dirty'), RP = G.counts('m10.replace'), SP = G.counts('m10.savepoint'), LK = G.counts('m10.locks'), QU = G.counts('m10.queue');
+  var QLEFT = QU.final.filter(function (x) { return /, pending$/.test(x); });
+  G.expect(QLEFT.length === 1 && QLEFT[0] === '3, pending', 'the queue ends with job 3 as the only pending job');
   var DD = G.counts('m10.deadlock_default').postgres, DL = G.counts('m10.deadlock'), LF = G.counts('m10.lost_fixes'), SR = G.counts('m10.skew_retry'), DK = G.counts('m10.duckdb_conflict'), SL = G.counts('m10.sqlite_locked'), DEF = G.counts('m10.default_level');
   function run(sc, lv) { return LAB10.runs[sc + '|' + lv]; }
   function outs(r) { return r.steps.map(function (x) { return x.out; }); }
@@ -231,7 +233,7 @@
       B.widget({
         id: 'm10-queue', kind: 'txlog', t: 2, src: 'rec', title: 'A job queue with SKIP LOCKED', key: 'm10.queue',
         text: 'Two workers each ask for the next pending job, at the same time, with `FOR UPDATE SKIP LOCKED`. Neither waits for the other, and they do not take the same job.',
-        tiles: [[out(QU.steps, 'A', /SKIP LOCKED/), 'job taken by worker A'], [out(QU.steps, 'B', /SKIP LOCKED/), 'job taken by worker B'], ['3 pending', 'left in the queue']],
+        tiles: [[out(QU.steps, 'A', /SKIP LOCKED/), 'job taken by worker A'], [out(QU.steps, 'B', /SKIP LOCKED/), 'job taken by worker B'], ['job ' + QLEFT[0].split(',')[0], 'is the only job left pending']],
         note: 'This is the standard way to build a work queue in a database. A worker that crashes releases its lock when its transaction ends, and the job becomes available again.'
       }),
 

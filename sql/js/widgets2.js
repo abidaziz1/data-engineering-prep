@@ -81,11 +81,17 @@
           if (prevKeys.indexOf(r[0]) < 0) return 'new';
           return JSON.stringify(prev.rows[prevKeys.indexOf(r[0])]) !== JSON.stringify(r) ? 'cur' : '';
         };
+        function noCurrent(rows) {
+          var all = {}, cur = {};
+          rows.forEach(function (r) { all[r[1]] = true; if (r[5] === 'true') cur[r[1]] = true; });
+          var none = Object.keys(all).filter(function (k) { return !cur[k]; });
+          return none.length ? (none.length === 1 ? 'customer ' + none[0] + ' has none until the insert' : 'customers ' + none.join(', ') + ' have none until the insert') : 'one for each customer';
+        }
         var h = '<div class="lab"><div class="sel-chips">' + u.chips(STAGES.map(function (x, k) { return k; }), st.n, 'sc-n', function (k) { return STAGES[k].label; }) + '</div>' +
           (rg ? u.code('the statements, with the stage lit', 'sql', code, rg) : u.code('the join of the orders to the dimension', 'sql', G.file('m9.scd_compare'), null)) +
           '<p class="lab-note">' + md(NOTES[st.n]) + '</p>' + u.table(t.cols, t.rows, rowCls) +
           '<div class="lab-out"><div class="big"><b>' + t.rows.length + '</b><span>rows in the table</span></div>' +
-          (st.n < 4 ? '<div class="big ' + (st.n === 3 ? 'good' : '') + '"><b>' + t.rows.filter(function (r) { return r[5] === 'true'; }).length + '</b><span>current rows (one for each customer)</span></div>' : '<div class="big warn"><b>' + t.rows.filter(function (r) { return r[2] !== r[3]; }).length + '</b><span>orders that overwriting would relabel</span></div>') + '</div></div>';
+          (st.n < 4 ? '<div class="big ' + (st.n === 3 ? 'good' : '') + '"><b>' + t.rows.filter(function (r) { return r[5] === 'true'; }).length + '</b><span>current rows (' + noCurrent(t.rows) + ')</span></div>' : '<div class="big warn"><b>' + t.rows.filter(function (r) { return r[2] !== r[3]; }).length + '</b><span>orders that overwriting would relabel</span></div>') + '</div></div>';
         box.innerHTML = h;
         u.bindCodes(box);
         A.bindWidget = function (act, el) { if (act === 'sc-n') st.n = +el.getAttribute('data-v'); A.render(true); };
