@@ -1,0 +1,46 @@
+table fact_order_lines
+
+	measure Revenue = SUM ( fact_order_lines[line_amount] )
+		formatString: \$ #,0.00
+
+	measure 'Revenue all regions' = CALCULATE ( [Revenue], REMOVEFILTERS ( dim_store[region] ) )
+		formatString: \$ #,0.00
+
+	measure 'Share of revenue' = DIVIDE ( [Revenue], [Revenue all regions] )
+		formatString: 0.0%
+
+	measure 'Revenue YTD' = TOTALYTD ( [Revenue], dim_date[date] )
+		formatString: \$ #,0.00
+
+	column order_id
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: order_id
+
+	column product_id
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: product_id
+
+	column quantity
+		dataType: int64
+		summarizeBy: sum
+		sourceColumn: quantity
+
+	column line_amount
+		dataType: decimal
+		isHidden
+		summarizeBy: none
+		sourceColumn: line_amount
+
+	partition fact_order_lines = m
+		mode: import
+		source =
+				let
+				    Source = PostgreSQL.Database("warehouse.brewline.example", "analytics"),
+				    Lines = Source{[Schema = "analytics", Item = "fact_order_lines"]}[Data],
+				    Kept = Table.SelectRows(Lines, each [order_date] >= RangeStart and [order_date] < RangeEnd)
+				in
+				    Kept

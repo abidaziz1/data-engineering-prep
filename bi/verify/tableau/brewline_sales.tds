@@ -1,0 +1,19 @@
+<?xml version='1.0' encoding='utf-8' ?>
+<datasource formatted-name='Brewline sales' inline='true' source-platform='linux' version='18.1' xmlns:user='http://www.tableausoftware.com/xml/user'>
+  <connection class='federated'>
+    <named-connections>
+      <named-connection caption='dev-warehouse.brewline.example' name='postgres.brewline'>
+        <connection authentication='username-password' class='postgres' dbname='analytics_dev' port='5432' server='dev-warehouse.brewline.example' username='tableau_reader' />
+      </named-connection>
+    </named-connections>
+    <relation connection='postgres.brewline' name='agg_day_store_category' table='[analytics].[agg_day_store_category]' type='table' />
+  </connection>
+  <column caption='Order date' datatype='date' name='[order_date]' role='dimension' type='ordinal' />
+  <column caption='Store' datatype='string' name='[store_id]' role='dimension' type='nominal' />
+  <column caption='Category' datatype='string' name='[category]' role='dimension' type='nominal' />
+  <column caption='Revenue' datatype='real' name='[revenue]' role='measure' type='quantitative' />
+  <column caption='Units' datatype='integer' name='[units]' role='measure' type='quantitative' />
+  <column caption='Average order value' datatype='real' name='[Calculation_aov]' role='measure' type='quantitative'>
+    <calculation class='tableau' formula='SUM([revenue]) / SUM([orders])' />
+  </column>
+</datasource>
