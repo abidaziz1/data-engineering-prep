@@ -23,17 +23,20 @@
     var pc = max > 0 ? Math.max(0, Math.min(100, v / max * 100)) : 0;
     return '<div class="lane"><span class="lane-n lane-wide">' + esc(label) + '</span><div class="lane-track"><div class="gbar' + (cls ? ' ' + cls : '') + '" style="left:0;width:' + pc + '%">&nbsp;</div></div><span class="lane-v">' + esc(text) + '</span></div>';
   }
-  function callout(k, t) { return '<div class="callout ' + k + '">' + md(t) + '</div>'; }
+  /* text of a callout or a note: **bold** and `code` go through the formatter, which escapes HTML. A pill or an operation chip is HTML that must stay, and a <code> tag in a source string means the same as backticks */
+  function mdx(t) {
+    return String(t).split(/(<span class="(?:pill|opchip)[^"]*">[^<]*<\/span>)/).map(function (part, i) {
+      return i % 2 ? part : md(part.replace(/<code>([\s\S]*?)<\/code>/g, '`$1`'));
+    }).join('');
+  }
+  function callout(k, t) { return '<div class="callout ' + k + '">' + mdx(t) + '</div>'; }
   function pill(t, cls) { return '<span class="pill' + (cls ? ' ' + cls : '') + '">' + esc(t) + '</span>'; }
   function rec(label, cls, act, v) {
     return act ? '<button type="button" class="rec ' + (cls || '') + '" data-act="' + act + '" data-v="' + esc(String(v)) + '">' + esc(String(label)) + '</button>' : '<i class="rec ' + (cls || '') + '">' + esc(String(label)) + '</i>';
   }
-  /* a note under a lab: the text may use **bold** and `code`, and may start with a pill, which is HTML that must not be escaped */
+  /* a note under a lab: the text may use **bold** and `code`, and may hold pills anywhere, which are HTML that must not be escaped */
   function fixNotes(h) {
-    return h.replace(/<p class="lab-note">([\s\S]*?)<\/p>/g, function (m, inner) {
-      var pm = inner.match(/^(<span class="pill[^"]*">[^<]*<\/span>)\s*([\s\S]*)$/);
-      return '<p class="lab-note">' + (pm ? pm[1] + ' ' + md(pm[2]) : md(inner)) + '</p>';
-    });
+    return h.replace(/<p class="lab-note">([\s\S]*?)<\/p>/g, function (m, inner) { return '<p class="lab-note">' + mdx(inner) + '</p>'; });
   }
   var STORES = ['s01', 's02', 's03', 's04', 's05', 's06', 's07', 's08', 's09', 's10', 's11', 's12'];
   function opchip(op) { var c = { '+I': 'i', '-U': 'ub', '+U': 'ua', '-D': 'd' }[op] || ''; return '<span class="opchip ' + c + '">' + esc(op) + '</span>'; }

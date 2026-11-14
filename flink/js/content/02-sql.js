@@ -111,7 +111,7 @@
           { say: 'The first aggregation sends **I, UB, UA**: an insert, the **before** image of an update (-U), and the **after** image (+U).', lines: G.span(E2, /GroupAggregate\(groupBy=\[store_id\]/) },
           { say: 'The second aggregation can also **D**elete: its output is **I, UA, D**. It has no UB, because it can describe an update by sending only the new row.', lines: G.span(E2, /GroupAggregate\(groupBy=\[n\]/) }
         ],
-        note: 'Recorded. The plan of the filter query shows <code>changelogMode=[I]</code>, and the plan of the single count shows <code>[I,UA]</code> at its output: with one level, a sink that has a primary key can take an update as one message.'
+        note: 'Recorded. The plan of the filter query shows `changelogMode=[I]`, and the plan of the single count shows `[I,UA]` at its output: with one level, a sink that has a primary key can take an update as one message.'
       }),
 
       B.rows({

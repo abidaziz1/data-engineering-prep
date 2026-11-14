@@ -65,7 +65,7 @@
           {
             say: 'Add `AND o.ot BETWEEN p.pt - INTERVAL \'5\' SECOND AND p.pt + INTERVAL \'5\' SECOND`. The operator becomes an **IntervalJoin**, with the bounds in milliseconds in the plan. Flink can now drop a row once the time has passed the bound.',
             tabs: [{ layer: 'RECORDED', name: 'The join of the interval query', c: 'raw', cols: ['Operator'], rows: [[PI]], trk: 0 }],
-            notes: ['Recorded. This join uses processing time (<code>isRowTime=false</code>), so that the two generated streams could be compared without watermarks. With event time it works the same way.']
+            notes: ['Recorded. This join uses processing time (`isRowTime=false`), so that the two generated streams could be compared without watermarks. With event time it works the same way.']
           },
           {
             say: 'Now a trap that the planner does not warn about. Give the **same time condition** to two columns that are plain `TIMESTAMP(3)` columns: no watermark, not `PROCTIME()`. The query is accepted, and the plan is a plain **Join** again, with `NoUniqueKey` on both sides. The condition is only a filter on the rows that were matched. Flink cannot drop a row, because it does not know that time moves forward in these columns, so the state still grows without end.',

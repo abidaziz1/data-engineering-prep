@@ -96,8 +96,8 @@ function watermarkRun(delay) {
   const lanes = () => page.$$eval('.lab .lane', els => els.map(l => ({ n: l.querySelector('.lane-n').textContent, v: l.querySelector('.lane-v').textContent, bar: (l.querySelector('.gbar') || {}).textContent || '', cls: (l.querySelector('.gbar') || {}).className || '' })));
   const disabled = (act, v) => page.$eval('[data-act="' + act + '"][data-v="' + v + '"]', e => e.disabled);
   const looseText = () => page.$eval('.lab', el => { const c = el.cloneNode(true); c.querySelectorAll('.code').forEach(x => x.remove()); return c.innerText; });
-  // no markup shows as text: backticks and double asterisks outside the code blocks mean that a string skipped the formatter
-  const noRaw = async where => { const t = await looseText(); ok(!/[`]|\*\*|undefined|NaN|\[object Object\]/.test(t), where + ' shows no raw markup, undefined or NaN: ' + (t.match(/.{0,30}([`]|\*\*|undefined|NaN|\[object Object\]).{0,30}/) || [''])[0]); };
+  // no markup shows as text: backticks, double asterisks and HTML tags outside the code blocks mean that a string skipped the formatter, or was escaped by it
+  const noRaw = async where => { const t = await looseText(); ok(!/[`]|\*\*|<\/?[a-z][a-z0-9]*[ >]|undefined|NaN|\[object Object\]/.test(t), where + ' shows no raw markup, undefined or NaN: ' + (t.match(/.{0,30}([`]|\*\*|<\/?[a-z][a-z0-9]*[ >]|undefined|NaN|\[object Object\]).{0,30}/) || [''])[0]); };
   const section = async (name, fn) => { try { await fn(); } catch (e) { fail++; console.log('FAIL:', name, 'threw', String(e.message).split('\n')[0]); } };
 
   // ------------------------------------------------------------------------------------------------------------------------------

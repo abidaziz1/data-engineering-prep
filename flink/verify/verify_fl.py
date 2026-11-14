@@ -19,12 +19,12 @@ YARN, on a managed service, with high availability, or on lake tables, and nothi
  8. With a Kafka broker: the Java job StoreWatch is run on 600 orders and its totals are compared with the truth.
  9. The checks of the lab data (check_widgets.js) run, and deliberately broken inputs (controls) must be refused by the checkers. With --browser the labs are driven in Chromium (e2e_labs.js).
 10. The lint of the course (dev/lint-content.js).
-11. With --recapture the whole recording is made again (about forty minutes) and compared with js/real.js, with the allowances that are stated below.
+11. With --recapture the whole recording is made again (about thirty minutes) and compared with js/real.js, with the allowances that are stated below.
 
 What this cannot show: that a managed service accepts a command, what a real network does, anything about Kubernetes, YARN, high availability or lake tables, or that a default is the same in another
 release of Flink. Those screens carry the "From documentation" tag, and the README lists what was not checked.
 
-Run:   python3 flink/verify/verify_fl.py [--no-run] [--no-live] [--browser] [--recapture] [--only world,sql,...] [--verbose]
+Run:   python3 flink/verify/verify_fl.py [--no-run] [--no-live] [--browser] [--recapture [--reuse FILE]] [--only world,sql,...] [--verbose]
 Needs: Python 3.11 or later, Node 20 or later, and for the steps that use the real thing: Java 17 or 21 with javac, FLINK_HOME (an unpacked Apache Flink 2.2.1 binary distribution),
        FLINK_KAFKA_JAR (flink-sql-connector-kafka-5.0.0-2.2.jar), FLINK_CDC_JAR (flink-sql-connector-postgres-cdc-3.7.0-2.2.jar), FLINK_DOCS (the docs folder of the Flink 2.2.1 source release),
        KAFKA_HOME (an unpacked Apache Kafka 4.4.0) and a Python environment with confluent-kafka (flink/verify/requirements.txt). A check whose tool is missing says so and is skipped.
@@ -55,6 +55,7 @@ ap.add_argument('--no-live', action='store_true', help='start no Kafka broker (t
 ap.add_argument('--browser', action='store_true', help='also drive the eight labs in Chromium (flink/verify/e2e_labs.js)')
 ap.add_argument('--recapture', action='store_true', help='make the whole recording again and compare it with js/real.js')
 ap.add_argument('--only', help='with --recapture: record only these sections (for example world,sql) and compare only their items')
+ap.add_argument('--reuse', metavar='FILE', help='with --recapture: compare this recording (the file that an earlier --recapture kept and named) and record nothing')
 ap.add_argument('--verbose', '-v', action='store_true')
 args = ap.parse_args()
 
@@ -780,14 +781,27 @@ VOLATILE_FIELDS = {                            # only these fields of the item m
     'counts:state.copy_alo': ['duplicates', 'records_a_read_committed_reader_sees', 'records_in_the_log'],      # the orders written between the checkpoint and the kill: a few seconds' worth
     'counts:state.copy_eo': ['records_in_the_log', 'records_of_aborted_transactions'],                  # the same orders, in the transaction that was aborted
     'counts:state.changed_query': ['message'],                                                          # the two serializers in the message are printed with their hash codes
-    'counts:state.backends_summary': ['rocksdb_full_written_6', 'rocksdb_incremental_state_6', 'rocksdb_incremental_written_6'],
+    'counts:state.backends_summary': ['heap_written_6', 'rocksdb_full_written_6', 'rocksdb_incremental_state_6', 'rocksdb_incremental_written_6'],   # bytes at the sixth checkpoint: they depend on how many order ids had been read (the heap figure was 709,152 in one recording and 797,152 in the next)
+    'counts:state.b_result': ['exception_chain'],                                                       # the second line names who noticed the lost TaskManager first, the resource manager or the JobMaster: a race between two heartbeats. check_widgets.js checks the rest of both lines
     'counts:joins.state_summary': ['regular_first', 'regular_last', 'interval_first', 'interval_last', 'interval_max', 'ttl_last', 'ttl_max', 'ratio_regular_to_interval_last'],
     'counts:running.rate_p1': ['records_per_second', 'records_counted'],                                # a rate measured over 18 seconds: within a few percent of the ceiling of 100
     'counts:running.rate_p4': ['records_per_second', 'records_counted'],
     'counts:running.compare': ['records_per_second_with_1', 'records_per_second_with_4', 'ratio'],
     'counts:connect.files_rows': ['rows_in_visible_files'],                                            # the rows that the finished files hold depend on when the checkpoints completed
 }
+VOLATILE_JSON = {                              # texts that hold JSON: only these fields may differ
+    'text:running.backpressure_p1': ['idleRatio', 'busyRatio'],                                         # two ratios sampled over a short time (0.01 in one recording, 0.0 in the next); the level and the backpressure ratio must be equal
+    'text:running.backpressure_p4': ['idleRatio', 'busyRatio'],
+}
 ORDER_FREE = []                                # tables whose rows may arrive in another order
+
+
+def _strip(o, keep):
+    if isinstance(o, dict):
+        return {k: _strip(v, keep) for k, v in o.items() if k not in keep}
+    if isinstance(o, list):
+        return [_strip(v, keep) for v in o]
+    return o
 
 
 def flatten(real):
@@ -808,6 +822,12 @@ def same_item(k, a, b):
         keep = VOLATILE_FIELDS[k]
         if {f: v for f, v in a.items() if f not in keep} == {f: v for f, v in b.items() if f not in keep}:
             return True, 'the fields %s vary' % ', '.join(keep)
+    if k in VOLATILE_JSON and isinstance(a, str) and isinstance(b, str):
+        try:
+            if _strip(json.loads(a), VOLATILE_JSON[k]) == _strip(json.loads(b), VOLATILE_JSON[k]):
+                return True, 'the fields %s vary' % ', '.join(VOLATILE_JSON[k])
+        except ValueError:
+            pass
     if k in ORDER_FREE and isinstance(a, dict) and isinstance(b, dict):
         if a.get('cols') == b.get('cols') and sorted(map(json.dumps, a.get('rows', []))) == sorted(map(json.dumps, b.get('rows', []))):
             return True, 'the same rows in another order'
@@ -818,11 +838,16 @@ if args.recapture and RUN:
     if not (HAVE_FLINK and HAVE_JAVA and HAVE_KAFKA and HAVE_KJAR and have('confluent_kafka')):
         skipped('recapture', 'FLINK_HOME, KAFKA_HOME, FLINK_KAFKA_JAR, Java and confluent-kafka are needed')
     else:
-        tmp = pathlib.Path(tempfile.mkdtemp(prefix='flink-recapture-')) / 'real.js'
-        cmd = [sys.executable, str(HERE / 'capture_flink.py'), '--out', str(tmp)] + (['--only', args.only] if args.only else [])
-        r = run(cmd, env=dict(os.environ))
+        if args.reuse:
+            tmp = pathlib.Path(args.reuse)
+            r = subprocess.CompletedProcess([], 0, '', '')
+        else:
+            tmp = pathlib.Path(tempfile.mkdtemp(prefix='flink-recapture-')) / 'real.js'
+            cmd = [sys.executable, str(HERE / 'capture_flink.py'), '--out', str(tmp)] + (['--only', args.only] if args.only else [])
+            r = run(cmd, env=dict(os.environ))
+            print('the new recording is kept at %s (compare it again with --recapture --reuse %s)' % (tmp, tmp))
         if r.returncode or not tmp.exists():
-            bad('capture_flink.py failed: ' + (r.stdout + r.stderr)[-800:])
+            bad('capture_flink.py failed, or the recording to reuse is missing: ' + (r.stdout + r.stderr)[-800:])
         else:
             again, first = flatten(load_real(tmp)), flatten(REAL)
             wanted = {x.strip() for x in args.only.split(',')} if args.only else None
@@ -848,7 +873,7 @@ if args.recapture and RUN:
                 m = re.search(r'(\d+) checks', r.stdout)
                 tick('lab data checks on the new recording', int(m.group(1)) if m else 0)
 else:
-    skipped('recapture', 'run with --recapture (about forty minutes)')
+    skipped('recapture', 'run with --recapture (about thirty minutes)')
 
 # ======================================================================================================================
 # 10. The checks of the lab data, the lint, and controls for the checkers
