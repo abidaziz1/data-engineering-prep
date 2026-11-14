@@ -5,6 +5,8 @@
   var TP = G.counts('connect.topic'), ST = G.table('connect.startup_modes'), MD = G.table('connect.metadata'), UT = G.table('connect.upsert_topic'), US = G.counts('connect.upsert_summary');
   var FL = G.counts('connect.files'), FR = G.counts('connect.files_rows'), CF = G.counts('cdc.flink_cdc_summary_full'), CD = G.counts('cdc.flink_cdc_summary_default');
   var CO = G.text('cdc.flink_cdc_output_full'), CDO = G.text('cdc.flink_cdc_output_default'), DI = G.counts('world.distribution');
+  var CU = G.counts('cdc.flink_cdc_summary_upsert'), COU = G.text('cdc.flink_cdc_output_upsert'), PUP = G.text('cdc.plan_upsert'), PFU = G.text('cdc.plan_full');
+  G.expect(CU.job_state === 'RUNNING' && CU.replica_identity === 'default' && COU === CO && /ChangelogNormalize/.test(PUP) && !/ChangelogNormalize/.test(PFU), 'upsert mode works with the default replica identity, through a step that remembers every key, and prints the same lines');
   var SCM = G.file('sql/connect_meta.sql'), SCU = G.file('sql/connect_upsert.sql'), SCC = G.file('sql/cdc_direct_full.sql'), SCF = G.file('sql/connect_files.sql');
   var n0 = function (x) { return Number(x).toLocaleString('en-US'); };
   var mode = function (m) { var r = ST.rows.filter(function (x) { return x[0] === m; })[0]; G.expect(!!r, 'startup mode ' + m); return r[2]; };
@@ -118,6 +120,7 @@
         steps: [
           { say: 'A PostgreSQL 16 server with a table of five orders, and the script that follows it. Press Next.', lines: null },
           { say: 'The source is **postgres-cdc**. It names the server, the database, the table, a replication slot, and the decoding plugin, `pgoutput`, which PostgreSQL ships with. The key is declared for Flink; PostgreSQL has one too.', lines: G.span(SCC, /CREATE TEMPORARY TABLE pg_orders/, /scan\.incremental/) },
+          { say: '`scan.incremental.snapshot.enabled` is false here. With it off, one task reads the snapshot and no checkpoint can complete while it does, which does not matter for five rows. The documentation says that for a big table you turn the incremental snapshot on, or let the job tolerate failed checkpoints.', lines: G.span(SCC, /scan\.incremental/) },
           { say: 'A print sink and the query that copies the table into it.', lines: G.span(SCC, /INSERT INTO shown/), run: true }
         ],
         result: { cols: ['What the print sink wrote'], rows: lines.map(function (l) { return [l]; }), msg: lines.length + ' changes' },
@@ -145,6 +148,11 @@
             say: 'Look at the output. The insert of order 6 appears **' + cdcDup + ' times**. Each restart reads the log again from the last saved position, which was before that insert, so it prints it again, and then fails on the update. The restart loop turns one failing record into duplicates.',
             tabs: [{ layer: 'RECORDED', name: 'What the print sink wrote', c: 'raw', cols: ['Change'], rows: CDO.split('\n').map(function (l) { return [l]; }), trk: 6 }],
             notes: ['Recorded. The fix is one line in PostgreSQL: <code>ALTER TABLE public.orders REPLICA IDENTITY FULL</code>, as the message says. The Kafka course shows the same setting on the Debezium side.']
+          },
+          {
+            say: 'There is a second fix that needs no change in PostgreSQL: `\'changelog-mode\' = \'upsert\'` in the table options. The source then sends an update as its new row only, and a delete as its key only, so it does not need the old row. I ran the job with the default replica identity and this option. It stayed **' + CU.job_state + '** and printed the same ' + CU.lines + ' lines as the first run. The plan shows how: the planner puts a step in front of the job that **remembers the last row of every key**, to build the -U and the -D that this sink prints.',
+            tabs: [{ layer: 'RECORDED', name: 'The plan of the source in upsert mode', c: 'raw', cols: ['Plan'], rows: PUP.split('\n').map(function (l) { return [l]; }), trk: 0 }],
+            notes: ['Recorded. The documentation of the Flink CDC PostgreSQL connector says the upsert mode is for tables with a primary key when REPLICA IDENTITY FULL is not an option. The step that remembers every key is state, and it grows with the table: the price of not changing the database.']
           }
         ]
       }),
@@ -164,7 +172,7 @@
         steps: [
           { upto: 2, say: 'Fewer parts with the connector. Kafka in the middle gives every other team a copy of the changes.' },
           { upto: 4, say: 'The slot is the same danger in both cases: a reader that stops makes the database keep its log. In the Kafka course a stopped connector held back the log of a real PostgreSQL.' },
-          { upto: 5, say: 'Pick by how many readers there will be next year. A job descriptions that names Debezium and Kafka usually describes the second.' }
+          { upto: 5, say: 'Pick by how many readers there will be next year. A job description that names Debezium and Kafka usually describes the second.' }
         ],
         pick: 'Comparison from the connector documentation and from the two recordings of this course (this mission, and the Kafka course for the Debezium side). I did not run Debezium for this course.'
       }),
@@ -278,7 +286,7 @@
         id: 'qa-cdc', t: 1, tag: 'Connectors', secs: 75,
         q: 'How would you capture changes from a database with Flink?',
         pts: ['Flink CDC reads the log directly', 'Debezium to Kafka to Flink', 'Snapshot, then the log', 'Changelog: +I -U +U -D', 'Replica identity and the slot'],
-        short: 'Two ways. The **Flink CDC connector** reads the database log itself: a consistent **snapshot** of the table, then the log, and it gives the job a changelog of +I, -U, +U and -D. **Debezium** on Kafka Connect writes the changes to a Kafka topic and Flink reads them with the `debezium-json` format; that costs more moving parts, and gives every other consumer the same events. In both cases the database keeps its log in a **replication slot** until the reader confirms it, so a stopped reader fills the disk. In my recording the default replica identity of PostgreSQL made the job fail on the first update with a message that asked for REPLICA IDENTITY FULL.',
+        short: 'Two ways. The **Flink CDC connector** reads the database log itself: a consistent **snapshot** of the table, then the log, and it gives the job a changelog of +I, -U, +U and -D. **Debezium** on Kafka Connect writes the changes to a Kafka topic and Flink reads them with the `debezium-json` format; that costs more moving parts, and gives every other consumer the same events. In both cases the database keeps its log in a **replication slot** until the reader confirms it, so a stopped reader fills the disk. In my recording the default replica identity of PostgreSQL made the job fail on the first update with a message that asked for REPLICA IDENTITY FULL. The other fix is the upsert changelog mode of the connector, which keeps the last row of every key in state instead.',
         fu: [['Which one would you pick?', 'The topic when more than one team needs the changes, the connector for a single pipeline.'], ['What about deletes?', 'They arrive as -D, and an upsert sink turns them into tombstones or deletes by key.']],
         trap: 'Forgetting the slot. The reader consumes data, and it is also the reason the database keeps its log.'
       }),

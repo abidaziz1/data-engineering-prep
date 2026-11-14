@@ -7,6 +7,7 @@
   var SR = G.counts('state.savepoint_result'), NS = G.counts('state.no_savepoint_result'), CQ = G.counts('state.changed_query'), BS = G.counts('state.backends_summary'), RF = G.counts('state.rocksdb_files');
   var CF = G.table('state.checkpoint_files'), SF = G.table('state.savepoint_files'), BK = G.table('state.backends');
   var JL = G.text('state.a_jobmanager_log'), SC = G.text('state.savepoint_command');
+  var cause = AR.first_failure_root_cause.replace(/^(\w+\.)+/, '');
   var SCA = G.file('sql/state_a.sql'), SCE = G.file('sql/copy_eo.sql');
   var n0 = function (x) { return Number(x).toLocaleString('en-US'); };
   G.expect(AR.totals_equal_the_truth === true && AR.orders_counted === AR.orders_sent && AR.stores === 12 && AR.job_state === 'RUNNING', 'a killed TaskManager does not change the totals');
@@ -85,7 +86,7 @@
         id: 'm4-log', t: 1, src: 'rec', title: 'What the JobManager logged',
         say: 'This is the JobManager log of the killed job, reduced to the lines about the job. First the restart strategy that Flink chose by itself. Then the job going from RUNNING to RESTARTING, and back to RUNNING. And the line that matters: **Restoring job from Checkpoint 3**.',
         lines: G.plain(JL, { cmd: 'grep the JobManager log for the job', d: 120 }),
-        after: 'The failure was recorded once, with the cause <code>' + AR.first_failure_root_cause.replace('org.apache.flink.runtime.jobmaster.', '').replace('org.apache.flink.runtime.resourcemanager.exceptions.', '') + '</code>. The counts of the REST interface show ' + AR.checkpoints_failed + ' failed checkpoints around the kill, and checkpoints went on after the restore.',
+        after: 'The failure was recorded once, with the cause <code>' + cause + '</code>. The counts of the REST interface show ' + AR.checkpoints_failed + ' failed checkpoints around the kill, and checkpoints went on after the restore.',
         afterKind: 'tip',
         doneSay: 'The job came back by itself: no human, no resubmit, and the counts were still right.'
       }),
@@ -95,7 +96,7 @@
         steps: [
           {
             say: 'What I did. The job had parallelism ' + AB.parallelism + ' and checkpoints every ' + AB.checkpoint_interval_seconds + ' seconds, on a cluster of ' + AB.slots_total + ' slots. Flink had put all its tasks on the first TaskManager. I waited for checkpoint **' + AR.checkpoint_before_the_kill + '**, then sent it **signal 9**, which gives a process no chance to clean up.',
-            tabs: [{ layer: 'RECORDED', name: 'The experiment', c: 'raw', cols: ['Step', 'What happened'], rows: [['Before', 'parallelism ' + AB.parallelism + ', a checkpoint every ' + AB.checkpoint_interval_seconds + ' s'], ['The kill', 'TaskManager ' + AB.tms_running_the_job[0] + ' (the one with the tasks) killed with signal 9'], ['The JobManager saw', AR.first_failure_root_cause.split('.').pop()], ['Restored from', 'checkpoint ' + AR.checkpoint_before_the_kill], ['In the end', n0(AR.orders_counted) + ' of ' + n0(AR.orders_sent) + ' orders counted, ' + AR.stores + ' stores, all totals right']], trk: 1 }],
+            tabs: [{ layer: 'RECORDED', name: 'The experiment', c: 'raw', cols: ['Step', 'What happened'], rows: [['Before', 'parallelism ' + AB.parallelism + ', a checkpoint every ' + AB.checkpoint_interval_seconds + ' s'], ['The kill', 'TaskManager ' + AB.tms_running_the_job[0] + ' (the one with the tasks) killed with signal 9'], ['The JobManager saw', cause], ['Restored from', 'checkpoint ' + AR.checkpoint_before_the_kill], ['In the end', n0(AR.orders_counted) + ' of ' + n0(AR.orders_sent) + ' orders counted, ' + AR.stores + ' stores, all totals right']], trk: 1 }],
             notes: ['Recorded. The other TaskManager had two free slots, and the job restarted on them. The killed TaskManager was started again afterwards.']
           },
           {
@@ -173,7 +174,7 @@
           {
             say: 'I produced ' + n0(SR.second_batch) + ' more orders and started **the same query** from the savepoint with `SET \'execution.state-recovery.path\'`, this time with parallelism **' + SR.parallelism_after + '** instead of ' + SR.parallelism_before + '. Flink spread the counts of the twelve stores over three tasks. In the end the job had counted **' + n0(SR.orders_counted) + '** orders, and every total was right.',
             tabs: [{ layer: 'RECORDED', name: 'Restored from the savepoint', c: 'raw', cols: ['What', 'Result'], rows: [['Orders before the savepoint', n0(SR.first_batch)], ['Orders after it', n0(SR.second_batch)], ['Parallelism before and after', SR.parallelism_before + ' and ' + SR.parallelism_after], ['Orders counted', n0(SR.orders_counted)], ['Totals equal the truth', SR.totals_equal_the_truth ? 'yes' : 'no']], trk: 3 }],
-            notes: ['Recorded. State is stored in key groups, 128 by default, so a different parallelism only changes which task holds which groups. Mission 7 shows it.']
+            notes: ['Recorded. State is stored in key groups (128 for a small job, as mission 7 shows), so a different parallelism only changes which task holds which groups.']
           },
           {
             say: 'Without the savepoint it is a new job. I started the same query again, reading from the **end** of the topic. It knew nothing about the earlier orders: it counted **' + n0(NS.orders_counted_by_the_new_job) + '** of the **' + n0(NS.orders_in_the_topic) + '** orders in the topic.',

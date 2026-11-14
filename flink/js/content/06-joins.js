@@ -3,12 +3,15 @@
 (function () {
   var B = LAB.b, G = LAB.get;
   var SS = G.counts('joins.state_summary'), DS = G.counts('joins.dedup_summary'), ST = G.table('joins.state_size'), DI = G.table('joins.dup_input'), DF = G.table('joins.dedup_first'), DL = G.table('joins.dedup_last');
-  var PR = G.text('joins.plan_regular'), PI = G.text('joins.plan_interval');
+  var PR = G.text('joins.plan_regular'), PI = G.text('joins.plan_interval'), PPT = G.text('joins.plan_plain_timestamp');
   var SCR = G.file('sql/joins_regular.sql'), SCI = G.file('sql/joins_interval.sql'), SCD = G.file('sql/joins_dedup_last.sql');
   var n0 = function (x) { return Number(x).toLocaleString('en-US'); };
   var mb = function (b) { return b >= 1048576 ? (b / 1048576).toFixed(1) + ' MiB' : (b / 1024).toFixed(0) + ' KiB'; };
   G.expect(SS.regular_grows_every_checkpoint === true && SS.interval_max < SS.regular_last && SS.ttl_flat_at_the_end === true && SS.ttl_max < SS.regular_last, 'the unbounded join grows at every checkpoint, the bounded ones stop');
   G.expect(/NoUniqueKey/.test(PR) && /IntervalJoin/.test(PI) && /leftLowerBound=-5000/.test(PI), 'the plans of the two joins');
+  G.expect(/^\+- Join\(/.test(PPT) && /NoUniqueKey/.test(PPT) && !/IntervalJoin/.test(PPT), 'a time condition on plain timestamp columns is a plain join');
+  var eighth = DI.rows[7], fourth = DI.rows[3];
+  G.expect(eighth.slice(1).join() === DI.rows[3].slice(1).join() && DL.rows.length === DS.input_rows + 2 && DL.rows.length === 10, 'the eighth input row repeats the fourth, and keep-last sends nothing for it');
   G.expect(DF.rows.length === DS.distinct_orders && DF.rows.every(function (r) { return r[0] === '+I'; }) && DL.rows.some(function (r) { return r[0] === '-U'; }), 'keep first only inserts, keep last updates');
   var slope = (ST.rows[ST.rows.length - 1][1] - ST.rows[0][1]) / ((ST.rows.length - 1) * 2);
   var plateauAt = function (col) { var m = Math.max.apply(null, ST.rows.map(function (r) { return r[col]; })); for (var i = 0; i < ST.rows.length; i++) if (ST.rows[i][col] >= m * 0.9) return i + 1; return ST.rows.length; };
@@ -63,6 +66,11 @@
             say: 'Add `AND o.ot BETWEEN p.pt - INTERVAL \'5\' SECOND AND p.pt + INTERVAL \'5\' SECOND`. The operator becomes an **IntervalJoin**, with the bounds in milliseconds in the plan. Flink can now drop a row once the time has passed the bound.',
             tabs: [{ layer: 'RECORDED', name: 'The join of the interval query', c: 'raw', cols: ['Operator'], rows: [[PI]], trk: 0 }],
             notes: ['Recorded. This join uses processing time (<code>isRowTime=false</code>), so that the two generated streams could be compared without watermarks. With event time it works the same way.']
+          },
+          {
+            say: 'Now a trap that the planner does not warn about. Give the **same time condition** to two columns that are plain `TIMESTAMP(3)` columns: no watermark, not `PROCTIME()`. The query is accepted, and the plan is a plain **Join** again, with `NoUniqueKey` on both sides. The condition is only a filter on the rows that were matched. Flink cannot drop a row, because it does not know that time moves forward in these columns, so the state still grows without end.',
+            tabs: [{ layer: 'RECORDED', name: 'The same time condition on plain TIMESTAMP columns', c: 'raw', cols: ['Operator'], rows: [[PPT]], trk: 0 }],
+            notes: ['Recorded. For an interval join both columns must be time attributes: an event time with a watermark, or a processing time.']
           }
         ]
       }),
@@ -78,9 +86,9 @@
             notes: ['Recorded. The nine checkpoints cover eighteen seconds. At the speed of the first column the state would be about ' + mb(slope * 3600) + ' after an hour.']
           },
           {
-            say: 'What does the time to live cost? `SET \'table.exec.state.ttl\' = \'10 s\'` makes Flink forget a row that has not been used for ten seconds. If a payment arrives eleven seconds after its order, the join finds no order, and the row is **missing**, with no error. The Flink documentation warns that it can affect the correctness of the result.',
+            say: 'What does the time to live cost? `SET \'table.exec.state.ttl\' = \'10 s\'` makes Flink forget a row that has not been updated for ten seconds. If a payment arrives eleven seconds after its order, the join finds no order, and the row is **missing**, with no error. The Flink documentation warns that it can affect the correctness of the result.',
             tabs: [{ layer: 'DOCS', name: 'The trade of a time to live', c: 'raw', cols: ['Setting', 'State', 'Risk'], rows: [['No bound', 'grows without end', 'the job slows, then fails or runs out of disk'], ['Interval join', 'bounded by the interval', 'rows farther apart than the interval never match, and that is the definition of the query'], ['Time to live', 'bounded by the ttl', 'a match that arrives after the ttl is missed, whatever the query says']], trk: 2 }],
-            notes: ['From the Flink documentation (the page about joins), and from the three recorded runs.']
+            notes: ['From the Flink documentation (the page about joins, and the STATE_TTL hint, which sets a different time to live for each input of one join), and from the three recorded runs.']
           }
         ]
       }),
@@ -101,7 +109,7 @@
           {
             say: 'Ordered **descending**, it keeps the **last** row. Now a later copy of an order replaces the earlier one, so the result must **update**: a -U for the old row and a +U for the new. This is the right choice when the later row is a correction. The price is a changelog, and a sink that can take it.',
             tabs: [{ layer: 'RECORDED', name: 'Keep last: ORDER BY time DESC', c: 'raw', cols: DL.cols, rows: DL.rows, trk: 2, chg: DL.rows.map(function (r, n) { return r[0] !== '+I' ? [n, 0] : null; }).filter(Boolean) }],
-            notes: ['Recorded. ' + DL.rows.length + ' changes for ' + DS.distinct_orders + ' orders. Both versions keep one row of state for every order id they have seen.']
+            notes: ['Recorded. ' + DL.rows.length + ' changes for ' + DS.distinct_orders + ' orders. The eighth input row is the fourth one again, with nothing changed, and keep-last sent nothing for it. Both versions keep one row of state for every order id they have seen.']
           }
         ]
       }),
@@ -160,11 +168,11 @@
       B.bug({
         id: 'm6-bug', t: 1, q: 'This job joins orders and payments, and after two weeks its checkpoints take twenty minutes. The query is right. Click the line that lets the state grow without end.',
         file: 'join.sql', lang: 'sql',
-        code: ['INSERT INTO paid_orders', 'SELECT o.order_id, o.total_cents, p.method', 'FROM orders o', 'JOIN payments p', 'ON o.order_id = p.order_id;'].join('\n'),
+        code: ['INSERT INTO paid_orders', 'SELECT o.order_id, o.total_cents, p.how_paid', 'FROM orders o', 'JOIN payments p', 'ON o.order_id = p.order_id;'].join('\n'),
         bad: [5],
         hint: 'What limits how far apart in time the two rows may be?',
-        why: 'The join condition is only the key. Nothing bounds the time between an order and its payment, so Flink must keep every order and every payment. Add a time bound with an interval join, or set a time to live if the business allows it.',
-        fix: ['INSERT INTO paid_orders', 'SELECT o.order_id, o.total_cents, p.method', 'FROM orders o', 'JOIN payments p', "ON o.order_id = p.order_id AND p.ts BETWEEN o.ts AND o.ts + INTERVAL '1' HOUR;"].join('\n'),
+        why: 'The join condition is only the key. Nothing bounds the time between an order and its payment, so Flink must keep every order and every payment. Add a time bound with an interval join, or set a time to live if the business allows it. The two `ts` columns must be time attributes (an event time with a watermark, or a processing time): on plain timestamp columns the same condition is still a plain Join that keeps every row.',
+        fix: ['INSERT INTO paid_orders', 'SELECT o.order_id, o.total_cents, p.how_paid', 'FROM orders o', 'JOIN payments p', "ON o.order_id = p.order_id AND p.ts BETWEEN o.ts AND o.ts + INTERVAL '1' HOUR;"].join('\n'),
         cheer: 'Bound the join in time.'
       }),
 

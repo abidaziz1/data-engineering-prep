@@ -5,6 +5,9 @@
   G.expect(CL.taskmanagers === 2 && CL.slots_total === 4 && CL.version === '2.2.1', 'a cluster of two TaskManagers with four slots, Flink 2.2.1');
   G.expect(SQ.input_orders === 12 && SQ.batch_rows === 7 && SQ.replay_equals_batch === true, 'twelve orders, seven stores, and a streaming result that ends as the batch result');
   var OR = G.table('sql.orders');
+  var orderStores = {}, nullCustomers = 0, refunds = 0;
+  OR.rows.forEach(function (r) { orderStores[r[1]] = (orderStores[r[1]] || 0) + 1; if (r[2] === 'null') nullCustomers++; if (r[4] === 'refunded') refunds++; });
+  G.expect(Object.keys(orderStores).length === 7 && orderStores.s01 === 5 && nullCustomers === 3 && refunds === 3, 'seven stores in the twelve orders, five of them for s01, three without a customer and three refunds');
   var TOOLS = 'Apache Flink ' + G.meta('flink') + ' (a standalone cluster of one JobManager and two TaskManagers on Java ' + G.meta('java') + ') with its SQL client and its flink command, the Kafka connector ' + G.meta('kafka-connector') + ', Apache Kafka ' + G.meta('kafka') +
     ', the Flink CDC connector ' + G.meta('flink-cdc') + ' with PostgreSQL ' + G.meta('postgresql') + ', and a Java job that I compiled';
 
@@ -55,13 +58,13 @@
           {
             say: 'These are the orders that the course uses. They are made up, and the same on every run. They are the first twelve orders of the Kafka course, so if you took it, you know them. Each is a small record: an order number, the store, the customer, the price in cents, the status and the channel. Press Next.',
             tabs: [{ layer: 'DATA', name: 'The first twelve orders', c: 'raw', cols: OR.cols, rows: OR.rows, trk: 0 }],
-            notes: ['Made up from a fixed rule, so every number in the course can be checked. Seven stores appear in these twelve orders; store s01 sells five of them.']
+            notes: ['Made up from a fixed rule, so every number in the course can be checked. ' + Object.keys(orderStores).length + ' stores appear in these twelve orders; store s01 sells ' + orderStores.s01 + ' of them.']
           },
           {
             say: 'Three facts about the orders decide many lessons. One store is far bigger than the others. Some orders have no customer, so a value can be null. And some orders are refunds.',
             tabs: [{
               layer: 'FACTS', name: 'What is special about these orders', c: 'raw', cols: ['Fact', 'In the twelve orders', 'What it does to the lessons'],
-              rows: [['Busiest store', 's01: 5 of 12', 'one key gets a third of the records: a busy task'], ['Guests', '3 orders with a null customer', 'nulls in a join and in a schema'], ['Refunds', '3 of 12', 'a status that a query filters on']],
+              rows: [['Busiest store', 's01: ' + orderStores.s01 + ' of ' + OR.rows.length, 'one key gets a third of the records: a busy task'], ['Guests', nullCustomers + ' orders with a null customer', 'nulls in a join and in a schema'], ['Refunds', refunds + ' of ' + OR.rows.length, 'a status that a query filters on']],
               trk: 0
             }],
             notes: ['The same shape as in the Kafka course. In the larger runs of mission 4 and mission 7, store s01 again sells about a third of the orders.']
@@ -77,6 +80,18 @@
             notes: ['Mission 8 puts the operator to work: a slow step, then more parallel tasks.']
           }
         ]
+      }),
+
+      B.talk({
+        id: 'm0-version', t: 1, src: 'docs', title: 'Which release this is, and what came after it',
+        say: 'Flink ships new releases a few times a year, so a course owes you its version. Press Next.',
+        items: [
+          ['This course', 'Apache Flink **' + G.meta('flink') + '**, with the Kafka connector **' + G.meta('kafka-connector') + '** and the Flink CDC connector **' + G.meta('flink-cdc') + '**. A connector is built for one Flink release: the part after the dash in its name is the Flink version it was built against.', 'Connectors name their Flink version.'],
+          ['The release after it', 'Flink 2.3.0 came out in June 2026, after this course was recorded. When I checked on 14 November 2026, the Kafka connector had no build for 2.3 on Maven Central, so the course stays on 2.2. The release notes of 2.3 list, among other things, two SQL functions for changelogs (`FROM_CHANGELOG` and `TO_CHANGELOG`), a native S3 file system, an application level in the web UI and the REST interface, and an opt-in partitioner that sends records to the least busy downstream task.', 'Look at the notes before you upgrade.'],
+          ['Java', 'The documentation of 2.2 calls Java 17 the recommended version and the Java 21 support experimental. The cluster of this course ran on Java 21, with the JVM options that the distribution ships for it, and the Java job was compiled for release 17.', 'Java 17 is the recommended one.'],
+          ['What a number here means', 'Every recorded number is a number from 2.2.1 on one machine. A default can change between releases, so look it up in the documentation of the release that you run. The README of the course lists what to check again.', 'Check the release you run.']
+        ],
+        cols: 1
       }),
 
       B.talk({

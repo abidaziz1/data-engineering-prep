@@ -150,6 +150,24 @@ def record_idle(f, kc, rec):
         res[label] = printed
         f.cancel(jid)
         f.wait_idle()
+    # the same query, but the orders arrive one a second instead of in one burst: the watermark follows them, as it did with the file
+    fx.fresh_topic(kx, boot, 'events_paced', partitions=2, config={'retention.ms': '-1'})
+    ddl_p = ddl.replace('events_idle', 'events_paced').replace("'idle'", "'paced'")
+    mark = f.out_mark()
+    jid, out = fx.submit(f, "SET 'parallelism.default' = '1';\nSET 'table.exec.source.idle-timeout' = '3 s';\n" + ddl_p + sink + q, name='time_idle_paced')
+    f.wait_state(jid, 'RUNNING')
+    time.sleep(4)
+    pp = kx.producer(boot, **{'linger.ms': 0})
+    for o, st, c, t in EVENTS:
+        pp.produce('events_paced', value=json.dumps({'order_id': o, 'store_id': st, 'total_cents': c, 'ts': clock(t)}, separators=(',', ':')), partition=0)
+        pp.flush(10)
+        time.sleep(1)
+    time.sleep(8)
+    res['paced'] = f.out_since(mark).strip()
+    f.cancel(jid)
+    f.wait_idle()
+    rec.text('time.idle_paced', res['paced'] or '(nothing was printed)')
+    rec.counts('time.idle_paced_summary', {'orders_a_second': 1, 'windows': len(res['paced'].splitlines()), 'first_window_orders': int(res['paced'].splitlines()[0].rstrip(']').split(', ')[-1]) if res['paced'] else None})
     rec.text('time.idle_without', res['without'] or '(nothing was printed)')
     rec.text('time.idle_with', res['with'])
     rec.counts('time.idle_summary', {'windows_without_idle_timeout': len(res['without'].splitlines()), 'windows_with_idle_timeout': len(res['with'].splitlines()),

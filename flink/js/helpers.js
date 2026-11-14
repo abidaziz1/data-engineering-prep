@@ -29,6 +29,12 @@
     },
     /* a recorded set of numbers, lists and small facts */
     counts: function (k) { return need(R.counts, k, 'counts'); },
+    /* what the SQL client said to a script that the planner refuses, by what the script does (see sql.planner_errors): the message without its Java package */
+    planner: function (what) {
+      var r = G.table('sql.planner_errors').rows.filter(function (x) { return x[0] === what; })[0];
+      if (!r) throw new Error('sql.planner_errors has no case "' + what + '"');
+      return r[1];
+    },
     /* the 1-based number of the first line that matches a pattern, so lessons never count lines by hand */
     at: function (code, re) {
       var l = code.split('\n');

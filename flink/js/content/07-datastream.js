@@ -4,6 +4,7 @@
   var B = LAB.b, G = LAB.get;
   var JAVA = G.file('code/app/StoreWatch.java'), KGJ = G.file('code/app/KeyGroups.java');
   var BU = G.counts('datastream.build'), AS = G.counts('datastream.assignment'), FR = G.counts('datastream.first_run'), WU = G.counts('datastream.wrong_uid'), RS = G.counts('datastream.restored');
+  var MP = G.table('datastream.max_parallelism'), MPB = G.counts('datastream.max_parallelism_bounds');
   var VX = G.table('datastream.vertices'), KG = G.table('datastream.key_groups'), PR = G.table('datastream.printed'), RC = G.text('datastream.run_command'), IL = G.text('datastream.idle_lines'), OP = G.table('datastream.orders_per_store');
   var n0 = function (x) { return Number(x).toLocaleString('en-US'); };
   G.expect(BU.release === 17 && BU.jar_holds_the_kafka_connector === false && /javac/.test(BU.javac), 'the job was compiled with javac for Java 17 and the jar does not hold the connector');
@@ -11,6 +12,8 @@
   G.expect(FR.totals_equal_the_truth === true && RS.totals_equal_the_truth === true && RS.orders_in_total === 1200, 'the counts are right, also after the restore');
   G.expect(WU.job_state === 'FAILED' && /Cannot map checkpoint\/savepoint state for operator/.test(WU.message) && /allowNonRestoredState/.test(WU.message), 'a renamed operator id cannot be restored');
   G.expect(VX.rows.length === 2 && VX.rows[1][2] === 'HASH', 'two vertices, joined by a hash');
+  var mp = function (p) { var r = MP.rows.filter(function (x) { return x[0] === p; })[0]; G.expect(!!r, 'default maximum parallelism for ' + p); return r[1]; };
+  G.expect(MPB.lower_bound === 128 && MPB.upper_bound === 32768 && mp(1) === 128 && mp(85) === 128 && mp(86) === 256 && mp(30000) === 32768, 'the default maximum parallelism is 128 for a small job, and grows with the parallelism to 32,768');
   var L = function (re, re2) { return G.span(JAVA, re, re2); };
 
   LAB.addChapter({
@@ -128,6 +131,15 @@
         ]
       }),
 
+      B.rows({
+        id: 'm7-maxpar', t: 2, src: 'rec', title: 'Where the 128 comes from',
+        steps: [{
+          say: 'The number of key groups is the **maximum parallelism** of the operator. You can set it, and if you do not, Flink picks a default from the parallelism: **' + MPB.lower_bound + '** at least, the parallelism times 1.5 rounded up to a power of two when that is bigger, and **' + n0(MPB.upper_bound) + '** at most. For an operator of parallelism 2 it is ' + mp(2) + ', and it stays at ' + mp(85) + ' until the parallelism passes 85. I asked the class that Flink uses.',
+          tabs: [{ layer: 'RECORDED', name: 'KeyGroupRangeAssignment.computeDefaultMaxParallelism', c: 'raw', cols: MP.cols, rows: MP.rows.map(function (r) { return [r[0], r[1]]; }), trk: 4 }],
+          notes: ['Recorded. The maximum parallelism is stored with the state. Changing it for a job that has state breaks the restore, as the documentation of <code>pipeline.max-parallelism</code> says, so choose it with room to grow.']
+        }]
+      }),
+
       B.quiz({
         id: 'm7-q1', t: 1,
         q: 'A job has a keyed process function with state. You deploy a new version of the code and restore the old savepoint. What must stay the same?',
@@ -194,15 +206,15 @@
         alert: '**A refactor split one operator into two and renamed another. The new version of the job, started from last night\'s savepoint, fails at once with "Cannot map checkpoint/savepoint state for operator ... to the new program".** The state is three weeks of counts. A colleague suggests --allowNonRestoredState.',
         clues: ['The operators had no explicit uids', 'The message names an operator that is missing in the new program', 'The state is three weeks of counts for every store'],
         opts: [
-          { t: 'Do not start with --allowNonRestoredState. Restore the old version, add explicit uids that match the old generated ones, or migrate the state, then release', fb: '' },
+          { t: 'Do not start with --allowNonRestoredState. Restore the old version, give the operators their old ids (setUidHash with the hash from the error), or migrate the state, then release', fb: '' },
           { t: 'Use --allowNonRestoredState and rebuild the counts', fb: 'It starts the job and silently drops the state of the missing operator. Three weeks of counts would be gone.' },
           { t: 'Delete the savepoint and start empty', fb: 'Same loss, with no way back.' },
           { t: 'Raise the parallelism', fb: 'That has no bearing on the mapping of the state.' }
         ],
         best: 0,
-        why: 'The state of the old operator is filed under an id that the new program no longer has. The flag would drop it. The safe way is to keep the job restorable: give the operators the uids they had, or migrate the state with the State Processor API. The recording refused a job whose uid was renamed, with exactly this message.',
+        why: 'The state of the old operator is filed under an id that the new program no longer has. The flag would drop it. The safe way is to keep the job restorable: give the operators the ids they had (the documentation describes `setUidHash` as a low-level way when the uid was never set), or migrate the state with the State Processor API. The recording refused a job whose uid was renamed, with exactly this message.',
         checks: [['Read the whole error message', 'Which operator id is missing?'], ['Look for .uid() in the code', 'Are the stateful operators named?'], ['Check the savepoint is still there', 'It is your only copy of the state.']],
-        tell: 'The new program lost the id of an operator that held state. I do not use the flag that drops state. I restore the old job, add the explicit uids, and release again, and I set a uid on every stateful operator from the start.',
+        tell: 'The new program lost the id of an operator that held state. I do not use the flag that drops state. I restore the old job, give the operators their old ids, and release again, and I set a uid on every stateful operator from the start.',
         prevent: ['Set .uid() on every stateful operator in code review', 'Test a restore from a savepoint in CI before every release', 'Keep the last good savepoint until the new version has run for a day']
       }),
 
@@ -227,8 +239,8 @@
       B.qa({
         id: 'qa-keygroup', t: 2, tag: 'DataStream', secs: 75,
         q: 'How does Flink decide which task holds a key, and what happens when you change the parallelism?',
-        pts: ['Hash the key into one of max-parallelism key groups', 'Each task holds a range of key groups', '128 by default', 'Rescale moves key groups, not single keys', 'A hot key stays on one task'],
-        short: 'Flink hashes the key (`hashCode`, then a murmur hash) into one of **max-parallelism key groups**, 128 by default. Each task holds a contiguous **range** of key groups, and a key group is the unit that moves when the parallelism changes: task = key group times parallelism divided by max parallelism. I asked Flink\'s own `KeyGroupRangeAssignment` for twelve stores: store s01 was key group ' + KG.rows[0][1] + ' and sat on task ' + KG.rows[0][2] + ' at parallelism 2, ' + KG.rows[0][3] + ' at 3. A savepoint can be restored with another parallelism because the state is stored by key group. Two limits: the parallelism can never exceed the max parallelism, which is fixed with the state, and a busy key always lands on one task.',
+        pts: ['Hash the key into one of max-parallelism key groups', 'Each task holds a range of key groups', '128 for a small job', 'Rescale moves key groups, not single keys', 'A hot key stays on one task'],
+        short: 'Flink hashes the key (`hashCode`, then a murmur hash) into one of **max-parallelism key groups**, which is 128 for a small job (the default is the parallelism times 1.5 rounded up to a power of two, with 128 as the lowest value). Each task holds a contiguous **range** of key groups, and a key group is the unit that moves when the parallelism changes: task = key group times parallelism divided by max parallelism. I asked Flink\'s own `KeyGroupRangeAssignment` for twelve stores: store s01 was key group ' + KG.rows[0][1] + ' and sat on task ' + KG.rows[0][2] + ' at parallelism 2, ' + KG.rows[0][3] + ' at 3. A savepoint can be restored with another parallelism because the state is stored by key group. Two limits: the parallelism can never exceed the max parallelism, which is fixed with the state, and a busy key always lands on one task.',
         fu: [['How do you fix a hot key?', 'Change the key: add a salt, pre-aggregate before the keyBy, or split the logic in two stages.'], ['Can I change max parallelism?', 'Not for existing state, without migrating it.']],
         trap: 'Believing that more parallelism spreads a single hot key. It spreads keys, not one key.'
       }),

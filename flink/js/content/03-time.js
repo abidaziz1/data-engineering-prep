@@ -4,7 +4,10 @@
   var B = LAB.b, G = LAB.get;
   var EV = G.table('time.events'), DS = G.table('time.delay_summary'), DF = G.counts('time.delay_facts'), WM = G.counts('time.window_models'), IT = G.counts('time.idle_topic'), IS = G.counts('time.idle_summary');
   var T0 = G.table('time.tumble_0'), T10 = G.table('time.tumble_10'), T200 = G.table('time.tumble_200'), HOP = G.table('time.hop'), CUM = G.table('time.cumulate'), SES = G.table('time.session');
-  var IW = G.text('time.idle_without'), II = G.text('time.idle_with');
+  var IW = G.text('time.idle_without'), II = G.text('time.idle_with'), IP = G.text('time.idle_paced'), IPS = G.counts('time.idle_paced_summary');
+  var idleCounts = function (t) { return t.split('\n').filter(Boolean).map(function (l) { return l.replace(/\]$/, '').split(', ').pop(); }); };
+  var fileCounts = T10.rows.slice(0, 4).map(function (r) { return String(r[3]); });
+  G.expect(idleCounts(IP).join() === fileCounts.join() && IPS.first_window_orders === Number(fileCounts[0]) && idleCounts(II).join() !== fileCounts.join(), 'orders that arrive one a second give the counts of the file run, and the burst does not');
   var SCR = G.file('sql/time_tumble_10.sql'), SCRI = G.file('sql/time_idle_without.sql'), SCRH = G.file('sql/time_hop.sql'), SCRS = G.file('sql/time_session.sql');
   var dsRow = function (d) { var r = DS.rows.filter(function (x) { return x[0] === d; })[0]; G.expect(!!r, 'delay summary row for ' + d); return r; };
   G.expect(DF.model_equals_flink === true && DF.events === 14 && DF.window_seconds === 60, 'the model of the rules equals what Flink printed for every delay');
@@ -79,7 +82,7 @@
           { say: 'The query uses a **window table function**: `TUMBLE` cuts the table into pieces of one minute by the event time. Then a plain GROUP BY on the window columns counts the orders of each piece.', lines: G.span(SCR, /FROM TABLE\(TUMBLE/, /GROUP BY window_start/), run: true }
         ],
         result: { cols: T10.cols, rows: T10.rows, msg: T10.rows.length + ' windows' },
-        note: 'Recorded. With a delay of 10 seconds the first window holds 4 of its 5 orders, and 3 orders were dropped as late in all.'
+        note: 'Recorded. With a delay of 10 seconds the first window holds ' + T10.rows[0][3] + ' of its ' + dsRow(200)[1].split(',')[0] + ' orders, and ' + dsRow(10)[3] + ' orders were dropped as late in all.'
       }),
 
       B.widget({ id: 'm3-lab', kind: 'watermarklab', t: 1, src: 'rec', title: 'Lab: choose the watermark delay' }),
@@ -153,9 +156,9 @@
             notes: ['Recorded. ' + IS.windows_with_idle_timeout + ' windows closed. The last window, from 00:04 to 00:05, stays open: no later order moves the watermark past its end.']
           },
           {
-            say: 'One more thing in this recording. The counts are 5, 4, 2 and 2, not 4, 2, 2, 2 as in the file run with the same delay. A Kafka source makes watermarks on a **timer** (every 200 milliseconds by default), and the whole burst of fourteen orders was read before the first one. So here no order was late. With a file, the watermark follows the data, and the result does not depend on speed.',
-            tabs: [{ layer: 'RECORDED', name: 'Same delay, a file against a Kafka topic', c: 'raw', cols: ['Source', 'Orders in the first window', 'Orders dropped as late'], rows: [['File (the watermark follows the data)', T10.rows[0][3], dsRow(10)[3]], ['Kafka, read in one burst', II.split('\n')[0].split(', ').pop().replace(']', ''), 0]], trk: 1 }],
-            notes: ['Recorded. The Kafka numbers can differ from run to run, because they depend on timing. The default interval comes from the documentation: <code>pipeline.auto-watermark-interval</code> is 200 ms.']
+            say: 'One more thing in this recording. The counts are ' + idleCounts(II).join(', ') + ', not ' + fileCounts.join(', ') + ' as in the file run with the same delay. A Kafka source makes its watermark on a **timer** (every 200 milliseconds by default), and the whole burst of fourteen orders was read before the first tick, so no order was late. To test that, I ran the query a third time and sent the orders to the topic **one a second**. The watermark followed them, and the counts are the counts of the file: ' + idleCounts(IP).join(', ') + '. With a file the result does not depend on speed. With Kafka it can.',
+            tabs: [{ layer: 'RECORDED', name: 'Same delay, a file against a Kafka topic', c: 'raw', cols: ['Source', 'Orders in the four windows that closed'], rows: [['File (the watermark follows the data)', fileCounts.join(', ')], ['Kafka, read in one burst', idleCounts(II).join(', ')], ['Kafka, one order a second', idleCounts(IP).join(', ')]], trk: 1 }],
+            notes: ['Recorded. The Kafka rows depend on timing and can differ from run to run, the file row cannot. The default interval comes from the documentation: <code>pipeline.auto-watermark-interval</code> is 200 ms.']
           }
         ]
       }),
@@ -165,7 +168,7 @@
         steps: [
           { say: 'The script of the run that printed nothing. Press Next.', lines: null },
           { say: 'The Kafka table with its watermark. The topic has two partitions.', lines: G.span(SCRI, /CREATE TEMPORARY TABLE events/, /json\.timestamp/) },
-          { say: 'The fix is one line before it: `SET \'table.exec.source.idle-timeout\' = \'3 s\'`. You can also set it for one table with `scan.watermark.idle-timeout`. Without either, a quiet partition holds every window back.', lines: G.span(SCRI, /CREATE TEMPORARY TABLE shown/) }
+          { say: 'The fix is one line before it: `SET \'table.exec.source.idle-timeout\' = \'3 s\'`. You can also set it for one table with `scan.watermark.idle-timeout`. Without either, a quiet partition holds every window back. The documentation says that the per-table options work only for connectors that can take the watermark into the source itself, such as Kafka.', lines: G.span(SCRI, /CREATE TEMPORARY TABLE shown/) }
         ],
         note: 'Recorded. This is the script of the first run. The second run had the extra SET line at the top.'
       }),
@@ -223,12 +226,12 @@
       }),
 
       B.bug({
-        id: 'm3-bug', t: 1, q: 'This table should use the time at which the order happened, with a watermark that waits 10 seconds. The windows are all wrong, because no watermark is defined. Click the line that is missing the watermark.',
+        id: 'm3-bug', t: 1, q: 'This table should use the time at which the order happened, with a watermark that waits 10 seconds. A window query on it is refused, because no watermark is defined. Click the line where the watermark is missing.',
         file: 'orders.sql', lang: 'sql',
         code: ['CREATE TABLE orders (', '  order_id INT,', '  total_cents INT,', '  ts TIMESTAMP(3)', ") WITH ('connector' = 'kafka', 'topic' = 'orders', 'format' = 'json');"].join('\n'),
         bad: [4],
         hint: 'Where does the table say which column is the event time?',
-        why: 'The `ts` column is only a column. A table needs a `WATERMARK FOR ts AS ts - INTERVAL \'10\' SECOND` clause to make `ts` an event-time attribute. Without it a window function on `ts` is rejected, or runs on processing time.',
+        why: 'The `ts` column is only a column. A table needs a `WATERMARK FOR ts AS ts - INTERVAL \'10\' SECOND` clause to make `ts` an event-time attribute. Without it the planner refuses a window function on `ts`: `' + G.planner('a window on a column that is not a time attribute') + '`',
         fix: ['CREATE TABLE orders (', '  order_id INT,', '  total_cents INT,', '  ts TIMESTAMP(3),', "  WATERMARK FOR ts AS ts - INTERVAL '10' SECOND", ") WITH ('connector' = 'kafka', 'topic' = 'orders', 'format' = 'json');"].join('\n'),
         cheer: 'No watermark, no event time.'
       }),

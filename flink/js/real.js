@@ -28,6 +28,21 @@ LAB.real = {
    "slot": "flink_slot  pgoutput  active=true",
    "snapshot_rows": 5
   },
+  "cdc.flink_cdc_summary_upsert": {
+   "error": "",
+   "failures_recorded": 0,
+   "job_state": "RUNNING",
+   "kinds": [
+    "+I",
+    "+U",
+    "-D",
+    "-U"
+   ],
+   "lines": 9,
+   "replica_identity": "default",
+   "slot": "flink_slot  pgoutput  active=true",
+   "snapshot_rows": 5
+  },
   "connect.files": {
    "after_checkpoints": [
     ".part-<uuid>-0-2.inprogress.<uuid>",
@@ -43,7 +58,7 @@ LAB.real = {
    "visible_after": true
   },
   "connect.files_rows": {
-   "rows_in_visible_files": 240
+   "rows_in_visible_files": 200
   },
   "connect.topic": {
    "orders": 12,
@@ -86,6 +101,10 @@ LAB.real = {
    "orders": 600,
    "totals_equal_the_truth": true
   },
+  "datastream.max_parallelism_bounds": {
+   "lower_bound": 128,
+   "upper_bound": 32768
+  },
   "datastream.restored": {
    "idle_lines": 12,
    "orders_in_total": 1200,
@@ -108,6 +127,18 @@ LAB.real = {
    ],
    "totals_equal_the_truth": true
   },
+  "datastream.round": {
+   "classes": [
+    "PassThousand$FirstPass.class",
+    "PassThousand$Order.class",
+    "PassThousand.class"
+   ],
+   "equals_plain_python": true,
+   "job_state": "FINISHED",
+   "limit_cents": 1000,
+   "lines": 2,
+   "orders": 12
+  },
   "datastream.wrong_uid": {
    "cli_exit_code": 0,
    "job_state": "FAILED",
@@ -120,36 +151,36 @@ LAB.real = {
   },
   "joins.state_summary": {
    "checkpoints": 9,
-   "interval_first": 160264,
-   "interval_last": 381568,
+   "interval_first": 86264,
+   "interval_last": 382264,
    "interval_max": 382264,
-   "ratio_regular_to_interval_last": 2.0,
-   "regular_first": 60784,
+   "ratio_regular_to_interval_last": 2.1,
+   "regular_first": 93184,
    "regular_grows_every_checkpoint": true,
-   "regular_last": 764784,
+   "regular_last": 797184,
    "ttl_first": 99952,
    "ttl_flat_at_the_end": true,
-   "ttl_last": 578916,
-   "ttl_max": 582778
+   "ttl_last": 562446,
+   "ttl_max": 562446
   },
   "running.compare": {
    "ratio": 4.0,
-   "records_per_second_with_1": 98,
-   "records_per_second_with_4": 395
+   "records_per_second_with_1": 99,
+   "records_per_second_with_4": 396
   },
   "running.rate_p1": {
    "ceiling_per_second": 100,
    "lookup_parallelism": 1,
-   "records_counted": 1781.0,
-   "records_per_second": 98,
+   "records_counted": 1785.0,
+   "records_per_second": 99,
    "sleep_ms": 10,
    "topic_records": 120000
   },
   "running.rate_p4": {
    "ceiling_per_second": 400,
    "lookup_parallelism": 4,
-   "records_counted": 7145.0,
-   "records_per_second": 395,
+   "records_counted": 7148.0,
+   "records_per_second": 396,
    "sleep_ms": 10,
    "topic_records": 120000
   },
@@ -239,8 +270,8 @@ LAB.real = {
   },
   "state.a_result": {
    "checkpoint_before_the_kill": 3,
-   "checkpoints_completed": 4,
-   "checkpoints_failed": 2,
+   "checkpoints_completed": 3,
+   "checkpoints_failed": 3,
    "failures_recorded": 1,
    "first_failure_root_cause": "org.apache.flink.runtime.jobmaster.JobMasterException: TaskManager with id <taskmanager> is no longer reachable.",
    "job_state": "RUNNING",
@@ -262,23 +293,23 @@ LAB.real = {
   "state.backends_summary": {
    "heap_written_6": 709152,
    "incremental_writes_less_than_the_state": true,
-   "rocksdb_full_written_6": 316217,
-   "rocksdb_incremental_state_6": 299671,
-   "rocksdb_incremental_written_6": 80407
+   "rocksdb_full_written_6": 299671,
+   "rocksdb_incremental_state_6": 316217,
+   "rocksdb_incremental_written_6": 80233
   },
   "state.changed_query": {
    "job_state": "RESTARTING",
-   "message": "Caused by: org.apache.flink.util.StateMigrationException: For heap backends, the new state serializer (org.apache.flink.table.runtime.typeutils.RowDataSerializer@51ea41d0) must not be incompatible with the old state serializer (org.apache.flink.table.runtime.typeutils.RowDataSerializer@bd6366d7)."
+   "message": "Caused by: org.apache.flink.util.StateMigrationException: For heap backends, the new state serializer (org.apache.flink.table.runtime.typeutils.RowDataSerializer@302ceef5) must not be incompatible with the old state serializer (org.apache.flink.table.runtime.typeutils.RowDataSerializer@c6b89546)."
   },
   "state.copy_alo": {
    "checkpoint_before_the_kill": 3,
    "distinct_orders": 5000,
-   "duplicates": 440,
+   "duplicates": 320,
    "guarantee": "at-least-once",
    "missing": 0,
    "orders_sent": 5000,
-   "records_a_read_committed_reader_sees": 5440,
-   "records_in_the_log": 5440,
+   "records_a_read_committed_reader_sees": 5320,
+   "records_in_the_log": 5320,
    "records_of_aborted_transactions": 0
   },
   "state.copy_eo": {
@@ -289,8 +320,8 @@ LAB.real = {
    "missing": 0,
    "orders_sent": 5000,
    "records_a_read_committed_reader_sees": 5000,
-   "records_in_the_log": 5590,
-   "records_of_aborted_transactions": 590
+   "records_in_the_log": 5410,
+   "records_of_aborted_transactions": 410
   },
   "state.no_savepoint_result": {
    "orders_counted_by_the_new_job": 600,
@@ -332,6 +363,11 @@ LAB.real = {
    "model_equals_flink": true,
    "window_seconds": 60,
    "windows_in_file": 5
+  },
+  "time.idle_paced_summary": {
+   "first_window_orders": 4,
+   "orders_a_second": 1,
+   "windows": 4
   },
   "time.idle_summary": {
    "seconds_waited": 18,
@@ -457,6 +493,8 @@ LAB.real = {
  },
  "files": {
   "code/app/KeyGroups.java": "package brewline;\n\nimport org.apache.flink.runtime.state.KeyGroupRangeAssignment;\n\n/** Asks Flink itself which key group a key belongs to, and which parallel task of an operator holds that key group. */\npublic class KeyGroups {\n    public static void main(String[] args) {\n        int maxParallelism = Integer.parseInt(args[0]);\n        System.out.println(\"key,key_group,p2,p3,p4\");\n        for (int i = 1; i < args.length; i++) {\n            String key = args[i];\n            System.out.println(key + \",\" + KeyGroupRangeAssignment.assignToKeyGroup(key, maxParallelism)\n                    + \",\" + KeyGroupRangeAssignment.assignKeyToParallelOperator(key, maxParallelism, 2)\n                    + \",\" + KeyGroupRangeAssignment.assignKeyToParallelOperator(key, maxParallelism, 3)\n                    + \",\" + KeyGroupRangeAssignment.assignKeyToParallelOperator(key, maxParallelism, 4));\n        }\n    }\n}",
+  "code/app/MaxParallelism.java": "package brewline;\n\nimport org.apache.flink.runtime.state.KeyGroupRangeAssignment;\n\n/** Asks Flink itself for the default maximum parallelism (the number of key groups) of an operator, and for the two bounds of that default. */\npublic class MaxParallelism {\n    public static void main(String[] args) {\n        System.out.println(\"parallelism,default_max_parallelism\");\n        for (String a : args) {\n            int p = Integer.parseInt(a);\n            System.out.println(p + \",\" + KeyGroupRangeAssignment.computeDefaultMaxParallelism(p));\n        }\n        System.out.println(\"lower_bound,\" + KeyGroupRangeAssignment.DEFAULT_LOWER_BOUND_MAX_PARALLELISM);\n        System.out.println(\"upper_bound,\" + KeyGroupRangeAssignment.UPPER_BOUND_MAX_PARALLELISM);\n    }\n}",
+  "code/app/PassThousand.java": "package brewline;\n\nimport java.util.List;\n\nimport org.apache.flink.api.common.functions.OpenContext;\nimport org.apache.flink.api.common.state.ValueState;\nimport org.apache.flink.api.common.state.ValueStateDescriptor;\nimport org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;\nimport org.apache.flink.streaming.api.functions.KeyedProcessFunction;\nimport org.apache.flink.util.Collector;\n\n/** Coding round: print a line the first time the running total of a store reaches 1,000 cents. The first twelve Brewline orders are the input. */\npublic class PassThousand {\n\n    /** A public class with public fields and an empty constructor is a POJO to Flink. */\n    public static class Order {\n        public int orderId;\n        public String storeId;\n        public int totalCents;\n\n        public Order() {}\n\n        public Order(int orderId, String storeId, int totalCents) {\n            this.orderId = orderId;\n            this.storeId = storeId;\n            this.totalCents = totalCents;\n        }\n    }\n\n    static final List<Order> ORDERS = List.of(\n            new Order(1, \"s01\", 300), new Order(2, \"s02\", 337), new Order(3, \"s07\", 374), new Order(4, \"s01\", 411),\n            new Order(5, \"s04\", 448), new Order(6, \"s11\", 485), new Order(7, \"s01\", 522), new Order(8, \"s06\", 559),\n            new Order(9, \"s01\", 596), new Order(10, \"s04\", 633), new Order(11, \"s09\", 670), new Order(12, \"s01\", 707));\n\n    public static void main(String[] args) throws Exception {\n        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();\n        env.setParallelism(2);\n        env.fromData(ORDERS)\n                .keyBy(o -> o.storeId)\n                .process(new FirstPass(1000)).name(\"first pass\").uid(\"first-pass\")\n                .print();\n        env.execute(\"pass-thousand\");\n    }\n\n    /** One running total for every store, kept in state. It says so once, in the order that makes the total reach the limit. */\n    static class FirstPass extends KeyedProcessFunction<String, Order, String> {\n        private final long limit;\n        private transient ValueState<Long> total;\n\n        FirstPass(long limit) {\n            this.limit = limit;\n        }\n\n        @Override\n        public void open(OpenContext ctx) {\n            total = getRuntimeContext().getState(new ValueStateDescriptor<>(\"total\", Long.class));\n        }\n\n        @Override\n        public void processElement(Order o, Context ctx, Collector<String> out) throws Exception {\n            long before = total.value() == null ? 0 : total.value();\n            long after = before + o.totalCents;\n            total.update(after);\n            if (before < limit && after >= limit) {\n                out.collect(o.storeId + \" passed \" + limit + \" cents with order \" + o.orderId + \", total \" + after);\n            }\n        }\n    }\n}",
   "code/app/Pipe.java": "package brewline;\n\nimport org.apache.flink.api.common.eventtime.WatermarkStrategy;\nimport org.apache.flink.api.common.functions.RichMapFunction;\nimport org.apache.flink.api.common.serialization.SimpleStringSchema;\nimport org.apache.flink.connector.kafka.source.KafkaSource;\nimport org.apache.flink.connector.kafka.source.enumerator.initializer.OffsetsInitializer;\nimport org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;\nimport org.apache.flink.streaming.api.functions.sink.v2.DiscardingSink;\nimport org.apache.flink.util.ParameterTool;\n\n/** A source that can read much faster than the step after it: the step after it takes some milliseconds for every record, like a call to a slow service. */\npublic class Pipe {\n    public static void main(String[] args) throws Exception {\n        ParameterTool p = ParameterTool.fromArgs(args);\n        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();\n\n        KafkaSource<String> source = KafkaSource.<String>builder()\n                .setBootstrapServers(p.getRequired(\"bootstrap\"))\n                .setTopics(p.getRequired(\"topic\"))\n                .setGroupId(\"pipe\")\n                .setStartingOffsets(OffsetsInitializer.earliest())\n                .setValueOnlyDeserializer(new SimpleStringSchema())\n                .build();\n\n        long sleepMillis = p.getLong(\"sleep-ms\", 10);\n        env.fromSource(source, WatermarkStrategy.noWatermarks(), \"orders\").setParallelism(1)\n                .rebalance()                                                  // a network step between the source and the slow step, so that they are two tasks\n                .map(new RichMapFunction<String, String>() {\n                    @Override\n                    public String map(String value) throws Exception {\n                        Thread.sleep(sleepMillis);\n                        return value;\n                    }\n                }).name(\"slow lookup\").setParallelism(p.getInt(\"lookup-parallelism\", 1))\n                .sinkTo(new DiscardingSink<>()).name(\"discard\");\n\n        env.execute(\"pipe\");\n    }\n}",
   "code/app/StoreWatch.java": "package brewline;\n\nimport org.apache.flink.api.common.eventtime.WatermarkStrategy;\nimport org.apache.flink.api.common.functions.OpenContext;\nimport org.apache.flink.api.common.serialization.SimpleStringSchema;\nimport org.apache.flink.api.common.state.ValueState;\nimport org.apache.flink.api.common.state.ValueStateDescriptor;\nimport org.apache.flink.util.ParameterTool;\nimport org.apache.flink.connector.kafka.source.KafkaSource;\nimport org.apache.flink.connector.kafka.source.enumerator.initializer.OffsetsInitializer;\nimport org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.JsonNode;\nimport org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMapper;\nimport org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;\nimport org.apache.flink.streaming.api.functions.KeyedProcessFunction;\nimport org.apache.flink.util.Collector;\n\n/** Reads Brewline orders from Kafka, keeps a count and a total for every store, and says so when a store has had no order for a while. */\npublic class StoreWatch {\n\n    /** One order. Flink treats a public class with public fields and an empty constructor as a POJO and gives it a fast serializer. */\n    public static class Order {\n        public String storeId;\n        public int totalCents;\n\n        public Order() {}\n    }\n\n    public static void main(String[] args) throws Exception {\n        ParameterTool p = ParameterTool.fromArgs(args);\n        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();\n        env.enableCheckpointing(3000);\n\n        KafkaSource<String> source = KafkaSource.<String>builder()\n                .setBootstrapServers(p.getRequired(\"bootstrap\"))\n                .setTopics(p.getRequired(\"topic\"))\n                .setGroupId(\"store-watch\")\n                .setStartingOffsets(OffsetsInitializer.earliest())\n                .setValueOnlyDeserializer(new SimpleStringSchema())\n                .build();\n\n        env.fromSource(source, WatermarkStrategy.noWatermarks(), \"orders\").uid(\"orders-source\")\n                .map(StoreWatch::parse).name(\"parse\").uid(\"parse\")\n                .keyBy(o -> o.storeId)\n                .process(new Watch(p.getLong(\"idle-seconds\", 5) * 1000)).name(\"watch per store\").uid(p.get(\"uid\", \"watch\"))\n                .print().name(\"print\");\n\n        env.execute(\"store-watch\");\n    }\n\n    static Order parse(String json) throws Exception {\n        JsonNode n = new ObjectMapper().readTree(json);\n        Order o = new Order();\n        o.storeId = n.get(\"store_id\").asText();\n        o.totalCents = n.get(\"total_cents\").asInt();\n        return o;\n    }\n\n    /** The state of one store lives in three ValueStates: it is kept per key, checkpointed with the job, and restored after a failure. */\n    static class Watch extends KeyedProcessFunction<String, Order, String> {\n        private final long idleMillis;\n        private transient ValueState<Long> orders;\n        private transient ValueState<Long> cents;\n        private transient ValueState<Long> alarm;\n\n        Watch(long idleMillis) {\n            this.idleMillis = idleMillis;\n        }\n\n        @Override\n        public void open(OpenContext ctx) {\n            orders = getRuntimeContext().getState(new ValueStateDescriptor<>(\"orders\", Long.class));\n            cents = getRuntimeContext().getState(new ValueStateDescriptor<>(\"cents\", Long.class));\n            alarm = getRuntimeContext().getState(new ValueStateDescriptor<>(\"alarm\", Long.class));\n        }\n\n        @Override\n        public void processElement(Order o, Context ctx, Collector<String> out) throws Exception {\n            long n = (orders.value() == null ? 0 : orders.value()) + 1;\n            long c = (cents.value() == null ? 0 : cents.value()) + o.totalCents;\n            orders.update(n);\n            cents.update(c);\n            if (n == 1) {\n                out.collect(\"first order of \" + o.storeId + \" seen by subtask \" + getRuntimeContext().getTaskInfo().getIndexOfThisSubtask());\n            }\n            if (alarm.value() != null) {\n                ctx.timerService().deleteProcessingTimeTimer(alarm.value());      // an order came: the old alarm is not needed\n            }\n            long next = ctx.timerService().currentProcessingTime() + idleMillis;\n            ctx.timerService().registerProcessingTimeTimer(next);\n            alarm.update(next);\n        }\n\n        @Override\n        public void onTimer(long timestamp, OnTimerContext ctx, Collector<String> out) throws Exception {\n            out.collect(\"idle \" + ctx.getCurrentKey() + \" orders=\" + orders.value() + \" cents=\" + cents.value());\n            alarm.clear();\n        }\n    }\n}",
   "sql/backend_hashmapfalse.sql": "SET 'parallelism.default' = '1';\nSET 'execution.checkpointing.interval' = '3 s';\nSET 'state.backend.type' = 'hashmap';\nSET 'execution.checkpointing.incremental' = 'false';\nCREATE TEMPORARY TABLE orders (order_id BIGINT, store_id STRING, note STRING, pt AS PROCTIME())\nWITH ('connector' = 'datagen', 'rows-per-second' = '2000', 'fields.order_id.kind' = 'sequence', 'fields.order_id.start' = '1', 'fields.order_id.end' = '400000',\n      'fields.store_id.length' = '3', 'fields.note.length' = '50');\nCREATE TEMPORARY TABLE firsts (order_id BIGINT, store_id STRING, note STRING) WITH ('connector' = 'blackhole');\nINSERT INTO firsts SELECT order_id, store_id, note FROM (SELECT *, ROW_NUMBER() OVER (PARTITION BY order_id ORDER BY pt) AS rn FROM orders) WHERE rn = 1;",
@@ -464,6 +502,10 @@ LAB.real = {
   "sql/backend_rocksdbtrue.sql": "SET 'parallelism.default' = '1';\nSET 'execution.checkpointing.interval' = '3 s';\nSET 'state.backend.type' = 'rocksdb';\nSET 'execution.checkpointing.incremental' = 'true';\nCREATE TEMPORARY TABLE orders (order_id BIGINT, store_id STRING, note STRING, pt AS PROCTIME())\nWITH ('connector' = 'datagen', 'rows-per-second' = '2000', 'fields.order_id.kind' = 'sequence', 'fields.order_id.start' = '1', 'fields.order_id.end' = '400000',\n      'fields.store_id.length' = '3', 'fields.note.length' = '50');\nCREATE TEMPORARY TABLE firsts (order_id BIGINT, store_id STRING, note STRING) WITH ('connector' = 'blackhole');\nINSERT INTO firsts SELECT order_id, store_id, note FROM (SELECT *, ROW_NUMBER() OVER (PARTITION BY order_id ORDER BY pt) AS rn FROM orders) WHERE rn = 1;",
   "sql/cdc_direct_default.sql": "SET 'parallelism.default' = '1';\nSET 'sql-client.execution.result-mode' = 'tableau';\nSET 'execution.runtime-mode' = 'streaming';\nSET 'execution.checkpointing.interval' = '5 s';\nCREATE TEMPORARY TABLE pg_orders (order_id INT, store_id STRING, customer_id INT, total_cents INT, status STRING, PRIMARY KEY (order_id) NOT ENFORCED) WITH ('connector' = 'postgres-cdc', 'hostname' = 'localhost', 'port' = '5432', 'username' = 'postgres', 'password' = 'not-a-real-password', 'database-name' = 'brewline', 'schema-name' = 'public', 'table-name' = 'orders', 'slot.name' = 'flink_slot', 'decoding.plugin.name' = 'pgoutput', 'scan.incremental.snapshot.enabled' = 'false');\nCREATE TEMPORARY TABLE shown (order_id INT, store_id STRING, customer_id INT, total_cents INT, status STRING, PRIMARY KEY (order_id) NOT ENFORCED) WITH ('connector' = 'print');\nINSERT INTO shown SELECT * FROM pg_orders;",
   "sql/cdc_direct_full.sql": "SET 'parallelism.default' = '1';\nSET 'sql-client.execution.result-mode' = 'tableau';\nSET 'execution.runtime-mode' = 'streaming';\nSET 'execution.checkpointing.interval' = '5 s';\nCREATE TEMPORARY TABLE pg_orders (order_id INT, store_id STRING, customer_id INT, total_cents INT, status STRING, PRIMARY KEY (order_id) NOT ENFORCED) WITH ('connector' = 'postgres-cdc', 'hostname' = 'localhost', 'port' = '5432', 'username' = 'postgres', 'password' = 'not-a-real-password', 'database-name' = 'brewline', 'schema-name' = 'public', 'table-name' = 'orders', 'slot.name' = 'flink_slot', 'decoding.plugin.name' = 'pgoutput', 'scan.incremental.snapshot.enabled' = 'false');\nCREATE TEMPORARY TABLE shown (order_id INT, store_id STRING, customer_id INT, total_cents INT, status STRING, PRIMARY KEY (order_id) NOT ENFORCED) WITH ('connector' = 'print');\nINSERT INTO shown SELECT * FROM pg_orders;",
+  "sql/cdc_direct_upsert.sql": "SET 'parallelism.default' = '1';\nSET 'sql-client.execution.result-mode' = 'tableau';\nSET 'execution.runtime-mode' = 'streaming';\nSET 'execution.checkpointing.interval' = '5 s';\nCREATE TEMPORARY TABLE pg_orders (order_id INT, store_id STRING, customer_id INT, total_cents INT, status STRING, PRIMARY KEY (order_id) NOT ENFORCED) WITH ('connector' = 'postgres-cdc', 'hostname' = 'localhost', 'port' = '5432', 'username' = 'postgres', 'password' = 'not-a-real-password', 'database-name' = 'brewline', 'schema-name' = 'public', 'table-name' = 'orders', 'slot.name' = 'flink_slot', 'decoding.plugin.name' = 'pgoutput', 'scan.incremental.snapshot.enabled' = 'false', 'changelog-mode' = 'upsert');\nCREATE TEMPORARY TABLE shown (order_id INT, store_id STRING, customer_id INT, total_cents INT, status STRING, PRIMARY KEY (order_id) NOT ENFORCED) WITH ('connector' = 'print');\nINSERT INTO shown SELECT * FROM pg_orders;",
+  "sql/cdc_explain_default.sql": "SET 'parallelism.default' = '1';\nSET 'sql-client.execution.result-mode' = 'tableau';\nSET 'execution.runtime-mode' = 'streaming';\nCREATE TEMPORARY TABLE pg_orders (order_id INT, store_id STRING, customer_id INT, total_cents INT, status STRING, PRIMARY KEY (order_id) NOT ENFORCED) WITH ('connector' = 'postgres-cdc', 'hostname' = 'localhost', 'port' = '5432', 'username' = 'postgres', 'password' = 'not-a-real-password', 'database-name' = 'brewline', 'schema-name' = 'public', 'table-name' = 'orders', 'slot.name' = 'flink_slot', 'decoding.plugin.name' = 'pgoutput', 'scan.incremental.snapshot.enabled' = 'false');\nEXPLAIN CHANGELOG_MODE SELECT * FROM pg_orders;",
+  "sql/cdc_explain_full.sql": "SET 'parallelism.default' = '1';\nSET 'sql-client.execution.result-mode' = 'tableau';\nSET 'execution.runtime-mode' = 'streaming';\nCREATE TEMPORARY TABLE pg_orders (order_id INT, store_id STRING, customer_id INT, total_cents INT, status STRING, PRIMARY KEY (order_id) NOT ENFORCED) WITH ('connector' = 'postgres-cdc', 'hostname' = 'localhost', 'port' = '5432', 'username' = 'postgres', 'password' = 'not-a-real-password', 'database-name' = 'brewline', 'schema-name' = 'public', 'table-name' = 'orders', 'slot.name' = 'flink_slot', 'decoding.plugin.name' = 'pgoutput', 'scan.incremental.snapshot.enabled' = 'false');\nEXPLAIN CHANGELOG_MODE SELECT * FROM pg_orders;",
+  "sql/cdc_explain_upsert.sql": "SET 'parallelism.default' = '1';\nSET 'sql-client.execution.result-mode' = 'tableau';\nSET 'execution.runtime-mode' = 'streaming';\nCREATE TEMPORARY TABLE pg_orders (order_id INT, store_id STRING, customer_id INT, total_cents INT, status STRING, PRIMARY KEY (order_id) NOT ENFORCED) WITH ('connector' = 'postgres-cdc', 'hostname' = 'localhost', 'port' = '5432', 'username' = 'postgres', 'password' = 'not-a-real-password', 'database-name' = 'brewline', 'schema-name' = 'public', 'table-name' = 'orders', 'slot.name' = 'flink_slot', 'decoding.plugin.name' = 'pgoutput', 'scan.incremental.snapshot.enabled' = 'false', 'changelog-mode' = 'upsert');\nEXPLAIN CHANGELOG_MODE SELECT * FROM pg_orders;",
   "sql/connect_earliest-offset.sql": "SET 'parallelism.default' = '1';\nSET 'sql-client.execution.result-mode' = 'tableau';\nSET 'execution.runtime-mode' = 'streaming';\nCREATE TEMPORARY TABLE orders (order_id INT, store_id STRING, customer_id INT, total_cents INT, status STRING, channel STRING) WITH ('connector' = 'kafka', 'topic' = 'orders_c', 'properties.bootstrap.servers' = 'localhost:9092', 'properties.group.id' = 'connect', 'format' = 'json', 'scan.bounded.mode' = 'latest-offset', 'scan.startup.mode' = 'earliest-offset');\nSELECT COUNT(*) AS rows_read FROM orders;",
   "sql/connect_files.sql": "SET 'parallelism.default' = '1';\nSET 'sql-client.execution.result-mode' = 'tableau';\nSET 'execution.runtime-mode' = 'streaming';\nSET 'execution.checkpointing.interval' = '8 s';\nCREATE TEMPORARY TABLE src (order_id BIGINT, store_id STRING, total_cents INT) WITH ('connector' = 'datagen', 'rows-per-second' = '20', 'fields.order_id.min' = '1', 'fields.order_id.max' = '1000000', 'fields.store_id.length' = '2', 'fields.total_cents.min' = '300', 'fields.total_cents.max' = '800');\nCREATE TEMPORARY TABLE sink (order_id BIGINT, store_id STRING, total_cents INT) WITH ('connector' = 'filesystem', 'path' = 'file:///data/out', 'format' = 'csv');\nINSERT INTO sink SELECT * FROM src;",
   "sql/connect_latest-offset.sql": "SET 'parallelism.default' = '1';\nSET 'sql-client.execution.result-mode' = 'tableau';\nSET 'execution.runtime-mode' = 'streaming';\nCREATE TEMPORARY TABLE orders (order_id INT, store_id STRING, customer_id INT, total_cents INT, status STRING, channel STRING) WITH ('connector' = 'kafka', 'topic' = 'orders_c', 'properties.bootstrap.servers' = 'localhost:9092', 'properties.group.id' = 'connect', 'format' = 'json', 'scan.bounded.mode' = 'latest-offset', 'scan.startup.mode' = 'latest-offset');\nSELECT COUNT(*) AS rows_read FROM orders;",
@@ -477,13 +519,18 @@ LAB.real = {
   "sql/joins_dedup_last.sql": "SET 'parallelism.default' = '1';\nSET 'sql-client.execution.result-mode' = 'tableau';\nSET 'execution.runtime-mode' = 'streaming';\nCREATE TEMPORARY TABLE orders (order_id INT, store_id STRING, customer_id INT, total_cents INT, status STRING, channel STRING, pt AS PROCTIME()) WITH ('connector' = 'filesystem', 'path' = 'file:///data/dup8.jsonl', 'format' = 'json');\nSELECT order_id, store_id, total_cents, status FROM (SELECT *, ROW_NUMBER() OVER (PARTITION BY order_id ORDER BY pt DESC) AS rn FROM orders) WHERE rn = 1;",
   "sql/joins_ex1.sql": "SET 'parallelism.default' = '1';\nSET 'execution.checkpointing.interval' = '2 s';\nCREATE TEMPORARY TABLE orders (order_id BIGINT, store_id STRING, total_cents INT, note STRING, ot AS PROCTIME())\nWITH ('connector' = 'datagen', 'rows-per-second' = '200', 'fields.order_id.kind' = 'sequence', 'fields.order_id.start' = '1', 'fields.order_id.end' = '100000',\n      'fields.store_id.length' = '3', 'fields.total_cents.min' = '300', 'fields.total_cents.max' = '800', 'fields.note.length' = '100');\nCREATE TEMPORARY TABLE payments (order_id BIGINT, how_paid STRING, pt AS PROCTIME())\nWITH ('connector' = 'datagen', 'rows-per-second' = '200', 'fields.order_id.kind' = 'sequence', 'fields.order_id.start' = '1', 'fields.order_id.end' = '100000', 'fields.how_paid.length' = '4');\nCREATE TEMPORARY TABLE joined (order_id BIGINT, note STRING, how_paid STRING) WITH ('connector' = 'blackhole');\nEXPLAIN SELECT o.order_id, o.note, p.how_paid FROM orders o JOIN payments p ON o.order_id = p.order_id;",
   "sql/joins_ex2.sql": "SET 'parallelism.default' = '1';\nSET 'execution.checkpointing.interval' = '2 s';\nCREATE TEMPORARY TABLE orders (order_id BIGINT, store_id STRING, total_cents INT, note STRING, ot AS PROCTIME())\nWITH ('connector' = 'datagen', 'rows-per-second' = '200', 'fields.order_id.kind' = 'sequence', 'fields.order_id.start' = '1', 'fields.order_id.end' = '100000',\n      'fields.store_id.length' = '3', 'fields.total_cents.min' = '300', 'fields.total_cents.max' = '800', 'fields.note.length' = '100');\nCREATE TEMPORARY TABLE payments (order_id BIGINT, how_paid STRING, pt AS PROCTIME())\nWITH ('connector' = 'datagen', 'rows-per-second' = '200', 'fields.order_id.kind' = 'sequence', 'fields.order_id.start' = '1', 'fields.order_id.end' = '100000', 'fields.how_paid.length' = '4');\nCREATE TEMPORARY TABLE joined (order_id BIGINT, note STRING, how_paid STRING) WITH ('connector' = 'blackhole');\nEXPLAIN SELECT o.order_id, o.note, p.how_paid FROM orders o JOIN payments p ON o.order_id = p.order_id AND o.ot BETWEEN p.pt - INTERVAL '5' SECOND AND p.pt + INTERVAL '5' SECOND;",
+  "sql/joins_ex3.sql": "CREATE TEMPORARY TABLE orders (order_id BIGINT, note STRING, ot TIMESTAMP(3))\nWITH ('connector' = 'datagen', 'rows-per-second' = '200', 'fields.order_id.kind' = 'sequence', 'fields.order_id.start' = '1', 'fields.order_id.end' = '100000', 'fields.note.length' = '100');\nCREATE TEMPORARY TABLE payments (order_id BIGINT, how_paid STRING, pt TIMESTAMP(3))\nWITH ('connector' = 'datagen', 'rows-per-second' = '200', 'fields.order_id.kind' = 'sequence', 'fields.order_id.start' = '1', 'fields.order_id.end' = '100000', 'fields.how_paid.length' = '4');\nEXPLAIN SELECT o.order_id, o.note, p.how_paid FROM orders o JOIN payments p ON o.order_id = p.order_id AND o.ot BETWEEN p.pt - INTERVAL '5' SECOND AND p.pt + INTERVAL '5' SECOND;",
   "sql/joins_interval.sql": "SET 'parallelism.default' = '1';\nSET 'execution.checkpointing.interval' = '2 s';\nCREATE TEMPORARY TABLE orders (order_id BIGINT, store_id STRING, total_cents INT, note STRING, ot AS PROCTIME())\nWITH ('connector' = 'datagen', 'rows-per-second' = '200', 'fields.order_id.kind' = 'sequence', 'fields.order_id.start' = '1', 'fields.order_id.end' = '100000',\n      'fields.store_id.length' = '3', 'fields.total_cents.min' = '300', 'fields.total_cents.max' = '800', 'fields.note.length' = '100');\nCREATE TEMPORARY TABLE payments (order_id BIGINT, how_paid STRING, pt AS PROCTIME())\nWITH ('connector' = 'datagen', 'rows-per-second' = '200', 'fields.order_id.kind' = 'sequence', 'fields.order_id.start' = '1', 'fields.order_id.end' = '100000', 'fields.how_paid.length' = '4');\nCREATE TEMPORARY TABLE joined (order_id BIGINT, note STRING, how_paid STRING) WITH ('connector' = 'blackhole');\nINSERT INTO joined SELECT o.order_id, o.note, p.how_paid FROM orders o JOIN payments p ON o.order_id = p.order_id AND o.ot BETWEEN p.pt - INTERVAL '5' SECOND AND p.pt + INTERVAL '5' SECOND;",
   "sql/joins_regular.sql": "SET 'parallelism.default' = '1';\nSET 'execution.checkpointing.interval' = '2 s';\nCREATE TEMPORARY TABLE orders (order_id BIGINT, store_id STRING, total_cents INT, note STRING, ot AS PROCTIME())\nWITH ('connector' = 'datagen', 'rows-per-second' = '200', 'fields.order_id.kind' = 'sequence', 'fields.order_id.start' = '1', 'fields.order_id.end' = '100000',\n      'fields.store_id.length' = '3', 'fields.total_cents.min' = '300', 'fields.total_cents.max' = '800', 'fields.note.length' = '100');\nCREATE TEMPORARY TABLE payments (order_id BIGINT, how_paid STRING, pt AS PROCTIME())\nWITH ('connector' = 'datagen', 'rows-per-second' = '200', 'fields.order_id.kind' = 'sequence', 'fields.order_id.start' = '1', 'fields.order_id.end' = '100000', 'fields.how_paid.length' = '4');\nCREATE TEMPORARY TABLE joined (order_id BIGINT, note STRING, how_paid STRING) WITH ('connector' = 'blackhole');\nINSERT INTO joined SELECT o.order_id, o.note, p.how_paid FROM orders o JOIN payments p ON o.order_id = p.order_id;",
   "sql/joins_ttl.sql": "SET 'parallelism.default' = '1';\nSET 'execution.checkpointing.interval' = '2 s';\nSET 'table.exec.state.ttl' = '10 s';\nCREATE TEMPORARY TABLE orders (order_id BIGINT, store_id STRING, total_cents INT, note STRING, ot AS PROCTIME())\nWITH ('connector' = 'datagen', 'rows-per-second' = '200', 'fields.order_id.kind' = 'sequence', 'fields.order_id.start' = '1', 'fields.order_id.end' = '100000',\n      'fields.store_id.length' = '3', 'fields.total_cents.min' = '300', 'fields.total_cents.max' = '800', 'fields.note.length' = '100');\nCREATE TEMPORARY TABLE payments (order_id BIGINT, how_paid STRING, pt AS PROCTIME())\nWITH ('connector' = 'datagen', 'rows-per-second' = '200', 'fields.order_id.kind' = 'sequence', 'fields.order_id.start' = '1', 'fields.order_id.end' = '100000', 'fields.how_paid.length' = '4');\nCREATE TEMPORARY TABLE joined (order_id BIGINT, note STRING, how_paid STRING) WITH ('connector' = 'blackhole');\nINSERT INTO joined SELECT o.order_id, o.note, p.how_paid FROM orders o JOIN payments p ON o.order_id = p.order_id;",
+  "sql/refused_file.sql": "SET 'parallelism.default' = '1';\nSET 'sql-client.execution.result-mode' = 'tableau';\nSET 'execution.runtime-mode' = 'streaming';\nCREATE TEMPORARY TABLE orders (order_id INT, store_id STRING, customer_id INT, total_cents INT, status STRING, channel STRING)\nWITH ('connector' = 'filesystem', 'path' = 'file:///data/orders12.jsonl', 'format' = 'json');\nCREATE TEMPORARY TABLE counts_file (store_id STRING, n BIGINT) WITH ('connector' = 'filesystem', 'path' = 'file://<work>/out', 'format' = 'csv');\nINSERT INTO counts_file SELECT store_id, COUNT(*) AS n FROM orders GROUP BY store_id;",
+  "sql/refused_method.sql": "SET 'parallelism.default' = '1';\nSET 'sql-client.execution.result-mode' = 'tableau';\nSET 'execution.runtime-mode' = 'streaming';\nCREATE TEMPORARY TABLE orders (order_id INT, store_id STRING, customer_id INT, total_cents INT, status STRING, channel STRING)\nWITH ('connector' = 'filesystem', 'path' = 'file:///data/orders12.jsonl', 'format' = 'json');\nCREATE TEMPORARY TABLE payments (order_id INT, method STRING) WITH ('connector' = 'datagen');",
+  "sql/refused_nokey.sql": "SET 'parallelism.default' = '1';\nSET 'sql-client.execution.result-mode' = 'tableau';\nSET 'execution.runtime-mode' = 'streaming';\nCREATE TEMPORARY TABLE orders (order_id INT, store_id STRING, customer_id INT, total_cents INT, status STRING, channel STRING)\nWITH ('connector' = 'filesystem', 'path' = 'file:///data/orders12.jsonl', 'format' = 'json');\nCREATE TEMPORARY TABLE counts (store_id STRING, n BIGINT) WITH ('connector' = 'upsert-kafka', 'topic' = 'counts', 'properties.bootstrap.servers' = 'localhost:9092', 'key.format' = 'json', 'value.format' = 'json');\nINSERT INTO counts SELECT store_id, COUNT(*) AS n FROM orders GROUP BY store_id;",
+  "sql/refused_window.sql": "SET 'parallelism.default' = '1';\nSET 'sql-client.execution.result-mode' = 'tableau';\nSET 'execution.runtime-mode' = 'streaming';\nCREATE TEMPORARY TABLE orders (order_id INT, store_id STRING, customer_id INT, total_cents INT, status STRING, channel STRING)\nWITH ('connector' = 'filesystem', 'path' = 'file:///data/orders12.jsonl', 'format' = 'json');\nCREATE TEMPORARY TABLE ev (order_id INT, total_cents INT, ts TIMESTAMP(3)) WITH ('connector' = 'datagen');\nSELECT window_start, COUNT(*) FROM TABLE(TUMBLE(TABLE ev, DESCRIPTOR(ts), INTERVAL '1' MINUTE)) GROUP BY window_start, window_end;",
   "sql/sp_1.sql": "SET 'parallelism.default' = '2';\nSET 'execution.checkpointing.interval' = '3 s';\nCREATE TEMPORARY TABLE orders (order_id INT, store_id STRING, total_cents INT) WITH ('connector' = 'kafka', 'topic' = 'orders_d', 'properties.bootstrap.servers' = 'localhost:9092',\n  'properties.group.id' = 'd1', 'scan.startup.mode' = 'earliest-offset', 'format' = 'json');\nCREATE TEMPORARY TABLE store_totals (store_id STRING, n BIGINT, cents BIGINT, PRIMARY KEY (store_id) NOT ENFORCED) WITH ('connector' = 'upsert-kafka', 'topic' = 'totals_d',\n  'properties.bootstrap.servers' = 'localhost:9092', 'key.format' = 'json', 'value.format' = 'json');\nINSERT INTO store_totals SELECT store_id, COUNT(*) AS n, SUM(total_cents) AS cents FROM orders GROUP BY store_id;",
-  "sql/sp_2.sql": "SET 'parallelism.default' = '3';\nSET 'execution.checkpointing.interval' = '3 s';\nSET 'execution.state-recovery.path' = 'file:<work>/savepoints/savepoint-7eb9bd-1ab6a8296027';\nCREATE TEMPORARY TABLE orders (order_id INT, store_id STRING, total_cents INT) WITH ('connector' = 'kafka', 'topic' = 'orders_d', 'properties.bootstrap.servers' = 'localhost:9092',\n  'properties.group.id' = 'd2', 'scan.startup.mode' = 'earliest-offset', 'format' = 'json');\nCREATE TEMPORARY TABLE store_totals (store_id STRING, n BIGINT, cents BIGINT, PRIMARY KEY (store_id) NOT ENFORCED) WITH ('connector' = 'upsert-kafka', 'topic' = 'totals_d',\n  'properties.bootstrap.servers' = 'localhost:9092', 'key.format' = 'json', 'value.format' = 'json');\nINSERT INTO store_totals SELECT store_id, COUNT(*) AS n, SUM(total_cents) AS cents FROM orders GROUP BY store_id;",
+  "sql/sp_2.sql": "SET 'parallelism.default' = '3';\nSET 'execution.checkpointing.interval' = '3 s';\nSET 'execution.state-recovery.path' = 'file:<work>/savepoints/savepoint-f66754-d90b9c8865b9';\nCREATE TEMPORARY TABLE orders (order_id INT, store_id STRING, total_cents INT) WITH ('connector' = 'kafka', 'topic' = 'orders_d', 'properties.bootstrap.servers' = 'localhost:9092',\n  'properties.group.id' = 'd2', 'scan.startup.mode' = 'earliest-offset', 'format' = 'json');\nCREATE TEMPORARY TABLE store_totals (store_id STRING, n BIGINT, cents BIGINT, PRIMARY KEY (store_id) NOT ENFORCED) WITH ('connector' = 'upsert-kafka', 'topic' = 'totals_d',\n  'properties.bootstrap.servers' = 'localhost:9092', 'key.format' = 'json', 'value.format' = 'json');\nINSERT INTO store_totals SELECT store_id, COUNT(*) AS n, SUM(total_cents) AS cents FROM orders GROUP BY store_id;",
   "sql/sp_3.sql": "SET 'parallelism.default' = '2';\nSET 'execution.checkpointing.interval' = '3 s';\nCREATE TEMPORARY TABLE orders (order_id INT, store_id STRING, total_cents INT) WITH ('connector' = 'kafka', 'topic' = 'orders_d', 'properties.bootstrap.servers' = 'localhost:9092',\n  'properties.group.id' = 'd3', 'scan.startup.mode' = 'latest-offset', 'format' = 'json');\nCREATE TEMPORARY TABLE store_totals (store_id STRING, n BIGINT, cents BIGINT, PRIMARY KEY (store_id) NOT ENFORCED) WITH ('connector' = 'upsert-kafka', 'topic' = 'totals_d3',\n  'properties.bootstrap.servers' = 'localhost:9092', 'key.format' = 'json', 'value.format' = 'json');\nINSERT INTO store_totals SELECT store_id, COUNT(*) AS n, SUM(total_cents) AS cents FROM orders GROUP BY store_id;",
-  "sql/sp_4.sql": "SET 'parallelism.default' = '2';\nSET 'execution.checkpointing.interval' = '3 s';\nSET 'execution.state-recovery.path' = 'file:<work>/savepoints/savepoint-7eb9bd-1ab6a8296027';\nCREATE TEMPORARY TABLE orders (order_id INT, store_id STRING, total_cents INT) WITH ('connector' = 'kafka', 'topic' = 'orders_d', 'properties.bootstrap.servers' = 'localhost:9092',\n  'properties.group.id' = 'd4', 'scan.startup.mode' = 'earliest-offset', 'format' = 'json');\nCREATE TEMPORARY TABLE store_totals (store_id STRING, n BIGINT, cents BIGINT, biggest INT, PRIMARY KEY (store_id) NOT ENFORCED) WITH ('connector' = 'upsert-kafka', 'topic' = 'totals_d',\n  'properties.bootstrap.servers' = 'localhost:9092', 'key.format' = 'json', 'value.format' = 'json');\nINSERT INTO store_totals SELECT store_id, COUNT(*) AS n, SUM(total_cents) AS cents, MAX(total_cents) AS biggest FROM orders GROUP BY store_id;",
+  "sql/sp_4.sql": "SET 'parallelism.default' = '2';\nSET 'execution.checkpointing.interval' = '3 s';\nSET 'execution.state-recovery.path' = 'file:<work>/savepoints/savepoint-f66754-d90b9c8865b9';\nCREATE TEMPORARY TABLE orders (order_id INT, store_id STRING, total_cents INT) WITH ('connector' = 'kafka', 'topic' = 'orders_d', 'properties.bootstrap.servers' = 'localhost:9092',\n  'properties.group.id' = 'd4', 'scan.startup.mode' = 'earliest-offset', 'format' = 'json');\nCREATE TEMPORARY TABLE store_totals (store_id STRING, n BIGINT, cents BIGINT, biggest INT, PRIMARY KEY (store_id) NOT ENFORCED) WITH ('connector' = 'upsert-kafka', 'topic' = 'totals_d',\n  'properties.bootstrap.servers' = 'localhost:9092', 'key.format' = 'json', 'value.format' = 'json');\nINSERT INTO store_totals SELECT store_id, COUNT(*) AS n, SUM(total_cents) AS cents, MAX(total_cents) AS biggest FROM orders GROUP BY store_id;",
   "sql/sql_append.sql": "SET 'parallelism.default' = '1';\nSET 'sql-client.execution.result-mode' = 'tableau';\nSET 'execution.runtime-mode' = 'streaming';\nCREATE TEMPORARY TABLE orders (order_id INT, store_id STRING, customer_id INT, total_cents INT, status STRING, channel STRING)\nWITH ('connector' = 'filesystem', 'path' = 'file:///data/orders12.jsonl', 'format' = 'json');\nSELECT order_id, store_id, total_cents FROM orders WHERE status = 'refunded';",
   "sql/sql_batch.sql": "SET 'parallelism.default' = '1';\nSET 'sql-client.execution.result-mode' = 'tableau';\nSET 'execution.runtime-mode' = 'batch';\nCREATE TEMPORARY TABLE orders (order_id INT, store_id STRING, customer_id INT, total_cents INT, status STRING, channel STRING)\nWITH ('connector' = 'filesystem', 'path' = 'file:///data/orders12.jsonl', 'format' = 'json');\nSELECT store_id, COUNT(*) AS n, SUM(total_cents) AS cents FROM orders GROUP BY store_id;",
   "sql/sql_explain.sql": "SET 'parallelism.default' = '1';\nSET 'sql-client.execution.result-mode' = 'tableau';\nSET 'execution.runtime-mode' = 'streaming';\nCREATE TEMPORARY TABLE orders (order_id INT, store_id STRING, customer_id INT, total_cents INT, status STRING, channel STRING)\nWITH ('connector' = 'filesystem', 'path' = 'file:///data/orders12.jsonl', 'format' = 'json');\nEXPLAIN CHANGELOG_MODE SELECT n, COUNT(*) AS stores FROM (SELECT store_id, COUNT(*) AS n FROM orders GROUP BY store_id) GROUP BY n;",
@@ -497,6 +544,7 @@ LAB.real = {
   "sql/state_b.sql": "SET 'parallelism.default' = '2';\nCREATE TEMPORARY TABLE orders (order_id INT, store_id STRING, total_cents INT) WITH ('connector' = 'kafka', 'topic' = 'orders_b', 'properties.bootstrap.servers' = 'localhost:9092',\n  'properties.group.id' = 'state', 'scan.startup.mode' = 'earliest-offset', 'format' = 'json');\nCREATE TEMPORARY TABLE store_totals (store_id STRING, n BIGINT, cents BIGINT, PRIMARY KEY (store_id) NOT ENFORCED) WITH ('connector' = 'upsert-kafka', 'topic' = 'totals_b',\n  'properties.bootstrap.servers' = 'localhost:9092', 'key.format' = 'json', 'value.format' = 'json');\nINSERT INTO store_totals SELECT store_id, COUNT(*) AS n, SUM(total_cents) AS cents FROM orders GROUP BY store_id;",
   "sql/time_cumulate.sql": "SET 'parallelism.default' = '1';\nSET 'sql-client.execution.result-mode' = 'tableau';\nSET 'execution.runtime-mode' = 'streaming';\nCREATE TEMPORARY TABLE events (order_id INT, store_id STRING, total_cents INT, ts TIMESTAMP(3), WATERMARK FOR ts AS ts - INTERVAL '200' SECOND(3))\nWITH ('connector' = 'filesystem', 'path' = 'file:///data/events14.jsonl', 'format' = 'json', 'json.timestamp-format.standard' = 'SQL');\nSELECT window_start, window_end, COUNT(*) AS orders FROM TABLE(CUMULATE(TABLE events, DESCRIPTOR(ts), INTERVAL '20' SECOND, INTERVAL '1' MINUTE))\nGROUP BY window_start, window_end;",
   "sql/time_hop.sql": "SET 'parallelism.default' = '1';\nSET 'sql-client.execution.result-mode' = 'tableau';\nSET 'execution.runtime-mode' = 'streaming';\nCREATE TEMPORARY TABLE events (order_id INT, store_id STRING, total_cents INT, ts TIMESTAMP(3), WATERMARK FOR ts AS ts - INTERVAL '200' SECOND(3))\nWITH ('connector' = 'filesystem', 'path' = 'file:///data/events14.jsonl', 'format' = 'json', 'json.timestamp-format.standard' = 'SQL');\nSELECT window_start, window_end, COUNT(*) AS orders FROM TABLE(HOP(TABLE events, DESCRIPTOR(ts), INTERVAL '30' SECOND, INTERVAL '1' MINUTE))\nGROUP BY window_start, window_end;",
+  "sql/time_idle_paced.sql": "SET 'parallelism.default' = '1';\nSET 'table.exec.source.idle-timeout' = '3 s';\nCREATE TEMPORARY TABLE events (order_id INT, store_id STRING, total_cents INT, ts TIMESTAMP(3), WATERMARK FOR ts AS ts - INTERVAL '10' SECOND(3)) WITH ('connector' = 'kafka', 'topic' = 'events_paced', 'properties.bootstrap.servers' = 'localhost:9092', 'properties.group.id' = 'paced', 'scan.startup.mode' = 'earliest-offset', 'format' = 'json', 'json.timestamp-format.standard' = 'SQL');\nCREATE TEMPORARY TABLE shown (window_start TIMESTAMP(3), window_end TIMESTAMP(3), orders BIGINT) WITH ('connector' = 'print');\nINSERT INTO shown SELECT window_start, window_end, COUNT(*) FROM TABLE(TUMBLE(TABLE events, DESCRIPTOR(ts), INTERVAL '1' MINUTE)) GROUP BY window_start, window_end;",
   "sql/time_idle_with.sql": "SET 'parallelism.default' = '1';\nSET 'table.exec.source.idle-timeout' = '3 s';\nCREATE TEMPORARY TABLE events (order_id INT, store_id STRING, total_cents INT, ts TIMESTAMP(3), WATERMARK FOR ts AS ts - INTERVAL '10' SECOND(3)) WITH ('connector' = 'kafka', 'topic' = 'events_idle', 'properties.bootstrap.servers' = 'localhost:9092', 'properties.group.id' = 'idle', 'scan.startup.mode' = 'earliest-offset', 'format' = 'json', 'json.timestamp-format.standard' = 'SQL');\nCREATE TEMPORARY TABLE shown (window_start TIMESTAMP(3), window_end TIMESTAMP(3), orders BIGINT) WITH ('connector' = 'print');\nINSERT INTO shown SELECT window_start, window_end, COUNT(*) FROM TABLE(TUMBLE(TABLE events, DESCRIPTOR(ts), INTERVAL '1' MINUTE)) GROUP BY window_start, window_end;",
   "sql/time_idle_without.sql": "SET 'parallelism.default' = '1';\nCREATE TEMPORARY TABLE events (order_id INT, store_id STRING, total_cents INT, ts TIMESTAMP(3), WATERMARK FOR ts AS ts - INTERVAL '10' SECOND(3)) WITH ('connector' = 'kafka', 'topic' = 'events_idle', 'properties.bootstrap.servers' = 'localhost:9092', 'properties.group.id' = 'idle', 'scan.startup.mode' = 'earliest-offset', 'format' = 'json', 'json.timestamp-format.standard' = 'SQL');\nCREATE TEMPORARY TABLE shown (window_start TIMESTAMP(3), window_end TIMESTAMP(3), orders BIGINT) WITH ('connector' = 'print');\nINSERT INTO shown SELECT window_start, window_end, COUNT(*) FROM TABLE(TUMBLE(TABLE events, DESCRIPTOR(ts), INTERVAL '1' MINUTE)) GROUP BY window_start, window_end;",
   "sql/time_session.sql": "SET 'parallelism.default' = '1';\nSET 'sql-client.execution.result-mode' = 'tableau';\nSET 'execution.runtime-mode' = 'streaming';\nCREATE TEMPORARY TABLE events (order_id INT, store_id STRING, total_cents INT, ts TIMESTAMP(3), WATERMARK FOR ts AS ts - INTERVAL '200' SECOND(3))\nWITH ('connector' = 'filesystem', 'path' = 'file:///data/events14.jsonl', 'format' = 'json', 'json.timestamp-format.standard' = 'SQL');\nSELECT store_id, window_start, window_end, COUNT(*) AS orders\nFROM TABLE(SESSION(TABLE events PARTITION BY store_id, DESCRIPTOR(ts), INTERVAL '30' SECOND))\nGROUP BY store_id, window_start, window_end;",
@@ -796,6 +844,50 @@ LAB.real = {
     ]
    ]
   },
+  "datastream.max_parallelism": {
+   "cols": [
+    "parallelism of the operator",
+    "default maximum parallelism (key groups)"
+   ],
+   "rows": [
+    [
+     1,
+     128
+    ],
+    [
+     2,
+     128
+    ],
+    [
+     4,
+     128
+    ],
+    [
+     10,
+     128
+    ],
+    [
+     85,
+     128
+    ],
+    [
+     86,
+     256
+    ],
+    [
+     100,
+     256
+    ],
+    [
+     1000,
+     2048
+    ],
+    [
+     30000,
+     32768
+    ]
+   ]
+  },
   "datastream.orders_per_store": {
    "cols": [
     "store",
@@ -891,6 +983,19 @@ LAB.real = {
      "s04",
      "1> first order of s04 seen by subtask 0",
      0
+    ]
+   ]
+  },
+  "datastream.round_output": {
+   "cols": [
+    "line that the print sink wrote"
+   ],
+   "rows": [
+    [
+     "s01 passed 1000 cents with order 7, total 1233"
+    ],
+    [
+     "s04 passed 1000 cents with order 10, total 1081"
     ]
    ]
   },
@@ -1110,57 +1215,57 @@ LAB.real = {
    "rows": [
     [
      1,
-     60784,
-     160264,
+     93184,
+     86264,
      99952
     ],
     [
      2,
-     148784,
-     308264,
+     181184,
+     234264,
      194352
     ],
     [
      3,
-     236784,
+     269184,
      382264,
      288752
     ],
     [
      4,
-     324784,
+     357184,
      382264,
      383152
     ],
     [
      5,
-     412784,
-     382264,
+     445184,
+     381539,
      477552
     ],
     [
      6,
-     500784,
-     382264,
-     547792
+     533184,
+     381539,
+     547028
     ],
     [
      7,
-     588784,
-     382264,
-     577546
+     621184,
+     381539,
+     561504
     ],
     [
      8,
-     676784,
+     709184,
      382264,
-     582778
+     549698
     ],
     [
      9,
-     764784,
-     381568,
-     578916
+     797184,
+     382264,
+     562446
     ]
    ]
   },
@@ -1179,18 +1284,18 @@ LAB.real = {
      "Source: orders",
      1,
      0,
-     21,
+     14,
      1000,
-     11612,
-     11612
+     11563,
+     11563
     ],
     [
      "slow lookup -> discard: Writer",
      1,
-     983,
-     17,
+     980,
+     20,
      0,
-     2882,
+     2871,
      0
     ]
    ]
@@ -1210,19 +1315,19 @@ LAB.real = {
      "Source: orders",
      1,
      0,
-     24,
+     15,
      1000,
-     33115,
-     33115
+     33067,
+     33067
     ],
     [
      "slow lookup",
      4,
-     975,
-     25,
+     971,
+     29,
      0,
-     11565,
-     11561
+     11574,
+     11570
     ],
     [
      "discard: Writer",
@@ -1230,7 +1335,7 @@ LAB.real = {
      0,
      1000,
      0,
-     11535,
+     11541,
      0
     ]
    ]
@@ -1503,6 +1608,30 @@ LAB.real = {
     ]
    ]
   },
+  "sql.planner_errors": {
+   "cols": [
+    "what the script does",
+    "what the SQL client said"
+   ],
+   "rows": [
+    [
+     "an aggregate written to a plain file",
+     "TableException: Table sink 'default_catalog.default_database.counts_file' doesn't support consuming update changes which is produced by node GroupAggregate(groupBy=[store_id], select=[store_id, COUNT(*) AS n])"
+    ],
+    [
+     "an upsert-kafka table with no primary key",
+     "ValidationException: 'upsert-kafka' tables require to define a PRIMARY KEY constraint. The PRIMARY KEY specifies which columns should be read from or write to the Kafka message key. The PRIMARY KEY also defines records in the 'upsert-kafka' table should update or delete on which keys."
+    ],
+    [
+     "a window on a column that is not a time attribute",
+     "ValidationException: The window function requires the timecol is a time attribute type, but is TIMESTAMP(3)."
+    ],
+    [
+     "a column called method",
+     "ParseException: Encountered \"method\" at line 1, column 48."
+    ]
+   ]
+  },
   "sql.stream_group": {
    "cols": [
     "op",
@@ -1767,17 +1896,17 @@ LAB.real = {
     ],
     [
      "RocksDB, full checkpoints",
-     79730,
-     316217,
-     79730,
-     316217
-    ],
-    [
-     "RocksDB, incremental checkpoints",
      61393,
      299671,
      61393,
-     80407
+     299671
+    ],
+    [
+     "RocksDB, incremental checkpoints",
+     79730,
+     316217,
+     79730,
+     80233
     ]
    ]
   },
@@ -2651,9 +2780,14 @@ LAB.real = {
  "text": {
   "cdc.flink_cdc_output_default": "+I[1, s01, 1000, 300, refunded]\n+I[2, s02, 1007, 337, paid]\n+I[3, s07, 1014, 374, paid]\n+I[4, s01, null, 411, paid]\n+I[5, s04, 1028, 448, paid]\n+I[6, s03, 1007, 520, paid]\n+I[6, s03, 1007, 520, paid]\n+I[6, s03, 1007, 520, paid]\n+I[6, s03, 1007, 520, paid]",
   "cdc.flink_cdc_output_full": "+I[1, s01, 1000, 300, refunded]\n+I[2, s02, 1007, 337, paid]\n+I[3, s07, 1014, 374, paid]\n+I[4, s01, null, 411, paid]\n+I[5, s04, 1028, 448, paid]\n+I[6, s03, 1007, 520, paid]\n-U[2, s02, 1007, 337, paid]\n+U[2, s02, 1007, 337, refunded]\n-D[3, s07, 1014, 374, paid]",
+  "cdc.flink_cdc_output_upsert": "+I[1, s01, 1000, 300, refunded]\n+I[2, s02, 1007, 337, paid]\n+I[3, s07, 1014, 374, paid]\n+I[4, s01, null, 411, paid]\n+I[5, s04, 1028, 448, paid]\n+I[6, s03, 1007, 520, paid]\n-U[2, s02, 1007, 337, paid]\n+U[2, s02, 1007, 337, refunded]\n-D[3, s07, 1014, 374, paid]",
+  "cdc.plan_default": "DropUpdateBefore(changelogMode=[I,UA,D])\n+- TableSourceScan(table=[[default_catalog, default_database, pg_orders]], fields=[order_id, store_id, customer_id, total_cents, status], changelogMode=[I,UB,UA,D])",
+  "cdc.plan_full": "DropUpdateBefore(changelogMode=[I,UA,D])\n+- TableSourceScan(table=[[default_catalog, default_database, pg_orders]], fields=[order_id, store_id, customer_id, total_cents, status], changelogMode=[I,UB,UA,D])",
+  "cdc.plan_upsert": "ChangelogNormalize(key=[order_id], changelogMode=[I,UA,D])\n+- Exchange(distribution=[hash[order_id]], changelogMode=[I,UA,PD])\n   +- TableSourceScan(table=[[default_catalog, default_database, pg_orders]], fields=[order_id, store_id, customer_id, total_cents, status], changelogMode=[I,UA,PD])",
   "datastream.idle_lines": "1> idle s01 orders=205 cents=118165\n1> idle s04 orders=52 cents=31793\n1> idle s05 orders=46 cents=27138\n1> idle s07 orders=38 cents=20413",
   "datastream.run_command": "flink run -d -p 2 -c brewline.StoreWatch storewatch.jar --bootstrap localhost:9092 --topic orders_s --idle-seconds 5\nJob has been submitted with JobID <id>",
   "joins.plan_interval": "+- IntervalJoin(joinType=[InnerJoin], windowBounds=[isRowTime=false, leftLowerBound=-5000, leftUpperBound=5000, leftTimeIndex=2, rightTimeIndex=2], where=[AND(=(order_id, order_id0), >=(ot, -(pt, 5000:INTERVAL SECOND)), <=(ot, +(pt, 5000:INTERVAL SECOND)))], select=[order_id, note, ot, order_id0, how_paid, pt])",
+  "joins.plan_plain_timestamp": "+- Join(joinType=[InnerJoin], where=[AND(=(order_id, order_id0), >=(ot, -(pt, 5000:INTERVAL SECOND)), <=(ot, +(pt, 5000:INTERVAL SECOND)))], select=[order_id, note, ot, order_id0, how_paid, pt], leftInputSpec=[NoUniqueKey], rightInputSpec=[NoUniqueKey])",
   "joins.plan_regular": "+- Join(joinType=[InnerJoin], where=[=(order_id, order_id0)], select=[order_id, note, order_id0, how_paid], leftInputSpec=[NoUniqueKey], rightInputSpec=[NoUniqueKey])",
   "running.backpressure_p1": "{\n \"status\": \"ok\",\n \"backpressure-level\": \"high\",\n \"subtasks\": [\n  {\n   \"subtask\": 0,\n   \"backpressureLevel\": \"high\",\n   \"ratio\": 1.0,\n   \"idleRatio\": 0.01,\n   \"busyRatio\": 0.0,\n   \"backpressure-level\": \"high\"\n  }\n ]\n}",
   "running.backpressure_p4": "{\n \"status\": \"ok\",\n \"backpressure-level\": \"high\",\n \"subtasks\": [\n  {\n   \"subtask\": 0,\n   \"backpressureLevel\": \"high\",\n   \"ratio\": 1.0,\n   \"idleRatio\": 0.01,\n   \"busyRatio\": 0.0,\n   \"backpressure-level\": \"high\"\n  }\n ]\n}",
@@ -2667,8 +2801,9 @@ LAB.real = {
   "sql.print_out": "+I[s01, 1, 300]\n+I[s02, 1, 337]\n+I[s07, 1, 374]\n-U[s01, 1, 300]\n+U[s01, 2, 711]\n+I[s04, 1, 448]\n+I[s11, 1, 485]\n-U[s01, 2, 711]\n+U[s01, 3, 1233]\n+I[s06, 1, 559]\n-U[s01, 3, 1233]\n+U[s01, 4, 1829]\n-U[s04, 1, 448]\n+U[s04, 2, 1081]\n+I[s09, 1, 670]\n-U[s01, 4, 1829]\n+U[s01, 5, 2536]",
   "sql.stream_footer": "Received a total of 17 rows",
   "state.a_jobmanager_log": "Using restart back off time strategy ExponentialDelayRestartBackoffTimeStrategy(initialBackoffMS=1000, maxBackoffMS=60000, backoffMultiplier=1.5, resetBackoffThresholdMS=3600000, jitterFactor=0.1, attemptsBeforeResetBackoff=2147483647, currentRestartAttempt=0, nextRestartTimestamp=-2147483648) for insert-into_default_catalog.default_database.store_totals (<job id>).\nJob insert-into_default_catalog.default_database.store_totals (<job id>) switched from state CREATED to RUNNING.\nJob insert-into_default_catalog.default_database.store_totals (<job id>) switched from state RUNNING to RESTARTING.\nJob insert-into_default_catalog.default_database.store_totals (<job id>) switched from state RESTARTING to RUNNING.\nRestoring job <job id> from Checkpoint 3 for <job id> located at file:<work>/checkpoints/<job id>/chk-3.",
-  "state.savepoint_command": "flink stop --savepointPath <savepoints> <job id>\nSuspending job \"<id>\" with a CANONICAL savepoint.\nTriggering stop-with-savepoint for job <id>.\nSavepoint completed. Path: file:<work>/savepoints/savepoint-7eb9bd-1ab6a8296027",
+  "state.savepoint_command": "flink stop --savepointPath <savepoints> <job id>\nSuspending job \"<id>\" with a CANONICAL savepoint.\nTriggering stop-with-savepoint for job <id>.\nSavepoint completed. Path: file:<work>/savepoints/savepoint-f66754-d90b9c8865b9",
   "time.events_file": "{\"order_id\":1,\"store_id\":\"s01\",\"total_cents\":400,\"ts\":\"2026-01-01 00:00:05.000\"}\n{\"order_id\":2,\"store_id\":\"s01\",\"total_cents\":350,\"ts\":\"2026-01-01 00:00:20.000\"}\n{\"order_id\":3,\"store_id\":\"s02\",\"total_cents\":500,\"ts\":\"2026-01-01 00:00:40.000\"}\n{\"order_id\":4,\"store_id\":\"s01\",\"total_cents\":420,\"ts\":\"2026-01-01 00:01:05.000\"}\n{\"order_id\":5,\"store_id\":\"s02\",\"total_cents\":380,\"ts\":\"2026-01-01 00:00:50.000\"}\n{\"order_id\":6,\"store_id\":\"s01\",\"total_cents\":610,\"ts\":\"2026-01-01 00:01:10.000\"}\n{\"order_id\":7,\"store_id\":\"s02\",\"total_cents\":450,\"ts\":\"2026-01-01 00:02:05.000\"}\n{\"order_id\":8,\"store_id\":\"s01\",\"total_cents\":300,\"ts\":\"2026-01-01 00:00:55.000\"}\n{\"order_id\":9,\"store_id\":\"s02\",\"total_cents\":520,\"ts\":\"2026-01-01 00:02:10.000\"}\n{\"order_id\":10,\"store_id\":\"s01\",\"total_cents\":700,\"ts\":\"2026-01-01 00:03:10.000\"}\n{\"order_id\":11,\"store_id\":\"s02\",\"total_cents\":330,\"ts\":\"2026-01-01 00:01:58.000\"}\n{\"order_id\":12,\"store_id\":\"s01\",\"total_cents\":410,\"ts\":\"2026-01-01 00:03:20.000\"}\n{\"order_id\":13,\"store_id\":\"s02\",\"total_cents\":480,\"ts\":\"2026-01-01 00:04:10.000\"}\n{\"order_id\":14,\"store_id\":\"s01\",\"total_cents\":360,\"ts\":\"2026-01-01 00:01:01.000\"}",
+  "time.idle_paced": "+I[2026-01-01T00:00, 2026-01-01T00:01, 4]\n+I[2026-01-01T00:01, 2026-01-01T00:02, 2]\n+I[2026-01-01T00:02, 2026-01-01T00:03, 2]\n+I[2026-01-01T00:03, 2026-01-01T00:04, 2]",
   "time.idle_with": "+I[2026-01-01T00:00, 2026-01-01T00:01, 5]\n+I[2026-01-01T00:01, 2026-01-01T00:02, 4]\n+I[2026-01-01T00:02, 2026-01-01T00:03, 2]\n+I[2026-01-01T00:03, 2026-01-01T00:04, 2]",
   "time.idle_without": "(nothing was printed)",
   "world.explain": "== Optimized Execution Plan ==\nGroupAggregate(groupBy=[store_id], select=[store_id, COUNT(*) AS EXPR$1, SUM(total_cents) AS EXPR$2])\n+- Exchange(distribution=[hash[store_id]])\n   +- Calc(select=[store_id, total_cents], where=[(total_cents > 350)])\n      +- TableSourceScan(table=[[default_catalog, default_database, orders]], fields=[order_id, store_id, total_cents])",

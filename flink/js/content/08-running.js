@@ -22,7 +22,7 @@
       'Choose between **session** and **application** mode, and name the places where Flink runs.',
       'List the **numbers to watch** in a running job.'
     ],
-    say: 'Mission 8 is the one for the person who is called at night. A job is running, the lag is growing, and the CPU is idle. Why? I made the situation on purpose: a source that can read a hundred thousand records a second, and a step that takes ten milliseconds for each, like a call to a service. I read what Flink said about each step, and then gave the slow step four tasks. Press Next.',
+    say: 'Mission 8 is the one for the person who is called at night. A job is running, the lag is growing, and the CPU is idle. Why? I made the situation on purpose: a topic with ' + n0(R1.topic_records) + ' records already in it, so that the source can read as fast as it likes, and a step that takes ten milliseconds for each record, like a call to a service. I read what Flink said about each step, and then gave the slow step four tasks. Press Next.',
     scenes: [
       B.talk({
         id: 'm8-bp', t: 1, src: 'docs', title: 'Backpressure in four sentences',
@@ -30,7 +30,7 @@
         items: [
           ['The steps are connected by buffers', 'Between two tasks, records wait in network buffers. A task that cannot hand over a record because the buffers of the next task are full has to **wait**.', 'Full buffers mean wait.'],
           ['The slowest step sets the speed', 'If a step is slower than the one before it, the buffers in between fill up, and the step before it is **backpressured**. The job runs at the speed of its slowest step. Nothing is lost.', 'A job is as fast as its slowest step.'],
-          ['Three times per second', 'Each task reports how many milliseconds of every second it was **busy** (working), **idle** (nothing to do) and **backpressured** (blocked on a full output). The three add up to 1000.', 'Busy, idle, blocked.'],
+          ['Three numbers for every task', 'Each task reports how many milliseconds of every second it was **busy** (working), **idle** (nothing to do) and **backpressured** (blocked on a full output). The three add up to about 1000.', 'Busy, idle, blocked.'],
           ['What grows', 'A source that is blocked reads less. When the source is Kafka, the records wait in the topic, and the consumer **lag** grows. The job looks healthy and falls behind.', 'The lag grows.']
         ],
         cols: 1,
@@ -81,7 +81,7 @@
             notes: ['Recorded. The vertex of the slow step now has 4 parallel tasks, and the sink, which no longer shares its chain, is a vertex of its own. It is idle almost all the time.']
           },
           {
-            say: 'But look at the source again: it is **still backpressured**, ' + src(M4)[4] + ' milliseconds of every second. Four tasks are four times faster, and the source can still read a thousand times more. To keep up with a source like that you would need hundreds of tasks, or a faster step. The right question is not "is there backpressure" but "does the lag grow, and is that acceptable".',
+            say: 'But look at the source again: it is **still backpressured**, ' + src(M4)[4] + ' milliseconds of every second. Four tasks are four times faster, and the source is still far ahead of them: it takes in ' + n0(src(M4)[5]) + ' records while the slow step takes in ' + n0(slow(M4)[5]) + '. The right question is not "is there backpressure" but "does the lag grow, and is that acceptable".',
             tabs: [{ layer: 'RECORDED', name: 'The backpressure report with four tasks', c: 'raw', cols: ['Response'], rows: BP4.split('\n').map(function (l) { return [l]; }), trk: 1 }],
             notes: ['Recorded. In production the source is a topic that fills at a rate of its own. The job keeps up when its slowest step is faster than that rate.']
           }
@@ -125,7 +125,7 @@
         say: 'The Flink documentation names two deployment modes. Press Next for each.',
         items: [
           ['Session mode', 'One cluster, one JobManager, a pool of TaskManagers. You **submit jobs to the running cluster**, as in this course. Jobs share the TaskManagers, so a job that eats memory or fails badly can hurt its neighbours. Starting a job is quick, because the cluster is already there.', 'One cluster, many jobs.'],
-          ['Application mode', 'A cluster is started **for one application** and ends with it. The `main` method runs on the JobManager. Resources are isolated for each application, and a failing job cannot hurt another. This is the mode that production setups on Kubernetes use most.', 'One cluster per job.'],
+          ['Application mode', 'A cluster is started **for one application** and ends with it. The `main` method runs on the JobManager. Resources are isolated for each application, and a failing job cannot hurt another. The documentation describes it as isolating the resources of each application.', 'One cluster per job.'],
           ['The old per-job mode', 'Older material describes a third mode, per-job. The current documentation lists only session and application mode, so read old tutorials with that in mind.', 'Not in the current docs.']
         ],
         cols: 1,
@@ -279,7 +279,7 @@
         id: 'qa-scale', t: 2, tag: 'Operations', secs: 60,
         q: 'The job cannot keep up with its input. How do you scale it?',
         pts: ['Find the bottleneck first', 'Raise parallelism of that step', 'Slots and max parallelism limits', 'Hot keys do not scale', 'Rescale through a savepoint'],
-        short: 'First I find the **bottleneck** with the busy and backpressured time: scaling the wrong step changes nothing. For the busy step I raise the **parallelism**, which needs free slots (mission 1) and stays below the max parallelism, 128 by default. Four tasks gave four times the speed in my recording, as the ceiling predicted. A **hot key** cannot be spread by parallelism, because a key always goes to one task, so I split the key or pre-aggregate. Changing the parallelism of a running job means stopping it with a savepoint and starting it again with the new number; the state is stored by key group, so it can be restored. Last, I check the lag of the source again.',
+        short: 'First I find the **bottleneck** with the busy and backpressured time: scaling the wrong step changes nothing. For the busy step I raise the **parallelism**, which needs free slots (mission 1) and stays below the max parallelism (128 for a small job). Four tasks gave four times the speed in my recording, as the ceiling predicted. A **hot key** cannot be spread by parallelism, because a key always goes to one task, so I split the key or pre-aggregate. Changing the parallelism of a running job means stopping it with a savepoint and starting it again with the new number; the state is stored by key group, so it can be restored. Last, I check the lag of the source again.',
         fu: [['Can Flink scale by itself?', 'There are adaptive scheduling and autoscaling options, which I did not run. By default you set the parallelism.'], ['What if the sink is the slow one?', 'Then it is the busy step: batch writes, more sink tasks, or a faster target.']],
         trap: 'Adding TaskManagers and slots without changing the parallelism of the busy step: the job does not use them.'
       }),

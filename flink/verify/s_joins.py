@@ -33,6 +33,22 @@ def explain_head(f, query_sql, name):
     return re.sub(r'\s+', ' ', line.strip())
 
 
+PLAIN = """CREATE TEMPORARY TABLE orders (order_id BIGINT, note STRING, ot TIMESTAMP(3))
+WITH ('connector' = 'datagen', 'rows-per-second' = '200', 'fields.order_id.kind' = 'sequence', 'fields.order_id.start' = '1', 'fields.order_id.end' = '100000', 'fields.note.length' = '100');
+CREATE TEMPORARY TABLE payments (order_id BIGINT, how_paid STRING, pt TIMESTAMP(3))
+WITH ('connector' = 'datagen', 'rows-per-second' = '200', 'fields.order_id.kind' = 'sequence', 'fields.order_id.start' = '1', 'fields.order_id.end' = '100000', 'fields.how_paid.length' = '4');
+EXPLAIN SELECT o.order_id, o.note, p.how_paid FROM orders o JOIN payments p ON o.order_id = p.order_id AND o.ot BETWEEN p.pt - INTERVAL '5' SECOND AND p.pt + INTERVAL '5' SECOND;"""
+
+
+def explain_plain_timestamp(f, name):
+    """The same time condition on two plain TIMESTAMP columns, which are not time attributes: the first operator of the plan. The planner cannot bound the state, so it runs a plain Join."""
+    rc, out, err = f.sql(PLAIN, name=name)
+    o = F.strip_ansi(out)
+    plan = o[o.index('== Optimized Physical Plan =='):].split('== Optimized Execution Plan ==')[0]
+    line = next(l for l in plan.splitlines() if 'Join(' in l)
+    return re.sub(r'\s+', ' ', line.strip())
+
+
 def series(f, jid, n=9, timeout=90):
     """The size of the state of the join, in bytes, in the first n completed checkpoints of a job: the 'state_size' that the REST interface gives for the vertex that holds the join."""
     vid = next(v['id'] for v in f.job(jid)['vertices'] if 'Join' in v['name'])
@@ -75,6 +91,7 @@ def record_joins(f, rec):
                                        'ttl_flat_at_the_end': max(ttl[-3:]) <= min(ttl[-3:]) * 1.35, 'ratio_regular_to_interval_last': round(reg[-1] / max(1, itv[-1]), 1)})
     rec.text('joins.plan_regular', explain_head(f, REGULAR, 'joins_ex1'))
     rec.text('joins.plan_interval', explain_head(f, INTERVAL, 'joins_ex2'))
+    rec.text('joins.plan_plain_timestamp', explain_plain_timestamp(f, 'joins_ex3'))
 
     # ---- removing duplicates: keep the first row of a key, or the last ----
     import json

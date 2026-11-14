@@ -16,14 +16,15 @@ import kx
 APP = pathlib.Path(__file__).resolve().parent / 'app'
 
 
-def compile_jar(f, work):
-    classes = work / 'classes'
+def compile_jar(f, work, files=('StoreWatch.java', 'KeyGroups.java', 'Pipe.java'), jar_name='storewatch.jar', folder='classes'):
+    """javac against the jars of the distribution and the Kafka connector, then jar. The Java files are the ones in verify/app."""
+    classes = work / folder
     classes.mkdir(parents=True, exist_ok=True)
-    cp = ':'.join([str(F.check_home() / 'lib' / '*'), str(F.KAFKA_JAR)])
-    r = subprocess.run(['javac', '--release', '17', '-cp', cp, '-d', str(classes), str(APP / 'StoreWatch.java'), str(APP / 'KeyGroups.java'), str(APP / 'Pipe.java')], capture_output=True, text=True)
+    cp = ':'.join([str(F.check_home() / 'lib' / '*'), str(F.KAFKA_JAR)] if F.KAFKA_JAR else [str(F.check_home() / 'lib' / '*')])
+    r = subprocess.run(['javac', '-proc:none', '--release', '17', '-cp', cp, '-d', str(classes)] + [str(APP / n) for n in files], capture_output=True, text=True)
     if r.returncode:
         raise RuntimeError(r.stderr[-3000:])
-    jar = work / 'storewatch.jar'
+    jar = work / jar_name
     r = subprocess.run(['jar', 'cf', str(jar), '-C', str(classes), '.'], capture_output=True, text=True)
     if r.returncode:
         raise RuntimeError(r.stderr)
@@ -144,3 +145,51 @@ def record_datastream(f, kc, rec):
     rec.counts('datastream.restored', {'orders_in_total': 1200, 'idle_lines': len(idle2), 'totals_equal_the_truth': ok, 'sample': idle2[:3]})
     f.cancel(jid2)
     assert ok, (idle2, want2)
+    f.wait_idle()
+    record_max_parallelism(f, rec, work)
+    record_round(f, rec, work)
+
+
+def record_max_parallelism(f, rec, work):
+    """The default maximum parallelism (the number of key groups), asked of the class that Flink uses."""
+    jar, classes, cp = compile_jar(f, work, files=('MaxParallelism.java',), jar_name='maxpar.jar', folder='classes_maxpar')
+    rec.file('code/app/MaxParallelism.java', (APP / 'MaxParallelism.java').read_text().rstrip('\n'))
+    ps = ['1', '2', '4', '10', '85', '86', '100', '1000', '30000']
+    r = subprocess.run(['java', '-cp', str(classes) + ':' + str(F.check_home() / 'lib' / '*'), 'brewline.MaxParallelism'] + ps, capture_output=True, text=True)
+    lines = F.clean(r.stdout).splitlines()
+    rows = [[int(a), int(b)] for a, b in (l.split(',') for l in lines[1:1 + len(ps)])]
+    rec.table('datastream.max_parallelism', ['parallelism of the operator', 'default maximum parallelism (key groups)'], rows)
+    bounds = dict(l.split(',') for l in lines[1 + len(ps):])
+    rec.counts('datastream.max_parallelism_bounds', {'lower_bound': int(bounds['lower_bound']), 'upper_bound': int(bounds['upper_bound'])})
+
+
+ROUND_ORDERS = [(1, 's01', 300), (2, 's02', 337), (3, 's07', 374), (4, 's01', 411), (5, 's04', 448), (6, 's11', 485), (7, 's01', 522), (8, 's06', 559), (9, 's01', 596), (10, 's04', 633),
+                (11, 's09', 670), (12, 's01', 707)]
+
+
+def round_truth(limit=1000):
+    """What the coding round must print, worked out here in plain Python: the line for the order that makes the running total of a store reach the limit."""
+    tot, out = {}, []
+    for oid, store, cents in ROUND_ORDERS:
+        before = tot.get(store, 0)
+        tot[store] = before + cents
+        if before < limit <= tot[store]:
+            out.append('%s passed %d cents with order %d, total %d' % (store, limit, oid, tot[store]))
+    return sorted(out)
+
+
+def record_round(f, rec, work):
+    """The DataStream coding round: a keyed function with state that says when a store passes 1,000 cents. Compiled here, run on the cluster, and read from the print sink."""
+    jar, classes, cp = compile_jar(f, work, files=('PassThousand.java',), jar_name='passthousand.jar', folder='classes_round')
+    rec.file('code/app/PassThousand.java', (APP / 'PassThousand.java').read_text().rstrip('\n'))
+    mark = f.out_mark()
+    rc, out, err = f.cli('run', '-d', '-p', '2', '-c', 'brewline.PassThousand', str(jar))
+    jid = re.search(r'JobID (\w{32})', out + err).group(1)
+    f.wait_state(jid, 'FINISHED', timeout=90)
+    time.sleep(2)
+    printed = f.out_since(mark)
+    lines = sorted(re.sub(r'^\d+> ', '', l) for l in printed.splitlines() if ' passed ' in l)
+    rec.table('datastream.round_output', ['line that the print sink wrote'], [[l] for l in lines])
+    rec.counts('datastream.round', {'orders': len(ROUND_ORDERS), 'lines': len(lines), 'job_state': f.job(jid)['state'], 'equals_plain_python': lines == round_truth(), 'limit_cents': 1000,
+                                    'classes': sorted(p.name for p in (classes / 'brewline').iterdir())})
+    assert lines == round_truth(), (lines, round_truth())

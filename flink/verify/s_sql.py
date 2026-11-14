@@ -113,6 +113,28 @@ def record_sql(f, rec):
     rec.counts('sql.print_summary', {'lines': len(printed.splitlines()), 'kinds': sorted({l.split('[')[0] for l in printed.splitlines()})})
     rec.text('sql.job_name', f.job(jid)['name'])
 
+    # ---- scripts that the planner refuses: the bug hunts of the course quote these messages ----
+    cases = [('refused_file', 'an aggregate written to a plain file',
+              "CREATE TEMPORARY TABLE counts_file (store_id STRING, n BIGINT) WITH ('connector' = 'filesystem', 'path' = 'file://%s/out', 'format' = 'csv');\n"
+              "INSERT INTO counts_file SELECT store_id, COUNT(*) AS n FROM orders GROUP BY store_id;" % f.work),
+             ('refused_nokey', 'an upsert-kafka table with no primary key',
+              "CREATE TEMPORARY TABLE counts (store_id STRING, n BIGINT) WITH ('connector' = 'upsert-kafka', 'topic' = 'counts', 'properties.bootstrap.servers' = 'localhost:9092', 'key.format' = 'json', 'value.format' = 'json');\n"
+              "INSERT INTO counts SELECT store_id, COUNT(*) AS n FROM orders GROUP BY store_id;"),
+             ('refused_window', 'a window on a column that is not a time attribute',
+              "CREATE TEMPORARY TABLE ev (order_id INT, total_cents INT, ts TIMESTAMP(3)) WITH ('connector' = 'datagen');\n"
+              "SELECT window_start, COUNT(*) FROM TABLE(TUMBLE(TABLE ev, DESCRIPTOR(ts), INTERVAL '1' MINUTE)) GROUP BY window_start, window_end;"),
+             ('refused_method', 'a column called method',
+              "CREATE TEMPORARY TABLE payments (order_id INT, method STRING) WITH ('connector' = 'datagen');")]
+    rows = []
+    for name, label, body in cases:
+        rc, out, err = f.sql((SETUP % {'mode': 'streaming'}) + (ORDERS % {'path': path}) + ';\n' + body, name=name)
+        o = F.strip_ansi(out)
+        m = re.search(r'\[ERROR\] Could not execute SQL statement\. Reason:\n(.*)', o)
+        msg = re.sub(r'^org\.apache\.flink\.[a-z.]*\.', '', m.group(1).strip()) if m else '(no error)'
+        rows.append([label, fx.norm(msg, f)])
+    rec.table('sql.planner_errors', ['what the script does', 'what the SQL client said'], rows)
+    assert all(r[1] != '(no error)' for r in rows), rows
+
     # ---- the SQL gateway of Flink: the statements that start a job, from the client's own help ----
     rc, out, err = f.sql("HELP;", name='sql_help')
     h = fx.norm(F.strip_ansi(out)).split('Flink SQL> ', 1)[-1].split('Shutting down')[0].strip()

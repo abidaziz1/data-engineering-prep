@@ -2,6 +2,7 @@
    delete. Real Apache Flink 2.2.1, the SQL client in tableau mode, EXPLAIN CHANGELOG_MODE and the print sink. */
 (function () {
   var B = LAB.b, G = LAB.get;
+  var n0 = function (x) { return Number(x).toLocaleString('en-US'); };
   var SS = G.counts('sql.stream_summary'), TS = G.counts('sql.two_level_summary'), AS = G.counts('sql.append_only_summary'), MB = G.counts('sql.minibatch_summary'), PS = G.counts('sql.print_summary');
   var BG = G.table('sql.batch_group'), SG = G.table('sql.stream_group'), TL = G.table('sql.two_level'), AO = G.table('sql.append_only'), PO = G.text('sql.print_out');
   var EF = G.text('sql.explain_filter'), EG = G.text('sql.explain_group'), E2 = G.text('sql.explain_two'), SCR = G.file('sql/sql_stream.sql'), SCR2 = G.file('sql/sql_two.sql');
@@ -10,6 +11,11 @@
   G.expect(AS.rows === 3 && AS.ops.length === 1 && AS.ops[0] === '+I', 'a query without an aggregate sends only inserts');
   G.expect(MB.changelog_rows_without === 17 && MB.changelog_rows_with < 17 && MB.same_final_table === true, 'mini-batch sends fewer changes and the same final table');
   G.expect(/changelogMode=\[I\]/.test(EF) && /changelogMode=\[I,UA\]/.test(EG) && /changelogMode=\[I,UA,D\]/.test(E2) && /changelogMode=\[I,UB,UA\]/.test(E2), 'the changelog modes of the three plans');
+  var s01 = BG.rows.filter(function (r) { return r[0] === 's01'; })[0];
+  var s01Changes = SG.rows.filter(function (r) { return r[1] === 's01'; });
+  var s01Pairs = s01Changes.filter(function (r) { return r[0] === '-U'; }).length;
+  G.expect(s01 && Number(s01[1]) === 5 && Number(s01[2]) === 2536 && s01Changes.length === 9 && s01Pairs === 4, 'store s01: five orders for 2,536 cents, one insert and four pairs of -U and +U');
+  var US = G.counts('connect.upsert_summary');
   var firstD = TL.rows.map(function (r) { return r[0]; }).indexOf('-D');
   G.expect(firstD > 0, 'a delete in the count of counts');
   var chgRows = function (t) { return t.rows.map(function (r, n) { return n; }).filter(function (n) { return t.rows[n][0] !== '+I'; }); };
@@ -69,10 +75,10 @@
           {
             say: 'First the answer of the **batch** run. The same query, the same twelve orders: seven rows, one for each store. It is final.',
             tabs: [{ layer: 'RECORDED', name: 'Batch mode: ' + G.text('sql.batch_footer'), c: 'raw', cols: BG.cols, rows: BG.rows, trk: 0 }],
-            notes: ['Recorded. Store s01 sold five orders for 2,536 cents.']
+            notes: ['Recorded. Store s01 sold ' + s01[1] + ' orders for ' + n0(s01[2]) + ' cents.']
           },
           {
-            say: 'Now the **streaming** run. Store s01 appears first as an insert with one order, then every later order withdraws the row (**-U**) and sends the new one (**+U**). Find the last two rows of s01: they end with the batch answer, **5** orders and **2536** cents.',
+            say: 'Now the **streaming** run. Store s01 appears first as an insert with one order, then every later order withdraws the row (**-U**) and sends the new one (**+U**). Find the last two rows of s01: they end with the batch answer, **' + s01[1] + '** orders and **' + s01[2] + '** cents.',
             tabs: [{ layer: 'RECORDED', name: 'Streaming mode: ' + SG.rows.length + ' changes', c: 'raw', cols: SG.cols, rows: SG.rows, trk: SG.rows.length - 1, chg: chgRows(SG).map(function (n) { return [n, 0]; }) }],
             notes: ['Recorded. ' + SS.ops['+I'] + ' inserts, ' + SS.ops['-U'] + ' retractions, ' + SS.ops['+U'] + ' updates: ' + SS.changelog_rows + ' changes for ' + SS.batch_rows + ' final rows.']
           },
@@ -117,6 +123,15 @@
         }]
       }),
 
+      B.rows({
+        id: 'm2-reserved', t: 1, src: 'rec', title: 'Words that Flink SQL reserves',
+        steps: [{
+          say: 'One more thing that the SQL client taught me while I wrote this course. The SQL standard reserves some words, and Flink SQL refuses them as column names, even when they look harmless. **method** is one of them. A table of payments with a column called `method` stopped at the first line. Put the word in backticks, or pick another name: the tables in this course call the column `how_paid`.',
+          tabs: [{ layer: 'RECORDED', name: 'What the SQL client said', c: 'raw', cols: ['What the script does', 'What the SQL client said'], rows: [['a column called method', G.planner('a column called method')]], trk: 0 }],
+          notes: ['Recorded. The list of reserved keywords is on the overview page of the Flink SQL documentation. It holds more words than you would think: KEY, VALUE, NAME, TYPE, STATE, SIZE and PATH are on it.']
+        }]
+      }),
+
       B.term({
         id: 'm2-print', t: 2, src: 'rec', title: 'What a sink really receives', 
         say: 'A sink does not see a table. It sees the changes. This is what the `print` connector wrote for the count per store, one line for each change, with the kind of change in front.',
@@ -154,7 +169,7 @@
           { t: 'Nothing: the count is only sent when the input ends', fb: 'A streaming query sends a change for every input row.' }
         ],
         ok: 0,
-        why: 'The row was sent before, so the query takes it back (-U) and sends the replacement (+U). In the recording s01 went through five such pairs. A sink with a primary key can drop the -U.'
+        why: 'The row was sent before, so the query takes it back (-U) and sends the replacement (+U). In the recording s01 went through ' + s01Pairs + ' such pairs, after its first insert. A sink with a primary key can drop the -U.'
       }),
 
       B.quiz({
@@ -189,7 +204,7 @@
         code: ["CREATE TEMPORARY TABLE counts_file (store_id STRING, n BIGINT) WITH ('connector' = 'filesystem', 'path' = 'file:///out/counts', 'format' = 'csv');", 'INSERT INTO counts_file', 'SELECT store_id, COUNT(*) AS n', 'FROM orders', 'GROUP BY store_id;'].join('\n'),
         bad: [5],
         hint: 'Which clause makes a row change when a new order arrives?',
-        why: 'The `GROUP BY` without a time window makes the count of a store change with every order, so the query sends -U and +U. A file can only append. Write to a sink with a primary key (upsert), or group by a time window so that each result is final.',
+        why: 'The `GROUP BY` without a time window makes the count of a store change with every order, so the query sends -U and +U. A file can only append, and the SQL client says so when it plans the job: `' + G.planner('an aggregate written to a plain file') + '`. Write to a sink with a primary key (upsert), or group by a time window so that each result is final.',
         fix: ["CREATE TEMPORARY TABLE counts_file (store_id STRING, n BIGINT, PRIMARY KEY (store_id) NOT ENFORCED) WITH ('connector' = 'upsert-kafka', 'topic' = 'store_counts', 'properties.bootstrap.servers' = 'localhost:9092', 'key.format' = 'json', 'value.format' = 'json');", 'INSERT INTO counts_file', 'SELECT store_id, COUNT(*) AS n', 'FROM orders', 'GROUP BY store_id;'].join('\n'),
         cheer: 'An updating query needs an updating sink.'
       }),
@@ -216,7 +231,7 @@
           { t: 'Add a second job that divides the counts', fb: 'The counts are not a fixed multiple.' }
         ],
         best: 0,
-        why: 'A streaming aggregate sends a new row for a store each time it changes. In the recording s01 appeared five times, with counts 1 to 5, and only the last one is the answer. A reader has to keep the last row for each key, which an upsert-kafka topic and a compacted log are for.',
+        why: 'A streaming aggregate sends a new row for a store each time it changes. In the recording s01 appeared ' + (s01Changes.length - s01Pairs) + ' times, with counts 1 to ' + s01[1] + ', and only the last one is the answer. A reader has to keep the last row for each key, which an upsert-kafka topic and a compacted log are for.',
         checks: [['Look at the records of one key in the topic', 'You will see the counts rising.'], ['Run EXPLAIN CHANGELOG_MODE on the query', 'It shows UB and UA changes.'], ['Check the format of the sink', 'Is it append-only, retract or upsert?']],
         tell: 'The query updates its result, so the topic holds every version. The dashboard has to keep only the last row for each store. I write the result with an upsert sink and read it by key.',
         prevent: ['Name the kind of sink in the design', 'Read EXPLAIN CHANGELOG_MODE in a review', 'Test the dashboard with an updating query']
@@ -226,7 +241,7 @@
         id: 'qa-changelog', t: 1, tag: 'SQL', secs: 75,
         q: 'What is a changelog in Flink SQL, and why does a streaming query need one?',
         pts: ['A streaming result changes over time', '+I, -U, +U, -D', 'A dynamic table', 'Replaying gives the batch result', 'Sinks may accept only some kinds'],
-        short: 'A streaming query never ends, so its result is a **dynamic table** that changes as rows arrive. Flink describes the changes as a **changelog** with four kinds: **+I** insert, **-U** the old version of a row is withdrawn, **+U** the new version, **-D** delete. In my recording a count for each store over twelve orders sent seventeen changes for seven final rows, and replaying them gave exactly the batch answer. A query without an aggregate only inserts. The kinds of change matter because a sink must be able to take them: an append-only sink cannot, a retract sink takes all, and an upsert sink needs a primary key.',
+        short: 'A streaming query never ends, so its result is a **dynamic table** that changes as rows arrive. Flink describes the changes as a **changelog** with four kinds: **+I** insert, **-U** the old version of a row is withdrawn, **+U** the new version, **-D** delete. In my recording a count for each store over twelve orders sent ' + SS.changelog_rows + ' changes for ' + SS.batch_rows + ' final rows, and replaying them gave exactly the batch answer. A query without an aggregate only inserts. The kinds of change matter because a sink must be able to take them: an append-only sink cannot, a retract sink takes all, and an upsert sink needs a primary key.',
         fu: [['How can I see what a query sends?', 'EXPLAIN CHANGELOG_MODE shows the kinds of change for each operator, and the print sink shows the records.'], ['Why is there a -U and a +U?', 'A retract stream withdraws the old row and sends the new one. An upsert stream sends only the new row, with a key.']],
         trap: 'Saying that a streaming query returns a table. It returns a stream of changes to a table.',
         real: 'A dashboard shows counts that are too high. The query is a group-by count. What do you check?'
@@ -236,7 +251,7 @@
         id: 'qa-sinks', t: 2, tag: 'SQL', secs: 60,
         q: 'What is the difference between an append-only, a retract and an upsert sink?',
         pts: ['Append-only: only +I', 'Retract: all kinds', 'Upsert: key, +U and -D', 'Upsert needs a primary key', 'Choose by what the query sends'],
-        short: 'An **append-only** sink only adds rows, so it fits a query that never updates, like a filter. A **retract** sink receives every kind of change, +I, -U, +U and -D, and the reader applies them. An **upsert** sink receives an insert or update as one message with a **primary key**, and a delete as -D, so it needs no -U: it is the usual choice for a keyed result, in a database or a compacted Kafka topic. In my recording an upsert-kafka topic received 17 records for a query that sent 25 changes, because the 8 retractions are not written.',
+        short: 'An **append-only** sink only adds rows, so it fits a query that never updates, like a filter. A **retract** sink receives every kind of change, +I, -U, +U and -D, and the reader applies them. An **upsert** sink receives an insert or update as one message with a **primary key**, and a delete as -D, so it needs no -U: it is the usual choice for a keyed result, in a database or a compacted Kafka topic. In my recording an upsert-kafka topic received ' + US.records_in_the_topic + ' records for a query that sent ' + US.changelog_rows_of_the_query + ' changes, because the ' + US.retractions_not_written + ' retractions are not written.',
         fu: [['Which one would you pick for a Kafka topic with a result per store?', 'upsert-kafka with the store as the key, and a compacted topic.'], ['What if the query has no key?', 'Then it cannot go to an upsert sink: the planner refuses, or you add a key in the query.']],
         trap: 'Using an append-only sink for an aggregate and being surprised that the job is refused, or worse, a retract sink that nobody reads correctly.'
       }),
@@ -245,7 +260,7 @@
         id: 'qa-minibatch', t: 3, tag: 'SQL', secs: 60,
         q: 'The result of your aggregate is very chatty. What can you do?',
         pts: ['Mini-batch', 'Size and latency', 'Fewer changes, a delay', 'Time windows', 'Local-global aggregation'],
-        short: 'The cheapest change is **mini-batch**: Flink buffers input for a short time or a number of rows and applies it together, so several orders for one store become one change. In my recording a mini-batch of four orders cut seventeen changes to thirteen with the same final table. The price is **delay**: a result waits for the batch to fill or for its time limit. The other options are a **time window**, where a result is final and sent once, and local-global aggregation, which pre-aggregates before the shuffle when the keys are skewed.',
+        short: 'The cheapest change is **mini-batch**: Flink buffers input for a short time or a number of rows and applies it together, so several orders for one store become one change. In my recording a mini-batch size of four cut ' + MB.changelog_rows_without + ' changes to ' + MB.changelog_rows_with + ' with the same final table. The price is **delay**: a result waits for the batch to fill or for its time limit. The other options are a **time window**, where a result is final and sent once, and local-global aggregation, which pre-aggregates before the shuffle when the keys are skewed.',
         fu: [['Which settings?', 'table.exec.mini-batch.enabled, allow-latency and size.'], ['When is a window better?', 'When you want one final result per period, and the late data rule is clear.']],
         trap: 'Turning mini-batch on without thinking of the delay it adds to every result.'
       }),

@@ -143,15 +143,21 @@ def changes(pg):
     pg.psql("DELETE FROM orders WHERE order_id = 3;")
 
 
-def cdc_run(f, rec, replica_full, tag):
+def cdc_run(f, rec, replica_full, tag, upsert=False):
     from postgres import Pg
     pg = Pg().start()
     try:
         pg_orders(pg, replica_full=replica_full)
         ddl = ("CREATE TEMPORARY TABLE pg_orders (order_id INT, store_id STRING, customer_id INT, total_cents INT, status STRING, PRIMARY KEY (order_id) NOT ENFORCED) WITH ("
                "'connector' = 'postgres-cdc', 'hostname' = 'localhost', 'port' = '%d', 'username' = 'postgres', 'password' = 'not-a-real-password', 'database-name' = 'brewline', "
-               "'schema-name' = 'public', 'table-name' = 'orders', 'slot.name' = 'flink_slot', 'decoding.plugin.name' = 'pgoutput', 'scan.incremental.snapshot.enabled' = 'false');\n" % pg.port)
+               "'schema-name' = 'public', 'table-name' = 'orders', 'slot.name' = 'flink_slot', 'decoding.plugin.name' = 'pgoutput', 'scan.incremental.snapshot.enabled' = 'false'%s);\n"
+               % (pg.port, ", 'changelog-mode' = 'upsert'" if upsert else ''))
         sink = "CREATE TEMPORARY TABLE shown (order_id INT, store_id STRING, customer_id INT, total_cents INT, status STRING, PRIMARY KEY (order_id) NOT ENFORCED) WITH ('connector' = 'print');\n"
+        # the plan of the source, before any change: does the planner add a step that remembers every row?
+        rc, out, err = f.sql(SETUP + ddl + "EXPLAIN CHANGELOG_MODE SELECT * FROM pg_orders;", name='cdc_explain_' + tag, jars=[CDC_JAR])
+        ex = F.strip_ansi(out)
+        phys = ex[ex.index('== Optimized Physical Plan =='):].split('== Optimized Execution Plan ==')[0] if '== Optimized Physical Plan ==' in ex else ex
+        rec.text('cdc.plan_' + tag, fx.norm('\n'.join(l.rstrip() for l in phys.splitlines()[1:] if l.strip()).replace(str(pg.port), '5432'), f))
         script = SETUP + "SET 'execution.checkpointing.interval' = '5 s';\n" + ddl + sink + "INSERT INTO shown SELECT * FROM pg_orders;"
         mark = f.out_mark()
         jid, out = fx.submit(f, script, name='cdc_direct_' + tag, jars=[CDC_JAR])
@@ -186,3 +192,4 @@ def record_cdc(f, kc, rec):
     f.wait_idle()
     cdc_run(f, rec, True, 'full')
     cdc_run(f, rec, False, 'default')
+    cdc_run(f, rec, False, 'upsert', upsert=True)              # the default replica identity, with the changelog mode that does not need the old row

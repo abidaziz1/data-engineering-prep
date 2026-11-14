@@ -110,7 +110,7 @@
           ['1 day', mb(perSec * 86400), mb(Math.max.apply(null, ser.interval) * st.rate / 200), mb(Math.max.apply(null, ser.ttl) * st.rate / 200)]], function (r, n) { return ''; }, function (r, n, c) { return c === 1 ? 'wbad' : c ? 'wgood' : ''; });
         h += callout(st.k === 'regular' ? 'warn' : 'tip', st.k === 'regular' ? 'A join with no time bound must keep **every row it has seen**, because a match could still arrive. At ' + st.rate + ' rows a second on each side, the state grows by about **' + mb(perSec) + ' a second**, and every checkpoint and every recovery has to carry it.' :
           st.k === 'interval' ? 'An interval join knows that a row can only match another row within five seconds, so it can **forget** older rows. The state grows for about six seconds and then stays flat.' :
-          'A time to live (<code>table.exec.state.ttl</code>) forgets a row that has not been touched for ten seconds. The state stops growing. The price: a match that arrives after the time to live is **missed**, silently.');
+          'A time to live (<code>table.exec.state.ttl</code>) forgets a row that has not been updated for ten seconds. The state stops growing. The price: a match that arrives after the time to live is **missed**, silently.');
         h += '<p class="lab-note">' + pill('Recorded', 'real') + ' The nine bars are the size of the state of the join, as the REST interface of the JobManager reported it for each checkpoint. ' + pill('Computed') + ' The table scales the recorded rate by the number of rows and extrapolates in a straight line: a real job would change.</p>';
         box.innerHTML = fixNotes(h + '</div>');
         A.bindWidget = function (a, el) {
@@ -191,7 +191,7 @@
       _keyGroup: keyGroup, _task: task, _murmur: murmur, _javaHash: javaHash,
       steps: function () { return 1; },
       hint: 'Pick a parallelism and see which task holds each store.',
-      say: function () { return 'When a job is keyed by store, Flink must always send the orders of one store to the same task, and be able to move them when you change the parallelism. It does this in two steps. Hash the key into one of **128 key groups**. Then give each task a **range** of key groups. Changing the parallelism only changes the ranges. Pick a parallelism.'; },
+      say: function () { return 'When a job is keyed by store, Flink must always send the orders of one store to the same task, and be able to move them when you change the parallelism. It does this in two steps. Hash the key into one of **128 key groups** (the default for a small job). Then give each task a **range** of key groups. Changing the parallelism only changes the ranges. Pick a parallelism.'; },
       mood: function () { return 'think'; },
       render: function (box, s, i, A) {
         var st = A.local.kg || (A.local.kg = { p: 2, key: 's01' }), max = 128, KG = G.table('datastream.key_groups'), OPS = G.table('datastream.orders_per_store').rows, h = '<div class="lab">';

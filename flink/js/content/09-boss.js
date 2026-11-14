@@ -20,6 +20,11 @@
   G.expect(T10.rows.length === 5 && T10.rows[0][3] === '4' && dsRow(10)[3] === 3, 'the tumbling windows of the coding round');
   G.expect(AR.totals_equal_the_truth === true && EO.duplicates === 0 && AL.duplicates > 0, 'the recovery numbers');
 
+  var JR = G.file('code/app/PassThousand.java'), RO = G.table('datastream.round_output'), RC = G.counts('datastream.round'), ORD = G.table('sql.orders');
+  G.expect(RC.equals_plain_python === true && RC.lines === 2 && RC.job_state === 'FINISHED' && RO.rows.length === 2 && /^s01 passed 1000 cents with order 7, total 1233$/.test(RO.rows[0][0]) && /^s04 passed 1000 cents with order 10, total 1081$/.test(RO.rows[1][0]), 'the DataStream coding round prints one line for s01 and one for s04');
+  var STARTER_JAVA = ['public class PassThousand {', '', '    public static class Order {                       // a POJO: public fields and an empty constructor', '        public int orderId;', '        public String storeId;', '        public int totalCents;', '        public Order() {}', '        // ... a constructor with the three fields', '    }', '',
+    '    public static void main(String[] args) throws Exception {', '        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();', '        env.setParallelism(2);', '        env.fromData(ORDERS)                                // the twelve orders, in this order',
+    '                // 1. send the orders of one store to the same task', '                // 2. keep the running total of the store in state, and emit a line the first time it reaches 1,000 cents', '                .print();', '        env.execute("pass-thousand");', '    }', '}'].join('\n');
   var SOLQ = G.lines(SCT, G.at(SCT, /CREATE TEMPORARY TABLE events/), SCT.split('\n').length);
   var STARTER = ["CREATE TEMPORARY TABLE events (", "  order_id INT, store_id STRING, total_cents INT, ts TIMESTAMP(3)", "  -- 1. make ts an event time that waits 10 seconds", ") WITH ('connector' = 'filesystem', 'path' = 'file:///data/events14.jsonl', 'format' = 'json', 'json.timestamp-format.standard' = 'SQL');", '', '-- 2. orders and cents for each minute of ts'].join('\n');
 
@@ -92,6 +97,18 @@
         res: { msg: T10.rows.length + ' windows, the real output of Flink', cols: T10.cols, rows: T10.rows },
         expl: ['The `WATERMARK` clause makes `ts` the **event time** and says that the watermark is the largest time seen minus **10 seconds**.', 'The window function cuts the orders into minutes. The query counts them with an ordinary GROUP BY on the window columns, and each result is sent once, when the watermark passes the end of its minute.', 'Three orders are missing: **' + dsRow(10)[4] + '**. Their windows had been sent when they arrived, because they were behind by 70, 72 and 189 seconds. With a delay of 75 seconds only one is missing (' + dsRow(75)[4] + '), and with 200 seconds none.'],
         cx: 'State is one counter for each open window, and a window is dropped when the watermark passes its end. The cost is the delay of every result by the watermark delay.'
+      }),
+
+      B.challenge({
+        id: 'm9-ch2', t: 2, title: 'Coding round: tell me when a store passes 1,000 cents', file: 'PassThousand.java', lang: 'java',
+        q: 'The twelve orders below arrive in the order of the first column. **Write a DataStream job in Java** that keeps the running total of cents for each store, and prints one line the **first time** the total of a store reaches **1,000 cents**: the store, the order and the total. Then say which stores print a line, and why the job needs state.',
+        data: [{ name: 'The orders, in arrival order', cols: ['order_id', 'store_id', 'total_cents'], rows: ORD.rows.map(function (r) { return [r[0], r[1], r[3]]; }) }],
+        starter: STARTER_JAVA,
+        hints: ['A running total for each store is state for each key: `keyBy` the store, then a `KeyedProcessFunction` with a `ValueState<Long>`.', 'The first time the total reaches the limit means that it was below the limit before this order and is at or above it after: `before < limit && after >= limit`.', 'Register the state in `open` with `getRuntimeContext().getState(new ValueStateDescriptor<>("total", Long.class))`. Its value is null until the first order of a store, so read it with a check.'],
+        sol: JR,
+        res: { msg: RO.rows.length + ' lines, the real output of the job on Flink ' + G.meta('flink') + ' (parallelism 2)', cols: ['line that the print sink wrote'], rows: RO.rows },
+        expl: ['Two stores print a line: **s01** with order 7 (300 + 411 + 522 = 1,233) and **s04** with order 10 (448 + 633 = 1,081). The other ten stores stay under 1,000.', 'The total of a store is **keyed state**: one `long` for each store, saved in checkpoints. Without it the function sees one order at a time and cannot know the total.', 'The test `before < limit && after >= limit` prints once. After order 7 the total of s01 is 1,233, and orders 9 and 12 make it bigger without printing again.', 'The job ran with parallelism 2, so the print sink puts the task number in front of each line (`1>` or `2>`). The order of the two lines can change from run to run, and the lines cannot.'],
+        cx: 'One counter for each store, so twelve here. The work for each order is the same small amount, whatever the number of orders.'
       }),
 
       B.mockRound(BOSS.map(function (b) { return b[0]; }), BOSS.map(function (b) { return b[1]; })),
