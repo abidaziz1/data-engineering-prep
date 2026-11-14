@@ -150,7 +150,7 @@
           {
             say: 'Each try of a task instance is kept as its own row. The first two are archived with the reason `retry`. The third is the current row.',
             tabs: [{
-              layer: 'TASK INSTANCE', name: 'Tries of the task `extract`', c: 'raw',
+              layer: 'TASK INSTANCE', name: 'Tries of the task extract', c: 'raw',
               cols: G.table('af.retries_rows').cols,
               rows: G.table('af.retries_rows').rows,
               trk: 0

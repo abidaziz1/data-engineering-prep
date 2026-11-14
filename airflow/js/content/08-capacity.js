@@ -310,7 +310,7 @@
       }),
 
       B.incident({
-        id: 'm8-inc', t: 2, src: 'docs', title: 'Incident: tasks are `scheduled` and nothing starts', time: '04:25',
+        id: 'm8-inc', t: 2, src: 'docs', title: 'Incident: tasks are scheduled and nothing starts', time: '04:25',
         alert: '**The 04:00 DAGs have been `scheduled` for 25 minutes. The scheduler is healthy. The UI shows 32 tasks `running` across several DAGs.** Nobody changed anything.',
         clues: ['`core.parallelism` is at its default of ' + G.cfg('core.parallelism'), 'The pools show free slots', 'The pool and DAG limit checks show nothing that blocks the waiting tasks'],
         opts: [
