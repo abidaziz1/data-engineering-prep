@@ -150,7 +150,7 @@ kafka/
 ```bash
 python3 -m venv kafka-env && kafka-env/bin/pip install -r kafka/verify/requirements.txt   # Java 17 or 21 must be installed
 export KAFKA_HOME=/path/to/kafka_2.13-4.4.0 DEBEZIUM_PLUGINS=/path/to/plugins              # unpacked distribution, and the folder that holds debezium-connector-postgres/
-kafka-env/bin/python kafka/verify/verify_kafka.py             # snippets, client settings, Java, flags, Avro, recomputed results and lab data (about two minutes)
+kafka-env/bin/python kafka/verify/verify_kafka.py             # snippets, client settings, Java, flags, Avro, recomputed results and lab data (about 15 seconds on a warm machine)
 kafka-env/bin/python kafka/verify/verify_kafka.py --live      # also runs the commands of the bug hunts on a real three broker cluster
 kafka-env/bin/python kafka/verify/verify_kafka.py --recapture # records everything again and compares it with js/real.js (about forty minutes)
 kafka-env/bin/python kafka/verify/capture_kafka.py            # writes kafka/js/real.js; --only world,log,... records a few sections; --parts DIR keeps and reuses them

@@ -538,7 +538,9 @@ def sec_eventlog():
             ('SparkListenerTaskEnd', 'a task finished, with its metrics'), ('SparkListenerStageCompleted', 'a stage finished, with its totals'),
             ('SparkListenerJobEnd', 'a job finished'), ('SparkListenerSQLExecutionEnd', 'the query finished'), ('SparkListenerApplicationEnd', 'the application ended')]
     table('eventlog.types', ['event', 'lines in the log', 'what it tells you'], [[k, names[k], w] for k, w in what if names.get(k)])
-    first = next(e for e in ev if e['Event'] == 'SparkListenerTaskEnd' and e['Task Type'] == 'ShuffleMapTask')
+    # the task with the lowest index of the earliest stage, and not the first to end: two map tasks run at the same time, which one ends first is a race,
+    # and the two read different numbers of records (found when a repeat recording differed from the first one)
+    first = min((e for e in ev if e['Event'] == 'SparkListenerTaskEnd' and e['Task Type'] == 'ShuffleMapTask'), key=lambda e: (e['Stage ID'], e['Task Info']['Index']))
 
     def mask(d):
         out = {}
