@@ -53,6 +53,11 @@ a.logo:hover{background:#9D174D}
 .gbar.sel{background:#4F46E5;color:#fff}
 .gbar.off{background:#CBD5E1}
 .lane-v{min-width:5.2rem;text-align:right;font:700 .95rem 'IBM Plex Mono',monospace}
+/* a bar inside a task card: the card is narrow, so the label and the value share a line and the bar takes the next one (the value ran out of the card at parallelism 3 and 4) */
+.slotbox .lane{flex-wrap:wrap;margin-top:.55rem;gap:.3rem .6rem}
+.slotbox .lane-n,.slotbox .lane-wide{min-width:0;flex:1 1 auto}
+.slotbox .lane-v{min-width:0;white-space:nowrap}
+.slotbox .lane-track{order:3;flex:1 0 100%}
 
 /* a log as a strip of records: one small cell for each record, a colour for each key */
 .strip{display:flex;flex-wrap:wrap;gap:3px;margin:.1rem 0}

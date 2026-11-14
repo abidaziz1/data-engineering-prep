@@ -64,7 +64,7 @@
           { say: 'Then the **timer**. If the store had an alarm, delete it. Register a new one, `idle` seconds from now, and remember its time. Every order moves the alarm forward.', lines: L(/if \(alarm\.value\(\) != null\)/, /alarm\.update\(next\)/) },
           { say: '`onTimer` runs when the alarm fires, five seconds after the last order of a store. It prints the store\'s state and clears the alarm.', lines: L(/public void onTimer/, /alarm\.clear\(\)/) }
         ],
-        note: 'Recorded: this is the source that was compiled. While writing it, the first compile stopped at <code>org.apache.flink.api.java.utils.ParameterTool</code>: in Flink 2 the class is <code>org.apache.flink.util.ParameterTool</code>, and <code>open</code> takes an <code>OpenContext</code>.'
+        note: 'Recorded: this is the source that was compiled. While writing it, the first compile stopped at `org.apache.flink.api.java.utils.ParameterTool`: in Flink 2 the class is `org.apache.flink.util.ParameterTool`, and `open` takes an `OpenContext`.'
       }),
 
       B.term({
@@ -78,7 +78,7 @@
           { c: 'cmd', t: '$ ' + RC.split('\n')[0], d: 300 },
           { c: 'ok', t: RC.split('\n').slice(1).join('\n'), d: 80 }
         ].concat(PR.rows.map(function (r) { return { c: 'out', t: r[1], d: 40 }; }), IL.split('\n').map(function (l) { return { c: 'out', t: l, d: 40 }; })),
-        after: 'Twelve stores were seen, and five seconds after their last order each printed an <code>idle</code> line with its totals. They are the right totals: the recorder compared them with the ' + n0(FR.orders) + ' orders it sent.',
+        after: 'Twelve stores were seen, and five seconds after their last order each printed an `idle` line with its totals. They are the right totals: the recorder compared them with the ' + n0(FR.orders) + ' orders it sent.',
         afterKind: 'tip',
         doneSay: 'The prefix, 1> or 2>, is the number of the task plus one. It tells you which task held the store.'
       }),
@@ -136,7 +136,7 @@
         steps: [{
           say: 'The number of key groups is the **maximum parallelism** of the operator. You can set it, and if you do not, Flink picks a default from the parallelism: **' + MPB.lower_bound + '** at least, the parallelism times 1.5 rounded up to a power of two when that is bigger, and **' + n0(MPB.upper_bound) + '** at most. For an operator of parallelism 2 it is ' + mp(2) + ', and it stays at ' + mp(85) + ' until the parallelism passes 85. I asked the class that Flink uses.',
           tabs: [{ layer: 'RECORDED', name: 'KeyGroupRangeAssignment.computeDefaultMaxParallelism', c: 'raw', cols: MP.cols, rows: MP.rows.map(function (r) { return [r[0], r[1]]; }), trk: 4 }],
-          notes: ['Recorded. The maximum parallelism is stored with the state. Changing it for a job that has state breaks the restore, as the documentation of <code>pipeline.max-parallelism</code> says, so choose it with room to grow.']
+          notes: ['Recorded. The maximum parallelism is stored with the state. Changing it for a job that has state breaks the restore, as the documentation of `pipeline.max-parallelism` says, so choose it with room to grow.']
         }]
       }),
 

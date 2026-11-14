@@ -78,7 +78,7 @@
         steps: [{
           say: 'Three seconds after the job started, a checkpoint was in a folder named after the job. One file, `_metadata`, of **' + n0(CF.rows[0][1]) + ' bytes**. Here the state is small, only twelve counts, so Flink wrote it **inside** the metadata file. Bigger state goes to files next to it.',
           tabs: [{ layer: 'RECORDED', name: 'Files of the checkpoint folder', c: 'raw', cols: CF.cols, rows: CF.rows, trk: 0 }],
-          notes: ['Recorded. The documentation says that state chunks smaller than <code>execution.checkpointing.data-inline-threshold</code> (20 kb by default) are stored inline in the root metadata file. Only the latest checkpoint is kept by default (<code>execution.checkpointing.num-retained</code> is 1).']
+          notes: ['Recorded. The documentation says that state chunks smaller than `execution.checkpointing.data-inline-threshold` (20 kb by default) are stored inline in the root metadata file. Only the latest checkpoint is kept by default (`execution.checkpointing.num-retained` is 1).']
         }]
       }),
 
@@ -86,7 +86,7 @@
         id: 'm4-log', t: 1, src: 'rec', title: 'What the JobManager logged',
         say: 'This is the JobManager log of the killed job, reduced to the lines about the job. First the restart strategy that Flink chose by itself. Then the job going from RUNNING to RESTARTING, and back to RUNNING. And the line that matters: **Restoring job from Checkpoint 3**.',
         lines: G.plain(JL, { cmd: 'grep the JobManager log for the job', d: 120 }),
-        after: 'The failure was recorded once, with the cause <code>' + cause + '</code>. The counts of the REST interface show ' + AR.checkpoints_failed + ' failed checkpoints around the kill, and checkpoints went on after the restore.',
+        after: 'The failure was recorded once, with the cause `' + cause + '`. The counts of the REST interface show ' + AR.checkpoints_failed + ' failed checkpoints around the kill, and checkpoints went on after the restore.',
         afterKind: 'tip',
         doneSay: 'The job came back by itself: no human, no resubmit, and the counts were still right.'
       }),
@@ -102,7 +102,7 @@
           {
             say: 'The numbers from the REST interface. One failure recorded. The job is RUNNING. **' + AR.checkpoints_completed + '** checkpoints completed and **' + AR.checkpoints_failed + '** failed around the kill. The job restarted, and checkpoints went on after the restore.',
             tabs: [{ layer: 'RECORDED', name: 'GET /jobs/<id>/checkpoints', c: 'raw', cols: ['Counter', 'Value'], rows: [['Checkpoints completed', AR.checkpoints_completed], ['Checkpoints failed', AR.checkpoints_failed], ['Restored from a checkpoint', AR.restored_checkpoint_counted], ['Failures of the job recorded', AR.failures_recorded], ['State of the job', AR.job_state]], trk: 1 }],
-            notes: ['Recorded. I did not break down why each of the failed checkpoints failed. The documentation lists <code>execution.checkpointing.tolerable-failed-checkpoints</code>, the number of failed checkpoints in a row that a job may live with, as 0 by default.']
+            notes: ['Recorded. I did not break down why each of the failed checkpoints failed. The documentation lists `execution.checkpointing.tolerable-failed-checkpoints`, the number of failed checkpoints in a row that a job may live with, as 0 by default.']
           }
         ]
       }),
@@ -189,7 +189,7 @@
         steps: [{
           say: 'Then I changed the query: one more aggregate, `MAX(total_cents)`, and restored the same savepoint. The job did not run. It stayed in state **' + CQ.job_state + '**, failing again and again, with a message about a state it cannot read.',
           tabs: [{ layer: 'RECORDED', name: 'The failure', c: 'raw', cols: ['Message'], rows: [[CQ.message.replace(/@[0-9a-f]+/g, '')]], trk: 0 }],
-          notes: ['Recorded. The accumulator that SQL keeps for each store has another shape now, and the old one cannot be read as the new one. For SQL, the documentation describes compiled plans (<code>COMPILE PLAN</code>) as the way to keep a query restorable across versions.']
+          notes: ['Recorded. The accumulator that SQL keeps for each store has another shape now, and the old one cannot be read as the new one. For SQL, the documentation describes compiled plans (`COMPILE PLAN`) as the way to keep a query restorable across versions.']
         }]
       }),
 
@@ -224,7 +224,7 @@
           {
             say: 'Look at the last column. The heap backend and RocksDB with whole checkpoints **write the whole state again** each time: ' + n0(bk('heap')[4]) + ' and ' + n0(bk('RocksDB, full')[4]) + ' bytes. The incremental one wrote only **' + n0(bk('RocksDB, incremental')[4]) + '**, a fraction of its state of ' + n0(bk('RocksDB, incremental')[2]) + '. It uploads only the new files that RocksDB made since the last checkpoint.',
             tabs: [{ layer: 'RECORDED', name: 'What each checkpoint wrote, the sixth one', c: 'raw', cols: ['Backend', 'State size', 'Written by checkpoint 6'], rows: BK.rows.map(function (r) { return [r[0], r[2], r[4]]; }), trk: 2 }],
-            notes: ['Recorded. The incremental run left ' + RF.shared_folder_files + ' files in a <code>shared</code> folder, files that later checkpoints can point to again.']
+            notes: ['Recorded. The incremental run left ' + RF.shared_folder_files + ' files in a `shared` folder, files that later checkpoints can point to again.']
           }
         ]
       }),

@@ -229,7 +229,7 @@
       mood: function () { return 'think'; },
       render: function (box, s, i, A) {
         var st = A.local.bp || (A.local.bp = { r: 'max', ms: 10, p: 1 }), rate = RATES.filter(function (x) { return x[0] === st.r; })[0][1], m = model(rate, st.ms, st.p), h = '<div class="lab">';
-        h += row('Source could read', chips(RATES.map(function (x) { return x[0]; }), st.r, 'bp-r', function (v) { return v === 'max' ? 'as fast as it can' : v + ' records a second'; }));
+        h += row('Source could read', chips(RATES.map(function (x) { return x[0]; }), st.r, 'bp-r', function (v) { return v === 'max' ? 'as fast as it can (taken as 100,000 a second)' : v + ' records a second'; }));
         h += row('Slow step takes', chips([1, 10, 20], st.ms, 'bp-ms', function (v) { return v + ' ms for each record' + (v === 10 ? ' (recorded)' : ''); }));
         h += row('Tasks for the slow step', chips([1, 2, 4, 8], st.p, 'bp-p', function (v) { return v + (v === 1 || v === 4 ? ' (recorded)' : ''); }));
         h += '<div class="pipe-row"><div class="pipe-box ' + (m.srcBlocked > 500 ? 'hot' : 'idle') + '">Source<small>blocked ' + Math.round(m.srcBlocked / 10) + ' percent</small></div><span class="pipe-arrow">&rarr;</span>' +

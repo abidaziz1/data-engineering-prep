@@ -50,7 +50,7 @@
           {
             say: 'A topic with ' + TP.partitions + ' partitions and ' + TP.orders + ' orders, with the times of the Kafka course. A query that counts the rows reads **different amounts** depending on `scan.startup.mode`. `earliest-offset` reads everything. `latest-offset` reads only what arrives later: here **nothing**.',
             tabs: [{ layer: 'RECORDED', name: 'The same count with four startup modes', c: 'raw', cols: ST.cols, rows: ST.rows, trk: 1 }],
-            notes: ['Recorded. The queries were bounded (<code>scan.bounded.mode</code> latest-offset) so that each count finished. A streaming COUNT(*) prints no row at all when nothing arrives.']
+            notes: ['Recorded. The queries were bounded (`scan.bounded.mode` latest-offset) so that each count finished. A streaming COUNT(*) prints no row at all when nothing arrives.']
           },
           {
             say: 'The `timestamp` mode starts at the first record at or after a time, here the time of order 7. It read **' + mode('timestamp') + '** rows. `specific-offsets` starts at offsets you give for each partition. A job that is restored from a checkpoint or a savepoint ignores all of these: its positions come from the saved state.',
@@ -124,7 +124,7 @@
           { say: 'A print sink and the query that copies the table into it.', lines: G.span(SCC, /INSERT INTO shown/), run: true }
         ],
         result: { cols: ['What the print sink wrote'], rows: lines.map(function (l) { return [l]; }), msg: lines.length + ' changes' },
-        note: 'Recorded. The first five lines are the **snapshot** of the table. Then I inserted order 6, updated order 2 to refunded and deleted order 3 in PostgreSQL. The slot shows <code>' + CF.slot + '</code>.'
+        note: 'Recorded. The first five lines are the **snapshot** of the table. Then I inserted order 6, updated order 2 to refunded and deleted order 3 in PostgreSQL. The slot shows `' + CF.slot + '`.'
       }),
 
       B.rows({
@@ -132,7 +132,7 @@
         steps: [{
           say: 'Read the last four lines. An **insert** in the database is a **+I**. The **update** of order 2 is a **-U** with the old row and a **+U** with the new one. The **delete** of order 3 is a **-D**. This is the same changelog as in mission 2, now fed by a database instead of a query.',
           tabs: [{ layer: 'RECORDED', name: 'What the print sink wrote', c: 'raw', cols: ['Change'], rows: lines.map(function (l) { return [l]; }), trk: lines.length - 3, chg: [[lines.length - 3, 0], [lines.length - 2, 0], [lines.length - 1, 0]] }],
-          notes: ['Recorded, with <code>REPLICA IDENTITY FULL</code> on the table. The job state at the end was ' + CF.job_state + '.']
+          notes: ['Recorded, with `REPLICA IDENTITY FULL` on the table. The job state at the end was ' + CF.job_state + '.']
         }]
       }),
 
@@ -147,7 +147,7 @@
           {
             say: 'Look at the output. The insert of order 6 appears **' + cdcDup + ' times**. Each restart reads the log again from the last saved position, which was before that insert, so it prints it again, and then fails on the update. The restart loop turns one failing record into duplicates.',
             tabs: [{ layer: 'RECORDED', name: 'What the print sink wrote', c: 'raw', cols: ['Change'], rows: CDO.split('\n').map(function (l) { return [l]; }), trk: 6 }],
-            notes: ['Recorded. The fix is one line in PostgreSQL: <code>ALTER TABLE public.orders REPLICA IDENTITY FULL</code>, as the message says. The Kafka course shows the same setting on the Debezium side.']
+            notes: ['Recorded. The fix is one line in PostgreSQL: `ALTER TABLE public.orders REPLICA IDENTITY FULL`, as the message says. The Kafka course shows the same setting on the Debezium side.']
           },
           {
             say: 'There is a second fix that needs no change in PostgreSQL: `\'changelog-mode\' = \'upsert\'` in the table options. The source then sends an update as its new row only, and a delete as its key only, so it does not need the old row. I ran the job with the default replica identity and this option. It stayed **' + CU.job_state + '** and printed the same ' + CU.lines + ' lines as the first run. The plan shows how: the planner puts a step in front of the job that **remembers the last row of every key**, to build the -U and the -D that this sink prints.',

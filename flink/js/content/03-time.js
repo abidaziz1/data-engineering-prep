@@ -158,7 +158,7 @@
           {
             say: 'One more thing in this recording. The counts are ' + idleCounts(II).join(', ') + ', not ' + fileCounts.join(', ') + ' as in the file run with the same delay. A Kafka source makes its watermark on a **timer** (every 200 milliseconds by default), and the whole burst of fourteen orders was read before the first tick, so no order was late. To test that, I ran the query a third time and sent the orders to the topic **one a second**. The watermark followed them, and the counts are the counts of the file: ' + idleCounts(IP).join(', ') + '. With a file the result does not depend on speed. With Kafka it can.',
             tabs: [{ layer: 'RECORDED', name: 'Same delay, a file against a Kafka topic', c: 'raw', cols: ['Source', 'Orders in the four windows that closed'], rows: [['File (the watermark follows the data)', fileCounts.join(', ')], ['Kafka, read in one burst', idleCounts(II).join(', ')], ['Kafka, one order a second', idleCounts(IP).join(', ')]], trk: 1 }],
-            notes: ['Recorded. The Kafka rows depend on timing and can differ from run to run, the file row cannot. The default interval comes from the documentation: <code>pipeline.auto-watermark-interval</code> is 200 ms.']
+            notes: ['Recorded. The Kafka rows depend on timing and can differ from run to run, the file row cannot. The default interval comes from the documentation: `pipeline.auto-watermark-interval` is 200 ms.']
           }
         ]
       }),

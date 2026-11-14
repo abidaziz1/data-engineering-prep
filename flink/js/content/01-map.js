@@ -127,7 +127,7 @@
           {
             say: 'The planner can show its plan without running anything. `EXPLAIN` prints the plan of the same query. You read it from the bottom up: scan, filter, then the hash exchange, then the aggregation.',
             tabs: [{ layer: 'RECORDED', name: 'EXPLAIN, the optimized execution plan', c: 'raw', cols: ['Plan'], rows: XP.split('\n').map(function (l) { return [l]; }), trk: 2 }],
-            notes: ['Recorded. <code>Exchange(distribution=[hash[store_id]])</code> is the HASH edge between the two vertices.']
+            notes: ['Recorded. `Exchange(distribution=[hash[store_id]])` is the HASH edge between the two vertices.']
           }
         ]
       }),
