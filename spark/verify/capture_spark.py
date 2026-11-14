@@ -465,6 +465,17 @@ def sec_submit():
     flags = ['--master', '--deploy-mode', '--name', '--conf', '--properties-file', '--driver-memory', '--driver-cores', '--executor-memory', '--executor-cores', '--num-executors',
              '--total-executor-cores', '--packages', '--jars', '--py-files', '--files', '--archives', '--queue', '--supervise', '--verbose', '--class', '--repositories', '--exclude-packages']
     table('submit.flags', ['flag', 'in spark-submit --help'], [[f, 'yes' if re.search(r'(^|[\s,\[])' + re.escape(f) + r'([=\s,\]]|$)', body, re.M) else 'NO'] for f in flags])
+    scope, group = {}, 'every cluster manager'                   # the help groups the flags by where they work
+    for line in body.splitlines():
+        h = re.match(r'^ ([A-Z][^-]*?):\s*$', line)
+        if h and h.group(1).endswith('only'):
+            group = h.group(1)
+        elif line.startswith('Options:'):
+            group = 'every cluster manager'
+        m = re.match(r'^\s{1,3}(--[a-z-]+)', line)
+        if m and m.group(1) not in scope:
+            scope[m.group(1)] = group
+    table('submit.flag_scope', ['flag', 'where spark-submit --help lists it'], [[f, scope.get(f, '?')] for f in flags])
     ver = run([sub, '--version'])
     vtext = ver.stdout + ver.stderr
     counts('submit.version', {'spark': re.search(r'version (\d+\.\d+\.\d+)\s*$', vtext, re.M).group(1), 'scala': re.search(r'Using Scala version ([0-9.]+)', vtext).group(1),

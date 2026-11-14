@@ -268,4 +268,16 @@
       }
     };
   })();
+  /* The notes under a lab are plain text with `code` in backticks. Every lab of both files gets its backticks turned into code elements after it has drawn itself. */
+  (function () {
+    function codeNotes(box) {
+      var ps = box.querySelectorAll('.lab-note');
+      for (var n = 0; n < ps.length; n++) if (ps[n].innerHTML.indexOf('`') >= 0) ps[n].innerHTML = ps[n].innerHTML.replace(/`([^`]+)`/g, '<code>$1</code>');
+    }
+    Object.keys(W).forEach(function (k) {
+      if (k.charAt(0) === '_' || !W[k] || typeof W[k].render !== 'function') return;
+      var draw = W[k].render;
+      W[k].render = function (box) { draw.apply(this, arguments); codeNotes(box); };
+    });
+  })();
 })();

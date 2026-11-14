@@ -7,7 +7,7 @@
   var BUILD = G.lines(PY, G.at(PY, /^def build/), G.at(PY, /return o\.count\(\)/));
   var MERGE = G.lines(PY, G.at(PY, /^def merge/), G.at(PY, /\.execute\(\)/));
   var SMALL = G.lines(PY, G.at(PY, /^def small_files/), G.at(PY, /out\['rows_now'\]/));
-  var ENF = G.lines(PY, G.at(PY, /^def schema_enforcement/), G.at(PY, /extra\.write\.format/));
+  var ENF = (function (r) { return G.lines(PY, r[0], r[1]); })(G.span(PY, /^def schema_enforcement/, /return re\.sub/));
   var n0 = function (x) { return Number(x).toLocaleString('en-US'); };
   var act = BD.first_commit_actions;
   G.expect(BD.parquet_files === act.add && BD.log_files.length === 1 && LG.log_files.length === 2, 'the first commit lists every Parquet file, and the merge adds a commit');
@@ -137,12 +137,12 @@
       }),
 
       B.code({
-        id: 'm11-enforce', t: 1, src: 'rec', title: 'Schema enforcement: a wrong write is refused', file: 'tables.py', lang: 'python', code: ENF + '\n\n-- what Delta answered\n' + SE.replace(/^/gm, '# '),
+        id: 'm11-enforce', t: 1, src: 'rec', title: 'Schema enforcement: a wrong write is refused', file: 'tables.py', lang: 'python', code: ENF + '\n\n# what Delta answered\n' + SE.replace(/^/gm, '# '),
         steps: [
           { say: 'Plain Parquet takes any file. Delta checks the schema of every write. Press Next.', lines: null },
-          { say: 'The test appends a DataFrame that has all the columns of the table **and one more**, `channel`.', lines: G.span(ENF + '\n\n-- what Delta answered\n' + SE.replace(/^/gm, '# '), /extra = spark\.createDataFrame/) },
-          { say: 'Delta refused it. The first line of the message: **' + enfFirst + '** And the message names the cure: set `option("mergeSchema", "true")` on the write, or the session setting `spark.databricks.delta.schema.autoMerge.enabled`.', lines: G.span(ENF + '\n\n-- what Delta answered\n' + SE.replace(/^/gm, '# '), /# \[_LEGACY_ERROR/, /# specific to the operation/) },
-          { say: 'It then prints the **table schema** and the **data schema** side by side. The extra column is easy to see. Nothing was written. That is the guard: a new column is a decision, not an accident.', lines: G.span(ENF + '\n\n-- what Delta answered\n' + SE.replace(/^/gm, '# '), /# Table schema/) }
+          { say: 'The test appends a DataFrame that has all the columns of the table **and one more**, `channel`.', lines: G.span(ENF + '\n\n# what Delta answered\n' + SE.replace(/^/gm, '# '), /extra = spark\.createDataFrame/) },
+          { say: 'Delta refused it. The first line of the message: **' + enfFirst + '** And the message names the cure: set `option("mergeSchema", "true")` on the write, or the session setting `spark.databricks.delta.schema.autoMerge.enabled`.', lines: G.span(ENF + '\n\n# what Delta answered\n' + SE.replace(/^/gm, '# '), /# \[_LEGACY_ERROR/, /# specific to the operation/) },
+          { say: 'It then prints the **table schema** and the **data schema** side by side. The extra column is easy to see. Nothing was written. That is the guard: a new column is a decision, not an accident.', lines: G.span(ENF + '\n\n# what Delta answered\n' + SE.replace(/^/gm, '# '), /# Table schema/) }
         ],
         note: 'Recorded: the full message of Delta Lake ' + G.meta('delta-spark') + '. With `mergeSchema` the append goes through and the table gets the new column. That is how a schema changes on purpose.'
       }),

@@ -99,6 +99,18 @@
         ]
       }),
 
+      B.flow({
+        id: 'm5-aqeflow', t: 1, src: 'docs', title: 'Adaptive execution: plan, run, look, plan again', g: 'aqe', legend: true,
+        steps: [
+          { say: 'Two of the three fixes in this mission, and the merge of mission 3, come from the same feature: **adaptive query execution**. Press Next to see how it works.', cap: 'One feature, three fixes.' },
+          { say: 'Step 1. Spark starts with the plan that it can make **before** it has read any data. Sizes are estimates, taken from file listings and before filters. The setting `spark.sql.adaptive.enabled` is **' + def('spark.sql.adaptive.enabled') + '** by default in the recording.', on: ['e1'], focus: ['a_plan', 'a_run'], tags: ['tg_on'], cap: 'The first plan is a guess.' },
+          { say: 'Step 2. Spark runs the **map side** of the first shuffle and stops there. Every map task has written its shuffle files, so the work is real and the output exists.', on: ['e2'], focus: ['a_run', 'a_stats'], tags: ['tg_stage'], cap: 'Run up to a shuffle.' },
+          { say: 'Step 3. Now Spark has the **real size of every shuffle partition**, in bytes and in rows. This is what no estimate could give it.', on: ['e3'], focus: ['a_stats', 'a_re'], cap: 'Read the real sizes.' },
+          { say: 'Step 4. It plans the rest of the query again, with these numbers, and three things can change. **Small partitions are merged** (mission 3: 200 tasks became 1). A **sort-merge join becomes a broadcast join** if one side turned out small (mission 4). A **skewed partition is split** into pieces (this mission).', on: ['e4', 'e5', 'e6'], focus: ['a_re', 'a_coal', 'a_join', 'a_skew'], cap: 'Merge, switch, or split.' },
+          { say: 'Step 5. The result is the **final plan**, marked `isFinalPlan=true`. It is what the SQL tab shows after the query has run. The plan that `explain()` printed before the action was the first guess, `isFinalPlan=false`.', on: ['e7'], focus: ['a_skew', 'a_final'], cap: 'Read the final plan.' }
+        ]
+      }),
+
       B.talk({
         id: 'm5-fixes', t: 1, src: 'docs', title: 'Five fixes, in the order to try them',
         say: 'Try the cheapest fix first. Press Next for each.',

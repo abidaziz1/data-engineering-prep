@@ -55,7 +55,7 @@ const STUB = 'window.goatcounter = { count: function (o) { (window.__hits = wind
   }
 
   // 2. a tutorial: page view, path, first mission; no repeats inside a visit; a new mission adds one event
-  for (const name of ['ai', 'airflow', 'aws', 'azure', 'databricks', 'dbt', 'gcp', 'python', 'snowflake', 'snowflake-dbt', 'sql']) {
+  for (const name of ['ai', 'airflow', 'aws', 'azure', 'databricks', 'dbt', 'gcp', 'kafka', 'python', 'snowflake', 'snowflake-dbt', 'spark', 'sql']) {
     const stateKey = (fs.readFileSync(path.join(root, name, 'js', 'config.js'), 'utf8').match(/storageKey:\s*'([^']+)'/) || [])[1];
     const widest = await (async () => { const t = await open('/' + name + '/index.html', { cfg: null }); const w = await t.page.evaluate(() => LAB.config.tracks ? LAB.config.tracks[LAB.config.tracks.length - 1].id : 'all'); await t.ctx.close(); return w; })();
     const t = await open('/' + name + '/index.html#m1.0:0', { cfg, state: [stateKey, { track: widest, chosen: true }] });

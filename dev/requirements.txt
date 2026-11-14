@@ -91,3 +91,7 @@ fastavro
 #   AF_PYTHON=$PWD/.venv-airflow/bin/python python3 airflow/verify/verify_af.py
 # Versions the recording was made with: apache-airflow 3.4.0, apache-airflow-task-sdk 1.4.0, providers standard 1.21.0, sqlite 4.3.4, http 6.3.0, smtp 3.2.0,
 # common-sql 2.4.0, common-io 1.11.0, common-compat 1.23.0 (these seven come with apache-airflow), pytest 9.2.0, ruff 0.17.4, pendulum 3.3.0, croniter 6.2.4.
+# spark/verify has its own requirements file, because it needs pyspark==4.0.1 and delta-spark==4.0.1 and this file pins other releases for the Databricks tutorial:
+#   python3 -m venv spark-env && spark-env/bin/pip install -r spark/verify/requirements.txt && spark-env/bin/python spark/verify/verify_spark.py
+# kafka/verify has its own requirements file, and needs an unpacked Apache Kafka 4.4.0 (KAFKA_HOME), Java 17 or 21, and for the change data capture section the Debezium PostgreSQL plugin and PostgreSQL 16:
+#   python3 -m venv kafka-env && kafka-env/bin/pip install -r kafka/verify/requirements.txt && KAFKA_HOME=... DEBEZIUM_PLUGINS=... kafka-env/bin/python kafka/verify/verify_kafka.py

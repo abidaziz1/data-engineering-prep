@@ -6,7 +6,7 @@
   var DEF = G.table('conf.defaults');
   var PY = G.file('code/joins.py');
   var SCEN = G.lines(PY, G.at(PY, /^def scenarios/), G.at(PY, /return out/));
-  var CNT = G.lines(PY, G.at(PY, /^def counts/), G.at(PY, /'not_exists_customers_without_orders'/));
+  var CNT = (function (r) { return G.lines(PY, r[0], r[1]); })(G.span(PY, /^def counts/, /^    \}$/));
   var n0 = function (x) { return Number(x).toLocaleString('en-US'); };
   var thr = DEF.rows.filter(function (r) { return r[0] === 'spark.sql.autoBroadcastJoinThreshold'; })[0][1];
   var strat = function (label) { var r = ST.rows.filter(function (x) { return x[0] === label; })[0]; if (!r) throw new Error('no join situation ' + label); return r; };
