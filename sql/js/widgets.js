@@ -132,7 +132,7 @@
             '<div class="lab-out"><div class="big ' + (sn.fix ? 'good' : 'bad') + '"><b>' + esc(count) + '</b><span>customers returned by NOT IN</span></div>' +
             '<div class="big good"><b>' + esc(rowsN['NOT EXISTS']) + '</b><span>NOT EXISTS</span></div><div class="big good"><b>' + esc(rowsN['LEFT JOIN']) + '</b><span>LEFT JOIN with IS NULL</span></div></div>' +
             '<h3 class="lab-h">The customers who never ordered</h3>' + table(fixed.cols, fixed.rows) +
-            '<div class="callout ' + (sn.fix ? 'good' : 'bad') + '">' + (sn.fix ? 'With the NULLs filtered out of the list, `NOT IN` finds the same ' + fixed.rows.length + ' customers as `NOT EXISTS`.' : 'The guest order has `customer_id` NULL. `x NOT IN (1, 3, NULL)` is never TRUE, so **no customer is returned**. `NOT EXISTS` and `LEFT JOIN` do not have this problem.') + '</div>';
+            '<div class="callout ' + (sn.fix ? 'good' : 'bad') + '">' + (sn.fix ? 'With the NULLs filtered out of the list, <code>NOT IN</code> finds the same ' + fixed.rows.length + ' customers as <code>NOT EXISTS</code>.' : 'The guest order has <code>customer_id</code> NULL. <code>x NOT IN (1, 3, NULL)</code> is never TRUE, so <b>no customer is returned</b>. <code>NOT EXISTS</code> and <code>LEFT JOIN</code> do not have this problem.') + '</div>';
         }
         box.innerHTML = h + '</div>';
         bindCodes(box);
@@ -239,7 +239,7 @@
           });
           var dt = G.table('m3.distinct_trap').rows[0];
           h += table(['Joined with', 'Total with', 'Rows', 'Revenue'], rows, function (r) { return num(r[3]) === num(truth()) ? '' : 'dup'; }) +
-            '<div class="callout warn"><b>DISTINCT hides duplicates by value, not by row.</b> On the 30,000 big orders, ' + G.n(dt[0]) + ' paid orders have only ' + dt[3] + ' different totals. `sum(DISTINCT total)` returned **' + G.n(dt[2].split('.')[0]) + '**. `sum(total)` returned **' + G.n(dt[1].split('.')[0]) + '**.</div>';
+            '<div class="callout warn"><b>DISTINCT hides duplicates by value, not by row.</b> On the 30,000 big orders, ' + G.n(dt[0]) + ' paid orders have only ' + dt[3] + ' different totals. <code>sum(DISTINCT total)</code> returned <b>' + G.n(dt[2].split('.')[0]) + '</b>. <code>sum(total)</code> returned <b>' + G.n(dt[1].split('.')[0]) + '</b>.</div>';
         }
         box.innerHTML = h + '</div>';
         bindCodes(box);
@@ -326,7 +326,7 @@
           var u = G.on('m5.cycle_union', 'duckdb').rows[0][0], ua = G.on('m5.cycle_union_all', 'duckdb').rows[0];
           h += '<div class="pair"><div>' + code('UNION: drops rows it has seen', 'sql', G.file('m5.cycle_union')) + '<div class="lab-out"><div class="big good"><b>' + u + '</b><span>categories reached, then the walk ends</span></div></div></div>' +
             '<div>' + code('UNION ALL with a depth guard', 'sql', G.file('m5.cycle_union_all')) + '<div class="lab-out"><div class="big bad"><b>' + ua[0] + '</b><span>rows produced, until depth ' + ua[1] + '</span></div></div></div></div>' +
-            '<div class="callout warn">`UNION ALL` does not compare rows, which makes it the usual choice for a tree. With a cycle it never ends on its own, so it needs a guard such as `depth < 20`. DuckDB, PostgreSQL and SQLite gave the same two numbers.</div>';
+            '<div class="callout warn"><code>UNION ALL</code> does not compare rows, which makes it the usual choice for a tree. With a cycle it never ends on its own, so it needs a guard such as <code>depth &lt; 20</code>. DuckDB, PostgreSQL and SQLite gave the same two numbers.</div>';
         }
         box.innerHTML = h + '</div>';
         bindCodes(box);
@@ -419,7 +419,7 @@
           var t = G.on('m6.running_ties', 'duckdb'), sq = G.file('m6.running_ties');
           h += code('two running totals', 'sql', sq, G.span(sq, /sum\(revenue\) OVER \(ORDER BY revenue\)/, /rows_frame/)) +
             table(t.cols, t.rows, function (r2) { return r2[2] === '50.00' ? 'cur' : ''; }) +
-            '<div class="callout warn">The two rows with revenue 50.00 are peers. `default_frame` gives both the same total, 295.00, because the frame reaches to the last peer. `rows_frame` gives 245.00 and 295.00, because it stops at the row itself, and it needs a tie-breaker (`store_id`) so that the order of the peers is fixed. DuckDB, PostgreSQL and SQLite returned the same numbers.</div>';
+            '<div class="callout warn">The two rows with revenue 50.00 are peers. <code>default_frame</code> gives both the same total, 295.00, because the frame reaches to the last peer. <code>rows_frame</code> gives 245.00 and 295.00, because it stops at the row itself, and it needs a tie-breaker (<code>store_id</code>) so that the order of the peers is fixed. DuckDB, PostgreSQL and SQLite returned the same numbers.</div>';
         }
         box.innerHTML = h + '</div>';
         bindCodes(box);

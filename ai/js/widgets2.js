@@ -56,7 +56,7 @@
             '<ol class="chain">' + shown.map(function (x) { return '<li class="' + (x[0] === 'tools' && !/ERROR/.test(x[1]) ? 'used' : x[0] === 'tools' ? 'skip' : '') + '"><div><b>' + esc(x[0]) + '</b> ' + pill(x[0], x[1]) + '<br><span>' + esc(cut(x[1], 140)) + '</span></div></li>'; }).join('') + '</ol>' +
             '<div class="sel-chips"><button type="button" class="sel-chip" data-act="ag-n" data-v="1"' + (n >= tr.length ? ' disabled' : '') + '>Show the next message</button><button type="button" class="sel-chip" data-act="ag-n" data-v="all">Show all</button><button type="button" class="sel-chip" data-act="ag-n" data-v="0">Restart</button></div>' +
             (n >= tr.length ? callout('tip', '**How it ended:** ' + S.rows[st.k][3] + '. Model calls: ' + S.rows[st.k][1] + ', tool calls: ' + S.rows[st.k][2] + '. ' + (key === 'B' ? 'The error went back to the model as a message, with the allowed values in it, and the model fixed its own argument. An error message written for a model is part of the design of a tool.' : key === 'C' ? 'The model asked for the same thing six times. Nothing in the loop noticed. A limit did.' : key === 'D' ? 'The write did not run until a person approved it. The graph stopped at the interrupt and waited, and nothing was written before the approval.' : key === 'D_denied' ? 'The person said no. The tool did not run, and the model was told so in a message. Look at the final answer: it still says "Done", because the script says it. A real model must be told to report a refusal truthfully, and an evaluation must check that it does.' : 'Two tools, one after the other. The model chose the second call after it read the first result.')) : '') +
-            '<p class="lab-note">The model is a script of ' + (key === 'A' ? 'three' : key === 'D' || key === 'D_denied' ? 'two' : 'three') + ' replies. A real model chooses its own, so a real run differs from this one. Graph code: `agent_graph.py`, shown in the mission.</p>';
+            '<p class="lab-note">The model is a script of ' + (key === 'A' ? 'three' : key === 'D' || key === 'D_denied' ? 'two' : 'three') + ' replies. A real model chooses its own, so a real run differs from this one. Graph code: <code>agent_graph.py</code>, shown in the mission.</p>';
         } else if (i === 1) {
           var D = G.counts('agent.workflow_vs_agent'), x = D[st.w];
           h += row('Design', chips(['workflow', 'agent'], st.w, 'ag-w')) +
@@ -267,7 +267,7 @@
               'Normalising the text (case and spaces) and hashing it removed **' + (D.after_adding_repeats - D.after_exact_dedup) + '** rows. The count is back at **' + D.after_exact_dedup + '**.',
               'A near-duplicate check (MinHash again) removed **' + (D.after_exact_dedup - D.after_near_dedup) + '** more. A threshold that is too low removes real variety, so keep the phrasings that differ in meaning and drop the ones that differ in spelling.'
             ][st.s]) +
-            '<p class="lab-note">Code: `finetune.py`. The 27 facts and the questions are made up for the Brewline story. A real set needs real questions, written or reviewed by people.</p>';
+            '<p class="lab-note">Code: <code>finetune.py</code>. The 27 facts and the questions are made up for the Brewline story. A real set needs real questions, written or reviewed by people.</p>';
         } else {
           var T = G.table('finetune.split'), r = T.rows[st.p];
           h += row('Split', chips(T.rows.map(function (x, n) { return n; }), st.p, 'ft-p', function (n) { return T.rows[n][0]; })) +

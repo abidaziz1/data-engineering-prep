@@ -11,9 +11,12 @@
     ['qa-docs', 1], ['qa-breaking', 2], ['qa-slow', 1], ['qa-jobs', 3], ['qa-cicd', 1], ['qa-slimci', 2], ['qa-orch', 3], ['qa-python', 3]
   ];
 
-  var RENAME_ERR = G.grep(G.log('source_rename'), /Binder Error|Referenced column|not found/).replace(/^\d\d:\d\d:\d\d\s+/gm, '').trim().split('\n')[0];
-  var RENAME_LINE = G.grep(G.log('source_rename'), /ERROR creating/).replace(/^\d\d:\d\d:\d\d\s+/gm, '').replace(/\s*\.{2,}\s*/, ' ... ').trim().split('\n')[0];
-  var RENAME_DONE = G.grep(G.log('source_rename'), /Done\./).replace(/^\d\d:\d\d:\d\d\s+/gm, '').trim();
+  /* Lines of the recorded build after the loader renamed a column. need() stops the page and the lint when the recording has no such line: two of these
+     patterns once matched nothing, and the drill showed an empty quote. */
+  function need(v, what) { if (!v) throw new Error('dbt boss round: the recorded log source_rename has no line for ' + what); return v; }
+  var RENAME_ERR = need(G.grep(G.log('source_rename'), /Invalid column name/).replace(/^\d\d:\d\d:\d\d\s+/gm, '').trim().split('\n')[0], 'the error message');
+  var RENAME_LINE = need(G.grep(G.log('source_rename'), /\d+ of \d+ ERROR /).replace(/^\d\d:\d\d:\d\d\s+/gm, '').replace(/\s*\.{2,}\s*/, ' ... ').trim().split('\n')[0], 'the first ERROR line');
+  var RENAME_DONE = need(G.grep(G.log('source_rename'), /Done\./).replace(/^\d\d:\d\d:\d\d\s+/gm, '').trim(), 'the Done line');
 
   LAB.addChapter({
     id: 'm13', n: 13, title: 'Boss round and cheat sheet', short: 'Boss round', blurb: 'Case studies, a mock interview, a one-page review', minutes: 40,
@@ -28,23 +31,23 @@
       B.incident({
         id: 'm13-inc1', t: 1, title: 'Drill: the loader renamed a column', time: '02:20',
         alert: 'The 02:00 production build failed. The first red line is `' + RENAME_LINE + '`. The loader team deployed a change last night that renamed a column in `raw.orders`.',
-        clues: ['The error comes from the staging view for orders, not from a mart', 'Children of the staging view were skipped', 'The final line of the log reads `' + RENAME_DONE + '`'],
+        clues: ['The error comes from the unit test of the orders staging model, not from a mart', 'The staging view and its children were skipped', 'The final line of the log reads `' + RENAME_DONE + '`'],
         opts: [
-          { t: 'Read the first error, fix the one staging model to use the new column name, then run dbt retry', fb: '' },
+          { t: 'Read the first error, change the one staging model and the fixture of its unit test to the new column name, then run dbt retry', fb: '' },
           { t: 'Ask the loader team to revert their change before doing anything', fb: 'You might need that, but waiting blocks you. The staging model is your isolation layer, and one edit there fixes everything downstream.' },
           { t: 'Edit every mart that uses the order total', fb: 'The marts do not read the raw column. Only the staging model does. That is why staging exists.' },
           { t: 'Disable the staging model so the job turns green', fb: 'You would starve every child and the dashboards.' }
         ],
         best: 0,
-        why: 'This is the payoff of staging: **one** file knows the raw column names. The error says `' + RENAME_ERR.replace(/\s+/g, ' ') + '`. You change the select list of one view, run the build again for the failed and skipped nodes with `dbt retry`, and the marts never notice.',
+        why: 'This is the payoff of staging: **one** file knows the raw column names. The error says `' + RENAME_ERR.replace(/\s+/g, ' ') + '`. The unit test of the staging model ran first, its fixture still used the old name, and dbt skipped the view and everything below it. You change the select list of one view and the fixture of its unit test, run the build again for the failed and skipped nodes with `dbt retry`, and the marts never notice.',
         checks: [
-          ['Read the first error', 'It names the model and the missing column. Ignore the list of skipped nodes below it.'],
-          ['Confirm the rename', 'Check the raw table\'s columns in the warehouse, or ask the loader team. The new name is in the table.'],
-          ['Fix staging only', 'Select the new column and keep the old output name, so no mart changes: `total_amount_usd as order_total_usd`.'],
+          ['Read the first error', 'It names the unit test, the column that is gone and the columns that exist now. Ignore the list of skipped nodes below it.'],
+          ['Confirm the rename', 'The error lists the accepted columns, and the new name is among them. Check the raw table in the warehouse, or ask the loader team.'],
+          ['Fix staging only', 'Select the new column and keep the old output name, so no mart changes: `total_amount_usd as order_total_usd`. Give the fixture of the unit test the new column name too.'],
           ['Retry', 'Run `dbt retry`. Only the failed model and the skipped nodes run.'],
           ['Close the loop', 'Agree with the loader team how schema changes are announced.']
         ],
-        tell: 'The 02:00 build failed in the orders staging model because the loader had renamed a column in the raw table. I read the first error, saw the missing column, and changed the staging select to read the new name while keeping the old output name. I ran dbt retry, and only the failed model and its skipped children ran. No mart changed. Then I asked the loader team to announce schema changes, and I added a source test that checks the raw columns we depend on.',
+        tell: 'The 02:00 build failed in the unit test of the orders staging model because the loader had renamed a column in the raw table. I read the first error, saw the column that was gone and the list of accepted columns, and changed the staging select and the fixture of its unit test to the new name while keeping the old output name. I ran dbt retry, and only the failed model and its skipped children ran. No mart changed. Then I asked the loader team to announce schema changes, and I added a source test that checks the raw columns we depend on.',
         prevent: ['Add **source tests or a contract** on the raw columns you read, so a rename fails early with a clear message', 'Agree a **change notice** with the loader team for schema changes', 'Keep the **raw column names in one place**: the staging model', 'Alert the **loader owner** as well as the analytics channel']
       }),
 

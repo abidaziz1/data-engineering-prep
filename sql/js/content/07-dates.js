@@ -310,7 +310,7 @@
         result: res('m7.regex', 'duckdb'),
         steps: [
           { say: '`regexp_replace` replaces what a pattern matches. The fourth argument `\'g\'` means all matches. Without it only the first match is replaced.' },
-          { say: 'Run it. Every vowel became a star: Chen Wei is Ch*n W**. DuckDB and PostgreSQL returned the same rows. SQLite stopped with: ' + RXE + '.', run: true }
+          { say: 'Run it. Every vowel became a star: Chen Wei is `Ch*n W**`. DuckDB and PostgreSQL returned the same rows. SQLite stopped with: ' + RXE + '.', run: true }
         ]
       }),
 

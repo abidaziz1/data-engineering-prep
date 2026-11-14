@@ -403,7 +403,7 @@
               'Only a label changed: the FAQ may now be read by managers only. One document row was updated and **0** embeddings were computed. Afterwards managers saw ' + N.faq_chunks_visible_to_managers_after + ' FAQ chunks and staff saw ' + N.faq_chunks_visible_to_staff_after + '.',
               'The handbook is marked as not current. Again a label, again no embedding. Searches with the current-only filter returned **' + N.current_only_hits_from_handbook_v2 + '** chunks of it.'
             ][st.r]) +
-            '<p class="lab-note">Ingestion code: `ingest.py`, shown in the mission. The embedder is the stand-in, so "computed" means one call of it. With a hosted model each is a billed call.</p>';
+            '<p class="lab-note">Ingestion code: <code>ingest.py</code>, shown in the mission. The embedder is the stand-in, so "computed" means one call of it. With a hosted model each is a billed call.</p>';
         } else if (i === 1) {
           var steps = N.alias_steps, labels = ['Build the new index', 'Score both', 'Switch the alias', 'Keep the old one a day'], live = st.a >= 3 ? 'index-v2' : 'index-v1';
           h += '<div class="lab-out">' + big(live, 'the alias points here', live === 'index-v2' ? 'good' : '') + big(N['hit@3_old_model_index'], 'hit at 3, old index') + big(N['hit@3_new_model_index'], 'hit at 3, new index', 'good') + '</div>' +

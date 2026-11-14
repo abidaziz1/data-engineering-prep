@@ -1,5 +1,7 @@
 // Walk every frame of a tutorial on one path and report: console errors, failed requests,
-// horizontal overflow, text below the size thresholds, and stray "undefined" / "NaN".
+// horizontal overflow, text below the size thresholds, stray "undefined" / "NaN", and markup shown as text
+// (an HTML tag, a `code` pair or a **bold** pair outside code blocks: a string that skipped the formatter or was escaped by it,
+// and an empty inline quote: a lesson that quotes a recorded line that was not found).
 // Run: node dev/smoke.js snowflake [--path all] [--width 1440] [--height 900] [--file] [--shots dir] [--ids a,b]
 //   --file   open via file:// (default is a local http server, which also proves relative paths)
 //   --shots  save a screenshot of every frame whose scene id is in --ids (or every frame if no --ids)
@@ -43,9 +45,9 @@ function serve() {
   await page.goto(url); await page.waitForTimeout(500);
   if (shotsDir) fs.mkdirSync(shotsDir, { recursive: true });
 
-  const small = {}, overflow = [], stray = [];
+  const small = {}, overflow = [], stray = [], markup = {};
   let n = 0;
-  for (let g = 0; g < 1500; g++) {
+  for (let g = 0; g < 4000; g++) {
     const res = await page.evaluate(() => {
       const out = [];
       const vis = el => { const r = el.getBoundingClientRect(); const cs = getComputedStyle(el); return r.width > 0 && r.height > 0 && cs.visibility !== 'hidden' && cs.display !== 'none' && cs.opacity !== '0'; };
@@ -65,12 +67,19 @@ function serve() {
       const de = document.documentElement;
       const txt = document.body.innerText;
       const bad = txt.match(/\bundefined\b|\bNaN\b|\[object Object\]/);
-      return { out, label: document.querySelector('#next-label').textContent, overflow: de.scrollWidth > de.clientWidth + 1, bad: bad && bad[0], key: (window.LAB && LAB.app && LAB.app.state.frame) || '' };
+      // markup shown as text: only text that is visible and outside code, terminals and editors
+      const SKIP = 'pre, code, textarea, script, style, noscript, svg, [class*="code"], [class*="term"], [class*="mono"], .tl';
+      const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT), parts = [];
+      for (let nd = walker.nextNode(); nd; nd = walker.nextNode()) { const el = nd.parentElement; if (el && !el.closest(SKIP) && el.getClientRects().length) parts.push(nd.nodeValue); }
+      const mk = parts.join(' ').match(/.{0,40}(<\/?(?:code|b|strong|em|i|span|div|p|br|mark|ul|li|small|kbd)(?:\s[^<>]*)?>|\*\*[^*\s][^*\n]{0,80}\*\*|`[^`\n]{0,120}`).{0,40}/);
+      const emptyQuote = Array.from(document.querySelectorAll('code')).some(c => !c.closest('pre') && c.getClientRects().length && !c.textContent.trim());
+      return { out, label: document.querySelector('#next-label').textContent, overflow: de.scrollWidth > de.clientWidth + 1, bad: bad && bad[0], markup: mk ? mk[0].replace(/\s+/g, ' ') : (emptyQuote ? 'an empty inline quote' : null), key: (window.LAB && LAB.app && LAB.app.state.frame) || '' };
     });
     n++;
     res.out.forEach(([k, fs, t]) => { const key = k + ' @' + fs.toFixed(1); (small[key] = small[key] || { n: 0, ex: t, at: res.key }).n++; });
     if (res.overflow) overflow.push(res.key);
     if (res.bad) stray.push(res.key + ' -> ' + res.bad);
+    if (res.markup) { const id = res.key.split(':')[0]; if (!markup[id]) markup[id] = res.key + ' -> ' + res.markup; }
     if (shotsDir && (!shotIds.length || shotIds.includes(res.key.split(':')[0]))) await page.screenshot({ path: path.join(shotsDir, res.key.replace(/[^A-Za-z0-9_.-]/g, '_') + '.png') });
     if (res.label === 'Finish') break;
     await page.click('#next'); await page.waitForTimeout(20);
@@ -80,10 +89,12 @@ function serve() {
   console.log(failed.length ? 'FAILED REQUESTS:\n  ' + [...new Set(failed)].join('\n  ') : 'no failed requests');
   console.log(overflow.length ? 'HORIZONTAL OVERFLOW at: ' + overflow.join(', ') : 'no horizontal overflow');
   console.log(stray.length ? 'STRAY TEXT:\n  ' + stray.join('\n  ') : 'no stray undefined / NaN text');
+  const mkeys = Object.keys(markup);
+  console.log(mkeys.length ? 'MARKUP SHOWN AS TEXT:\n  ' + mkeys.map(k => markup[k]).join('\n  ') : 'no markup shown as text');
   const keys = Object.keys(small);
   if (keys.length) { console.log('SMALL TEXT:'); keys.sort((a, b) => small[b].n - small[a].n).forEach(k => console.log('  ' + String(small[k].n).padStart(4), k, ' e.g.', JSON.stringify(small[k].ex), 'at', small[k].at)); }
   else console.log('no text below the thresholds');
   await browser.close();
   if (srv) srv.close();
-  process.exit(errors.length || failed.length || overflow.length || stray.length || keys.length ? 1 : 0);
+  process.exit(errors.length || failed.length || overflow.length || stray.length || mkeys.length || keys.length ? 1 : 0);
 })();
