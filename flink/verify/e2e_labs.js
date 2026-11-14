@@ -241,12 +241,11 @@ function watermarkRun(delay) {
     const RECT = { tumble: 'time.tumble_200', hop: 'time.hop', cumulate: 'time.cumulate', session: 'time.session' };
     for (const k of ['tumble', 'hop', 'cumulate', 'session']) {
       await pick('wl-k', k);
-      const ws = WIN[k], ln = await lanes(), b = await bigs(), rec = T(RECT[k]).rows, per = {};
-      ws.forEach(w => { /* each order is counted once for every window it is in */ });
+      const ws = WIN[k], ln = await lanes(), b = await bigs(), rec = T(RECT[k]).rows;
       ok(ln.length === ws.length, 'window lab, ' + k + ': ' + ws.length + ' windows with orders (got ' + ln.length + ')');
       ok(ln.every((l, i) => l.n === (k === 'session' ? ws[i].st + ' ' : '') + mmss(ws[i].s) + ' to ' + mmss(ws[i].e) && l.v === ws[i].n + ' order' + (ws[i].n > 1 ? 's' : '')), 'window lab, ' + k + ': each window has the start, the end and the count that were worked out by hand');
       ok(b[0].b === String(ws.length) && b[1].b === String(rec.length), 'window lab, ' + k + ': ' + ws.length + ' windows, and Flink printed ' + rec.length);
-      ok(same(ws.map(w => w.n).sort(), rec.map(r => r[r.length - 1]).sort()), 'window lab, ' + k + ': the counts that were worked out by hand are the counts that Flink printed');
+      ok(same(ws.map(w => w.n).sort((a, b) => a - b), rec.map(r => Number(r[{ tumble: 3, hop: 3, cumulate: 3, session: 4 }[k]])).sort((a, b) => a - b)), 'window lab, ' + k + ': the counts that were worked out by hand are the counts that Flink printed');
       const most = { tumble: 1, hop: 2, cumulate: 3, session: 1 }[k];
       ok(b[2].b === String(most), 'window lab, ' + k + ': the most windows one order is in is ' + most + ' (got ' + b[2].b + ')');
       ok((await callouts())[0].cls.includes('tip'), 'window lab, ' + k + ': the lab agrees with the recording');
@@ -389,7 +388,6 @@ function watermarkRun(delay) {
   await section('backpressure lab', async () => {
     const sc = await sceneOf('backpressurelab');
     await go(sc.id + ':0'); await reset('bp');
-    ok(same(await chipVals('bp-r')) === false || true, 'backpressure lab opens');
     ok(same(await chipVals('bp-r'), ['500', '5000', 'max']) && same(await chipVals('bp-ms'), ['1', '10', '20']) && same(await chipVals('bp-p'), ['1', '2', '4', '8']), 'backpressure lab offers 3 source speeds, 3 step times and 4 task counts');
     ok(same(await chipOn('bp-r'), ['max']) && same(await chipOn('bp-ms'), ['10']) && same(await chipOn('bp-p'), ['1']), 'backpressure lab starts with the recorded run: a fast source, 10 ms, one task');
     const RATE = { '500': 500, '5000': 5000, max: 100000 };

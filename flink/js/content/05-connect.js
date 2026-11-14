@@ -96,7 +96,7 @@
         steps: [
           { say: 'A job that writes a stream to CSV files, with a checkpoint every ' + FL.checkpoint_interval_seconds + ' seconds. Press Next.', lines: null },
           { say: 'The sink is the **filesystem** connector with the CSV format.', lines: G.span(SCF, /CREATE TEMPORARY TABLE sink/) },
-          { say: 'While the job runs, I listed the folder at two moments. Before the first checkpoint there is **one hidden file**, whose name starts with a dot and ends in `inprogress`. After checkpoints there are **finished** files next to the hidden one that is still being written.', lines: G.span(SCF, /INSERT INTO sink/), run: true }
+          { say: 'While the job runs, I listed the folder at two moments. Before the first checkpoint there is **one hidden file**, whose name starts with a dot and has `inprogress` in it. After checkpoints there are **finished** files next to the hidden one that is still being written.', lines: G.span(SCF, /INSERT INTO sink/), run: true }
         ],
         result: { cols: ['Moment', 'Files in the folder'], rows: [['Before the first checkpoint', FL.before_the_first_checkpoint.join('\n')], ['After the checkpoints', FL.after_checkpoints.join('\n')]], msg: n0(FR.rows_in_visible_files) + ' rows in the visible files' },
         note: 'Recorded. The documentation says that pending files become finished on the next checkpoint. A reader of the folder sees only the finished files, and they hold ' + n0(FR.rows_in_visible_files) + ' rows. Without checkpoints on, a streaming file sink never finishes a file.'

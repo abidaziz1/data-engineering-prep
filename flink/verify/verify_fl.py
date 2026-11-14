@@ -80,7 +80,7 @@ def expect(cond, msg, group='checks'):
     if not cond:
         bad(msg)
     elif args.verbose:
-        print('ok:', msg)
+        print('ok:', msg.splitlines()[0][:200] if msg else msg)
 
 
 def control(label, refused):
@@ -106,6 +106,10 @@ def run(cmd, **kw):
     kw.setdefault('capture_output', True)
     kw.setdefault('text', True)
     return subprocess.run(cmd, **kw)
+
+
+def clean_err(text):
+    return '\n'.join(l for l in text.splitlines() if not l.startswith('Picked up')).strip()
 
 
 def load_real(path):
@@ -143,13 +147,13 @@ if not HAVE_NODE:
     sys.exit('node is needed to read the course (dev/dump-scenes.js)')
 r = run(['node', str(ROOT / 'dev' / 'dump-scenes.js'), 'flink'], cwd=str(ROOT))
 if r.returncode:
-    bad('dev/dump-scenes.js failed: ' + r.stderr[:300])
+    bad('dev/dump-scenes.js failed: ' + clean_err(r.stderr)[:300])
     DUMP = {'snippets': [], 'results': []}
 else:
     DUMP = json.loads(r.stdout)
 r = run(['node', str(HERE / 'dump_fl.js')], cwd=str(ROOT))
 if r.returncode:
-    bad('dump_fl.js failed: ' + r.stderr[:300])
+    bad('dump_fl.js failed: ' + clean_err(r.stderr)[:300])
     FL = {'strings': [], 'terms': [], 'scenes': [], 'widgets': [], 'chapters': []}
 else:
     FL = json.loads(r.stdout)
@@ -217,7 +221,7 @@ if HAVE_FLINK and HAVE_JAVA and HAVE_KJAR and RUN:
     out = pathlib.Path(tempfile.mkdtemp(prefix='flink-javac-'))
     for name in JAVA_FILES:
         r = javac([HERE / 'app' / name], out)
-        expect(r.returncode == 0, '%s compiles against the jars of the distribution and the Kafka connector: %s' % (name, r.stderr[:300]), 'java files compiled')
+        expect(r.returncode == 0, '%s compiles against the jars of the distribution and the Kafka connector: %s' % (name, clean_err(r.stderr)[:300]), 'java files compiled')
     for sid in ('m7-bug', 'm8-bug'):
         for kind in ('code', 'fix'):
             s = SNIPS.get((sid, kind))
@@ -225,7 +229,7 @@ if HAVE_FLINK and HAVE_JAVA and HAVE_KJAR and RUN:
                 continue
             (out / 'Frag.java').write_text(FRAG % textwrap.indent(s['code'], '        '))
             r = javac([out / 'Frag.java'], out)
-            expect(r.returncode == 0, '%s (%s): the Java fragment compiles: %s' % (sid, kind, r.stderr[:300]), 'java fragments compiled')
+            expect(r.returncode == 0, '%s (%s): the Java fragment compiles: %s' % (sid, kind, clean_err(r.stderr)[:300]), 'java fragments compiled')
     # the long Java screens show the recorded files
     for sid, name in (('m7-code', 'StoreWatch.java'), ('m8-code', 'Pipe.java')):
         expect(SNIPS[(sid, 'code')]['code'].strip() == (HERE / 'app' / name).read_text().strip(), '%s shows %s exactly' % (sid, name), 'java screens equal their files')
@@ -324,7 +328,7 @@ if HAVE_FLINK and RUN:
         expect(has_flag(h, fl), 'sql-client.sh has the flag %s that the recorder uses' % fl)
     control('a shell command that does not parse', lambda: run(['bash', '-n'], input='for x in a; do\n  echo $x\n').returncode != 0)
     control('a flag that flink run does not have', lambda: not has_flag(tool_help('flink', 'run'), '--no-such-flag'))
-    control('a flink command with a flag that the action does not have', lambda: [bad_flag for bad_flag in ['--savepointPath'] if not has_flag(tool_help('flink', 'run'), bad_flag)] != [])
+    control('a flag that belongs to another action (--savepointPath is a flag of flink stop, not of flink run)', lambda: not has_flag(tool_help('flink', 'run'), '--savepointPath'))
     expect(has_flag(tool_help('flink', 'stop'), '--savepointPath') and has_flag(tool_help('flink', 'run'), '--allowNonRestoredState') and has_flag(tool_help('flink', 'run'), '-s'),
            'flink stop --savepointPath, flink run -s and --allowNonRestoredState exist')
 else:
@@ -387,12 +391,13 @@ def known_option(k):
         return True
     if k.startswith('properties.'):
         return True                                           # given to the Kafka client unchanged
-    if DOC_TEXT and (("'" + k + "'") in DOC_TEXT or ('`' + k + '`') in DOC_TEXT or ('| ' + k + ' |') in DOC_TEXT or ('`' + k + '.') in DOC_TEXT):
+    if DOC_TEXT and (('<h5>' + k + '</h5>') in DOC_TEXT or ("'" + k + "'") in DOC_TEXT or ('`' + k + '`') in DOC_TEXT):
         return True
     return False
 
 
-CONFIG_PREFIX = re.compile(r'^(table\.|execution\.|pipeline\.|state\.|restart-strategy\.|taskmanager\.|jobmanager\.|heartbeat\.|parallelism\.|sql-client\.|rest\.|slot\.|env\.|metrics\.|io\.)')
+CONFIG_PREFIX = re.compile(r'^(table\.|execution\.|pipeline\.|state\.|restart-strategy\.|taskmanager\.|jobmanager\.|heartbeat\.|parallelism\.|sql-client\.|rest\.|slot\.|env\.(java|log|pid|yarn|ssh)\.|metrics\.|io\.)')
+OPTION_PREFIX = re.compile(r'^(scan|sink|properties|key|value|json|csv|fields|lookup|changelog|decoding|slot|debezium)[.\-]')
 config_seen, option_seen = set(), set()
 all_sql = [s['code'] for s in SNIP if s['lang'] == 'sql'] + list(sql_files.values())
 for text in all_sql:
@@ -408,7 +413,10 @@ for path, s in FL['strings']:
         if mm:
             config_seen.add(mm.group(1))
         elif re.match(r'^[a-z][a-z0-9\-]*(\.[a-z0-9\-]+)+$', c):
-            (config_seen if CONFIG_PREFIX.match(c) else option_seen).add(c)
+            if CONFIG_PREFIX.match(c):
+                config_seen.add(c)
+            elif OPTION_PREFIX.match(c):
+                option_seen.add(c)                 # anything else with a dot in it is Java (env.execute) or a file name
 option_seen -= {'connector'}
 if (DOC_KEYS or JAR_KEYS) and RUN:
     for k in sorted(config_seen):
@@ -474,8 +482,9 @@ def sql_ok(out):
 
 
 def sql_error(out):
+    """The message of the first error of a SQL client run, on one line (empty when there was none)."""
     m = re.search(r'\[ERROR\][^\n]*\n(.*)', out)
-    return (m.group(1) if m else out)[:300]
+    return re.sub(r'\s+', ' ', m.group(1))[:300] if m else ''
 
 
 class Cluster:
@@ -650,7 +659,7 @@ def live_checks():
             classes = work / 'classes'
             classes.mkdir(exist_ok=True)
             r = javac([work / 'PassThousand.java'], classes)
-            expect(r.returncode == 0, 'the DataStream coding round: the Java of the course compiles: %s' % r.stderr[:300], 'coding rounds run')
+            expect(r.returncode == 0, 'the DataStream coding round: the Java of the course compiles: %s' % clean_err(r.stderr)[:300], 'coding rounds run')
             if r.returncode == 0:
                 jar = work / 'round.jar'
                 run(['jar', 'cf', str(jar), '-C', str(classes), '.'], env=TOOL_ENV)
@@ -667,16 +676,35 @@ def live_checks():
                     expect(lines == [r[0] for r in REAL['tables']['datastream.round_output']['rows']], 'the DataStream coding round: the job prints the recorded lines', 'coding rounds run')
         else:
             skipped('the DataStream coding round', 'javac or the Kafka connector jar is not available')
-        # a changelog replayed with a row changed must not equal the batch result (the control of the rule that mission 2 teaches)
-        chg = [[r[0], r[1], r[2], r[3]] for r in REAL['tables']['sql.stream_group']['rows']]
+        # a changelog replayed gives the batch table of the recording, and a changelog with one number changed does not (the rule that mission 2 teaches)
         import s_sql as S
-        replay = S.replay([(c[0], tuple(c[1:])) for c in chg])
-        expect(sorted(map(list, replay.values())) == sorted([list(r) for r in REAL['tables']['sql.batch_group']['rows']]) or sorted([[a, str(b), str(c)] for a, b, c in replay.values()]) == sorted([list(map(str, r)) for r in REAL['tables']['sql.batch_group']['rows']]),
-               'replaying the recorded changelog gives the recorded batch table', 'sql results compared with the recording')
-        chg_bad = [c for c in chg]
-        chg_bad[-1] = chg_bad[-1][:3] + [str(int(chg_bad[-1][3]) + 1)]
-        replay_bad = S.replay([(c[0], tuple(c[1:])) for c in chg_bad])
-        control('a changelog with one number changed', lambda: sorted([[a, str(b), str(c)] for a, b, c in replay_bad.values()]) != sorted([list(map(str, r)) for r in REAL['tables']['sql.batch_group']['rows']]))
+        batch = sorted([list(map(str, r)) for r in REAL['tables']['sql.batch_group']['rows']])
+        chg = [(r[0], tuple(r[1:])) for r in REAL['tables']['sql.stream_group']['rows']]
+        replayed = lambda c: sorted([list(map(str, row)) for row in S.replay(c).values()])      # noqa: E731
+        expect(replayed(chg) == batch, 'replaying the recorded changelog gives the recorded batch table', 'sql results compared with the recording')
+        chg_bad = list(chg)
+        op, row = chg_bad[-1]
+        chg_bad[-1] = (op, row[:2] + (str(int(row[2]) + 1),))
+        control('a changelog with one number changed', lambda: replayed(chg_bad) != batch)
+        # the plans that the lessons describe: deduplication, a Top-N for another rank, the STATE_TTL hint, and the CDC source in the two changelog modes
+        dd = ("CREATE TEMPORARY TABLE orders (order_id INT, total_cents INT, ts AS PROCTIME()) WITH ('connector' = 'datagen');\n"
+              "CREATE TEMPORARY TABLE sink (order_id INT, total_cents INT) WITH ('connector' = 'blackhole');\n")
+        for rn, want in ((1, 'Deduplicate('), (2, 'Rank(')):
+            rc, out, err = cl.sql(dd + 'EXPLAIN INSERT INTO sink SELECT order_id, total_cents FROM (SELECT *, ROW_NUMBER() OVER (PARTITION BY order_id ORDER BY ts) AS rn FROM orders) WHERE rn = %d;' % rn, 'plan_rn%d' % rn)
+            expect(sql_ok(out) and want in out, 'ROW_NUMBER with rn = %d runs as %s: %s' % (rn, want[:-1], sql_error(out)), 'sql scripts planned')
+        rc, out, err = cl.sql(PRE + "CREATE TEMPORARY TABLE payments (order_id INT, how_paid STRING) WITH ('connector' = 'datagen');\nCREATE TEMPORARY TABLE sink (order_id INT, how_paid STRING) WITH ('connector' = 'blackhole');\n"
+                              "EXPLAIN INSERT INTO sink SELECT /*+ STATE_TTL('o' = '3d', 'p' = '1d') */ o.order_id, p.how_paid FROM orders o JOIN payments p ON o.order_id = p.order_id;", 'plan_ttl_hint')
+        expect(sql_ok(out) and 'Optimized Physical Plan' in out, 'the STATE_TTL hint on a join is accepted: %s' % sql_error(out), 'sql scripts planned')
+        if HAVE_CDC:
+            for name, key in (('cdc_explain_full', 'cdc.plan_full'), ('cdc_explain_upsert', 'cdc.plan_upsert')):
+                script = sql_files.get('%s.sql' % name)
+                if script is None:
+                    skipped(name, 'not in the recording')
+                    continue
+                rc, out, err = cl.sql(script, 'v_' + name, jars=[CDC_JAR])
+                phys = out[out.index('== Optimized Physical Plan =='):].split('== Optimized Execution Plan ==')[0] if 'Optimized Physical Plan' in out else out
+                got = fx.norm('\n'.join(l.rstrip() for l in phys.splitlines()[1:] if l.strip()), f)
+                expect(got == REAL['text'][key], '%s: the plan of the CDC source is the recorded plan' % name, 'sql results compared with the recording')
     finally:
         cl.close()
 
@@ -738,8 +766,26 @@ else:
 # ======================================================================================================================
 # What may differ between two recordings, and why. Everything else must be the same, number for number.
 VOLATILE = {                                   # the whole item may differ
+    'text:state.savepoint_command': 'the folder of a savepoint is named with random hex digits',
+    'files:sql/sp_2.sql': 'the script names the folder of that savepoint, which has a random name',
+    'files:sql/sp_4.sql': 'the script names the folder of that savepoint, which has a random name',
+    'tables:state.backends': 'the size of the state at a checkpoint depends on how many order ids the job had read when the checkpoint began; the same two sizes appeared in a different order in two recordings. '
+                             'check_widgets.js checks what the lessons rely on: the heap and full RocksDB checkpoints write all their state, the incremental one writes less',
+    'tables:joins.state_size': 'the size at the first checkpoint depends on how many rows had been read; the step of the join with no bound (88,000 bytes for every checkpoint) is the same, and check_widgets.js checks it',
+    'tables:running.metrics_p1': 'milliseconds of each second and the counters of a job that had run for about 30 seconds',
+    'tables:running.metrics_p4': 'milliseconds of each second and the counters of a job that had run for about 30 seconds',
 }
 VOLATILE_FIELDS = {                            # only these fields of the item may differ
+    'counts:state.a_result': ['checkpoints_completed', 'checkpoints_failed'],                          # how many checkpoints finished and failed around the kill depends on when it landed
+    'counts:state.copy_alo': ['duplicates', 'records_a_read_committed_reader_sees', 'records_in_the_log'],      # the orders written between the checkpoint and the kill: a few seconds' worth
+    'counts:state.copy_eo': ['records_in_the_log', 'records_of_aborted_transactions'],                  # the same orders, in the transaction that was aborted
+    'counts:state.changed_query': ['message'],                                                          # the two serializers in the message are printed with their hash codes
+    'counts:state.backends_summary': ['rocksdb_full_written_6', 'rocksdb_incremental_state_6', 'rocksdb_incremental_written_6'],
+    'counts:joins.state_summary': ['regular_first', 'regular_last', 'interval_first', 'interval_last', 'interval_max', 'ttl_last', 'ttl_max', 'ratio_regular_to_interval_last'],
+    'counts:running.rate_p1': ['records_per_second', 'records_counted'],                                # a rate measured over 18 seconds: within a few percent of the ceiling of 100
+    'counts:running.rate_p4': ['records_per_second', 'records_counted'],
+    'counts:running.compare': ['records_per_second_with_1', 'records_per_second_with_4', 'ratio'],
+    'counts:connect.files_rows': ['rows_in_visible_files'],                                            # the rows that the finished files hold depend on when the checkpoints completed
 }
 ORDER_FREE = []                                # tables whose rows may arrive in another order
 
@@ -783,8 +829,6 @@ if args.recapture and RUN:
             prefix = lambda k: k.split(':', 1)[1].split('.')[0]          # noqa: E731
             differ = []
             for k in sorted(set(first) | set(again)):
-                if k.startswith('files:') and k.split(':', 1)[1].startswith('code/'):
-                    pass
                 if wanted is not None and prefix(k) not in wanted:
                     continue
                 tick('recaptured items')
@@ -797,6 +841,12 @@ if args.recapture and RUN:
             for k in differ:
                 bad('the recapture differs from js/real.js in %s' % k)
             print('recapture: %d items, %d differ for a stated reason, %d differ without one' % (counts.get('recaptured items', 0), counts.get('recaptured items that differ for a stated reason', 0), len(differ)))
+            if not args.only:
+                # the numbers that were allowed to differ must still satisfy every rule that the lessons and the labs rely on
+                r = run(['node', str(HERE / 'check_widgets.js')], cwd=str(ROOT), env=dict(os.environ, FLINK_REAL_JS=str(tmp)))
+                expect(r.returncode == 0, 'check_widgets.js passes on the new recording: ' + (r.stdout + r.stderr)[-400:], 'recapture checks')
+                m = re.search(r'(\d+) checks', r.stdout)
+                tick('lab data checks on the new recording', int(m.group(1)) if m else 0)
 else:
     skipped('recapture', 'run with --recapture (about forty minutes)')
 
@@ -839,7 +889,7 @@ if RUN:
         tmp.write_text('window.LAB = window.LAB || {};\nLAB.real = ' + json.dumps(d2) + ';\n')
         env = dict(os.environ, FLINK_REAL_JS=str(tmp))
         control(label, lambda env=env: run(['node', str(HERE / 'check_widgets.js')], cwd=str(ROOT), env=env).returncode != 0)
-    r = run(['node', str(ROOT / 'dev' / 'lint-content.js', 'flink')] if False else ['node', str(ROOT / 'dev' / 'lint-content.js'), 'flink'], cwd=str(ROOT))
+    r = run(['node', str(ROOT / 'dev' / 'lint-content.js'), 'flink'], cwd=str(ROOT))
     expect(r.returncode == 0, 'the lint of the course is clean: ' + (r.stdout + r.stderr)[-400:], 'lint runs')
     m = re.search(r'chapters: (\d+) scenes: (\d+)', r.stdout)
     if m:

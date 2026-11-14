@@ -1,0 +1,11 @@
+# The environment of the Apache Flink tutorial: the recorder (capture_flink.py) and the checks (verify_fl.py). Java 17 or 21 with javac must be installed.
+# Apache Flink itself is not a Python package. Download and unpack, then set these variables:
+#   FLINK_HOME       the Apache Flink 2.2.1 binary distribution (flink-2.2.1-bin-scala_2.12.tgz from downloads.apache.org/flink/flink-2.2.1/), the folder that holds bin/ and lib/
+#   FLINK_DOCS       the docs folder of the source release (flink-2.2.1-src.tgz, same place): the generated configuration pages are in docs/layouts/shortcodes/generated
+#   FLINK_KAFKA_JAR  flink-sql-connector-kafka-5.0.0-2.2.jar from Maven Central (org/apache/flink/flink-sql-connector-kafka/5.0.0-2.2)
+#   FLINK_CDC_JAR    flink-sql-connector-postgres-cdc-3.7.0-2.2.jar from Maven Central (org/apache/flink/flink-sql-connector-postgres-cdc/3.7.0-2.2)
+#   KAFKA_HOME       the Apache Kafka 4.4.0 binary distribution (kafka_2.13-4.4.0.tgz from downloads.apache.org/kafka/4.4.0/); the Kafka course's helper code (kafka/verify) starts the broker
+# The change data capture section also needs the PostgreSQL 16 server binaries in /usr/lib/postgresql/16/bin.
+#   python3 -m venv flink-env && flink-env/bin/pip install -r flink/verify/requirements.txt
+#   flink-env/bin/python flink/verify/verify_fl.py
+confluent-kafka==2.16.1

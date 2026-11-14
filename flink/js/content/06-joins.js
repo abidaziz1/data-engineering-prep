@@ -35,7 +35,7 @@
           ['Regular join', '`a JOIN b ON a.id = b.id`. Any row on one side can match any row on the other side, at any time. So Flink keeps **both sides in state for ever**. The Flink documentation says that the state might grow infinitely.', 'State without an end.'],
           ['Interval join', 'The same join with a **time bound**: a payment within five seconds of the order. Now a row can only match rows from a short period, so Flink can forget older ones.', 'State bounded by time.'],
           ['Temporal join', 'Join each order with the **version of a table at the time of the order**: the price list, the exchange rate. The table side is kept by version, and old versions are dropped as the watermark moves.', 'The table as it was.'],
-          ['Lookup join', 'Join each order with a row that Flink **asks for** in an external database when the order arrives. No state for the other side, but a call for each record: the speed of that database becomes the speed of the job.', 'Ask the database.']
+          ['Lookup join', 'Join each order with a row that Flink **asks for** in an external database when the order arrives. No state for the other side, but a call for each record unless the answers are cached: the speed of that database becomes the speed of the job.', 'Ask the database.']
         ],
         cols: 1,
         call: { k: 'tip', h: 'The interview sentence:', t: 'A regular join keeps both inputs in state for ever, so I bound it in time with an interval join or a TTL, or I use a temporal or lookup join when one side is a slowly changing table.' }
