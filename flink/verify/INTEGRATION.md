@@ -2,7 +2,7 @@
 
 Everything below is ready to paste. The Flink worker edited only `flink/`. It did not touch the hub page, the root README, `package.json`, `dev/`, `shared/` or any other tutorial.
 
-Numbers come from `node dev/stats.js flink`: @@MIN_JUNIOR@@ minutes on the Junior path, @@MIN_SENIOR@@ on Senior and @@MIN_ALL@@ on Everything. The frame counts of the three paths are in `flink/README.md`.
+Numbers come from `node dev/stats.js flink`: 215 minutes on the Junior path, 288 on Senior and 293 on Everything. The frame counts of the three paths are in `flink/README.md`.
 
 ## (a) Hub card for `index.html`
 
@@ -13,7 +13,7 @@ Put it after the Kafka card, or wherever the other new cards go. The markup is t
         <span class="chip ready">Ready</span>
         <h3>Apache Flink for data engineers: the basics</h3>
         <p>The cluster and the job graph, Flink SQL and the changelog, event time, watermarks and windows, state, checkpoints and recovery, savepoints, Kafka and change data capture, joins and state that grows, the DataStream API, and backpressure and deployment. Nine missions with a boss round and two coding rounds. Every number was read from a real Apache Flink 2.2.1 (one JobManager and two TaskManagers on one machine) with its SQL client, the Kafka connector, the Flink CDC connector, Apache Kafka 4.4.0 and PostgreSQL 16. Kubernetes, YARN, managed services and lake table formats were not run, and each screen says what is recorded and what is from documentation.</p>
-        <div class="paths"><span>Junior path about @@HOURS_JUNIOR@@ hours</span><span>Senior path about @@HOURS_SENIOR@@ hours</span></div>
+        <div class="paths"><span>Junior path about 3.5 hours</span><span>Senior path about 5 hours</span></div>
         <span class="go">Open the tutorial &rarr;</span>
       </a>
 ```
@@ -104,7 +104,7 @@ Flink under "Big data engines" turns ready: see the line in part (a).
 ## Other notes
 
 - The tutorial id and storage key are `flink` and `dep.flink.v1`. Nothing else in the repository refers to them.
-- `flink/verify/verify_fl.py` takes about @@VERIFY_MIN@@ minutes without `--recapture` (most of it the SQL client, which starts for every script, and a Kafka broker for the Java job). `--recapture` adds about 22 minutes for the recorder: it starts a Flink cluster, a Kafka broker and PostgreSQL for each section.
+- `flink/verify/verify_fl.py` takes about 9 minutes without `--recapture` (most of it the SQL client, which starts for every script, and a Kafka broker for the Java job). `--recapture` adds about 22 minutes for the recorder: it starts a Flink cluster, a Kafka broker and PostgreSQL for each section.
 - The recorder and the verifier start their own clusters on ports 8081 (Flink), 19092 (Kafka, recorder) and 18181 and 19192 (the checks). Stop a Flink cluster that you run yourself on 8081 first.
 - No engine feature was missing. The shared stylesheet clips the coach column on windows 800 px high or less (known); `flink/css/flink.css` carries the same workaround as `sql/css/sql.css`.
 - The earlier session left a recording that the new recorder reproduced: see the recapture row of the table in `flink/README.md`.

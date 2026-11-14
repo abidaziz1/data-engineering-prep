@@ -113,7 +113,7 @@
           {
             say: 'Same query, same data, same kill, but **no checkpoint interval**. The job did not restart. Its state became **' + BR.final_state + '** and stayed there. The message says why: `Recovery is suppressed by NoRestartBackoffTimeStrategy`.',
             tabs: [{ layer: 'RECORDED', name: 'The failure of the job with no checkpoints', c: 'raw', cols: ['Line of the exception'], rows: BR.exception_chain.map(function (l) { return [l]; }), trk: 0 }],
-            notes: ['Recorded. ' + BR.checkpoints_completed + ' checkpoints had completed, so there was nothing to restore.']
+            notes: ['Recorded. ' + BR.checkpoints_completed + ' checkpoints had completed, so there was nothing to restore.', 'The class in the second line says who noticed the lost TaskManager first. In one recording it was the resource manager, in another the JobMaster: two heartbeats race.']
           },
           {
             say: 'The connection is in the documentation: if checkpointing is **disabled**, the default restart strategy is `disable`. If it is **enabled**, the default is `exponential-delay`, and that is the strategy the log of the first run named: it starts at one second and waits longer after each failure, up to a minute.',

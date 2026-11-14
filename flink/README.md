@@ -32,9 +32,9 @@ The stand-ins and limits, said again where they matter:
 
 | Path | Frames | Time | For |
 | --- | --- | --- | --- |
-| **Junior** | @@FRAMES_JUNIOR@@ | about @@HOURS_JUNIOR@@ hours | Starting out, or interviewing for a junior data engineer role that uses Flink |
-| **Senior** | @@FRAMES_SENIOR@@ | about @@HOURS_SENIOR@@ hours | Everything in Junior, plus the state, recovery, upgrade and operations decisions that seniors own |
-| **Everything** | @@FRAMES_ALL@@ | about @@HOURS_ALL@@ hours | Adds the finer points and the deepest follow-up questions |
+| **Junior** | 395 | about 3.5 hours | Starting out, or interviewing for a junior data engineer role that uses Flink |
+| **Senior** | 509 | about 5 hours | Everything in Junior, plus the state, recovery, upgrade and operations decisions that seniors own |
+| **Everything** | 514 | about 5 hours | Adds the finer points and the deepest follow-up questions |
 
 Times are estimates from reading and speaking each step, and they include saying the interview answers out loud. Switch paths at any time from the **Map** button.
 
@@ -42,11 +42,20 @@ Times are estimates from reading and speaking each step, and they include saying
 
 | # | Mission | Junior | Senior | Everything |
 | --- | --- | --- | --- | --- |
-@@MISSION_ROWS@@
+| 1 | The map: a cluster and a job | 23 min | 28 min | 28 min |
+| 2 | Flink SQL and the changelog | 19 min | 24 min | 27 min |
+| 3 | Time, watermarks and windows | 22 min | 30 min | 30 min |
+| 4 | State, checkpoints and recovery | 24 min | 31 min | 31 min |
+| 5 | Connectors and change data capture | 20 min | 28 min | 28 min |
+| 6 | Joins, duplicates and state that grows | 18 min | 23 min | 23 min |
+| 7 | The DataStream API | 18 min | 24 min | 24 min |
+| 8 | Running Flink: backpressure and deployment | 24 min | 28 min | 28 min |
+| 9 | Boss round | 38 min | 63 min | 65 min |
+| | **Total** | **215 min** | **288 min** | **293 min** |
 
 A short mission 0 sets up the course: the whole picture, the levels, the orders, which release this is and what came after it, and how the screens work.
 
-Mission 9 has two incident drills that mix missions (a deploy that cancels a job and starts a new one with no state, and a job that falls behind while its CPU is quiet), a design decision, two coding rounds (a tumbling window query with a watermark, and a DataStream job with keyed state, both with their real output), a mock interview of up to @@QA@@ questions from the earlier missions, a scorecard and a one-page cheat sheet of recorded numbers.
+Mission 9 has two incident drills that mix missions (a deploy that cancels a job and starts a new one with no state, and a job that falls behind while its CPU is quiet), a design decision, two coding rounds (a tumbling window query with a watermark, and a DataStream job with keyed state, both with their real output), a mock interview of up to 24 questions from the earlier missions, a scorecard and a one-page cheat sheet of recorded numbers.
 
 ## What job descriptions ask for, and where this course covers it
 
@@ -76,13 +85,24 @@ The interview themes that came up most in the summaries are all missions here: w
 - **10 animated diagrams.** Orange packets travel along numbered arrows: the whole platform, a cluster, a query that becomes tasks in slots, a stream and a table, event time and a watermark, a checkpoint, the two phases of an exactly-once sink, change data capture, backpressure and the ways to run Flink.
 - **4 terminal replays of real output.** `flink list` and the REST paths, what a sink receives, the JobManager log of a killed job, and the Java job that is built, run and read.
 - **8 labs.** Parallelism, chaining and slots. Feed the orders and read the changelog. Choose the watermark delay. The kinds of window. A checkpoint, a crash and a replay. The state of three joins. Which task holds a key. A slow step, more tasks and the lag.
-- **@@CODE_SCENES@@ code walkthroughs and @@SQL_SCENES@@ SQL screens.** Line-by-line explanations of the scripts and the Java that ran: the job that was submitted, the same query in streaming mode, a tumbling window, a session window, the idle partition, the job that a TaskManager was killed under, the metadata of a Kafka record, an upsert topic, a file sink, Flink CDC, a join, deduplication, the plan of a job as JSON, the DataStream job and the slow pipeline.
-- **@@QUIZ@@ quizzes, @@BUG@@ bug hunts, @@ORDER@@ ordering games, @@DECIDE@@ decisions with a recommended answer, and @@INCIDENT@@ incident drills** with a first-move choice, a triage checklist, a way to tell the story and the prevention steps.
-- **@@QA@@ interview questions**, each with a timer, a 60-second model answer, a key-point checklist, likely follow-ups and the mistake people make most often.
+- **6 code walkthroughs and 11 SQL screens.** Line-by-line explanations of the scripts and the Java that ran: the job that was submitted, the same query in streaming mode, a tumbling window, a session window, the idle partition, the job that a TaskManager was killed under, the metadata of a Kafka record, an upsert topic, a file sink, Flink CDC, a join, deduplication, the plan of a job as JSON, the DataStream job and the slow pipeline.
+- **23 quizzes, 8 bug hunts, 8 ordering games, 4 decisions with a recommended answer, and 10 incident drills** with a first-move choice, a triage checklist, a way to tell the story and the prevention steps.
+- **24 interview questions**, each with a timer, a 60-second model answer, a key-point checklist, likely follow-ups and the mistake people make most often.
 
 ## How it was checked
 
-@@CHECK_TABLE@@
+| Check | Result |
+| --- | --- |
+| Content lint (ids, tiers, code line ranges, diagram references, answer length, writing rules, the source tag on every screen, and every number the lessons quote against the recording) | Clean. 10 chapters, 216 screens: 166 for everyone, 48 for Senior, 2 extra |
+| Every frame walked in Chromium (`dev/smoke.js`), with console, network, text size, overflow and markup checks | No errors on any path. Walked 395 frames on the Junior path, 509 on the Senior path and 514 on the Everything path |
+| The same walk at phone width (390 px), Everything path | No horizontal overflow, no errors. The script still reports small text: labels of the shared interface and of the labs are 14.0 to 14.8 px, and diagram labels are 9.0 to 10.7 px |
+| Interaction test (`node dev/e2e.js flink`): every quiz, bug hunt, ordering game, decision, incident, interview question, coding problem, terminal and boss question, plus keys, text size, Map, paths, saving and reset | 805 checks passed, 0 failed |
+| The 8 labs driven in the browser (`flink/verify/e2e_labs.js`): every chip and button, compared with the recording and with values worked out in the test. The same file fails when a step shows an HTML tag, backticks, asterisks, `undefined` or `NaN` as text | 1,581 checks passed |
+| Recorded output (`flink/verify/capture_flink.py`) | 66 files, 33 texts, 41 tables and 44 sets of counts, from 8 sections that each run on their own cluster: the cluster, SQL, time, state, connectors, joins, the DataStream API and running |
+| Code in the lessons (`flink/verify/verify_fl.py`), 8 minutes 34 seconds on the last run | 35 SQL scripts planned by the real planner and 21 results compared with the recording, on a cluster that the script starts. 17 bug hunts run: the planner refuses the broken script for the reason that the lesson gives and accepts the fix. 6 runs of the two coding rounds, compared with the recording and with a plain Python computation. 5 Java files and 4 Java fragments compile, and 2 Java jobs run (one on 600 orders through a Kafka broker, compared with the truth). 16 shell commands pass `bash -n`, 17 flags are looked up in the help of the tool that they belong to, 19 configuration keys are looked up in the documentation of the release and 38 table options in the connector jars and their documentation |
+| Lab data (`flink/verify/check_widgets.js`) | 352 checks: slot sharing and chaining, the changelog of an aggregate, the watermark and the late orders, the four kinds of window, a checkpoint with a crash and a replay, the state of three joins, the two hashes behind a key group, deduplication, an upsert topic and the arithmetic of backpressure |
+| Controls | 22 deliberately broken inputs, and each one is refused: JSON and SQL that do not parse, Java that uses two things that Flink 2 removed, a shell command that does not parse, a flag that does not exist and one that belongs to another action, a configuration key that does not exist and one with the wrong prefix, a table option that does not exist, a reserved word as a column name, a window on a column that is not a time attribute, a result table and a changelog with one number changed, and six changes to the recording that the lab checks must refuse |
+| Recapture (`verify_fl.py --recapture`, about 30 minutes) | The whole recording was made again on 14 November 2026 and compared with `js/real.js`: 184 items, 18 differ for a reason that the script states, 0 differ without one. The 18 are sizes and counts that depend on when a checkpoint or a kill landed, rates and sampled ratios, random folder names, and the class that reports a lost TaskManager. The first comparison of that run showed 3 differences without a stated reason (the bytes of the heap backend at the sixth checkpoint, the class in the second line of an exception, and an idle ratio of 0.01 against 0.0). Each got an allowance for that one field and an independent check in `check_widgets.js`, and the lesson now says that the class varies |
 
 ### What was not checked
 
@@ -122,7 +142,14 @@ The interview themes that came up most in the summaries are all missions here: w
 
 ## Screens looked at
 
-@@SCREENS@@
+These are the only screens that were reviewed by eye, at 1440 by 900 unless stated:
+
+- The diagram of the cluster at step 3 (mission 1).
+- Seven labs on the desktop: parallelism with 5 slots asked of 4, the changelog with all twelve orders fed, the watermark with a delay of 10 seconds, the hopping window, the checkpoint lab after its example run, the key groups at parallelism 3 and 4, and backpressure. The state lab was looked at on a phone (390 by 844).
+- The SQL coding round with its solution open.
+- Coach Ines thinking, happy and cheering.
+
+Looking found two faults that the tests had missed, and both are fixed. The notes and callouts of all eight labs, and the notes of 14 lesson screens, showed HTML tags as text. The value of a bar in the key group lab ran out of its card at parallelism 3 and 4. The lab test now fails on a tag that is shown as text.
 
 ## Files
 
@@ -154,9 +181,9 @@ python3 -m venv flink-env && flink-env/bin/pip install -r flink/verify/requireme
 export FLINK_HOME=/path/to/flink-2.2.1 FLINK_DOCS=/path/to/flink-2.2.1/docs                # the binary distribution, and the docs folder of the source release
 export FLINK_KAFKA_JAR=/path/to/flink-sql-connector-kafka-5.0.0-2.2.jar FLINK_CDC_JAR=/path/to/flink-sql-connector-postgres-cdc-3.7.0-2.2.jar
 export KAFKA_HOME=/path/to/kafka_2.13-4.4.0
-flink-env/bin/python flink/verify/verify_fl.py             # snippets, flags, keys, Java, SQL on a real cluster, bug hunts, coding rounds, lab data and lint (about eight minutes)
+flink-env/bin/python flink/verify/verify_fl.py             # snippets, flags, keys, Java, SQL on a real cluster, bug hunts, coding rounds, lab data and lint (about nine minutes)
 flink-env/bin/python flink/verify/verify_fl.py --browser   # also drives the labs in Chromium
-flink-env/bin/python flink/verify/verify_fl.py --recapture # records everything again and compares it with js/real.js (about half an hour more)
+flink-env/bin/python flink/verify/verify_fl.py --recapture # records everything again and compares it with js/real.js (about 30 minutes in all); it prints where the new recording is kept, and --reuse FILE compares that file again
 flink-env/bin/python flink/verify/capture_flink.py         # writes flink/js/real.js; --only world,sql,... records a few sections; --parts DIR keeps and reuses them
 node dev/lint-content.js flink
 node dev/e2e.js flink && node flink/verify/e2e_labs.js
