@@ -95,3 +95,7 @@ fastavro
 #   python3 -m venv spark-env && spark-env/bin/pip install -r spark/verify/requirements.txt && spark-env/bin/python spark/verify/verify_spark.py
 # kafka/verify has its own requirements file, and needs an unpacked Apache Kafka 4.4.0 (KAFKA_HOME), Java 17 or 21, and for the change data capture section the Debezium PostgreSQL plugin and PostgreSQL 16:
 #   python3 -m venv kafka-env && kafka-env/bin/pip install -r kafka/verify/requirements.txt && KAFKA_HOME=... DEBEZIUM_PLUGINS=... kafka-env/bin/python kafka/verify/verify_kafka.py
+# flink/verify (the recorder, verify_fl.py and its --recapture). Needs Java 17 or 21 with javac, Apache Flink 2.2.1, the docs folder of its source release, two connector jars,
+# Apache Kafka 4.4.0 and the PostgreSQL 16 server programs (see flink/verify/requirements.txt). The only Python package is confluent-kafka, which the Kafka course lists too.
+# Versions the recording was made with: Apache Flink 2.2.1, flink-sql-connector-kafka 5.0.0-2.2, flink-sql-connector-postgres-cdc 3.7.0-2.2, Apache Kafka 4.4.0, PostgreSQL 16.15,
+# confluent-kafka 2.16.1 (librdkafka 2.16.0), Java 21.0.12, Python 3.13.

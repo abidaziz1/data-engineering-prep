@@ -106,5 +106,5 @@ Flink under "Big data engines" turns ready: see the line in part (a).
 - The tutorial id and storage key are `flink` and `dep.flink.v1`. Nothing else in the repository refers to them.
 - `flink/verify/verify_fl.py` takes about 9 minutes without `--recapture` (most of it the SQL client, which starts for every script, and a Kafka broker for the Java job). `--recapture` adds about 22 minutes for the recorder: it starts a Flink cluster, a Kafka broker and PostgreSQL for each section.
 - The recorder and the verifier start their own clusters on ports 8081 (Flink), 19092 (Kafka, recorder) and 18181 and 19192 (the checks). Stop a Flink cluster that you run yourself on 8081 first.
-- No engine feature was missing. The shared stylesheet clips the coach column on windows 800 px high or less (known); `flink/css/flink.css` carries the same workaround as `sql/css/sql.css`.
+- No engine feature was missing. The shared stylesheet now lets the coach column scroll on low windows (it used to run under the bottom bar), so `flink/css/flink.css` needs no rule for it.
 - The earlier session left a recording that the new recorder reproduced: see the recapture row of the table in `flink/README.md`.

@@ -9,3 +9,9 @@ aws/verify/node_modules/
 aws/verify/.cache/
 azure/verify/node_modules/
 azure/verify/.cache/
+# environments and caches that the check commands in the READMEs create
+*-env/
+.venv-*/
+*/verify/.cache/
+gcp/verify/node_modules/
+
