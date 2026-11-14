@@ -98,5 +98,3 @@ a.logo:hover{background:#3730A3}
 .tx-out{margin-top:.2rem;font:700 .85rem 'IBM Plex Mono',monospace;color:var(--ink2);overflow-wrap:anywhere}
 .tx-out.bad{color:#991B1B;background:#FEE2E2;border-radius:6px;padding:.1rem .35rem}
 
-/* a long coach speech must not run under the bottom bar on a window of 800 px or less: the column scrolls instead (the shared css pins it) */
-@media (min-width:981px){.coachcol{max-height:calc(100vh - 11.25rem);overflow-y:auto;scrollbar-width:thin}}

@@ -60,6 +60,8 @@ mark{background:#FDE047;color:var(--ink);padding:0 .2em;border-radius:4px}
 /* ---------- layout ---------- */
 .main{display:grid;grid-template-columns:17.5rem minmax(0,1fr);gap:1.5rem;max-width:1560px;margin:0 auto;padding:1.2rem 1.5rem 7.5rem}
 .coachcol{position:sticky;top:5rem;align-self:start;display:flex;flex-direction:column;gap:.9rem}
+/* a long coach speech must not run under the bottom bar on a window of 900 px or less: the column scrolls instead of being pinned past the bar (the SQL course had this rule alone; it is shared now) */
+@media (min-width:981px){.coachcol{max-height:calc(100vh - 11.25rem);overflow-y:auto;scrollbar-width:thin}}
 .coach{display:flex;flex-direction:column;align-items:center}
 .coach-photo{width:10.5rem;height:10.5rem;filter:drop-shadow(0 6px 0 rgba(11,18,32,.18))}
 .coach-svg{width:100%;height:100%;display:block;overflow:visible}
