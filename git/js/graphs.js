@@ -34,7 +34,7 @@
     w: 1000, h: 400,
     label: 'A commit holds a message, an author, a date, the id of its parent and the id of a tree. A tree lists files and folders, and points to a blob for the text of each file. Every object is named by the hash of its own content.',
     nodes: [
-      { id: 'c2', x: 0, y: 40, w: 190, h: 80, t: 'Commit 2', s: 'message, author, date', c: 'mart' },
+      { id: 'c2', x: 0, y: 40, w: 190, h: 80, t: 'Commit 2', s: 'who, when, why', c: 'mart' },
       { id: 'c1', x: 0, y: 280, w: 190, h: 80, t: 'Commit 1', s: 'the first commit', c: 'mart' },
       { id: 'root', x: 280, y: 150, w: 170, h: 80, t: 'Tree', s: 'the root folder', c: 'stg' },
       { id: 'models', x: 540, y: 10, w: 190, h: 70, t: 'Tree models/', s: 'a folder', c: 'stg' },
@@ -223,7 +223,7 @@
       { id: 'hook', x: 210, y: 40, w: 170, h: 80, t: 'pre-commit', s: 'a script, local', c: 'mon' },
       { id: 'repo', x: 430, y: 40, w: 170, h: 80, t: 'Local repo', s: 'the commit', c: 'mart' },
       { id: 'rem', x: 650, y: 40, w: 160, h: 80, t: 'Remote', s: 'a branch', c: 'air' },
-      { id: 'ci', x: 840, y: 40, w: 160, h: 80, t: 'CI', s: 'checks, clean checkout', c: 'qual' },
+      { id: 'ci', x: 840, y: 40, w: 160, h: 80, t: 'CI', s: 'a clean machine', c: 'qual' },
       { id: 'rev', x: 650, y: 270, w: 160, h: 80, t: 'Review', s: 'a person reads it', c: 'stg' },
       { id: 'main', x: 840, y: 270, w: 160, h: 80, t: 'main', s: 'protected', c: 'ing' },
       { id: 'tag', x: 430, y: 270, w: 170, h: 80, t: 'Tag v1.2.0', s: 'a release', c: 'ci' }

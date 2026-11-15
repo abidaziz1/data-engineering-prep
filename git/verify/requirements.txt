@@ -1,0 +1,9 @@
+# The Git course needs no Python package to record: capture_git.py and gitlib.py use the standard library only.
+# What it needs on the machine:
+#   git 2.43 or later (the recording was made with 2.43.0) and git-lfs (3.4.1). No setting of the machine is read: the recorder writes a private config file.
+#   sh and a POSIX shell for the check script and the hook, awk for the check script, Python 3.11 or later and Node 20 or later.
+# verify_git.py uses these when they are installed, and skips the check that needs one that is missing:
+#   pyyaml (the workflow file), sqlglot and duckdb (the three SQL files: parsed and run). Install them with
+#   python3 -m pip install pyyaml sqlglot duckdb
+# For the lab tests (--browser) and dev/smoke.js: Playwright with Chromium (npm install playwright).
+# Nothing here needs the network, a Git host or an account. The remote of the recording is a bare repository in a temporary folder.

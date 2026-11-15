@@ -51,7 +51,7 @@
         var c = code(r[5]);
         h += big([[r[2], 'working tree', r[2] !== r[3] ? 'warn' : ''], [r[3], 'index (staged)', r[3] !== r[4] ? 'warn' : ''], [r[4], 'last commit', '']]);
         h += pre('$ git status --short models/orders_daily.sql\n' + r[5], 'cmd');
-        h += callout(CODES[c][0], CODES[c][1] + (r[1] ? ' The step was `' + r[1] + '`.' : ''));
+        h += callout(CODES[c][0], CODES[c][1] + (r[1] ? (r[1].charAt(0) === '(' ? ' The step was an edit in an editor.' : ' The step was `' + r[1] + '`.') : ''));
         h += note(' Ids are the first 7 characters of the hash of the file. The file is `models/orders_daily.sql` and the steps ran in a real repository.');
         box.innerHTML = h + '</div>';
         A.bindWidget = function (act, el) { if (act === 'ar-k') st.k = +el.getAttribute('data-v'); A.render(true); };
@@ -194,8 +194,7 @@
         var cells = '';
         for (var c = 1; c <= B.commits; c++) {
           var cls = c <= r.lo ? 'fixed' : c >= r.hi ? 'stale' : '';
-          if (c === r.tested) cls = r.verdict === 'good' ? 'fixed' : 'stale';
-          cells += '<div class="part ' + cls + '">' + c + '<small>' + (c === r.lo ? 'good' : c === r.hi ? 'bad' : c === r.tested ? r.verdict : 'suspect') + '</small></div>';
+          cells += '<div class="part ' + cls + '">' + c + '<small>' + (c <= r.lo ? 'good' : c >= r.hi ? 'bad' : 'suspect') + '</small></div>';
         }
         h += '<div class="parts">' + cells + '</div>';
         var suspects = Math.max(0, r.hi - r.lo - 1);
