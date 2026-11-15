@@ -30,11 +30,14 @@ LAB.real = {
   },
   "basics.processes": {
    "in_container": 1,
-   "on_host": 95
+   "on_host": 97
   },
   "basics.stop": {
    "exit_code": 137,
    "status": "exited"
+  },
+  "basics.tty": {
+   "rc": 1
   },
   "build.check": {
    "rc": 1,
@@ -43,13 +46,13 @@ LAB.real = {
   "build.context": {
    "junk_bytes": 41943040,
    "junk_files": 20,
-   "with_ignore": "3.50kB",
+   "with_ignore": "5.01kB",
    "without_ignore": "41.96MB"
   },
   "build.image": {
    "base_size": 176193475,
    "psycopg_inside": "3.3.8",
-   "size": 217956594
+   "size": 217956608
   },
   "compose.down": {
    "networks_after_down": [],
@@ -100,7 +103,7 @@ LAB.real = {
   },
   "jobs.logs": {
    "driver_and_options": "json-file {\"max-file\":\"2\",\"max-size\":\"20k\"}",
-   "kept_with_rotation": 244,
+   "kept_with_rotation": 243,
    "kept_without_rotation": 3000,
    "printed": 3000
   },
@@ -163,9 +166,9 @@ LAB.real = {
   },
   "registry.save": {
    "has_index_json": true,
-   "members": 15,
+   "members": 13,
    "runs_after_load": "this is build 2",
-   "tar_bytes": 3814912
+   "tar_bytes": 3810816
   },
   "sec.caps": {
    "default_count": 14,
@@ -224,18 +227,18 @@ LAB.real = {
    "alpine": {
     "ok": true,
     "pandas": "3.1.1 26.0.1",
-    "size": 602004830
+    "size": 602004678
    },
    "slim": {
     "ok": true,
     "pandas": "3.1.1 26.0.1",
-    "size": 656468696
+    "size": 656467005
    }
   },
   "small.rm": {
    "base": 12766248,
    "file_bytes": 52428800,
-   "later_layer": 65262978,
+   "later_layer": 65262983,
    "same_layer": 12770324
   },
   "small.stages": {
@@ -243,8 +246,8 @@ LAB.real = {
    "default_build_steps": 4,
    "pytest_in_runtime": "False",
    "pytest_in_test": "True",
-   "runtime_image_size": 217894406,
-   "test_image_size": 239250915
+   "runtime_image_size": 217894344,
+   "test_image_size": 239250778
   },
   "volumes.anonymous": {
    "dangling_volumes_left_by_rm": 1,
@@ -551,7 +554,7 @@ LAB.real = {
      "one line of load_orders.py",
      4,
      "COPY load_orders.py worker.py ./",
-     true
+     false
     ],
     [
      "dependencies first",
@@ -565,21 +568,21 @@ LAB.real = {
      "requirements.txt",
      2,
      "COPY requirements.txt .",
-     true
+     false
     ],
     [
      "dependencies first",
      "requirements.txt",
      3,
      "RUN pip install --no-cache-dir -r requirements.txt",
-     true
+     false
     ],
     [
      "dependencies first",
      "requirements.txt",
      4,
      "COPY load_orders.py worker.py ./",
-     true
+     false
     ]
    ]
   },
@@ -624,15 +627,15 @@ LAB.real = {
      "dependencies first",
      "one line of load_orders.py",
      4,
-     0,
+     1,
      false
     ],
     [
      "dependencies first",
      "requirements.txt",
      4,
-     0,
-     false
+     3,
+     true
     ]
    ]
   },
@@ -816,20 +819,20 @@ LAB.real = {
    "rows": [
     [
      "build 1 is pushed as 1.0 and latest, and pulled here",
-     "ebb66c72b38e",
-     "ebb66c72b38e",
+     "938440fdf6bf",
+     "938440fdf6bf",
      "this is build 1"
     ],
     [
      "build 2 is pushed as latest and 1.1",
-     "2159b83ed0bb",
-     "ebb66c72b38e",
+     "6af21fd8b751",
+     "938440fdf6bf",
      "this is build 1"
     ],
     [
      "docker pull",
-     "2159b83ed0bb",
-     "2159b83ed0bb",
+     "6af21fd8b751",
+     "6af21fd8b751",
      "this is build 2"
     ]
    ]
@@ -843,17 +846,17 @@ LAB.real = {
    "rows": [
     [
      "1.0 (never moved)",
-     "ebb66c72b38e",
+     "938440fdf6bf",
      "this is build 1"
     ],
     [
      "1.1",
-     "2159b83ed0bb",
+     "6af21fd8b751",
      "this is build 2"
     ],
     [
      "latest (moved by the second push)",
-     "2159b83ed0bb",
+     "6af21fd8b751",
      "this is build 2"
     ]
    ]
@@ -939,9 +942,10 @@ LAB.real = {
   "basics.logs": "tick\ntick",
   "basics.ps": "PID   COMMAND\n    1 ps -o pid,args",
   "basics.ps_size": "IMAGE         SIZE\nalpine:3.22   4.1kB (virtual 8.99MB)\nalpine:3.22   4.1kB (virtual 8.99MB)\nalpine:3.22   4.1kB (virtual 8.99MB)",
+  "basics.tty": "cannot attach stdin to a TTY-enabled container because stdin is not a terminal",
   "build.bad": "ERROR: failed to build: failed to solve: dockerfile parse error on line 1: unknown instruction: FORM (did you mean FROM?)",
   "build.check": "Check complete, 5 warnings have been found!\n\nWARNING: MaintainerDeprecated - https://docs.docker.com/go/dockerfile/rule/maintainer-deprecated/\nMaintainer instruction is deprecated in favor of using label\nDockerfile.lint:2\n--------------------\n   1 |     FROM python:3.13-slim\n   2 | >>> maintainer Brewline Data\n   3 |     WORKDIR app\n   4 |     ENV PYTHONUNBUFFERED 1\n--------------------\n\nWARNING: ConsistentInstructionCasing - https://docs.docker.com/go/dockerfile/rule/consistent-instruction-casing/\nCommand 'maintainer' should match the case of the command majority (uppercase)\nDockerfile.lint:2\n--------------------\n   1 |     FROM python:3.13-slim\n   2 | >>> maintainer Brewline Data\n   3 |     WORKDIR app\n   4 |     ENV PYTHONUNBUFFERED 1\n--------------------\n\nWARNING: WorkdirRelativePath - https://docs.docker.com/go/dockerfile/rule/workdir-relative-path/\nRelative workdir \"app\" can have unexpected results if the base image changes\nDockerfile.lint:3\n--------------------\n   1 |     FROM python:3.13-slim\n   2 |     maintainer Brewline Data\n   3 | >>> WORKDIR app\n   4 |     ENV PYTHONUNBUFFERED 1\n   5 |     COPY . .\n--------------------\n\nWARNING: LegacyKeyValueFormat - https://docs.docker.com/go/dockerfile/rule/legacy-key-value-format/\n\"ENV key=value\" should be used instead of legacy \"ENV key value\" format\nDockerfile.lint:4\n--------------------\n   2 |     maintainer Brewline Data\n   3 |     WORKDIR app\n   4 | >>> ENV PYTHONUNBUFFERED 1\n   5 |     COPY . .\n   6 |     RUN pip install -r requirements.txt\n--------------------\n\nWARNING: JSONArgsRecommended - https://docs.docker.com/go/dockerfile/rule/json-args-recommended/\nJSON arguments recommended for CMD to prevent unintended behavior related to OS signals\nDockerfile.lint:7\n--------------------\n   5 |     COPY . .\n   6 |     RUN pip install -r requirements.txt\n   7 | >>> CMD python load_orders.py /data/orders.csv\n   8 |     \n--------------------",
-  "build.context": "transferring context: 2B done\ntransferring context: 41.96MB 0.2s done\ntransferring context: 76B done\ntransferring context: 3.50kB done",
+  "build.context": "transferring context: 2B done\ntransferring context: 41.96MB 0.2s done\ntransferring context: 76B done\ntransferring context: 5.01kB done",
   "build.nodata": "FileNotFoundError: [Errno 2] No such file or directory: '/data/orders.csv'",
   "compose.again": "read 5000 rows from /data/orders.csv, the table now has 5000",
   "compose.config": "name: dkc-stack\nservices:\n  db:\n    environment:\n      POSTGRES_DB: brewline\n      POSTGRES_PASSWORD: brewline-dev\n    image: postgres:16-alpine\n    networks:\n      default: null\n    volumes:\n      - type: volume\n        source: pgdata\n        target: /var/lib/postgresql/data\n        volume: {}\n    healthcheck:\n      test:\n        - CMD-SHELL\n        - pg_isready -h 127.0.0.1 -U postgres -d brewline\n      timeout: 3s\n      interval: 2s\n      retries: 15\n  loader:\n    environment:\n      DATABASE_URL: postgresql://postgres:brewline-dev@db:5432/brewline\n    networks:\n      default: null\n    volumes:\n      - type: bind\n        source: ./data\n        target: /data\n        read_only: true\n        bind: {}\n    build:\n      context: ./app\n      dockerfile: Dockerfile\n    depends_on:\n      db:\n        condition: service_healthy\n        required: true\nnetworks:\n  default:\n    name: dkc-stack_default\nvolumes:\n  pgdata:\n    name: dkc-stack_pgdata",

@@ -61,6 +61,15 @@
     grep: function (text, re) { return text.split('\n').filter(function (l) { return re.test(l); }).join('\n'); },
     /* a lesson relies on a fact in the recording: fail the lint when a new recording says otherwise */
     expect: function (cond, msg) { if (!cond) throw new Error('lesson no longer matches the recording: ' + msg); return true; },
+    /* terminal lines from pairs of [command, output]. A line that looks like an error is shown in red. */
+    term: function (pairs, d) {
+      var out = [];
+      pairs.forEach(function (p) {
+        out.push({ c: 'cmd', t: '$ ' + p[0], d: 350 });
+        if (p[1]) p[1].split('\n').forEach(function (ln) { out.push({ c: /rror|denied|refused|cannot|failed|No such|not allowed|Permission|Read-only|not a TTY|did not|unknown/.test(ln) ? 'err' : 'out', t: ln, d: d || 40 }); });
+      });
+      return out;
+    },
     /* terminal lines from recorded plain text. o.cmd is printed first. */
     plain: function (text, o) {
       o = o || {};

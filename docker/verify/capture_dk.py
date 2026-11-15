@@ -114,6 +114,10 @@ def basics():
     rows.append(['docker rm', 'gone', 'gone' if gone else 'still there'])
     T['basics.states'] = table(['What you do', 'State you expect', 'State recorded'], rows)
 
+    # -it needs a terminal; a scheduler or cron has none
+    t = dk('run', '--rm', '-it', 'alpine:3.22', 'echo', 'hi', check=False)
+    X['basics.tty'] = (t.all.strip().splitlines() or [''])[-1]
+    C['basics.tty'] = {'rc': t.rc}
     # a long running container: exec, logs, stop
     dk('run', '-d', '--label', LABEL, '--name', 'dkc-web', 'alpine:3.22', 'sh', '-c', 'while true; do echo tick; sleep 1; done')
     time.sleep(2.5)
