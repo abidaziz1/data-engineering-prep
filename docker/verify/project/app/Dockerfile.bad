@@ -1,0 +1,2 @@
+FORM python:3.13-slim
+COPY requirements.txt .

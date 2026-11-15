@@ -1,0 +1,26 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_PASSWORD: brewline-dev
+      POSTGRES_DB: brewline
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U postgres -d brewline"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+  loader:
+    build: ./app
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://postgres:brewline-dev@db:5432/brewline
+    volumes:
+      - ./data:/data:ro
+
+volumes:
+  pgdata:

@@ -1,0 +1,5 @@
+ARG BASE=python:3.13-slim
+FROM ${BASE}
+WORKDIR /app
+COPY requirements-heavy.txt .
+RUN pip install --no-cache-dir -r requirements-heavy.txt

@@ -1,0 +1,2 @@
+FROM alpine:3.22
+RUN dd if=/dev/zero of=/tmp/export.bin bs=1M count=50 && rm /tmp/export.bin

@@ -1,0 +1,4 @@
+FROM alpine:3.22
+ARG API_TOKEN
+ENV PARTNER_TOKEN=brewline-demo-token-4711
+RUN echo "token has ${#API_TOKEN} characters" > /tmp/note.txt

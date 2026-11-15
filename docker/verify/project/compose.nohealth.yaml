@@ -1,0 +1,15 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_PASSWORD: brewline-dev
+      POSTGRES_DB: brewline
+
+  loader:
+    build: ./app
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: postgresql://postgres:brewline-dev@db:5432/brewline
+    volumes:
+      - ./data:/data:ro

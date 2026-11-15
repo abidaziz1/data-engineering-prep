@@ -1,0 +1,5 @@
+FROM alpine:3.22
+ARG BUILD=1
+LABEL build=$BUILD
+RUN echo "this is build $BUILD" > /build.txt
+CMD ["cat", "/build.txt"]
