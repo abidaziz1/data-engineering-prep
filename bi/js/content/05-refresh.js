@@ -77,9 +77,9 @@
         rows: [
           ['What is refreshed', 'An imported semantic model, table by table and partition by partition.', 'An extract.', 'Nothing is copied. The result cache and derived tables in the warehouse are rebuilt.'],
           ['By the clock', 'Scheduled refresh on the model, a limited number of times a day that depends on the licence.', 'An extract refresh schedule on Tableau Server or Cloud.', 'A datagroup with `max_cache_age`, or a derived table with a time-based trigger.'],
-          ['By an event', 'A call to the refresh REST API, or the XMLA endpoint on larger capacities.', 'The REST API or the `tabcmd` command line.', 'A datagroup whose `sql_trigger` query changes its result, for example the newest load time.'],
+          ['By an event', 'A call to the refresh REST API (a refresh of named partitions needs Premium, Premium per user or Embedded capacity), or the XMLA endpoint.', 'The REST API or the `tabcmd` command line.', 'A datagroup whose `sql_trigger` query changes its result, for example the newest load time.'],
           ['Incremental', 'An incremental refresh policy with the parameters `RangeStart` and `RangeEnd`: a period to keep and a period to reload.', 'An incremental extract refresh that adds rows whose date or id is newer than the newest in the extract.', 'Incremental derived tables with an `increment_key`.'],
-          ['Changed old rows', '"Detect data changes" looks only inside the reload period. An older partition needs a refresh by name through the API.', 'Missed. A full refresh brings them in.', 'Not an issue for live queries. A derived table needs an offset or a rebuild.'],
+          ['Changed old rows', '"Detect data changes" needs a date and time column at the source, looks only inside the reload period, and does not find deleted rows. An older partition needs a refresh by name through the API.', 'Missed. A full refresh brings them in.', 'Not an issue for live queries. A derived table needs an offset or a rebuild.'],
           ['Inside a private network', 'An on-premises data gateway.', 'Tableau Bridge, for Tableau Cloud.', 'Looker must be able to reach the warehouse, through an allowlist or a tunnel.']
         ],
         steps: [
@@ -97,7 +97,7 @@
           { say: 'The body can name what to refresh. Here it is one partition of one table: the November partition that held the late refund. Without `objects` the whole model is refreshed by its policy.', lines: G.span(REQ, /"objects"/, /\]/) },
           { say: '`commitMode` and `retryCount` belong to the enhanced refresh of the REST API. The call returns at once. The task must then ask for the status until the refresh has finished.', lines: G.span(REQ, /"type"/, /"commitMode"/) }
         ],
-        note: 'Built and printed, not sent. The path and the body follow the Power BI REST API documentation. Check the documentation for the limits of your licence before you rely on it.'
+        note: 'Built and printed, not sent. The path and the body follow the Power BI REST API documentation. A refresh that names tables or partitions is an enhanced refresh, which the documentation says needs a model in Premium, Premium per user or Embedded capacity. Check your licence before you rely on it.'
       }),
 
       B.code({
