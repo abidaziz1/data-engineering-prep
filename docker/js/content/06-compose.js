@@ -299,6 +299,19 @@
         real: 'Say how you reset your test stacks.'
       }),
 
+      B.talk({
+        id: 'm6-extra', t: 3, src: 'docs', title: 'Compose settings you will meet',
+        say: 'Five settings that are common in real files. None of them ran for this course. Press Next for each.',
+        items: [
+          ['`env_file`', 'Reads variables from a file next to the compose file, so that the values stay out of the YAML. Keep that file out of git and out of the build context.', 'Values out of the YAML.'],
+          ['`restart`', 'The restart policy of the service: `no`, `on-failure`, `always` or `unless-stopped`. Use it for services and not for jobs.', 'Services restart, jobs do not.'],
+          ['`init: true`', 'Runs a small init process as process 1, as `docker run --init` does in mission 7.', 'The same as --init.'],
+          ['`start_period` in a healthcheck', 'A time at the start during which a failing check does not count, for a service that needs a while to warm up.', 'A grace time for slow starts.'],
+          ['`depends_on` with `service_completed_successfully`', 'Waits for a one-shot service, such as a migration, to exit with 0 before the next one starts.', 'Wait for a job to finish.']
+        ],
+        cols: 1
+      }),
+
       B.recap({
         id: 'm6-recap', n: 6, badge: 'Stack Builder', color: '#BFDBFE',
         pts: [

@@ -242,6 +242,16 @@
         real: 'Say whether you used Alpine and what happened.'
       }),
 
+      B.qa({
+        id: 'qa-overlay', t: 3, tag: 'Docker', secs: 75,
+        q: 'How do image layers become the file system of a container, and why does a deleted file still cost space?',
+        pts: ['A union file system stacks the read-only layers and one writable layer', 'Reading looks through the layers from the top', 'Changing a file copies it up into the writable layer', 'A delete is a marker in a higher layer, and the lower layer keeps the bytes'],
+        short: 'The engine mounts the layers of the image read-only, one over another, and puts a writable layer on top. This is a union file system, and on Linux the usual driver is overlayfs. The recording ran on ' + G.meta('storage_driver') + '. A read finds the file in the highest layer that has it. A write to a file that lives in a lower layer first copies the file up into the writable layer, and the change happens there. A delete does not touch the lower layer: it adds a marker, called a whiteout, in a higher one, so the file disappears from view. That is why the 50 MB file of mission 3 was gone from the container and still counted ' + mb(RM.later_layer - RM.same_layer) + ' in the image. The whiteout and copy-up details are from documentation.',
+        fu: [['What is the cost of copy-up?', 'The first write to a large file in a lower layer copies the whole file, which is why databases use volumes.'], ['Why does a volume avoid the problem?', 'It is a mount outside the union file system, so writes go straight to the disk.']],
+        trap: 'Believing that `rm` in a later layer returns the space.',
+        real: 'Say which image of yours shrank when you merged two RUN lines.'
+      }),
+
       B.recap({
         id: 'm3-recap', n: 3, badge: 'Image Trimmer', color: '#BFDBFE',
         pts: [

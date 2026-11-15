@@ -249,6 +249,16 @@
         real: 'Say which mode your jobs ran in.'
       }),
 
+      B.qa({
+        id: 'qa-publish', t: 3, tag: 'Docker', secs: 60,
+        q: 'How does `-p` work under the hood, and what does it change on the host?',
+        pts: ['Docker adds forwarding rules to the firewall of the host', 'It can also start a small proxy process for connections from the host itself', 'The default bind address is every interface', 'Published ports can bypass the rules that you wrote for the host firewall'],
+        short: 'When you publish a port, Docker programs the packet filter of the host so that traffic to the host port is forwarded to the address of the container, and for some paths, such as a connection from the host to its own published port, it can use a small proxy process. Without an address it binds every interface, which the recording showed as 0.0.0.0:15433 against 127.0.0.1:15432 for the loopback form. A point that surprises people is that the rules that Docker adds can take effect before the rules of a host firewall tool, so a published port can be reachable although you thought that you blocked it. The mechanism and that last point are from documentation, and I did not inspect the firewall rules in this recording.',
+        fu: [['How do you publish to the loopback only?', '`-p 127.0.0.1:HOST:CONTAINER`.'], ['What do you do instead of publishing a database port?', 'Keep it on the network and reach it from a container, or through an SSH tunnel.']],
+        trap: 'Assuming that a host firewall rule always blocks a published port.',
+        real: 'Say how you checked which ports were open on a Docker host.'
+      }),
+
       B.recap({
         id: 'm5-recap', n: 5, badge: 'Network Mapper', color: '#BFDBFE',
         pts: [

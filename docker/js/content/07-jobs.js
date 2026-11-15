@@ -319,6 +319,26 @@
         real: 'Describe a retry that did harm, or one that saved a night.'
       }),
 
+      B.qa({
+        id: 'qa-pid1', t: 3, tag: 'Docker', secs: 75,
+        q: 'Why is process 1 special in a container, and what is an init process for?',
+        pts: ['The kernel does not apply the default signal action to process 1 of a PID namespace', 'A program with no handler ignores SIGTERM there', 'Process 1 also has to reap orphaned child processes', 'An init such as the one of --init forwards signals and reaps children'],
+        short: 'Process 1 is the init process of the PID namespace of the container, and the kernel treats it specially: a signal whose default action would end the process, such as SIGTERM, is ignored unless the program has installed a handler. In the recording a Python job with no handler did not stop on `docker stop` and was killed after the grace period with 137, and with `docker run --init` it ended at once with 143. The second duty is cleaning up: when a child process loses its parent it is adopted by process 1, which must collect its exit status, or the child stays as a zombie. A normal program does not do that, and a small init does. The zombie part is from documentation and I did not record it.',
+        fu: [['What does `--init` run?', 'A tiny init, tini in current Docker versions, which forwards signals and reaps children. From documentation.'], ['When do zombies matter?', 'A job that starts many short-lived subprocesses and never waits for them can fill the process table.']],
+        trap: 'Thinking that SIGTERM always ends a process.',
+        real: 'Say how you found out that a job ignored its stop signal.'
+      }),
+
+      B.qa({
+        id: 'qa-cgroups', t: 3, tag: 'Docker', secs: 75,
+        q: 'How does Docker enforce memory and CPU limits, and what differs between cgroup versions?',
+        pts: ['The limits are written to the cgroup of the container, and the kernel enforces them', 'Over the memory limit: the OOM killer ends a process in that cgroup', '--cpus is a quota of CPU time, --cpuset-cpus pins CPUs', 'cgroup v1 and v2 use different files, and the engine hides that'],
+        short: 'The engine creates a control group for the container and writes the limits into it. The kernel does the rest. Memory is a hard ceiling: when the group goes over it, the out-of-memory killer ends a process in the group, which is what gave exit code 137 and `OOMKilled=true` in the recording. `--cpus` becomes a quota of CPU time in each scheduling period, so a program can still see every CPU and just runs for a fraction of the time, as Python did with ' + CP.cpus_0_5.cpu_count + ' CPUs under `--cpus 0.5`. `--cpuset-cpus` pins the container to CPUs, and `os.process_cpu_count()` saw it, ' + CP.cpuset_0.process_cpu_count + '. This machine used cgroup version ' + G.meta('cgroup_version') + '. Version 2 is the default on newer systems and uses other file names, for example `memory.max` instead of `memory.limit_in_bytes`, which I did not run.',
+        fu: [['Is swap limited too?', 'With `--memory-swap`. From documentation.'], ['How do you see usage?', '`docker stats`, or the files of the cgroup.']],
+        trap: 'Reading the limit file of one cgroup version in a script that must run on both.',
+        real: 'Say which cgroup version your hosts use.'
+      }),
+
       B.recap({
         id: 'm7-recap', n: 7, badge: 'Job Runner', color: '#BFDBFE',
         pts: [

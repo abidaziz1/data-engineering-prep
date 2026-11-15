@@ -275,6 +275,16 @@
         real: 'Say how you update pinned versions on a schedule.'
       }),
 
+      B.qa({
+        id: 'qa-buildkit', t: 3, tag: 'Docker', secs: 75,
+        q: 'What does BuildKit do beyond caching layers?',
+        pts: ['Builds independent stages in parallel and skips stages that nothing needs', 'Cache mounts for package caches, such as pip', 'Secret mounts that stay out of the image', 'Export and import of the cache for CI, and build checks'],
+        short: 'BuildKit is the builder behind `docker build`. It works out which stages and steps depend on each other, so it can run independent ones in parallel, and it skips a stage that the target does not need. In the recording a plain build skipped the test stage. It also has features that the old builder lacked. A secret mount hands a value to one `RUN` step as a file and leaves nothing in the image, and I recorded that in mission 9. `docker build --check` reviews a Dockerfile, which I recorded too. A cache mount, `RUN --mount=type=cache,target=...`, keeps a package download cache between builds outside the image, and the cache can be exported and imported for CI runners that start empty. Those last two are from documentation and I did not run them.',
+        fu: [['What is the gain of a cache mount?', 'A rebuild after a change to `requirements.txt` can reuse downloaded packages, so only the install runs. The cache is not part of the image.'], ['How do CI runners with no cache get fast builds?', 'By pulling a cache that an earlier build exported to a registry, with `--cache-from` and `--cache-to` (from documentation).']],
+        trap: 'Talking about BuildKit as if it were only a faster `docker build`.',
+        real: 'Say how long your CI builds took before and after you used the cache on the runners.'
+      }),
+
       B.recap({
         id: 'm2-recap', n: 2, badge: 'Layer Reader', color: '#BFDBFE',
         pts: [

@@ -248,6 +248,16 @@
         real: 'Say how you debugged a container that failed.'
       }),
 
+      B.qa({
+        id: 'qa-namespaces', t: 3, tag: 'Docker', secs: 75,
+        q: 'Which Linux features does a container use? Name them and say what each does.',
+        pts: ['Namespaces: separate views of processes, network, mounts, host name, users', 'cgroups: limits and accounting for memory and CPU', 'A root file system from the image layers', 'Capabilities, seccomp and similar profiles restrict what the process may do'],
+        short: 'A container is built from a few kernel features and no new kernel. **Namespaces** give the process its own view: its own process IDs, network interfaces, mount points, host name, inter-process communication and user IDs. **Control groups**, cgroups, limit and count its memory, CPU and other resources. The root file system comes from the image layers, joined by a union file system. On top of that, capabilities and a seccomp profile restrict which privileged actions and system calls the process may use. In the recording I saw the process namespace (1 process in the container against ' + PR.on_host + ' on the host), and a memory limit that read ' + n(G.counts('jobs.limit_seen').inside) + ' bytes inside the container. The list of namespaces and the default seccomp profile are from documentation.',
+        fu: [['Is a container a security boundary like a virtual machine?', 'No. It shares the kernel, so a kernel flaw reaches every container. Mission 9 covers the hardening.'], ['Which storage driver did the recording use?', G.meta('storage_driver') + ', with the ' + G.meta('snapshotter') + ' image store.']],
+        trap: 'Naming only "namespaces" and forgetting cgroups, or the other way round.',
+        real: 'Say which of these you have looked at directly, for example in /proc.'
+      }),
+
       B.recap({
         id: 'm1-recap', n: 1, badge: 'Container Starter', color: '#BFDBFE',
         pts: [
