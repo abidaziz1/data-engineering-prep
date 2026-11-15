@@ -99,3 +99,6 @@ fastavro
 # Apache Kafka 4.4.0 and the PostgreSQL 16 server programs (see flink/verify/requirements.txt). The only Python package is confluent-kafka, which the Kafka course lists too.
 # Versions the recording was made with: Apache Flink 2.2.1, flink-sql-connector-kafka 5.0.0-2.2, flink-sql-connector-postgres-cdc 3.7.0-2.2, Apache Kafka 4.4.0, PostgreSQL 16.15,
 # confluent-kafka 2.16.1 (librdkafka 2.16.0), Java 21.0.12, Python 3.13.
+# bi/verify has its own requirements file, because tableauhyperapi and tableaudocumentapi are pinned there (duckdb 2.0.0, pyarrow 26.0.1, lkml 1.3.7, requests 2.34.2, setuptools 84.2.1):
+#   python3 -m venv bi-env && bi-env/bin/pip install -r bi/verify/requirements.txt && bi-env/bin/python bi/verify/verify_bi.py
+# Versions the recording was made with: DuckDB 2.0.0, tableauhyperapi 0.0.26963, lkml 1.3.7, tableaudocumentapi 0.11, Python 3.13.

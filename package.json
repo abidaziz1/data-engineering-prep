@@ -3,7 +3,7 @@
   "private": true,
   "description": "Interactive data engineering tutorials. The site itself needs no build step. These scripts only check it.",
   "scripts": {
-    "lint": "node dev/lint-content.js snowflake && node dev/lint-content.js dbt && node dev/lint-content.js snowflake-dbt && node dev/lint-content.js databricks && node dev/lint-content.js aws && node dev/lint-content.js azure && node dev/lint-content.js ai && node dev/lint-content.js gcp && node dev/lint-content.js spark && node dev/lint-content.js python && node dev/lint-content.js sql && node dev/lint-content.js airflow && node dev/lint-content.js kafka && node dev/lint-content.js flink",
+    "lint": "node dev/lint-content.js snowflake && node dev/lint-content.js dbt && node dev/lint-content.js snowflake-dbt && node dev/lint-content.js databricks && node dev/lint-content.js aws && node dev/lint-content.js azure && node dev/lint-content.js ai && node dev/lint-content.js gcp && node dev/lint-content.js spark && node dev/lint-content.js python && node dev/lint-content.js sql && node dev/lint-content.js airflow && node dev/lint-content.js kafka && node dev/lint-content.js flink && node dev/lint-content.js bi",
     "lint:snowflake": "node dev/lint-content.js snowflake",
     "lint:dbt": "node dev/lint-content.js dbt",
     "smoke": "node dev/smoke.js snowflake --path all",
@@ -73,6 +73,11 @@
     "e2e:flink": "node dev/e2e.js flink && node flink/verify/e2e_labs.js",
     "stats:flink": "node dev/stats.js flink",
     "verify:flink": "python3 flink/verify/verify_fl.py",
+    "lint:bi": "node dev/lint-content.js bi",
+    "smoke:bi": "node dev/smoke.js bi --path all",
+    "e2e:bi": "node dev/e2e.js bi && node bi/verify/e2e_labs.js",
+    "stats:bi": "node dev/stats.js bi",
+    "verify:bi": "python3 bi/verify/verify_bi.py",
     "test:analytics": "node dev/analytics-test.js"
   },
   "devDependencies": {
