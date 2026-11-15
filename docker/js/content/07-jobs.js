@@ -133,7 +133,7 @@
         steps: [
           {
             say: 'A job that prints ' + n(LG.printed) + ' lines, with the default log settings and with a limit of 20 kB for each of 2 files.',
-            tabs: [{ layer: 'RECORDED', name: 'Lines that `docker logs` can still show', c: 'raw', cols: ['log settings', 'lines kept'], rows: [['default (json-file, no limit)', n(LG.kept_without_rotation)], [LG.driver_and_options, n(LG.kept_with_rotation)]], trk: 0 }],
+            tabs: [{ layer: 'RECORDED', name: 'Lines that docker logs can still show', c: 'raw', cols: ['log settings', 'lines kept'], rows: [['default (json-file, no limit)', n(LG.kept_without_rotation)], [LG.driver_and_options, n(LG.kept_with_rotation)]], trk: 0 }],
             notes: ['The default driver writes everything to a file on the host, and the file grows with the job. A chatty job can fill a disk. `--log-opt max-size` and `max-file` rotate the file and drop the oldest lines. For a job that matters, send the logs somewhere central as well (from documentation).']
           }
         ]

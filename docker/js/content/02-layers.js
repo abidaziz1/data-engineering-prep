@@ -120,7 +120,7 @@
         steps: [
           {
             say: '`docker build .` sends the folder `.` to the engine. That folder is the **build context**: the only files that `COPY` can see. I added 20 files of 2 MB each, an old archive, to the folder, and built the Dockerfile that has `COPY . .`.',
-            tabs: [{ layer: 'RECORDED', name: 'Context transferred by `COPY . .`', c: 'raw', cols: ['.dockerignore', 'bytes sent to the engine'], rows: [['none', CTX.without_ignore], ['with the file on the next screen', CTX.with_ignore]], trk: 0 }],
+            tabs: [{ layer: 'RECORDED', name: 'Context transferred by COPY . .', c: 'raw', cols: ['.dockerignore', 'bytes sent to the engine'], rows: [['none', CTX.without_ignore], ['with the file on the next screen', CTX.with_ignore]], trk: 0 }],
             notes: ['Without the ignore file the build sent **' + CTX.without_ignore + '**, and the archive would have gone into the image. With it, **' + CTX.with_ignore + '**. A `COPY` of named files sends only those files, which is another reason to copy files by name.']
           }
         ]
