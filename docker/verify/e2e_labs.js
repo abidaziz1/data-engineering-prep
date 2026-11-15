@@ -171,7 +171,8 @@ const mb = x => (x / 1e6).toLocaleString('en-US', { maximumFractionDigits: x < 1
     await open('stop');
     const ks = await chipVals('sp-k');
     eq(ks, ['0', '1', '2', '3', '4'], 'stop lab: five cases');
-    const want = [[1, true, 137, false], [1, false, 0, true], [7, true, 137, false], [1, false, 0, true], [7, false, 143, false]];
+    const SIG = T('jobs.signals').rows;   // the process id of a job that is not process 1 differs from run to run, so it is read from the recording
+    const want = [[1, true, 137, false], [1, false, 0, true], [SIG[2][1], true, 137, false], [1, false, 0, true], [SIG[4][1], false, 143, false]];
     for (const k of ks) {
       await pick('sp-k', k);
       const w = want[+k], b = await bigs(), l = await lanes();
@@ -181,7 +182,7 @@ const mb = x => (x / 1e6).toLocaleString('en-US', { maximumFractionDigits: x < 1
       await noRaw('stop lab, case ' + k);
     }
     // the same table as the recording
-    eq(T('jobs.signals').rows.map(r => [r[1], r[2] === 'yes', r[3], r[4] === 'yes']), want.map((w, k) => k === 2 || k === 4 ? [w[0] === 7 ? T('jobs.signals').rows[k][1] : 1, w[1], w[2], w[3]] : w), 'stop lab: the recording agrees with the cases');
+    eq(SIG.map(r => [r[1] === 1 ? 1 : '>1', r[2] === 'yes', r[3], r[4] === 'yes']), want.map(w => [w[0] === 1 ? 1 : '>1', w[1], w[2], w[3]]), 'stop lab: the recording agrees with the cases');
   });
 
   // ---------------------------------------------------------------------------------------------------------------------------------

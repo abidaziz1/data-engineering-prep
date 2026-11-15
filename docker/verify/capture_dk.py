@@ -264,7 +264,7 @@ def small_images():
     p = workdir()
     app = p / 'app'
     for ref in ('python:3.13', 'python:3.13-slim', 'python:3.13-alpine'):
-        dk('pull', '-q', ref)
+        pull(ref)
     rows = [[ref, image_size(ref), int(dk('image', 'inspect', ref, '--format', '{{len .RootFS.Layers}}').out)] for ref in ('python:3.13', 'python:3.13-slim', 'python:3.13-alpine')]
     T['small.bases'] = table(['image', 'size in bytes', 'layers'], rows)
     # the same packages on two bases
@@ -723,7 +723,7 @@ def security():
     C['sec.dotenv'] = {'without_ignore_rc': leaked.rc, 'without_ignore_content': leaked.out.strip(), 'with_ignore_rc': kept.rc, 'with_ignore_error': (kept.err.strip().splitlines() or [''])[-1]}
     # the Docker socket
     dk('run', '-d', '--label', LABEL, '--name', 'dkc-victim', 'alpine:3.22', 'sleep', '60')
-    dk('pull', '-q', 'docker:cli')
+    pull('docker:cli')
     ps = dk('run', '--rm', '--label', LABEL, '-v', '/var/run/docker.sock:/var/run/docker.sock', 'docker:cli', 'docker', 'ps', '--format', '{{.Names}}', '--filter', 'name=dkc-victim', check=False)
     host_name = open('/etc/hostname').read().strip()
     root_fs = dk('run', '--rm', '--label', LABEL, '-v', '/etc:/host-etc:ro', 'alpine:3.22', 'cat', '/host-etc/hostname').out.strip()

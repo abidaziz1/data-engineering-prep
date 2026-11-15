@@ -31,10 +31,20 @@ class Out:
         return (self.out or '') + (self.err or '')
 
 
+RATE = re.compile(r'429 Too Many Requests|toomanyrequests', re.I)
+
+
 def sh(args, check=True, timeout=600, cwd=None, input=None, env=None):
     t = time.time()
-    p = subprocess.run(args, capture_output=True, text=True, timeout=timeout, cwd=cwd, input=input, env=env)
-    o = Out(p, time.time() - t)
+    for attempt in range(80):
+        p = subprocess.run(args, capture_output=True, text=True, timeout=timeout, cwd=cwd, input=input, env=env)
+        o = Out(p, time.time() - t)
+        # Docker Hub limits the pulls of anonymous users by the address, and a shared address uses the limit up. Wait for the window and try again.
+        if o.rc and args and args[0] == 'docker' and RATE.search(o.all):
+            print('Docker Hub answered 429 Too Many Requests; waiting 60 seconds (attempt %d)' % (attempt + 1), flush=True)
+            time.sleep(60)
+            continue
+        break
     if check and o.rc:
         raise RuntimeError('command failed (%d): %s\n%s' % (o.rc, ' '.join(map(str, args)), o.all[-1500:]))
     return o
@@ -111,6 +121,13 @@ def build(tag, ctx, dockerfile=None, extra=(), cache=True, check=True):
     o = dk(*args, check=check)
     o.steps = parse_build(o.all)
     return o
+
+
+def pull(ref):
+    """Pull an image only when it is not on this machine. Docker Hub limits the pulls of anonymous users, and a recording that is made again should not
+    use them up. To record against newer bases, pull them first with docker pull."""
+    if dk('image', 'inspect', ref, check=False).rc != 0:
+        dk('pull', '-q', ref)
 
 
 def image_size(ref):

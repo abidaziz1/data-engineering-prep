@@ -28,6 +28,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 
 HERE = pathlib.Path(__file__).resolve().parent
 ROOT = HERE.parent.parent
@@ -77,7 +78,15 @@ def control(label, refused):
 
 
 def run(cmd, **kw):
-    return subprocess.run(cmd, capture_output=True, text=True, **kw)
+    for attempt in range(80):
+        r_ = subprocess.run(cmd, capture_output=True, text=True, **kw)
+        # Docker Hub limits the pulls of anonymous users by the address. Wait for the window and try again.
+        if r_.returncode and cmd and cmd[0] == 'docker' and re.search(r'429 Too Many Requests|toomanyrequests', r_.stdout + r_.stderr, re.I):
+            print('Docker Hub answered 429 Too Many Requests; waiting 60 seconds (attempt %d)' % (attempt + 1), flush=True)
+            time.sleep(60)
+            continue
+        return r_
+    return r_
 
 
 def load_real(path):
@@ -369,6 +378,8 @@ def norm_text(key, s):
     s = IPV4.sub('x.x.x.x', s)
     s = DIGEST.sub('sha256:<digest>', s)
     if key == 'text:basics.exec':
+        # the loop sleeps between lines, so `ps` may or may not catch a `sleep`, and the ids of the other processes differ
+        s = '\n'.join(l for l in s.splitlines() if not re.match(r'^\s*\d+ sleep ', l))
         s = re.sub(r'^(\s*)(?!1 )\d+ ', r'\1N ', s, flags=re.M)
     if key == 'text:registry.push':
         s = s.replace('Layer already exists', 'Already exists')       # the registry says either, depending on how it learned about a layer
@@ -389,6 +400,10 @@ def same(key, a, b, path=''):
                 return [key]
             keep = [i for i, c in enumerate(ca) if 'digest' not in c and 'latest in the registry' not in c and 'latest on this machine' not in c]
             return [] if [[r[i] for i in keep] for r in a['rows']] == [[r[i] for i in keep] for r in b['rows']] else [key]
+    if key == 'tables:jobs.signals':
+        # the process id of a job that is not process 1 depends on how many processes the container had started before: 7 on one run, 8 on another
+        fold = lambda t: {'cols': t['cols'], 'rows': [[r[0], r[1] if r[1] == 1 else '>1'] + r[2:] for r in t['rows']]}
+        a, b = fold(a), fold(b)
     tol = max([v for k, v in TOLERANCE.items() if key.startswith(k)] or [0])
     def walk(x, y, p):
         if isinstance(x, dict) and isinstance(y, dict):
