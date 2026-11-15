@@ -1,0 +1,6 @@
+#!/bin/sh
+# Refuse a commit that adds something that looks like an access key.
+if git diff --cached -U0 | grep -E '^\+.*(AKIA[0-9A-Z]{8,}|token *= *[A-Za-z0-9]{16,})' >/dev/null; then
+  echo "pre-commit: this commit adds something that looks like a secret. Remove it and try again."
+  exit 1
+fi

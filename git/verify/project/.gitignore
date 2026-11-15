@@ -1,0 +1,5 @@
+# data that is rebuilt, and files that never belong in git
+data/*.csv
+*.log
+.env
+__pycache__/
