@@ -12,8 +12,8 @@
   }
   function row(label, inner) { return '<div class="lab-row"><span class="lab-l">' + esc(label) + '</span>' + inner + '</div>'; }
   function table(cols, rows, rowCls, numFrom) {
-    return '<div class="tbl-wrap"><table class="tbl"><thead><tr>' + cols.map(function (c, ci) { return '<th' + (numFrom != null && ci >= numFrom ? ' class="num"' : '') + '>' + esc(c) + '</th>'; }).join('') + '</tr></thead><tbody>' +
-      rows.map(function (r, ri) { return '<tr class="' + (rowCls ? rowCls(r, ri) || '' : '') + '">' + r.map(function (c, ci) { return '<td' + (numFrom != null && ci >= numFrom ? ' class="num"' : '') + '>' + esc(String(c)) + '</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table></div>';
+    return '<div class="tbl-wrap"><table class="tbl"><thead><tr>' + cols.map(function (c, ci) { return '<th' + (numFrom != null && ci >= numFrom ? ' class="rnum"' : '') + '>' + esc(c) + '</th>'; }).join('') + '</tr></thead><tbody>' +
+      rows.map(function (r, ri) { return '<tr class="' + (rowCls ? rowCls(r, ri) || '' : '') + '">' + r.map(function (c, ci) { return '<td' + (numFrom != null && ci >= numFrom ? ' class="rnum"' : '') + '>' + esc(String(c)) + '</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table></div>';
   }
   function big(items) { return '<div class="lab-out">' + items.map(function (x) { return '<div class="big' + (x[2] ? ' ' + x[2] : '') + '"><b>' + esc(String(x[0])) + '</b><span>' + esc(x[1]) + '</span></div>'; }).join('') + '</div>'; }
   function callout(kind, text) { return '<div class="callout ' + kind + '">' + md(text) + '</div>'; }
@@ -26,6 +26,8 @@
   }
   var n = G.n;
   function money(x) { return '$' + n(x); }
+  /* money that always shows cents, for small amounts that a person adds up by hand */
+  function cents(x) { return '$' + Number(x).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 
   /* ====================== 1. A join that multiplies rows ====================== */
   W.fanout = (function () {
@@ -50,7 +52,7 @@
         var h = '<div class="lab">' + row('The query', chips(WAYS.map(function (w) { return w[0]; }), st.way, 'fo-w', function (k) { return WAYS.filter(function (w) { return w[0] === k; })[0][1]; }));
         h += table(['order_id', 'line', 'shipping_fee', 'line_amount'], rows.map(function (r) { return [r.order, r.line, r.fee.toFixed(2), r.amount === '' ? '' : Number(r.amount).toFixed(2)]; }),
           function (r) { var again = seen[r[0]]; seen[r[0]] = true; return again ? 'dup' : ''; }, 2);
-        h += big([[rows.length, 'rows the sum reads'], [money(tot.toFixed(2)), 'shipping total of the four orders', tot === right ? 'good' : 'bad'], [money(right.toFixed(2)), 'the right answer']]);
+        h += big([[rows.length, 'rows the sum reads'], [cents(tot), 'shipping total of the four orders', tot === right ? 'good' : 'bad'], [cents(right), 'the right answer']]);
         h += st.way === 'join'
           ? callout('bad', 'An order with two lines appears twice, and its fee is added twice. The red rows are the repeats. Nothing fails and no error is shown: the tile shows a number that is too high.')
           : st.way === 'pre'
@@ -161,11 +163,11 @@
           var cls = !x.kept ? 'drop' : x.stale ? 'stale' : x.refreshed ? 'refresh' : '';
           return '<div class="part ' + cls + '">' + esc(x.month) + '<small>' + (!x.kept ? 'dropped' : x.stale ? 'out of date' : x.refreshed ? 'reloaded' : 'kept') + '</small></div>';
         }).join('') + '</div>';
-        h += big([[n(done), 'rows reloaded'], [(done / full * 100).toFixed(1) + ' %', 'of a full refresh (' + n(full) + ' rows)'], [diff ? money(diff.toFixed(2)) : 'none', 'difference from the warehouse', diff ? 'bad' : 'good']]);
+        h += big([[n(done), 'rows reloaded'], [(done / full * 100).toFixed(1) + ' %', 'of a full refresh (' + n(full) + ' rows)'], [diff ? cents(diff) : 'none', 'difference from the warehouse', diff ? 'bad' : 'good']]);
         h += stale.length
-          ? callout('bad', 'The refund is in **' + stale[0].month + '**, outside the window. That partition was not reloaded, so the model still counts the order as completed and shows **' + money(diff.toFixed(2)) + '** too much. No refresh failed. The red month is simply old.')
+          ? callout('bad', 'The refund is in **' + stale[0].month + '**, outside the window. That partition was not reloaded, so the model still counts the order as completed and shows **' + cents(diff) + '** too much. No refresh failed. The red month is simply old.')
           : callout('good', (st.also === 'on' && st.win < 5 ? 'The source says which months hold a change, and those partitions are reloaded by name. ' : 'The window is wide enough to reach November. ') + 'The model and the warehouse agree again.');
-        h += note(' With a window of two months the refresh reloaded ' + n(R.rows_incremental_refresh) + ' rows (' + R.percent_of_full + ' % of a full refresh) and the model was ' + money(R.difference_after_incremental.toFixed(2)) + ' above the warehouse. Reloading the months with a change, ' + R.months_with_changes_today.join(' and ') + ', brought the difference to ' + R.difference_after_refreshing_changed_months + '.', ' The other settings apply the same rule to the recorded rows of each month.');
+        h += note(' With a window of two months the refresh reloaded ' + n(R.rows_incremental_refresh) + ' rows (' + R.percent_of_full + ' % of a full refresh) and the model was ' + cents(R.difference_after_incremental) + ' above the warehouse. Reloading the months with a change, ' + R.months_with_changes_today.join(' and ') + ', brought the difference to ' + R.difference_after_refreshing_changed_months + '.', ' The other settings apply the same rule to the recorded rows of each month.');
         box.innerHTML = h + '</div>';
         A.bindWidget = function (act, el) { var v = el.getAttribute('data-v'); if (act === 'rf-w') st.win = +v; if (act === 'rf-a') st.also = v; A.render(true); };
       }

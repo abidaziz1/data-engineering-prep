@@ -10,10 +10,10 @@
     w: 1000, h: 400,
     label: 'A viewer clicks on a dashboard. Every tile asks the engine of the BI tool a question. The model says how the tables join and what a measure means. The engine answers from its own copy of the data, or sends SQL to the warehouse. A refresh fills the copy.',
     nodes: [
-      { id: 'wh', x: 0, y: 150, w: 190, h: 80, t: 'Warehouse', s: 'your facts and dimensions', c: 'sf' },
+      { id: 'wh', x: 0, y: 150, w: 190, h: 80, t: 'Warehouse', s: 'facts and dimensions', c: 'sf' },
       { id: 'copy', x: 270, y: 40, w: 190, h: 80, t: 'Copy in the tool', s: 'import or extract', c: 'raw' },
       { id: 'model', x: 270, y: 270, w: 190, h: 80, t: 'Model', s: 'joins and measures', c: 'stg' },
-      { id: 'engine', x: 540, y: 150, w: 190, h: 80, t: 'Engine of the tool', s: 'one query for each tile', c: 'ing' },
+      { id: 'engine', x: 540, y: 150, w: 190, h: 80, t: 'Engine', s: 'a query for each tile', c: 'ing' },
       { id: 'dash', x: 810, y: 150, w: 190, h: 80, t: 'Dashboard', s: 'tiles and filters', c: 'mart' },
       { id: 'user', x: 810, y: 10, w: 190, h: 66, t: 'Viewer', s: 'with a role', c: 'con' }
     ],
@@ -47,10 +47,10 @@
       { id: 't2', x: 260, y: 160, w: 220, h: 78, t: 'Data source', s: 'tables, relationships', c: 'stg' },
       { id: 't3', x: 520, y: 160, w: 220, h: 78, t: 'Calculated fields', s: 'and LOD expressions', c: 'mart' },
       { id: 't4', x: 780, y: 160, w: 220, h: 78, t: 'Workbook', s: 'Tableau Server or Cloud', c: 'con' },
-      { id: 'l1', x: 0, y: 290, w: 220, h: 78, t: 'Connection', s: 'always SQL to the warehouse', c: 'src' },
+      { id: 'l1', x: 0, y: 290, w: 220, h: 78, t: 'Connection', s: 'SQL to the warehouse', c: 'src' },
       { id: 'l2', x: 260, y: 290, w: 220, h: 78, t: 'LookML views', s: 'explores and joins', c: 'stg' },
       { id: 'l3', x: 520, y: 290, w: 220, h: 78, t: 'LookML measures', s: 'in the same files', c: 'mart' },
-      { id: 'l4', x: 780, y: 290, w: 220, h: 78, t: 'Explore and dashboard', s: 'Looker', c: 'con' }
+      { id: 'l4', x: 780, y: 290, w: 220, h: 78, t: 'Explore, dashboard', s: 'Looker', c: 'con' }
     ],
     edges: [
       { id: 'p12', a: 'p1', b: 'p2', d: 'M220 69 H260', n: 1, nb: true }, { id: 'p23', a: 'p2', b: 'p3', d: 'M480 69 H520', n: 2, nb: true }, { id: 'p34', a: 'p3', b: 'p4', d: 'M740 69 H780', n: 3, nb: true },
@@ -71,12 +71,12 @@
     w: 1000, h: 420,
     label: 'The Brewline model. The order lines are the fact in the middle. Each line points to one order, one product and one day. An order points to one store. A bridge table holds the promotion codes of an order, and an order can have two.',
     nodes: [
-      { id: 'lines', x: 395, y: 165, w: 210, h: 90, t: 'fact_order_lines', s: 'one row for each product on an order', c: 'mart' },
-      { id: 'orders', x: 395, y: 10, w: 210, h: 80, t: 'fact_orders', s: 'one row for each order', c: 'mart' },
+      { id: 'lines', x: 395, y: 165, w: 210, h: 90, t: 'fact_order_lines', s: 'a product on an order', c: 'mart' },
+      { id: 'orders', x: 395, y: 10, w: 210, h: 80, t: 'fact_orders', s: 'an order', c: 'mart' },
       { id: 'store', x: 730, y: 10, w: 200, h: 80, t: 'dim_store', s: 'store, city, region', c: 'stg' },
       { id: 'product', x: 760, y: 170, w: 200, h: 80, t: 'dim_product', s: 'product, category', c: 'stg' },
       { id: 'date', x: 40, y: 170, w: 200, h: 80, t: 'dim_date', s: 'day, month, quarter', c: 'stg' },
-      { id: 'promo', x: 70, y: 10, w: 210, h: 80, t: 'bridge_order_promos', s: 'one row for each code on an order', c: 'qual' }
+      { id: 'promo', x: 30, y: 10, w: 250, h: 80, t: 'bridge_order_promos', s: 'a code on an order', c: 'qual' }
     ],
     edges: [
       { id: 'r1', a: 'lines', b: 'orders', d: 'M500 165 V90', n: 1, bx: 500, by: 128 },
@@ -102,7 +102,7 @@
       { id: 'copy', x: 330, y: 30, w: 220, h: 84, t: 'Copy in the tool', s: 'import, extract', c: 'raw' },
       { id: 'sql', x: 330, y: 266, w: 220, h: 84, t: 'Generated SQL', s: 'DirectQuery, live, Looker', c: 'ing' },
       { id: 'wh', x: 780, y: 150, w: 220, h: 80, t: 'Warehouse', s: 'compute you pay for', c: 'sf' },
-      { id: 'sched', x: 780, y: 20, w: 220, h: 66, t: 'Refresh', s: 'on a schedule or a trigger', c: 'air' }
+      { id: 'sched', x: 780, y: 20, w: 220, h: 66, t: 'Refresh', s: 'schedule or trigger', c: 'air' }
     ],
     edges: [
       { id: 'a1', a: 'dash', b: 'copy', d: 'M180 172 C260 172 250 72 330 72', n: 1, bx: 250, by: 110 },
@@ -127,10 +127,10 @@
       { id: 'load', k: 'dag', x: 0, y: 60, w: 180, h: 70, t: 'load_orders', s: 'warehouse tables', c: 'ing' },
       { id: 'test', k: 'dag', x: 215, y: 60, w: 180, h: 70, t: 'quality_checks', s: 'counts and keys', c: 'qual' },
       { id: 'call', k: 'dag', x: 430, y: 60, w: 180, h: 70, t: 'refresh_bi', s: 'call the API', c: 'air' },
-      { id: 'wait', k: 'dag', x: 645, y: 60, w: 180, h: 70, t: 'wait_for_refresh', s: 'poll the status', c: 'mon' },
-      { id: 'tool', x: 430, y: 250, w: 180, h: 80, t: 'BI tool', s: 'partitions or an extract', c: 'raw' },
+      { id: 'wait', k: 'dag', x: 645, y: 60, w: 180, h: 70, t: 'wait_refresh', s: 'poll the status', c: 'mon' },
+      { id: 'tool', x: 430, y: 250, w: 180, h: 80, t: 'BI tool', s: 'partitions, extract', c: 'raw' },
       { id: 'dash', x: 820, y: 250, w: 180, h: 80, t: 'Dashboard', s: 'new numbers', c: 'mart' },
-      { id: 'clock', x: 0, y: 250, w: 180, h: 80, t: 'Schedule at 06:00', s: 'set in the tool', c: 'src' }
+      { id: 'clock', x: 0, y: 250, w: 180, h: 80, t: 'Clock: 06:00', s: 'set in the tool', c: 'src' }
     ],
     edges: [
       { id: 'e1', a: 'load', b: 'test', d: 'M180 95 H215', n: 1, nb: true },
@@ -153,15 +153,15 @@
     w: 1000, h: 360,
     label: 'A tile asks for revenue by region and month. If an aggregate table holds that grain, the tool or the warehouse reads the small table. A question the small table cannot answer goes to the fact table.',
     nodes: [
-      { id: 'tile', x: 0, y: 140, w: 190, h: 80, t: 'Tile', s: 'a question with a grain', c: 'mart' },
-      { id: 'route', x: 290, y: 140, w: 200, h: 80, t: 'Can the small table answer?', s: 'columns and additive measures', c: 'ing' },
-      { id: 'agg', x: 620, y: 30, w: 230, h: 84, t: 'agg_day_store_category', s: 'thousands of rows', c: 'stg' },
+      { id: 'tile', x: 0, y: 140, w: 190, h: 80, t: 'Tile', s: 'a question, a grain', c: 'mart' },
+      { id: 'route', x: 270, y: 140, w: 240, h: 80, t: 'Which table?', s: 'columns, additive measures', c: 'ing' },
+      { id: 'agg', x: 620, y: 30, w: 230, h: 84, t: 'Aggregate table', s: 'day, store, category', c: 'stg' },
       { id: 'fact', x: 620, y: 246, w: 230, h: 84, t: 'fact_order_lines', s: 'every line', c: 'sf' }
     ],
     edges: [
-      { id: 'g1', a: 'tile', b: 'route', d: 'M190 180 H290', n: 1 },
-      { id: 'g2', a: 'route', b: 'agg', d: 'M490 165 C560 165 550 72 620 72', n: 2, bx: 556, by: 112 },
-      { id: 'g3', a: 'route', b: 'fact', d: 'M490 195 C560 195 550 288 620 288', n: 3, bx: 556, by: 248 }
+      { id: 'g1', a: 'tile', b: 'route', d: 'M190 180 H270', n: 1 },
+      { id: 'g2', a: 'route', b: 'agg', d: 'M510 165 C570 165 560 72 620 72', n: 2, bx: 556, by: 112 },
+      { id: 'g3', a: 'route', b: 'fact', d: 'M510 195 C570 195 560 288 620 288', n: 3, bx: 556, by: 248 }
     ],
     tags: [
       { id: 'tg_yes', x: 640, y: 126, t: 'yes: region, month, revenue', c: 'stg' },
@@ -202,9 +202,9 @@
     label: 'A model that is stored as text files can be reviewed, tested and deployed like code: a branch, a pull request, a check in CI, a deployment to a test workspace, and then production.',
     nodes: [
       { id: 'edit', x: 0, y: 120, w: 170, h: 80, t: 'Model files', s: 'TMDL, .tds, LookML', c: 'src' },
-      { id: 'pr', x: 205, y: 120, w: 170, h: 80, t: 'Pull request', s: 'a diff a person can read', c: 'ci' },
+      { id: 'pr', x: 205, y: 120, w: 170, h: 80, t: 'Pull request', s: 'a readable diff', c: 'ci' },
       { id: 'ci', x: 410, y: 120, w: 170, h: 80, t: 'Checks', s: 'parse, names, keys', c: 'qual' },
-      { id: 'test', x: 615, y: 120, w: 170, h: 80, t: 'Test workspace', s: 'dev connection', c: 'stg' },
+      { id: 'test', x: 615, y: 120, w: 170, h: 80, t: 'Test', s: 'dev connection', c: 'stg' },
       { id: 'prod', x: 820, y: 120, w: 180, h: 80, t: 'Production', s: 'prod connection', c: 'mart' }
     ],
     edges: [

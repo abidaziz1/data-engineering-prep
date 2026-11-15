@@ -29,9 +29,17 @@ a.logo:hover{background:#5B21B6}
 @media (max-width:900px){.pair{grid-template-columns:minmax(0,1fr)}}
 .pair h4{font:800 1rem Manrope,sans-serif;margin:0 0 .3rem}
 
+/* selector chips */
+.sel-chips{display:flex;flex-wrap:wrap;gap:.45rem}
+.sel-chip{background:#fff;border:3px solid var(--ink);border-radius:12px;padding:.35rem .7rem;font:600 .9rem 'IBM Plex Mono',monospace;cursor:pointer;text-align:left}
+.sel-chip:hover{background:var(--blue-bg)}
+.sel-chip.on{background:#FEF3C7;box-shadow:0 3px 0 var(--ink)}
+/* long identifiers and long paths must wrap on a phone */
+.qtext,.alertbox,.alertbox *,.prompt,.opt .ot,.callout,.clues li,.triage li,.lab-out .big b,.lab-out .big span{overflow-wrap:anywhere}
+
 /* a bar for a number: label, track, value */
 .lane{display:flex;align-items:center;gap:.6rem}
-.lane-n{min-width:11rem;font-weight:800;font-size:.95rem}
+.lane-n{flex:none;width:16rem;font-weight:800;font-size:.95rem}
 .lane-track{position:relative;flex:1;height:2rem;background:#E2E8F0;border:3px solid var(--ink);border-radius:8px;overflow:hidden}
 .lane-track i{position:absolute;left:0;top:0;bottom:0;background:#A78BFA}
 .lane-track i.bad{background:#F87171}
@@ -50,13 +58,13 @@ a.logo:hover{background:#5B21B6}
 /* who sees what */
 .userbox{display:grid;grid-template-columns:repeat(auto-fit,minmax(9.5rem,1fr));gap:.5rem}
 .sel-chip small{display:block;font:600 .78rem 'DM Sans',sans-serif}
-.tbl td.num,.tbl th.num{text-align:right;font-family:'IBM Plex Mono',monospace}
+.tbl td.rnum,.tbl th.rnum{text-align:right;font-family:'IBM Plex Mono',monospace}
 .callout code,.lab-note code{overflow-wrap:anywhere}
-.pill{display:inline-block;border:2px solid var(--ink);border-radius:999px;padding:0 .5rem;font:800 .74rem Manrope,sans-serif;letter-spacing:.04em;text-transform:uppercase;background:#fff;margin-right:.3rem}
+.pill{display:inline-block;border:2px solid var(--ink);border-radius:999px;padding:0 .5rem;font:800 .78rem Manrope,sans-serif;letter-spacing:.04em;text-transform:uppercase;background:#fff;margin-right:.3rem}
 .pill.real{background:#DBEAFE}
 @media (max-width:700px){
   .lane{flex-wrap:wrap}
-  .lane-n{min-width:0;flex:1 1 auto}
+  .lane-n{width:auto;flex:1 1 auto}
   .lane-v{min-width:0}
   .lane-track{order:3;flex:1 0 100%}
 }
