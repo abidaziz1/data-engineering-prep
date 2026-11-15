@@ -330,7 +330,7 @@ for m in refresh_set:
     con.execute("DELETE FROM imported WHERE strftime(order_date, '%Y-%m') = '" + m + "'")
     con.execute("INSERT INTO imported " + src + " WHERE strftime(l.order_date, '%Y-%m') = '" + m + "'")
 model_completed = num(one("SELECT sum(line_amount) FROM imported WHERE status = 'completed'"))
-# detect data changes: refresh only partitions whose newest updated_at moved. That finds the month of the late refund too.
+# ask the source which months hold a change made today, and refresh those partitions by name. That finds the month of the late refund too.
 detect = [p[0] for p in part if p[4] > 0]
 for m in detect:
     con.execute("DELETE FROM imported WHERE strftime(order_date, '%Y-%m') = '" + m + "'")
@@ -341,9 +341,9 @@ counts('refresh.policy', {
     'rows_full_refresh': full_rows, 'rows_incremental_refresh': inc_rows, 'percent_of_full': round(100.0 * inc_rows / full_rows, 1),
     'completed_revenue_source': completed_source, 'completed_revenue_model_after_incremental': model_completed,
     'difference_after_incremental': round(model_completed - completed_source, 2), 'late_order_month': '2025-11', 'late_order_amount': late_amount,
-    'months_with_changes_today': detect, 'completed_revenue_model_after_detect_changes': model_completed_detect,
-    'difference_after_detect_changes': round(model_completed_detect - completed_source, 2),
-    'rows_detect_changes': sum(p[1] for p in part if p[0] in detect),
+    'months_with_changes_today': detect, 'completed_revenue_model_after_refreshing_changed_months': model_completed_detect,
+    'difference_after_refreshing_changed_months': round(model_completed_detect - completed_source, 2),
+    'rows_refreshing_changed_months': sum(p[1] for p in part if p[0] in detect),
 })
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -483,7 +483,7 @@ import requests   # noqa: E402
 
 req = requests.Request('POST', 'https://api.powerbi.com/v1.0/myorg/groups/{workspaceId}/datasets/{datasetId}/refreshes',
                        headers={'Authorization': 'Bearer <token from Microsoft Entra ID>', 'Content-Type': 'application/json'},
-                       json={'type': 'full', 'commitMode': 'transactional', 'objects': [{'table': 'fact_order_lines', 'partition': '2026-03'}], 'retryCount': 2}).prepare()
+                       json={'type': 'full', 'commitMode': 'transactional', 'objects': [{'table': 'fact_order_lines', 'partition': '2025-11'}], 'retryCount': 2}).prepare()
 text('powerbi.refresh_request', '%s %s\n%s\n\n%s' % (req.method, requests.utils.unquote(req.url), '\n'.join('%s: %s' % (k, v) for k, v in req.headers.items() if k != 'Content-Length'),
                                                     json.dumps(json.loads(req.body), indent=2)))
 counts('powerbi.refresh_request', {'method': req.method, 'sent': False, 'body_keys': sorted(json.loads(req.body).keys())})

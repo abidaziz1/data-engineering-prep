@@ -108,11 +108,11 @@ LAB.real = {
    "sent": false
   },
   "refresh.policy": {
-   "completed_revenue_model_after_detect_changes": 6306314.5,
    "completed_revenue_model_after_incremental": 6306370.5,
+   "completed_revenue_model_after_refreshing_changed_months": 6306314.5,
    "completed_revenue_source": 6306314.5,
-   "difference_after_detect_changes": 0.0,
    "difference_after_incremental": 56.0,
+   "difference_after_refreshing_changed_months": 0.0,
    "keep_months": 12,
    "late_order_amount": 56.0,
    "late_order_month": "2025-11",
@@ -127,9 +127,9 @@ LAB.real = {
    ],
    "percent_of_full": 14.4,
    "refresh_months": 2,
-   "rows_detect_changes": 17843,
    "rows_full_refresh": 122196,
-   "rows_incremental_refresh": 17552
+   "rows_incremental_refresh": 17552,
+   "rows_refreshing_changed_months": 17843
   },
   "rls.summary": {
    "march_lines_all": 9285,
@@ -1949,6 +1949,6 @@ LAB.real = {
  },
  "text": {
   "lookml.broken_error": "SyntaxError: Unable to find a matching expression for '<stream end>' on line 13",
-  "powerbi.refresh_request": "POST https://api.powerbi.com/v1.0/myorg/groups/{workspaceId}/datasets/{datasetId}/refreshes\nAuthorization: Bearer <token from Microsoft Entra ID>\nContent-Type: application/json\n\n{\n  \"type\": \"full\",\n  \"commitMode\": \"transactional\",\n  \"objects\": [\n    {\n      \"table\": \"fact_order_lines\",\n      \"partition\": \"2026-03\"\n    }\n  ],\n  \"retryCount\": 2\n}"
+  "powerbi.refresh_request": "POST https://api.powerbi.com/v1.0/myorg/groups/{workspaceId}/datasets/{datasetId}/refreshes\nAuthorization: Bearer <token from Microsoft Entra ID>\nContent-Type: application/json\n\n{\n  \"type\": \"full\",\n  \"commitMode\": \"transactional\",\n  \"objects\": [\n    {\n      \"table\": \"fact_order_lines\",\n      \"partition\": \"2025-11\"\n    }\n  ],\n  \"retryCount\": 2\n}"
  }
 };
