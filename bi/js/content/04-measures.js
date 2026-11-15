@@ -112,7 +112,7 @@
       }),
 
       B.code({
-        id: 'm4-tmdl', t: 2, src: 'docs', title: 'Measures as code: a Power BI table in TMDL', file: 'fact_order_lines.tmdl', lang: 'tmdl', code: TMDL,
+        id: 'm4-tmdl', t: 3, src: 'docs', title: 'Measures as code: a Power BI table in TMDL', file: 'fact_order_lines.tmdl', lang: 'tmdl', code: TMDL,
         steps: [
           { say: 'Power BI can save a model as a project of text files. The model is written in a format called **TMDL**. I wrote this file from the documentation. No Power BI tool opened it, so read it as an illustration of the format.', lines: null },
           { say: 'A measure with its DAX. `Revenue` is the sum that you have seen.', lines: G.span(TMDL, /measure Revenue =/, /formatString/) },
@@ -137,7 +137,7 @@
       }),
 
       B.sql({
-        id: 'm4-ytd', t: 2, src: 'rec', title: 'A running total', file: 'ytd.sql', code: YTD,
+        id: 'm4-ytd', t: 3, src: 'rec', title: 'A running total', file: 'ytd.sql', code: YTD,
         result: { cols: Y.cols, rows: Y.rows, msg: Y.rows.length + ' rows' },
         steps: [
           { say: 'Revenue by month and the total for the year so far.' },
@@ -231,7 +231,7 @@
       }),
 
       B.qa({
-        id: 'qa-context', t: 2, tag: 'Power BI', secs: 75,
+        id: 'qa-context', t: 3, tag: 'Power BI', secs: 75,
         q: 'In plain words, what is filter context in DAX, and what does CALCULATE do?',
         pts: ['Filter context: the filters around a cell (slicers, rows, columns)', 'A measure is evaluated inside that context', 'CALCULATE evaluates an expression with the context changed', 'Typical use: remove a filter for a total, or add one for a segment'],
         short: 'Every cell of a report has a set of filters around it: the slicers on the page, and the row and column it sits in. That set is the filter context, and a measure is evaluated inside it. That is why one measure shows one number for North and another for South. CALCULATE evaluates an expression with that context changed: it can remove a filter, add one, or replace one. The share of revenue is the standard example. The numerator is revenue in the current context, and the denominator is revenue with the region filter removed. In SQL I would write the denominator as a window over all rows.',
