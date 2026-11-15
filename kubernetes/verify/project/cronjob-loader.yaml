@@ -1,0 +1,30 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: nightly
+spec:
+  schedule: "* * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: loader
+              image: brewline/loader:1
+              args: ["python", "load_orders.py", "/data/orders.csv"]
+              env:
+                - name: DATABASE_URL
+                  value: postgresql://postgres:brewline-dev@pg:5432/brewline
+              volumeMounts:
+                - name: orders
+                  mountPath: /data
+                  readOnly: true
+          volumes:
+            - name: orders
+              configMap:
+                name: orders

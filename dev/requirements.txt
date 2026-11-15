@@ -104,3 +104,4 @@ fastavro
 # Versions the recording was made with: DuckDB 2.0.0, tableauhyperapi 0.0.26963, lkml 1.3.7, tableaudocumentapi 0.11, Python 3.13.
 # docker/verify needs no Python package. It needs a running Docker Engine 29 with Buildx 0.38 and Compose 5.6, Docker Hub and PyPI (see docker/verify/requirements.txt).
 # Versions the recording was made with: Docker Engine 29.9.2, Buildx v0.38.1, Compose 5.6.1, python:3.13-slim (Python 3.13.18), postgres:16-alpine (16.16), psycopg 3.3.8, pandas 3.1.1.
+# kubernetes/verify needs no Python package. It needs Docker (the cluster is rancher/k3s:v1.37.2-k3s1 in a privileged container), Docker Hub for alpine:3.22, python:3.13-slim and postgres:16-alpine, and PyPI for the loader image (see kubernetes/verify/requirements.txt).

@@ -1,0 +1,14 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: deadline
+spec:
+  activeDeadlineSeconds: 5
+  backoffLimit: 6
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: slow
+          image: alpine:3.22
+          command: ["sleep", "60"]

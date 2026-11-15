@@ -1,0 +1,12 @@
+# The Kubernetes course needs no Python package: verify_k8s.py and the recorder use the standard library only.
+# What it needs on the machine:
+#   Docker (the recording was made with Engine 29.9.2) with a daemon that answers. The cluster is k3s in a privileged container named dkc-k3s,
+#   from the image rancher/k3s:v1.37.2-k3s1 (Kubernetes 1.37.2, containerd 2.3.7-k3s1). kubectl is the one inside that container, so none is needed on the host.
+#   Docker Hub for rancher/k3s, alpine:3.22, python:3.13-slim (Python 3.13.18) and postgres:16-alpine (PostgreSQL 16.16).
+#   PyPI, for psycopg[binary] 3.3.8 in the loader image (brewline/loader:1), which the recorder builds with docker build.
+#   Python 3.11 or later, Node 20 or later, and for the lab tests Playwright with Chromium (npm install playwright).
+# In the sandbox that built the course the machine had cgroup version 1, no way to set a negative oom_score_adj, and reached Docker Hub and PyPI only
+# through a proxy. Set
+#   K8S_SANDBOX=1 DK_BUILD_NETWORK=host DK_BUILD_PROXY=1
+# before capture_k8s.py or verify_k8s.py. K8S_SANDBOX writes four small settings for the cluster (see the README) and passes the proxy to it.
+# Elsewhere leave all three unset.

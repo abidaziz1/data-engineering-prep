@@ -1,0 +1,18 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: loader-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: loader-api
+  template:
+    metadata:
+      labels:
+        app: loader-api
+    spec:
+      containers:
+        - name: api
+          image: brewline/loader:1
+          command: ["python", "worker.py"]

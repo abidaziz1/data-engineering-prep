@@ -1,0 +1,13 @@
+resources:
+  - ../../base
+namePrefix: prod-
+namespace: brewline-prod
+replicas:
+  - name: loader-api
+    count: 3
+images:
+  - name: brewline/loader
+    newTag: "2"
+labels:
+  - pairs:
+      env: prod

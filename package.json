@@ -3,7 +3,7 @@
   "private": true,
   "description": "Interactive data engineering tutorials. The site itself needs no build step. These scripts only check it.",
   "scripts": {
-    "lint": "node dev/lint-content.js snowflake && node dev/lint-content.js dbt && node dev/lint-content.js snowflake-dbt && node dev/lint-content.js databricks && node dev/lint-content.js aws && node dev/lint-content.js azure && node dev/lint-content.js ai && node dev/lint-content.js gcp && node dev/lint-content.js spark && node dev/lint-content.js python && node dev/lint-content.js sql && node dev/lint-content.js airflow && node dev/lint-content.js kafka && node dev/lint-content.js flink && node dev/lint-content.js bi && node dev/lint-content.js docker",
+    "lint": "node dev/lint-content.js snowflake && node dev/lint-content.js dbt && node dev/lint-content.js snowflake-dbt && node dev/lint-content.js databricks && node dev/lint-content.js aws && node dev/lint-content.js azure && node dev/lint-content.js ai && node dev/lint-content.js gcp && node dev/lint-content.js spark && node dev/lint-content.js python && node dev/lint-content.js sql && node dev/lint-content.js airflow && node dev/lint-content.js kafka && node dev/lint-content.js flink && node dev/lint-content.js bi && node dev/lint-content.js docker && node dev/lint-content.js kubernetes",
     "lint:snowflake": "node dev/lint-content.js snowflake",
     "lint:dbt": "node dev/lint-content.js dbt",
     "smoke": "node dev/smoke.js snowflake --path all",
@@ -83,6 +83,11 @@
     "e2e:docker": "node dev/e2e.js docker && node docker/verify/e2e_labs.js",
     "stats:docker": "node dev/stats.js docker",
     "verify:docker": "python3 docker/verify/verify_dk.py",
+    "lint:kubernetes": "node dev/lint-content.js kubernetes",
+    "smoke:kubernetes": "node dev/smoke.js kubernetes --path all",
+    "e2e:kubernetes": "node dev/e2e.js kubernetes && node kubernetes/verify/e2e_labs.js",
+    "stats:kubernetes": "node dev/stats.js kubernetes",
+    "verify:kubernetes": "python3 kubernetes/verify/verify_k8s.py",
     "test:analytics": "node dev/analytics-test.js"
   },
   "devDependencies": {

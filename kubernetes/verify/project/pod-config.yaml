@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: config
+spec:
+  containers:
+    - name: app
+      image: alpine:3.22
+      command: ["sleep", "3600"]
+      envFrom:
+        - configMapRef:
+            name: settings
+      volumeMounts:
+        - name: settings
+          mountPath: /etc/settings
+  volumes:
+    - name: settings
+      configMap:
+        name: settings
