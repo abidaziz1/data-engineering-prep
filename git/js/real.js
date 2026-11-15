@@ -323,9 +323,20 @@ LAB.real = {
    ],
    "after_plain_push": []
   },
+  "tag.shallow": {
+   "commits": 1,
+   "rc": 128,
+   "tags_in_the_clone": []
+  },
   "tag.types": {
    "annotated": "tag",
    "lightweight": "commit"
+  },
+  "tag.unshallow": {
+   "rc": 0,
+   "tags_in_the_clone": [
+    "v1.1.0"
+   ]
   },
   "un.amend": {
    "commits": 3,
@@ -671,6 +682,8 @@ LAB.real = {
   "sq.graph": "* faba94e (HEAD -> main) Add and document the nightly check\n* cb8d980 Rename orders to order_count\n* 098ade4 Add the nightly DAG\n* e90f432 Add the loader and the daily model",
   "sq.merge": "Squash commit -- not updating HEAD\nAutomatic merge went well; stopped before committing as requested",
   "tag.describe": "v1.1.0-2-ga591c12",
+  "tag.describe_full": "v1.1.0-2-ga591c12",
+  "tag.describe_shallow": "fatal: No names found, cannot describe anything.",
   "tag.describe_tag": "v1.1.0-1-gbe0d38f",
   "tag.list": "v1.0.0\nv1.1.0",
   "tag.show_annotated": "tag v1.1.0\nTagger: Maya Brewer <maya@brewline.example>\nDate:   Mon Mar 2 10:51:00 2026 +0000\n\nRelease 1.1.0: the nightly DAG\n\ncommit 098ade4ef38f24d56a0cf670aa01bfbfdc5fdd62\nAuthor: Maya Brewer <maya@brewline.example>\nDate:   Mon Mar 2 10:14:00 2026 +0000\n\n    Add the nightly DAG",

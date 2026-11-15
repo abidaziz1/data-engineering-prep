@@ -712,6 +712,16 @@ def workflow():
     o2 = git(t, 'push', '--follow-tags', 'origin', 'main')
     on_remote2 = git(to, 'tag', '-l').out.split()
     C['tag.push'] = {'after_plain_push': on_remote, 'after_follow_tags': on_remote2}
+    # CI usually makes a shallow clone: describe and tag lists need the history
+    sc = pathlib.Path(BASE) / 'tags_shallow'
+    git(BASE, 'clone', '-q', '--depth', '1', 'file://' + str(to), str(sc))
+    o = git(sc, 'describe', check=False)
+    T('tag.describe_shallow', o.all)
+    C['tag.shallow'] = {'rc': o.rc, 'tags_in_the_clone': git(sc, 'tag', '-l').out.split(), 'commits': len(git(sc, 'rev-list', 'HEAD').out.split())}
+    git(sc, 'fetch', '-q', '--unshallow', '--tags')
+    o = git(sc, 'describe', check=False)
+    T('tag.describe_full', o.all)
+    C['tag.unshallow'] = {'rc': o.rc, 'tags_in_the_clone': git(sc, 'tag', '-l').out.split()}
     # fixup and autosquash
     f = mkrepo('fix')
     put_project(f)
