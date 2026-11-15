@@ -159,8 +159,8 @@
       render: function (box, s, i, A) {
         var list = attempts(), st = A.local.nt || (A.local.nt = { k: 'a4' }), cur = list.filter(function (x) { return x.k === st.k; })[0];
         var h = '<div class="lab">' + row('Attempt', chips(list.map(function (x) { return x.k; }), st.k, 'nt-k', function (k) { return list.filter(function (x) { return x.k === k; })[0].t; }));
-        h += '<div class="lab-h">' + esc(cur.t) + '</div><pre class="code" style="margin:0"><code>' + esc(cur.cmd) + '</code></pre>';
-        h += '<pre class="code" style="margin:0"><code>' + esc(cur.out) + '</code></pre>';
+        h += '<div class="lab-h">' + esc(cur.t) + '</div><pre class="lab-pre cmd">' + esc('$ ' + cur.cmd) + '</pre>';
+        h += '<pre class="lab-pre">' + esc(cur.out) + '</pre>';
         h += big([[cur.ok ? 'it works' : 'it fails', 'the result', cur.ok ? 'good' : 'bad']]);
         h += callout(cur.ok ? 'good' : 'bad', cur.why) + note(' All nine results were produced by the recorder on a real Docker Engine.');
         box.innerHTML = h + '</div>';

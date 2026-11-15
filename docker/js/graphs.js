@@ -29,7 +29,7 @@
     tags: [
       { id: 'tg_push', x: 690, y: 44, t: 'push and pull', c: 'air' },
       { id: 'tg_layer', x: 280, y: 250, t: 'unchanged steps come from the cache', c: 'raw' },
-      { id: 'tg_gone', x: 620, y: 240, t: 'rm deletes the container, not the image', c: 'qual' }
+      { id: 'tg_gone', x: 560, y: 246, t: 'rm keeps the image', c: 'qual' }
     ]
   };
 
@@ -67,11 +67,11 @@
     w: 1000, h: 400,
     label: 'The Dockerfile of the loader builds five layers. A step that did not change is taken from the cache. A step that changed runs again, and so does every step after it. A container adds a writable layer on top.',
     nodes: [
-      { id: 'l1', x: 0, y: 130, w: 150, h: 90, t: 'FROM', s: 'python:3.13-slim', c: 'src' },
+      { id: 'l1', x: 0, y: 130, w: 150, h: 90, t: 'FROM', s: 'slim base', c: 'src' },
       { id: 'l2', x: 170, y: 130, w: 150, h: 90, t: 'WORKDIR', s: '/app', c: 'stg' },
-      { id: 'l3', x: 340, y: 130, w: 150, h: 90, t: 'COPY', s: 'requirements.txt', c: 'ing' },
+      { id: 'l3', x: 340, y: 130, w: 150, h: 90, t: 'COPY', s: 'package list', c: 'ing' },
       { id: 'l4', x: 510, y: 130, w: 150, h: 90, t: 'RUN', s: 'pip install', c: 'mart' },
-      { id: 'l5', x: 680, y: 130, w: 150, h: 90, t: 'COPY', s: 'load_orders.py', c: 'ing' },
+      { id: 'l5', x: 680, y: 130, w: 150, h: 90, t: 'COPY', s: 'the code', c: 'ing' },
       { id: 'cl', x: 850, y: 130, w: 150, h: 90, t: 'Container', s: 'writable layer', c: 'air' }
     ],
     edges: [
@@ -123,7 +123,7 @@
     label: 'On a network that you create, a container asks the embedded DNS server of Docker for the address of another container by its name, and connects to it. localhost inside a container means that container. A published port makes a container reachable from the host.',
     nodes: [
       { id: 'loader', x: 0, y: 40, w: 190, h: 80, t: 'loader', s: 'a container', c: 'mart' },
-      { id: 'dns', x: 270, y: 270, w: 200, h: 80, t: 'Docker DNS', s: '127.0.0.11 in each container', c: 'sf' },
+      { id: 'dns', x: 270, y: 270, w: 200, h: 80, t: 'Docker DNS', s: '127.0.0.11', c: 'sf' },
       { id: 'db', x: 540, y: 40, w: 190, h: 80, t: 'db', s: 'Postgres, port 5432', c: 'stg' },
       { id: 'host', x: 810, y: 160, w: 190, h: 80, t: 'Your machine', s: 'psql, a BI tool', c: 'src' }
     ],
@@ -136,7 +136,7 @@
     tags: [
       { id: 'tg_name', x: 280, y: 340, t: 'only on a network you created', c: 'raw' },
       { id: 'tg_local', x: 10, y: 140, t: 'localhost is this container', c: 'qual' },
-      { id: 'tg_port', x: 760, y: 262, t: 'reachable only with -p', c: 'air' }
+      { id: 'tg_port', x: 700, y: 262, t: 'reachable only with -p', c: 'air' }
     ]
   };
 
@@ -173,20 +173,20 @@
     label: 'docker stop sends SIGTERM to the process with ID 1 in the container. A process that handles it can finish its work and exit. When the grace period ends, the engine sends SIGKILL.',
     nodes: [
       { id: 'you', x: 0, y: 150, w: 170, h: 80, t: 'docker stop', s: 'or a scheduler', c: 'src' },
-      { id: 'eng', x: 230, y: 150, w: 170, h: 80, t: 'Docker Engine', s: 'sends the signal', c: 'stg' },
+      { id: 'eng', x: 220, y: 150, w: 190, h: 80, t: 'Docker Engine', s: 'sends the signal', c: 'stg' },
       { id: 'pid1', x: 470, y: 150, w: 200, h: 80, t: 'PID 1', s: 'your job, or a shell', c: 'mart' },
       { id: 'ok', x: 760, y: 40, w: 240, h: 80, t: 'Handler runs', s: 'flush, close, exit 0', c: 'qual' },
       { id: 'kill', x: 760, y: 270, w: 240, h: 80, t: 'SIGKILL', s: 'exit code 137', c: 'mon' }
     ],
     edges: [
-      { id: 'e1', a: 'you', b: 'eng', d: 'M170 190 H230', n: 1, nb: true },
-      { id: 'e2', a: 'eng', b: 'pid1', d: 'M400 190 H470', n: 2, bx: 435, by: 190, k: 'ctl' },
+      { id: 'e1', a: 'you', b: 'eng', d: 'M170 190 H220', n: 1, nb: true },
+      { id: 'e2', a: 'eng', b: 'pid1', d: 'M410 190 H470', n: 2, bx: 440, by: 190, k: 'ctl' },
       { id: 'e3', a: 'pid1', b: 'ok', d: 'M670 170 C715 170 715 80 760 80', n: 3, bx: 715, by: 125 },
-      { id: 'e4', a: 'eng', b: 'kill', d: 'M315 230 V310 H760', n: 4, bx: 540, by: 310, k: 'ctl' }
+      { id: 'e4', a: 'eng', b: 'kill', d: 'M315 230 V310 H760', n: 4, bx: 560, by: 310, k: 'ctl' }
     ],
     tags: [
-      { id: 'tg_term', x: 400, y: 112, t: 'SIGTERM', c: 'air' },
-      { id: 'tg_grace', x: 380, y: 340, t: 'after the grace period, 10 seconds by default', c: 'qual' }
+      { id: 'tg_term', x: 395, y: 112, t: 'SIGTERM', c: 'air' },
+      { id: 'tg_grace', x: 300, y: 335, t: 'grace period: 10 s by default', c: 'qual' }
     ]
   };
 

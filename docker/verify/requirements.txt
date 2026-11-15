@@ -1,0 +1,9 @@
+# The Docker course needs no Python package: verify_dk.py and the recorder use the standard library only.
+# What it needs on the machine:
+#   Docker Engine 29.x with Buildx 0.38 and Compose 5.6 (the recording was made with Engine 29.9.2, Buildx v0.38.1 and Compose 5.6.1), a reachable daemon,
+#   and Docker Hub for the images python:3.13-slim, python:3.13, python:3.13-alpine, postgres:16-alpine, alpine:3.22, registry:2 and docker:cli.
+#   PyPI, for the pip installs inside the builds (psycopg 3.3.8, pandas 3.1.1, numpy 2.5.4, pyarrow 26.0.1, pytest 9.2.0).
+#   Python 3.11 or later, Node 20 or later, and for the lab tests Playwright with Chromium (npm install playwright).
+# In the sandbox that built the course a build could reach PyPI only over the host network and through the proxy of the sandbox. Set
+#   DK_BUILD_NETWORK=host DK_BUILD_PROXY=1
+# before capture_dk.py or verify_dk.py --recapture. Elsewhere leave both unset.

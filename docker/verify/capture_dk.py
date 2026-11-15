@@ -129,7 +129,7 @@ def basics():
 
     # what a container writes lands in its own layer
     dk('run', '--label', LABEL, '--name', 'dkc-diff', 'alpine:3.22', 'sh', '-c', 'echo x > /tmp/a.txt; rm /etc/motd; echo y >> /etc/hostname')
-    X['basics.diff'] = dk('diff', 'dkc-diff').out.strip()
+    X['basics.diff'] = '\n'.join(sorted(dk('diff', 'dkc-diff').out.strip().splitlines(), key=lambda l: l[2:]))  # the engine does not promise an order
     dk('rm', 'dkc-diff')
 
     # one image, three containers: the image is stored once

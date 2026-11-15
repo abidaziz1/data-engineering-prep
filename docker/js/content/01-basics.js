@@ -109,7 +109,7 @@
             ['docker inspect web --format \'{{.State.Status}} {{.State.ExitCode}}\'', STOP.status + ' ' + STOP.exit_code]
           ]);
         },
-        after: '`docker exec` starts a **second process** inside the same container, here `ps`, which is why it shows PID 1 (the loop) and PID 9 and 10. `docker logs` shows what the container wrote to standard output. And look at the exit code: **' + STOP.exit_code + '**. `docker stop` asked the shell politely to stop, the shell ignored it, and Docker ended it with a kill after one second. Mission 7 is about this.',
+        after: '`docker exec` starts a **second process** inside the same container, here `ps`, which is why it shows the loop as PID 1 and `ps` as one more process. `docker logs` shows what the container wrote to standard output. And look at the exit code: **' + STOP.exit_code + '**. `docker stop` asked the shell politely to stop, the shell ignored it, and Docker ended it with a kill after one second. Mission 7 is about this.',
         afterKind: 'tip',
         doneSay: 'exec adds a process. logs reads the output. stop asks, then kills.'
       }),

@@ -60,7 +60,7 @@
             ['curl -s http://127.0.0.1:5000/v2/brewline/loader/tags/list', G.text('registry.tags_1')]
           ]);
         },
-        after: 'The second push said **Layer already exists** for every layer: the two tags point to the **same image**, so there was nothing new to upload. The registry lists one repository and two tags. Layers are stored once, whatever the number of tags that use them.',
+        after: 'The push of the second tag reported every layer as **already there**: the two tags point to the **same image**, so there was nothing new to upload. The registry lists one repository and two tags. Layers are stored once, whatever the number of tags that use them.',
         afterKind: 'tip',
         doneSay: 'A tag is a pointer. Two tags can point to one image.'
       }),
@@ -207,7 +207,7 @@
           { t: 'Nothing, and it fails', fb: 'It succeeds and adds the tag.' },
           { t: 'Only the base image', fb: '' }
         ],
-        ok: 1, why: 'The recording printed "Layer already exists" for each layer. A registry stores a layer once.'
+        ok: 1, why: 'The recording reported each layer as already there. A registry stores a layer once.'
       }),
 
       B.quiz({
@@ -271,7 +271,7 @@
         id: 'qa-registry', t: 1, tag: 'Docker', secs: 60,
         q: 'What is a container registry, and how does an image get from your laptop to the machine that runs it?',
         pts: ['A server that stores images by repository, tag and digest', 'CI builds and pushes; the runner pulls', 'Layers are stored once; pushes upload only missing layers', 'Cloud registries tie access to the cloud account'],
-        short: 'A registry is a server that stores images by repository and tag, and by digest. CI builds the image and pushes it with `docker push`, and the machine that runs the job pulls it, by tag or by digest. Only layers that the registry does not have are uploaded: when I pushed a second tag of the same image in the recording, every layer said "already exists". Docker Hub is the default, and each cloud has its own, ECR, Artifact Registry and Container Registry, where access follows the cloud account. For a lab I ran the open-source registry:2 image on my machine.',
+        short: 'A registry is a server that stores images by repository and tag, and by digest. CI builds the image and pushes it with `docker push`, and the machine that runs the job pulls it, by tag or by digest. Only layers that the registry does not have are uploaded: when I pushed a second tag of the same image in the recording, every layer was reported as already there. Docker Hub is the default, and each cloud has its own, ECR, Artifact Registry and Container Registry, where access follows the cloud account. For a lab I ran the open-source registry:2 image on my machine.',
         fu: [['What is `docker save` for?', 'To move an image as a file when there is no registry, for example on a network that is cut off.'], ['What is a manifest?', 'A small document that lists the layers and the settings of an image. The digest is its hash.']],
         trap: 'Saying that the registry stores "containers". It stores images.',
         real: 'Say which registry your team uses and how access is controlled.'

@@ -68,3 +68,9 @@ a.logo:hover{background:#1450C4}
   .lane-v{min-width:0}
   .lane-track{order:3;flex:1 0 100%}
 }
+
+/* a block of terminal text inside a lab */
+.lab-pre{margin:0;background:#0F172A;color:#E2E8F0;border:3px solid var(--ink);border-radius:10px;padding:.6rem .8rem;font:600 .95rem/1.5 'IBM Plex Mono',monospace;white-space:pre-wrap;overflow-wrap:anywhere}
+.lab-pre.cmd{color:#FDE68A}
+/* long commands, paths and JSON in table cells and layer names must wrap on a phone */
+.tbl td,.tbl th,.lname,.layer-h,.note,.notes li,.callout,.lab-note{overflow-wrap:anywhere}
