@@ -377,8 +377,13 @@ def fold(key, v):
         return dict(v, max_restarts_seen=v['max_restarts_seen'] >= 1)
     if key == 'counts:job.cron':
         return dict(v, jobs_created=v['jobs_created'] >= 1)
+    if key == 'tables:fail.table':
+        # the crash row quotes the seconds at which the restarts happened, and they differ by a second or two from run to run
+        return {'cols': v['cols'], 'rows': [[r[0], re.sub(r'restarts at [\d, ]+ s', 'restarts at N s', r[1])] for r in v['rows']]}
     if isinstance(v, str):
         v = IPV4.sub('x.x.x.x', UUID.sub('<uuid>', v))
+        if key == 'text:svc.getent':
+            v = re.sub(r' +', ' ', v)          # getent pads its columns to the width of the address, and the address is masked afterwards
         if key == 'text:fail.crash_get':
             v = re.sub(r'\d+ \(\d+s ago\)', 'N (Ns ago)', v)
         if key == 'text:fail.crash_describe':
@@ -442,6 +447,13 @@ else:
         shifted = json.loads(json.dumps(REAL))
         shifted['counts']['fail.crash']['restart_times_s'] = [t + 1 for t in shifted['counts']['fail.crash']['restart_times_s']]
         expect(differing(REAL, shifted) == [], 'restart times that all moved by a second are inside the allowance', 'recapture allowances')
+        padded = json.loads(json.dumps(REAL))
+        padded['text']['svc.getent'] = padded['text']['svc.getent'].replace('      ', '    ')
+        padded['tables']['fail.table']['rows'][1][1] = re.sub(r'restarts at [\d, ]+ s', 'restarts at 2, 16, 40, 99 s', padded['tables']['fail.table']['rows'][1][1])
+        expect(differing(REAL, padded) == [], 'a getent line with other padding and other restart seconds in the table are inside the allowance', 'recapture allowances')
+        wrong = json.loads(json.dumps(REAL))
+        wrong['text']['svc.getent'] = wrong['text']['svc.getent'].replace('web.brewline', 'api.brewline')
+        control('a getent line with another name, given to the comparison', lambda: differing(REAL, wrong) == ['text:svc.getent'])
     shutil.rmtree(tmp.parent, ignore_errors=True)
 
 # ----------------------------------------------------------------------------------------------------------------------
