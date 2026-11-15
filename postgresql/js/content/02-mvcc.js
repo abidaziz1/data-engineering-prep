@@ -53,7 +53,7 @@
       }),
 
       B.cmp({
-        id: 'm2-page', t: 2, src: 'rec', title: 'Line pointers of one page, step by step',
+        id: 'm2-page', t: 3, src: 'rec', title: 'Line pointers of one page, step by step',
         say: 'This is the first page of the small table, read with pageinspect after each step. Press Next to follow the version of row 1.',
         cols: ['Step', 'Line pointer', 'State', 'xmin (X + )', 'xmax (X + )', 'ctid'],
         hl: 2,

@@ -130,7 +130,7 @@
         rows: WR.map(function (r) { return [String(r[0]), n(r[1]), r[2] + ' x']; }),
         steps: [
           { upto: 1, say: 'With only the primary key, **' + (WC.none / 1048576).toFixed(1) + ' MB** of log.' },
-          { upto: 2, say: 'Two more indexes: **' + WC.two_over_none + '**. Every insert has to write an entry in every index, and a page image the first time it touches an index page after a checkpoint.'.replace('**' + WC.two_over_none + '**', '**' + (WC.two / WC.none).toFixed(1) + ' times** the log') },
+          { upto: 2, say: 'Two more indexes: **' + (WC.two / WC.none).toFixed(1) + ' times** the log. Every insert has to write an entry in every index, and a page image the first time it touches an index page after a checkpoint.' },
           { upto: 3, say: 'Five more: **' + WC.five_over_none + ' times**. The same applies to updates of an indexed column (never HOT) and to deletes. **Every index is paid for on every write, and read by only some queries.**' }
         ]
       }),

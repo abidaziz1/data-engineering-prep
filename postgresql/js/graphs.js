@@ -25,7 +25,7 @@
       { id: 'e6', a: 'bg', b: 'df', d: 'M900 250 V130', n: 6, bx: 900, by: 190 }
     ],
     tags: [
-      { id: 'tg_proc', x: 20, y: 270, t: 'one process for each connection', c: 'ing' },
+      { id: 'tg_proc', x: 20, y: 318, t: 'one process for each connection', c: 'ing' },
       { id: 'tg_log', x: 610, y: 208, t: 'log first, pages later', c: 'air' },
       { id: 'tg_vac', x: 640, y: 352, t: 'autovacuum removes dead rows', c: 'mon' }
     ]
@@ -51,7 +51,7 @@
       { id: 'e5', a: 'vac', b: 'free', d: 'M610 305 H740', n: 5, nb: true }
     ],
     tags: [
-      { id: 'tg_dead', x: 250, y: 168, t: 'dead: no reader can see it', c: 'mon' },
+      { id: 'tg_dead', x: 20, y: 215, t: 'dead: no reader can see it', c: 'mon' },
       { id: 'tg_old', x: 20, y: 160, t: 'sees the old version', c: 'src' },
       { id: 'tg_hold', x: 20, y: 300, t: 'an open snapshot blocks vacuum', c: 'ing' }
     ]
@@ -131,7 +131,7 @@
       { id: 'e6', a: 'apr', b: 'drop', d: 'M780 235 H850', n: 4, nb: true }
     ],
     tags: [
-      { id: 'tg_pruned', x: 260, y: 20, t: 'February, April and default: pruned', c: 'mon' },
+      { id: 'tg_pruned', x: 250, y: 60, t: 'the others are pruned', c: 'mon' },
       { id: 'tg_read', x: 260, y: 300, t: 'only March is read', c: 'mart' },
       { id: 'tg_func', x: 20, y: 300, t: 'a function on the key hides it', c: 'ing' }
     ]
@@ -155,10 +155,10 @@
       { id: 'e4', a: 'wal', b: 'slot', d: 'M360 240 V300', n: 4, nb: true }
     ],
     tags: [
-      { id: 'tg_phys', x: 810, y: 48, t: 'physical: the same pages', c: 'mart' },
-      { id: 'tg_logical', x: 810, y: 308, t: 'logical: rows of chosen tables', c: 'stg' },
-      { id: 'tg_fb', x: 600, y: 130, t: 'a long read here can stop vacuum there', c: 'ing' },
-      { id: 'tg_full', x: 30, y: 340, t: 'a slot that nobody reads fills the disk', c: 'mon' }
+      { id: 'tg_phys', x: 600, y: 124, t: 'physical: the same pages', c: 'mart' },
+      { id: 'tg_logical', x: 590, y: 236, t: 'logical: rows of chosen tables', c: 'stg' },
+      { id: 'tg_fb', x: 250, y: 40, t: 'a long read can stop vacuum', c: 'ing' },
+      { id: 'tg_full', x: 20, y: 356, t: 'an unread slot fills the disk', c: 'mon' }
     ]
   };
 
@@ -184,7 +184,7 @@
     ],
     tags: [
       { id: 'tg_stop', x: 560, y: 168, t: 'recovery stops here', c: 'qual' },
-      { id: 'tg_after', x: 790, y: 168, t: 'lost with the recovery', c: 'mon' }
+      { id: 'tg_after', x: 740, y: 168, t: 'lost with the recovery', c: 'mon' }
     ]
   };
 

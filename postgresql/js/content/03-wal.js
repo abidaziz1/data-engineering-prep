@@ -68,7 +68,7 @@
       }),
 
       B.term({
-        id: 'm3-fpi', t: 2, src: 'rec', title: 'The first change after a checkpoint is the expensive one',
+        id: 'm3-fpi', t: 3, src: 'rec', title: 'The first change after a checkpoint is the expensive one',
         say: 'I ran `CHECKPOINT`, updated one row, and updated a second row on the same page.',
         lines: function () {
           return G.term([

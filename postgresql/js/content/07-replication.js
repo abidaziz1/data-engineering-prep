@@ -148,7 +148,7 @@
       }),
 
       B.term({
-        id: 'm7-decoded', t: 2, src: 'rec', title: 'What the changes look like when they are decoded',
+        id: 'm7-decoded', t: 3, src: 'rec', title: 'What the changes look like when they are decoded',
         say: 'This is what a CDC connector reads. I made a table, created a logical slot with the `test_decoding` plugin, did an insert of two rows, an update and a delete, and read the slot.',
         lines: function () {
           return G.term([['SELECT data FROM pg_logical_slot_get_changes(\'dec\', NULL, NULL);', X('repl.decoded')]]);
