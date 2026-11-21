@@ -1,0 +1,8 @@
+# What the Java course needs on the machine to record and to verify. Spark, Kafka, Flink and a database server are not needed and were not run.
+#   JDK 21 or later (javac, java, javap, jar). The recording used OpenJDK 21.0.12.1. The JDK must have the jdk.compiler module, because ParseCheck.java uses the parser of javac.
+#   Maven 3.9 (the recording used 3.9.11), and the network once for Maven Central: the first run downloads commons-csv, commons-io, commons-lang3, H2, JUnit 5, the Surefire and Shade plugins.
+#   Python 3.9 or later and Node 20 or later, and about 300 MB of free disk for the local Maven repository and the file of a million lines (it is removed at the end).
+# No Python package is needed: java/verify/verify_java.py uses the standard library.
+#   python3 java/verify/verify_java.py
+# For the lab tests (--browser) and dev/smoke.js: Playwright with Chromium (npm install playwright).
+# Nothing here needs an account, a cluster or a database server. The H2 database of the recording runs inside the process, and its jar comes from Maven Central.
