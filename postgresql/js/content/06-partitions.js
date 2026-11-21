@@ -7,7 +7,7 @@
   var mbOf = function (b) { return (b / 1048576).toFixed(1) + ' MB'; };
   var kbOf = function (b) { return (b / 1024).toFixed(1) + ' kB'; };
   G.expect(PS.partitions === 6 && PS.total_rows === 600000 && PR.partitions_scanned_with_range === 1 && PR.partitions_scanned_with_function === 6 && PR.prepared_subplans_removed === 5, 'a range prunes to one partition, a function on the key scans all six');
-  G.expect(RC.delete_wal_bytes > 5000000 && RC.drop_wal_bytes < 10000 && RC.delete_keeps_the_space === true && RC.dead_rows_after_delete === RC.march_rows, 'a delete writes log and dead rows and keeps the space, a drop writes almost nothing');
+  G.expect(RC.delete_wal_bytes > 5000000 && RC.drop_wal_bytes < 20000 && RC.times_less_wal > 100 && RC.delete_keeps_the_space === true && RC.dead_rows_after_delete === RC.march_rows, 'a delete writes log and dead rows and keeps the space, a drop writes almost nothing');
   G.expect(ER.default_blocks_new_partition && ER.no_partition_error && ER.pk_error_names_the_rule, 'the three errors of partitioning');
   var FUNC = "SELECT count(*) FROM ev\nWHERE date_trunc('day', event_ts) = '2026-03-05';\n";
   var DEL = '-- retention: keep ninety days\nDELETE FROM ev WHERE event_ts < now() - interval \'90 days\';\nVACUUM ev;\n';

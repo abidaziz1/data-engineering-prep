@@ -233,7 +233,7 @@
 
       B.quiz({
         id: 'm5-q4', t: 2,
-        q: 'A plan expects 76 rows and finds 333. What is the first thing to try?',
+        q: 'A plan expects ' + ST.estimate_before + ' rows and finds ' + ST.actual + '. What is the first thing to try?',
         opts: [
           { t: 'Check whether two filtered columns depend on each other, and create extended statistics', fb: '' },
           { t: 'Add an index on every column of the filter', fb: 'The estimate is wrong because of the statistics, and an index does not change the estimate.' },
@@ -342,7 +342,7 @@
 
       B.qa({
         id: 'qa-stats', t: 2, tag: 'PostgreSQL', secs: 60,
-        q: 'The planner estimates 76 rows and gets 333. What do you do?',
+        q: 'The planner estimates ' + ST.estimate_before + ' rows and gets ' + ST.actual + '. What do you do?',
         pts: ['The statistics do not match the data', 'ANALYZE and a higher statistics target', 'Extended statistics for dependent columns', 'Check again in the plan'],
         short: 'I first run `ANALYZE`, in case the statistics are stale, for example right after a big load. If the estimate is still wrong, the planner is probably missing something about the data. For one column with a skewed distribution I raise the statistics target of that column. For **two columns that depend on each other** I create **extended statistics**, such as `CREATE STATISTICS ... (mcv) ON status, store_id`, because by default the planner multiplies the selectivities as if the columns were independent. In my recording open orders came from three of twelve stores, the estimate was 76 against 333 real rows, and after the statistics and an ANALYZE it was 293. In a single-table filter that changes little, but in a join a wrong estimate picks the wrong join order and can turn seconds into minutes, so it is the first thing I check in a slow plan.',
         fu: [['What kinds exist?', '`dependencies`, `ndistinct` and `mcv`. From documentation, I ran mcv.'], ['Is it automatic?', 'No. You create the statistics object, and ANALYZE fills it.']],

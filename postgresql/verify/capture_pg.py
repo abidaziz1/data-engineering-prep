@@ -1077,6 +1077,8 @@ def backup():
     if ROOT_USER_FIX:
         subprocess.check_call(['chown', '-R', 'postgres:postgres', str(rest.data)])
     rest.start()
+    wait_for(lambda: not rest.one('SELECT pg_is_in_recovery()'), timeout=60, step=0.5)      # the server accepts connections while it is still recovering
+    rest.sql('CHECKPOINT')      # the control file takes the new timeline from the checkpoint after promotion
     log = clean_log(rest.log())
     keep = [re.sub(r'[0-9A-F]{24}', '<wal file>', l) for l in log.split('\n') if re.search(r'starting point-in-time|restored log file|recovery stopping|redo done|selected new timeline|archive recovery complete|ready to accept|consistent recovery state|starting archive recovery', l)]
     T('bk.pitr_log', '\n'.join(keep))
@@ -1084,6 +1086,7 @@ def backup():
     n = rest.one('SELECT count(*) FROM daily_totals') if has else 0
     later = rest.one("SELECT to_regclass('after_mistake') IS NOT NULL")
     tl = rest.one('SELECT timeline_id FROM pg_control_checkpoint()')
+    wait_for(lambda: any(f.endswith('.history') for f in os.listdir(rest.data / 'pg_wal')), timeout=30, step=0.5)      # the promotion writes it, and the first query can come before
     hist = sorted(f for f in os.listdir(rest.data / 'pg_wal') if f.endswith('.history'))
     ht = re.sub(r'0/[0-9A-F]+', '0/<lsn>', (rest.data / 'pg_wal' / hist[-1]).read_text().strip()) if hist else ''
     T('bk.history_file', ht)

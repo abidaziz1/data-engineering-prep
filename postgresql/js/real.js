@@ -11,7 +11,7 @@ LAB.real = {
    "has_backup_label": true,
    "label_says_streamed": true,
    "manifest_present": true,
-   "size_mb": 81.5,
+   "size_mb": 81.8,
    "verified_ok": true
   },
   "bk.checksums": {
@@ -64,7 +64,7 @@ LAB.real = {
    "btree_over_brin": 915,
    "btree_plan_uses_index": true,
    "correlation_in_order": 1.0,
-   "correlation_shuffled": -0.0,
+   "correlation_shuffled": -0.001,
    "recheck_removed": 16000,
    "rows_matching": 28800,
    "shuffled_plan_first_line": "->  Seq Scan on events_shuffled  (cost=0.00..29336.00 rows=2",
@@ -98,9 +98,9 @@ LAB.real = {
   },
   "idx.stats": {
    "actual": 333,
-   "estimate_after": 293,
-   "estimate_before": 76,
-   "off_by_before": 4.4
+   "estimate_after": 333,
+   "estimate_before": 83,
+   "off_by_before": 4.0
   },
   "idx.table": {
    "rows": 1000000,
@@ -113,12 +113,12 @@ LAB.real = {
   "idx.write_cost": {
    "five": 28017048,
    "five_over_none": 3.1,
-   "none": 8929728,
-   "two": 15852728
+   "none": 8929792,
+   "two": 15852704
   },
   "load.analyze": {
    "actual": 167,
-   "estimate_after": 44,
+   "estimate_after": 42,
    "estimate_before": 2,
    "reltuples_after": 100000.0,
    "reltuples_before": -1.0
@@ -137,7 +137,7 @@ LAB.real = {
    "COPY": {
     "commits": 1,
     "rows": 20000,
-    "seconds": 0.03,
+    "seconds": 0.04,
     "statements": 1,
     "wal_bytes": 2574500,
     "wal_flushes": 1
@@ -145,7 +145,7 @@ LAB.real = {
    "INSERT of 1,000 rows at a time, one transaction": {
     "commits": 1,
     "rows": 20000,
-    "seconds": 0.27,
+    "seconds": 0.34,
     "statements": 20,
     "wal_bytes": 3481693,
     "wal_flushes": 3
@@ -153,15 +153,15 @@ LAB.real = {
    "one INSERT per row, all in one transaction": {
     "commits": 1,
     "rows": 20000,
-    "seconds": 1.25,
+    "seconds": 1.58,
     "statements": 20000,
     "wal_bytes": 3481634,
-    "wal_flushes": 7
+    "wal_flushes": 9
    },
    "one INSERT per row, each committed": {
     "commits": 20000,
     "rows": 20000,
-    "seconds": 4.51,
+    "seconds": 5.35,
     "statements": 20000,
     "wal_bytes": 4161600,
     "wal_flushes": 20000
@@ -170,8 +170,8 @@ LAB.real = {
   "load.methods_summary": {
    "all_loaded_20000": true,
    "autocommit_flushes": 20000,
-   "copy_faster_than_autocommit_by_at_least": 150,
-   "one_tx_flushes": 7
+   "copy_faster_than_autocommit_by_at_least": 133,
+   "one_tx_flushes": 9
   },
   "load.upsert": {
    "changed_status": "INSERT 0 1000",
@@ -325,13 +325,13 @@ LAB.real = {
    "april_rows": 99693,
    "dead_rows_after_delete": 103015,
    "delete_keeps_the_space": true,
-   "delete_wal_bytes": 5785840,
+   "delete_wal_bytes": 5785824,
    "delete_wal_mb": 5.5,
-   "drop_wal_bytes": 7536,
+   "drop_wal_bytes": 12408,
    "march_rows": 103015,
    "march_size_after_delete": 6209536,
    "march_size_before": 6209536,
-   "times_less_wal": 768
+   "times_less_wal": 466
   },
   "part.sizes": {
    "partitions": 6,
@@ -484,19 +484,19 @@ LAB.real = {
   "wal.commits": {
    "off": {
     "commits": 1000,
-    "seconds": 0.08,
+    "seconds": 0.1,
     "wal_records": 2000,
     "wal_syncs": 3
    },
    "on": {
     "commits": 1000,
-    "seconds": 0.34,
+    "seconds": 0.36,
     "wal_records": 2000,
     "wal_syncs": 1000
    },
    "one_transaction": {
     "commits": 1,
-    "seconds": 0.06,
+    "seconds": 0.07,
     "wal_syncs": 1
    }
   },
@@ -533,7 +533,7 @@ LAB.real = {
   "block_size": 8192,
   "os": "Linux x86_64",
   "postgres": "16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)",
-  "recorded_on": "2026-11-15",
+  "recorded_on": "2026-11-21",
   "version_line": "PostgreSQL 16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)"
  },
  "tables": {
@@ -656,12 +656,12 @@ LAB.real = {
    "rows": [
     [
      0,
-     8929728,
+     8929792,
      1.0
     ],
     [
      2,
-     15852728,
+     15852704,
      1.8
     ],
     [
@@ -716,7 +716,7 @@ LAB.real = {
      20000,
      4161600,
      20000,
-     4.51,
+     5.35,
      20000
     ],
     [
@@ -724,8 +724,8 @@ LAB.real = {
      20000,
      1,
      3481634,
-     7,
-     1.25,
+     9,
+     1.58,
      20000
     ],
     [
@@ -734,7 +734,7 @@ LAB.real = {
      1,
      3481693,
      3,
-     0.27,
+     0.34,
      20000
     ],
     [
@@ -743,7 +743,7 @@ LAB.real = {
      1,
      2574500,
      1,
-     0.03,
+     0.04,
      20000
     ]
    ]
@@ -1406,14 +1406,14 @@ LAB.real = {
     [
      "DELETE ... WHERE event_ts in March",
      103015,
-     5785840,
+     5785824,
      6209536,
      103015
     ],
     [
      "DETACH PARTITION and DROP TABLE for April",
      99693,
-     7536,
+     12408,
      0,
      0
     ]
@@ -1681,19 +1681,19 @@ LAB.real = {
      "one transaction each, synchronous_commit on",
      1000,
      1000,
-     0.34
+     0.36
     ],
     [
      "one transaction each, synchronous_commit off",
      1000,
      3,
-     0.08
+     0.1
     ],
     [
      "all in one transaction",
      1,
      1,
-     0.06
+     0.07
     ]
    ]
   },
@@ -1813,21 +1813,21 @@ LAB.real = {
   "bk.verify_bad": "pg_verifybackup <damaged copy>\npg_verifybackup: error: \"base/N/N\" has size 8445953 on disk but size 8445952 in the manifest",
   "bk.verify_ok": "pg_verifybackup <backup directory>\nbackup successfully verified",
   "crash.log": "LOG:  database system was interrupted; last known up at <time>\nLOG:  database system was not properly shut down; automatic recovery in progress\nLOG:  redo starts at 0/<lsn>\nLOG:  redo done at 0/<lsn>\nLOG:  checkpoint starting: end-of-recovery immediate wait\nLOG:  database system is ready to accept connections",
-  "idx.plan_brin": "SELECT count(*) FROM events WHERE event_ts >= '2026-01-10 00:00:00+00' AND event_ts < '2026-01-11 00:00:00+00'\nAggregate  (cost=14911.77..14911.78 rows=1 width=8) (actual rows=1 loops=1)\n  ->  Bitmap Heap Scan on events  (cost=19.21..14840.92 rows=28340 width=0) (actual rows=28800 loops=1)\n        Recheck Cond: ((event_ts >= '2026-01-10 00:00:00+00'::timestamp with time zone) AND (event_ts < '2026-01-11 00:00:00+00'::timestamp with time zone))\n        Rows Removed by Index Recheck: 16000\n        Heap Blocks: lossy=640\n        ->  Bitmap Index Scan on events_ts_brin  (cost=0.00..12.13 rows=35714 width=0) (actual rows=6400 loops=1)\n              Index Cond: ((event_ts >= '2026-01-10 00:00:00+00'::timestamp with time zone) AND (event_ts < '2026-01-11 00:00:00+00'::timestamp with time zone))",
-  "idx.plan_brin_shuffled": "SELECT count(*) FROM events_shuffled WHERE event_ts >= '2026-01-10 00:00:00+00' AND event_ts < '2026-01-11 00:00:00+00'\nAggregate  (cost=29406.43..29406.44 rows=1 width=8) (actual rows=1 loops=1)\n  ->  Seq Scan on events_shuffled  (cost=0.00..29336.00 rows=28172 width=0) (actual rows=28800 loops=1)\n        Filter: ((event_ts >= '2026-01-10 00:00:00+00'::timestamp with time zone) AND (event_ts < '2026-01-11 00:00:00+00'::timestamp with time zone))\n        Rows Removed by Filter: 971200",
-  "idx.plan_btree": "SELECT count(*) FROM events WHERE event_ts >= '2026-01-10 00:00:00+00' AND event_ts < '2026-01-11 00:00:00+00'\nAggregate  (cost=1358.08..1358.09 rows=1 width=8) (actual rows=1 loops=1)\n  ->  Index Only Scan using events_ts_btree on events  (cost=0.42..1287.23 rows=28340 width=0) (actual rows=28800 loops=1)\n        Index Cond: ((event_ts >= '2026-01-10 00:00:00+00'::timestamp with time zone) AND (event_ts < '2026-01-11 00:00:00+00'::timestamp with time zone))\n        Heap Fetches: 28800",
-  "idx.plan_gin": "SELECT count(*) FROM events WHERE payload @> '{\"country\": \"DE\", \"device\": \"ios\", \"n\": 42}'\nAggregate  (cost=13873.54..13873.55 rows=1 width=8) (actual rows=1 loops=1)\n  ->  Bitmap Heap Scan on events  (cost=143.53..13848.81 rows=9889 width=0) (actual rows=3334 loops=1)\n        Recheck Cond: (payload @> '{\"n\": 42, \"device\": \"ios\", \"country\": \"DE\"}'::jsonb)\n        Heap Blocks: exact=3334\n        ->  Bitmap Index Scan on events_payload_gin  (cost=0.00..141.06 rows=9889 width=0) (actual rows=3334 loops=1)\n              Index Cond: (payload @> '{\"n\": 42, \"device\": \"ios\", \"country\": \"DE\"}'::jsonb)",
+  "idx.plan_brin": "SELECT count(*) FROM events WHERE event_ts >= '2026-01-10 00:00:00+00' AND event_ts < '2026-01-11 00:00:00+00'\nAggregate  (cost=14913.04..14913.05 rows=1 width=8) (actual rows=1 loops=1)\n  ->  Bitmap Heap Scan on events  (cost=19.33..14841.04 rows=28800 width=0) (actual rows=28800 loops=1)\n        Recheck Cond: ((event_ts >= '2026-01-10 00:00:00+00'::timestamp with time zone) AND (event_ts < '2026-01-11 00:00:00+00'::timestamp with time zone))\n        Rows Removed by Index Recheck: 16000\n        Heap Blocks: lossy=640\n        ->  Bitmap Index Scan on events_ts_brin  (cost=0.00..12.13 rows=35714 width=0) (actual rows=6400 loops=1)\n              Index Cond: ((event_ts >= '2026-01-10 00:00:00+00'::timestamp with time zone) AND (event_ts < '2026-01-11 00:00:00+00'::timestamp with time zone))",
+  "idx.plan_brin_shuffled": "SELECT count(*) FROM events_shuffled WHERE event_ts >= '2026-01-10 00:00:00+00' AND event_ts < '2026-01-11 00:00:00+00'\nAggregate  (cost=29408.00..29408.01 rows=1 width=8) (actual rows=1 loops=1)\n  ->  Seq Scan on events_shuffled  (cost=0.00..29336.00 rows=28800 width=0) (actual rows=28800 loops=1)\n        Filter: ((event_ts >= '2026-01-10 00:00:00+00'::timestamp with time zone) AND (event_ts < '2026-01-11 00:00:00+00'::timestamp with time zone))\n        Rows Removed by Filter: 971200",
+  "idx.plan_btree": "SELECT count(*) FROM events WHERE event_ts >= '2026-01-10 00:00:00+00' AND event_ts < '2026-01-11 00:00:00+00'\nAggregate  (cost=1383.42..1383.43 rows=1 width=8) (actual rows=1 loops=1)\n  ->  Index Only Scan using events_ts_btree on events  (cost=0.42..1311.42 rows=28800 width=0) (actual rows=28800 loops=1)\n        Index Cond: ((event_ts >= '2026-01-10 00:00:00+00'::timestamp with time zone) AND (event_ts < '2026-01-11 00:00:00+00'::timestamp with time zone))\n        Heap Fetches: 28800",
+  "idx.plan_gin": "SELECT count(*) FROM events WHERE payload @> '{\"country\": \"DE\", \"device\": \"ios\", \"n\": 42}'\nAggregate  (cost=8007.69..8007.70 rows=1 width=8) (actual rows=1 loops=1)\n  ->  Bitmap Heap Scan on events  (cost=109.12..7999.35 rows=3334 width=0) (actual rows=3334 loops=1)\n        Recheck Cond: (payload @> '{\"n\": 42, \"device\": \"ios\", \"country\": \"DE\"}'::jsonb)\n        Heap Blocks: exact=3334\n        ->  Bitmap Index Scan on events_payload_gin  (cost=0.00..108.28 rows=3334 width=0) (actual rows=3334 loops=1)\n              Index Cond: (payload @> '{\"n\": 42, \"device\": \"ios\", \"country\": \"DE\"}'::jsonb)",
   "idx.plan_ios_after": "VACUUM events;\nSELECT user_id, event_ts FROM events WHERE user_id = 12345\nIndex Only Scan using events_user_inc on events  (cost=0.42..4.78 rows=20 width=12) (actual rows=20 loops=1)\n  Index Cond: (user_id = 12345)\n  Heap Fetches: 0",
   "idx.plan_ios_before": "SELECT user_id, event_ts FROM events WHERE user_id = 12345\nBitmap Heap Scan on events  (cost=4.58..82.59 rows=20 width=12) (actual rows=20 loops=1)\n  Recheck Cond: (user_id = 12345)\n  Heap Blocks: exact=20\n  ->  Bitmap Index Scan on events_user_inc  (cost=0.00..4.58 rows=20 width=0) (actual rows=20 loops=1)\n        Index Cond: (user_id = 12345)",
   "idx.plan_jsonb_arrow": "SELECT count(*) FROM events WHERE payload->>'n' = '42'\nAggregate  (cost=29298.50..29298.51 rows=1 width=8) (actual rows=1 loops=1)\n  ->  Seq Scan on events  (cost=0.00..29286.00 rows=5000 width=0) (actual rows=10000 loops=1)\n        Filter: ((payload ->> 'n'::text) = '42'::text)\n        Rows Removed by Filter: 990000",
   "idx.plan_jsonb_expr": "CREATE INDEX events_n_expr ON events ((payload->>'n'));\nSELECT count(*) FROM events WHERE payload->>'n' = '42'\nAggregate  (cost=10201.71..10201.72 rows=1 width=8) (actual rows=1 loops=1)\n  ->  Bitmap Heap Scan on events  (cost=59.17..10189.21 rows=5000 width=0) (actual rows=10000 loops=1)\n        Recheck Cond: ((payload ->> 'n'::text) = '42'::text)\n        Heap Blocks: exact=10000\n        ->  Bitmap Index Scan on events_n_expr  (cost=0.00..57.92 rows=5000 width=0) (actual rows=10000 loops=1)\n              Index Cond: ((payload ->> 'n'::text) = '42'::text)",
   "idx.plan_partial": "SELECT count(*) FROM events WHERE kind = 'purchase' AND user_id = 7919\nAggregate  (cost=8.17..8.18 rows=1 width=8) (actual rows=1 loops=1)\n  ->  Index Only Scan using events_user_purchase on events  (cost=0.15..8.17 rows=1 width=0) (actual rows=0 loops=1)\n        Index Cond: (user_id = 7919)\n        Heap Fetches: 0",
-  "idx.plan_stats_after": "CREATE STATISTICS orders_open_store (mcv) ON status, store_id FROM orders;\nANALYZE orders;\nSELECT count(*) FROM orders WHERE status = 'open' AND store_id = 5\nAggregate  (cost=5062.73..5062.74 rows=1 width=8) (actual rows=1 loops=1)\n  ->  Seq Scan on orders  (cost=0.00..5062.00 rows=293 width=0) (actual rows=333 loops=1)\n        Filter: ((status = 'open'::text) AND (store_id = 5))\n        Rows Removed by Filter: 199667",
-  "idx.plan_stats_before": "SELECT count(*) FROM orders WHERE status = 'open' AND store_id = 5\nAggregate  (cost=5062.19..5062.20 rows=1 width=8) (actual rows=1 loops=1)\n  ->  Seq Scan on orders  (cost=0.00..5062.00 rows=76 width=0) (actual rows=333 loops=1)\n        Filter: ((status = 'open'::text) AND (store_id = 5))\n        Rows Removed by Filter: 199667",
+  "idx.plan_stats_after": "CREATE STATISTICS orders_open_store (mcv) ON status, store_id FROM orders;\nANALYZE orders;\nSELECT count(*) FROM orders WHERE status = 'open' AND store_id = 5\nAggregate  (cost=5062.83..5062.84 rows=1 width=8) (actual rows=1 loops=1)\n  ->  Seq Scan on orders  (cost=0.00..5062.00 rows=333 width=0) (actual rows=333 loops=1)\n        Filter: ((status = 'open'::text) AND (store_id = 5))\n        Rows Removed by Filter: 199667",
+  "idx.plan_stats_before": "SELECT count(*) FROM orders WHERE status = 'open' AND store_id = 5\nAggregate  (cost=5062.21..5062.22 rows=1 width=8) (actual rows=1 loops=1)\n  ->  Seq Scan on orders  (cost=0.00..5062.00 rows=83 width=0) (actual rows=333 loops=1)\n        Filter: ((status = 'open'::text) AND (store_id = 5))\n        Rows Removed by Filter: 199667",
   "load.copy_error": "COPY orders_c FROM STDIN (FORMAT csv)   -- six rows, the fifth has \"abc\" as customer_id\ninvalid input syntax for type integer: \"abc\"\nCONTEXT:  COPY orders_c, line 5, column customer_id: \"abc\"",
   "load.dup_merge": "MERGE   -- the same staging table\nMERGE command cannot affect row a second time\nHINT:  Ensure that not more than one source row matches any one target row.",
   "load.dup_upsert": "INSERT ... ON CONFLICT DO UPDATE   -- the staging table holds order 1 twice\nON CONFLICT DO UPDATE command cannot affect row a second time\nHINT:  Ensure that no rows proposed for insertion within the same command have duplicate constrained values.",
-  "load.plan_after_analyze": "SELECT count(*) FROM orders_s WHERE status = 'open' AND store_id = 5\nAggregate  (cost=2548.11..2548.12 rows=1 width=8) (actual rows=1 loops=1)\n  ->  Seq Scan on orders_s  (cost=0.00..2548.00 rows=44 width=0) (actual rows=167 loops=1)\n        Filter: ((status = 'open'::text) AND (store_id = 5))\n        Rows Removed by Filter: 99833",
+  "load.plan_after_analyze": "SELECT count(*) FROM orders_s WHERE status = 'open' AND store_id = 5\nAggregate  (cost=2548.11..2548.12 rows=1 width=8) (actual rows=1 loops=1)\n  ->  Seq Scan on orders_s  (cost=0.00..2548.00 rows=42 width=0) (actual rows=167 loops=1)\n        Filter: ((status = 'open'::text) AND (store_id = 5))\n        Rows Removed by Filter: 99833",
   "load.plan_before_analyze": "SELECT count(*) FROM orders_s WHERE status = 'open' AND store_id = 5\nAggregate  (cost=2006.93..2006.94 rows=1 width=8) (actual rows=1 loops=1)\n  ->  Seq Scan on orders_s  (cost=0.00..2006.92 rows=2 width=0) (actual rows=167 loops=1)\n        Filter: ((status = 'open'::text) AND (store_id = 5))\n        Rows Removed by Filter: 99833",
   "mvcc.vacuum_held": "VACUUM (VERBOSE) held   -- while another session has an open snapshot\ntuples: 0 removed, 30000 remain, 10000 are dead but not yet removable\n\nVACUUM (VERBOSE) held   -- after that session committed\ntuples: 10000 removed, 16748 remain, 0 are dead but not yet removable",
   "ops.hba_results": "analyst, no password:       connection to server at \"127.0.0.1\", port <port> failed: fe_sendauth: no password supplied\nanalyst, wrong password:    connection to server at \"127.0.0.1\", port <port> failed: FATAL:  password authentication failed for user \"analyst\"\nanalyst, right password:    connected\netl, any password:          connection to server at \"127.0.0.1\", port <port> failed: FATAL:  no pg_hba.conf entry for host \"127.0.0.1\", user \"etl\", database \"postgres\", no encryption",
@@ -1840,11 +1840,11 @@ LAB.real = {
   "part.pk_error": "CREATE TABLE ev_bad (event_id bigint PRIMARY KEY, event_ts timestamptz NOT NULL) PARTITION BY RANGE (event_ts);\nunique constraint on partitioned table must include all partitioning columns\nDETAIL:  PRIMARY KEY constraint on table \"ev_bad\" lacks column \"event_ts\" which is part of the partition key.",
   "part.plan_not_pruned": "SELECT count(*) FROM ev WHERE date_trunc('day', event_ts) = '2026-03-05 00:00:00+00'\nAggregate  (cost=13438.49..13438.50 rows=1 width=8) (actual rows=1 loops=1)\n  ->  Append  (cost=0.00..13431.00 rows=2999 width=0) (actual rows=3323 loops=1)\n        ->  Seq Scan on ev_2026_01 ev_1  (cost=0.00..2303.22 rows=515 width=0) (actual rows=0 loops=1)\n              Filter: (date_trunc('day'::text, event_ts) = '2026-03-05 00:00:00+00'::timestamp with time zone)\n              Rows Removed by Filter: 103015\n        ->  Seq Scan on ev_2026_02 ev_2  (cost=0.00..2080.69 rows=465 width=0) (actual rows=0 loops=1)\n              Filter: (date_trunc('day'::text, event_ts) = '2026-03-05 00:00:00+00'::timestamp with time zone)\n              Rows Removed by Filter: 93046\n        ->  Seq Scan on ev_2026_03 ev_3  (cost=0.00..2303.22 rows=515 width=0) (actual rows=3323 loops=1)\n              Filter: (date_trunc('day'::text, event_ts) = '2026-03-05 00:00:00+00'::timestamp with time zone)\n              Rows Removed by Filter: 99692\n        ->  Seq Scan on ev_2026_04 ev_4  (cost=0.00..2229.39 rows=498 width=0) (actual rows=0 loops=1)\n              Filter: (date_trunc('day'::text, event_ts) = '2026-03-05 00:00:00+00'::timestamp with time zone)\n              Rows Removed by Filter: 99693\n        ->  Seq Scan on ev_2026_05 ev_5  (cost=0.00..2303.22 rows=515 width=0) (actual rows=0 loops=1)\n              Filter: (date_trunc('day'::text, event_ts) = '2026-03-05 00:00:00+00'::timestamp with time zone)\n              Rows Removed by Filter: 103015\n        ->  Seq Scan on ev_2026_06 ev_6  (cost=0.00..2196.24 rows=491 width=0) (actual rows=0 loops=1)\n              Filter: (date_trunc('day'::text, event_ts) = '2026-03-05 00:00:00+00'::timestamp with time zone)\n              Rows Removed by Filter: 98216",
   "part.plan_prepared": "PREPARE q (timestamptz, timestamptz) AS SELECT count(*) FROM ev WHERE event_ts >= $1 AND event_ts < $2;\nEXECUTE q('2026-03-05', '2026-03-06');\nAggregate  (cost=13438.49..13438.50 rows=1 width=8) (actual rows=1 loops=1)\n  ->  Append  (cost=0.00..13431.00 rows=2999 width=0) (actual rows=3323 loops=1)\n        Subplans Removed: 5\n        ->  Seq Scan on ev_2026_03 ev_1  (cost=0.00..2303.22 rows=515 width=0) (actual rows=3323 loops=1)\n              Filter: ((event_ts >= $1) AND (event_ts < $2))\n              Rows Removed by Filter: 99692",
-  "part.plan_pruned": "SELECT count(*) FROM ev WHERE event_ts >= '2026-03-05 00:00:00+00' AND event_ts < '2026-03-06 00:00:00+00'\nAggregate  (cost=2311.70..2311.72 rows=1 width=8) (actual rows=1 loops=1)\n  ->  Seq Scan on ev_2026_03 ev  (cost=0.00..2303.22 rows=3392 width=0) (actual rows=3323 loops=1)\n        Filter: ((event_ts >= '2026-03-05 00:00:00+00'::timestamp with time zone) AND (event_ts < '2026-03-06 00:00:00+00'::timestamp with time zone))\n        Rows Removed by Filter: 99692",
+  "part.plan_pruned": "SELECT count(*) FROM ev WHERE event_ts >= '2026-03-05 00:00:00+00' AND event_ts < '2026-03-06 00:00:00+00'\nAggregate  (cost=2311.53..2311.54 rows=1 width=8) (actual rows=1 loops=1)\n  ->  Seq Scan on ev_2026_03 ev  (cost=0.00..2303.22 rows=3323 width=0) (actual rows=3323 loops=1)\n        Filter: ((event_ts >= '2026-03-05 00:00:00+00'::timestamp with time zone) AND (event_ts < '2026-03-06 00:00:00+00'::timestamp with time zone))\n        Rows Removed by Filter: 99692",
   "repl.conflict_off": "-- standby: hot_standby_feedback = off, a repeatable read transaction is open on big_off\n-- primary: DELETE of 10,000 rows, then VACUUM (VERBOSE) big_off\ntuples: 10000 removed, 10000 remain, 0 are dead but not yet removable\n-- standby, next statement of the open transaction:\nterminating connection due to conflict with recovery\nDETAIL:  User query might have needed to see row versions that must be removed.\nHINT:  In a moment you should be able to reconnect to the database and repeat your command.",
   "repl.conflict_on": "-- standby: hot_standby_feedback = on, a repeatable read transaction is open on big_on\n-- primary: DELETE of 10,000 rows, then VACUUM (VERBOSE) big_on\ntuples: 0 removed, 20000 remain, 10000 are dead but not yet removable\n-- standby, next statement of the open transaction:\nthe query ran: 20000 rows",
   "repl.decoded": "BEGIN <xid>\ntable public.d: INSERT: id[integer]:1 v[text]:'a'\ntable public.d: INSERT: id[integer]:2 v[text]:'b'\nCOMMIT <xid>\nBEGIN <xid>\ntable public.d: UPDATE: id[integer]:1 v[text]:'c'\nCOMMIT <xid>\nBEGIN <xid>\ntable public.d: DELETE: id[integer]:2\nCOMMIT <xid>",
-  "repl.missing_column": "ALTER TABLE orders ADD COLUMN channel text;   -- on the publisher only\n-- the subscriber log:\nERROR:  logical replication target relation \"public.orders\" is missing replicated column: \"channel\"",
+  "repl.missing_column": "ALTER TABLE orders ADD COLUMN channel text;   -- on the publisher only\n-- the subscriber log:\nERROR:  logical replication target relation \"public.orders\" is missing replicated column: \"channel\"\nLOG:  background worker \"logical replication worker\" (PID <pid>) exited with exit code 1",
   "repl.no_identity": "UPDATE tags SET label = 'b';   -- tags has no primary key and is in a publication\ncannot update table \"tags\" because it does not have a replica identity and publishes updates\nHINT:  To enable updating the table, set REPLICA IDENTITY using ALTER TABLE.",
   "repl.slot_lost": "SELECT * FROM pg_logical_slot_get_changes('forgotten', NULL, NULL);\ncan no longer get changes from replication slot \"forgotten\"\nDETAIL:  This slot has been invalidated because it exceeded the maximum reserved size.",
   "repl.standby_write": "INSERT INTO orders VALUES (-1, 1, 1, now(), 1, 'x', 'y');   -- on the standby\ncannot execute INSERT in a read-only transaction",

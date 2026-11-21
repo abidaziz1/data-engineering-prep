@@ -179,6 +179,7 @@ def mask(s):
     s = re.sub(r'\b20\d\d-\d\d-\d\d \d\d:\d\d:\d\d\.\d+ [A-Z]{3,4}\b', '<time>', s)
     s = re.sub(r'(?<=up at )20\d\d-\d\d-\d\d \d\d:\d\d:\d\d( [A-Z]{3,4})?', '<time>', s)
     s = re.sub(r'\[\d+\]', '[pid]', s)
+    s = re.sub(r'\(PID \d+\)', '(PID <pid>)', s)
     s = re.sub(r'\b0/[0-9A-F]{6,8}\b', '0/<lsn>', s)
     s = re.sub(r'port=\d{4,5}', 'port=<port>', s)
     s = re.sub(r'127\.0\.0\.1\(\d+\)', '127.0.0.1(<port>)', s)

@@ -1,0 +1,11 @@
+# What the PostgreSQL course needs on the machine to record and to verify.
+#   The PostgreSQL 16 server programs (the recording used 16.15 from the Ubuntu 24.04 package: postgresql-16, with the contrib modules and pg_stat_statements).
+#   They are found under /usr/lib/postgresql/<version>/bin. The recorder starts throwaway servers on 127.0.0.1 in one temporary folder under /var/tmp,
+#   as the postgres user (it uses runuser when it runs as root), and removes the folder at the end. No setting of the machine is read or changed.
+#   Python 3.11 or later, Node 20 or later, and about 1 GB of free disk for the recording (the largest table is 112 MB).
+# Python packages, installed with
+#   python3 -m pip install psycopg[binary] pglast
+#   psycopg   the client of the recorder and of the verifier (the recording used psycopg 3)
+#   pglast    the parser of PostgreSQL itself, used by verify_pg.py to parse every SQL text of the lessons. Without it that check says so and is skipped.
+# For the lab tests (--browser) and dev/smoke.js: Playwright with Chromium (npm install playwright).
+# Nothing here needs the network, a cloud account or a managed service. Amazon RDS and Aurora, Cloud SQL, Azure Database for PostgreSQL and PgBouncer did not run.
