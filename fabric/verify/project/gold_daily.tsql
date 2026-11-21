@@ -1,0 +1,10 @@
+-- The same gold table made in a Fabric Warehouse with T-SQL. The lakehouse is read through a three-part name, in the same workspace.
+CREATE TABLE dbo.gold_daily_revenue
+AS
+SELECT CAST(order_ts AS date) AS order_date,
+       store_id,
+       COUNT(*)               AS orders,
+       SUM(amount)            AS revenue
+FROM BrewlineLakehouse.dbo.silver_orders
+WHERE status <> 'REFUNDED'
+GROUP BY CAST(order_ts AS date), store_id;

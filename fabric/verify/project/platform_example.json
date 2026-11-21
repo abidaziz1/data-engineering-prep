@@ -1,0 +1,11 @@
+{
+  "metadata": {
+    "type": "Notebook",
+    "displayName": "02_silver",
+    "description": "Clean one day of bronze and merge it into silver"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "00000000-0000-0000-0000-000000000000"
+  }
+}

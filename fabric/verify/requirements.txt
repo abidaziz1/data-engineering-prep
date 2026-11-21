@@ -1,0 +1,14 @@
+# What the Microsoft Fabric course needs on the machine to record and to verify. Fabric itself is not needed and was not run.
+#   Java 17 or 21 (the recording used OpenJDK 21.0.12), Python 3.11 or later, Node 20 or later, and about 1 GB of free disk.
+#   The first run downloads the Delta Lake jar from Maven Central (Ivy), so it needs the network once.
+# Python packages, in their own environment (pandas 3 does not work with this PySpark):
+#   python3 -m venv fabric-env && fabric-env/bin/pip install -r fabric/verify/requirements.txt
+#   fabric-env/bin/python fabric/verify/verify_fabric.py
+pyspark==4.0.1
+delta-spark==4.0.1
+pandas<3
+numpy
+pyarrow
+sqlglot
+# For the lab tests (--browser) and dev/smoke.js: Playwright with Chromium (npm install playwright).
+# Nothing here needs a Microsoft account, a capacity or a workspace. The lakehouse of the recording is a folder.
