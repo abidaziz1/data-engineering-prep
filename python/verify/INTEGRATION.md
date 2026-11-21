@@ -19,7 +19,7 @@ In the plan list, turn the chip green: change `<li>Python</li>` to `<li class="r
 ## b. Root README: the table row
 
 ```
-| **Python for data engineers**: from a script to a pipeline you can trust | Ready. 15 missions, 3 paths, every output recorded from real runs of Python 3.14, pandas, Polars, DuckDB, SQLite, pydantic, pytest and uv | [`python/`](python/README.md) |
+| **Python for data engineers**: from a script to a pipeline you can trust | Ready. 15 missions, 3 paths, every output recorded from real runs of Python 3.14, pandas, Polars, DuckDB, SQLite, pydantic, pytest and uv | [`python/`](../README.md) |
 ```
 
 ## c. Root README: the layout block

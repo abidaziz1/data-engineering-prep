@@ -23,28 +23,9 @@
     </section>
 
     <h2>Ready now</h2>
+    <nav class="jump" aria-label="Jump to a topic"><a href="#cloud">Cloud</a><a href="#warehouse">Lakehouse and warehouse</a><a href="#engines">Big data engines</a><a href="#pipelines">Pipelines</a><a href="#ai">AI</a><a href="#languages">Languages</a><a href="#infrastructure">Infrastructure</a><a href="#databases">Databases</a><a href="#bi">Business intelligence</a><a href="#projects">Projects</a><a href="#plan">The plan</a></nav>
+    <h3 class="cat" id="cloud">Cloud</h3>
     <div class="grid">
-      <a class="card ready" href="snowflake/index.html">
-        <span class="chip ready">Ready</span>
-        <h3>Snowflake: from first query to production</h3>
-        <p>Architecture, warehouses and cost, loading, SQL and JSON, Time Travel, pipelines, performance, security, sharing, code and AI, delivery. Thirteen missions with a boss round.</p>
-        <div class="paths"><span>Junior path about 2.5 hours</span><span>Senior path about 5 hours</span></div>
-        <span class="go">Open the tutorial &rarr;</span>
-      </a>
-      <a class="card ready" href="dbt/index.html">
-        <span class="chip ready">Ready</span>
-        <h3>dbt: from first model to production</h3>
-        <p>Models and ref(), sources and staging, marts and grain, Jinja and macros, tests, incremental models, snapshots, docs and contracts, run time, CI and slim CI, Python models. Thirteen missions with a boss round. Every output was recorded from a real run.</p>
-        <div class="paths"><span>Junior path about 4 hours</span><span>Senior path about 6 hours</span></div>
-        <span class="go">Open the tutorial &rarr;</span>
-      </a>
-      <a class="card ready" href="databricks/index.html">
-        <span class="chip ready">Ready</span>
-        <h3>Databricks and Azure Databricks</h3>
-        <p>The platform and what it costs, how Spark runs a query, Delta Lake and its log, small files and skipping, bronze, silver and gold pipelines, streaming and late data, Unity Catalog, declarative pipelines, jobs, tuning, bundles and CI, Azure identity and network. Thirteen missions with a boss round. The Spark and Delta Lake output was recorded from the real open-source engines.</p>
-        <div class="paths"><span>Junior path about 4 hours</span><span>Senior path about 7.5 hours</span></div>
-        <span class="go">Open the tutorial &rarr;</span>
-      </a>
       <a class="card ready" href="aws/index.html">
         <span class="chip ready">Ready</span>
         <h3>AWS for data engineers</h3>
@@ -59,13 +40,6 @@
         <div class="paths"><span>Junior path about 7.5 hours</span><span>Senior path about 12 hours</span></div>
         <span class="go">Open the tutorial &rarr;</span>
       </a>
-      <a class="card ready" href="ai/index.html">
-        <span class="chip ready">Ready</span>
-        <h3>AI data engineering and agentic AI</h3>
-        <p>How a PDF becomes text and where a table breaks, chunks and what a cut costs, embeddings and vector indexes (HNSW, IVF, pgvector), RAG pipelines you can run twice, retrieval scores and release gates, model APIs and their retries, agent loops with LangGraph, the Model Context Protocol, a guard for text-to-SQL, approvals, traces, prompt injection, releases and data for fine-tuning. Fifteen missions with a boss round. The parsers, indexes, SDK retries, agent graphs and guards were run for real. No language model was used, and the screens say what is a stand-in.</p>
-        <div class="paths"><span>Junior path about 8.5 hours</span><span>Senior path about 11.5 hours</span></div>
-        <span class="go">Open the tutorial &rarr;</span>
-      </a>
       <a class="card ready" href="gcp/index.html">
         <span class="chip ready">Ready</span>
         <h3>Google Cloud for data engineers</h3>
@@ -73,6 +47,40 @@
         <div class="paths"><span>Junior path about 7 hours</span><span>Senior path about 11.5 hours</span></div>
         <span class="go">Open the tutorial &rarr;</span>
       </a>
+    </div>
+    <h3 class="cat" id="warehouse">Lakehouse and warehouse</h3>
+    <div class="grid">
+      <a class="card ready" href="databricks/index.html">
+        <span class="chip ready">Ready</span>
+        <h3>Databricks and Azure Databricks</h3>
+        <p>The platform and what it costs, how Spark runs a query, Delta Lake and its log, small files and skipping, bronze, silver and gold pipelines, streaming and late data, Unity Catalog, declarative pipelines, jobs, tuning, bundles and CI, Azure identity and network. Thirteen missions with a boss round. The Spark and Delta Lake output was recorded from the real open-source engines.</p>
+        <div class="paths"><span>Junior path about 4 hours</span><span>Senior path about 7.5 hours</span></div>
+        <span class="go">Open the tutorial &rarr;</span>
+      </a>
+      <a class="card ready" href="snowflake/index.html">
+        <span class="chip ready">Ready</span>
+        <h3>Snowflake: from first query to production</h3>
+        <p>Architecture, warehouses and cost, loading, SQL and JSON, Time Travel, pipelines, performance, security, sharing, code and AI, delivery. Thirteen missions with a boss round.</p>
+        <div class="paths"><span>Junior path about 2.5 hours</span><span>Senior path about 5 hours</span></div>
+        <span class="go">Open the tutorial &rarr;</span>
+      </a>
+      <a class="card ready" href="fabric/index.html">
+        <span class="chip ready">Ready</span>
+        <h3>Microsoft Fabric for data engineers</h3>
+        <p>How a capacity, a workspace and OneLake fit together, why a lakehouse table is a folder of Parquet files with a log, a notebook that lands a daily file and merges it so that a rerun changes nothing, schema rules, constraints, OPTIMIZE and VACUUM, partitions, the SQL analytics endpoint and the Warehouse, pipelines and retries, Direct Lake, capacity throttling, and Git and deployment. Ten missions with a boss round and six labs. The table behavior was recorded on real Apache Spark 4.0 and Delta Lake 4.0. Fabric itself did not run, and every screen says what is recorded and what is from documentation.</p>
+        <div class="paths"><span>Junior path about 3.5 hours</span><span>Senior path about 5 hours</span></div>
+        <span class="go">Open the tutorial &rarr;</span>
+      </a>
+      <a class="card ready" href="snowflake-dbt/index.html">
+        <span class="chip ready">Ready</span>
+        <h3>Snowflake and dbt together</h3>
+        <p>Sign-in and roles, the statements dbt sends, transient tables and grants, incremental merges and microbatch, warehouses and cost, dev and CI with clones, masking, Time Travel and recovery, production runs. Ten missions with a boss round. Every statement was recorded from dbt-snowflake.</p>
+        <div class="paths"><span>Junior path about 2.5 hours</span><span>Senior path about 4 hours</span></div>
+        <span class="go">Open the tutorial &rarr;</span>
+      </a>
+    </div>
+    <h3 class="cat" id="engines">Big data engines</h3>
+    <div class="grid">
       <a class="card ready" href="spark/index.html">
         <span class="chip ready">Ready</span>
         <h3>Apache Spark for data engineers</h3>
@@ -94,13 +102,43 @@
         <div class="paths"><span>Junior path about 3.5 hours</span><span>Senior path about 5 hours</span></div>
         <span class="go">Open the tutorial &rarr;</span>
       </a>
-      <a class="card ready" href="snowflake-dbt/index.html">
+    </div>
+    <h3 class="cat" id="pipelines">Pipelines</h3>
+    <div class="grid">
+      <a class="card ready" href="dbt/index.html">
         <span class="chip ready">Ready</span>
-        <h3>Snowflake and dbt together</h3>
-        <p>Sign-in and roles, the statements dbt sends, transient tables and grants, incremental merges and microbatch, warehouses and cost, dev and CI with clones, masking, Time Travel and recovery, production runs. Ten missions with a boss round. Every statement was recorded from dbt-snowflake.</p>
-        <div class="paths"><span>Junior path about 2.5 hours</span><span>Senior path about 4 hours</span></div>
+        <h3>dbt: from first model to production</h3>
+        <p>Models and ref(), sources and staging, marts and grain, Jinja and macros, tests, incremental models, snapshots, docs and contracts, run time, CI and slim CI, Python models. Thirteen missions with a boss round. Every output was recorded from a real run.</p>
+        <div class="paths"><span>Junior path about 4 hours</span><span>Senior path about 6 hours</span></div>
         <span class="go">Open the tutorial &rarr;</span>
       </a>
+      <a class="card ready" href="airflow/index.html">
+        <span class="chip ready">Ready</span>
+        <h3>Apache Airflow for data engineers</h3>
+        <p>What Airflow is and is not for, DAGs and tasks, schedules, logical dates and data intervals, idempotent and incremental loads, XCom, mapping and assets, retries and trigger rules, sensors and the triggerer, pools and executors, connections and secrets, tests and CI, operating Airflow and upgrading to 3, deploying, and patterns. Fourteen missions with a boss round. The output was recorded from Apache Airflow 3.4.0 running on one machine with the scheduler, DAG processor, API server, triggerer, LocalExecutor and SQLite. Other executors, managed services and production databases are from documentation, and every screen says which.</p>
+        <div class="paths"><span>Junior path about 4.5 hours</span><span>Senior path about 8 hours</span></div>
+        <span class="go">Open the tutorial &rarr;</span>
+      </a>
+      <a class="card ready" href="ingestion/index.html">
+        <span class="chip ready">Ready</span>
+        <h3>Data ingestion for data engineers</h3>
+        <p>What a connector does and leaves behind, append, replace and merge, an incremental load with a cursor and the delete and the silent update that it cannot see, schema drift and contracts, the protocol of an Airbyte connector and its sync modes, what Fivetran adds to your tables and how a usage-based bill is counted, and how to run it for real, recorded on dlt and the Airbyte Faker connector. Fivetran, the Airbyte platform and log-based capture did not run, and the screens say so.</p>
+        <div class="paths"><span>Junior path about 2 hours</span><span>Senior path about 3 hours</span></div>
+        <span class="go">Open the tutorial &rarr;</span>
+      </a>
+    </div>
+    <h3 class="cat" id="ai">AI</h3>
+    <div class="grid">
+      <a class="card ready" href="ai/index.html">
+        <span class="chip ready">Ready</span>
+        <h3>AI data engineering and agentic AI</h3>
+        <p>How a PDF becomes text and where a table breaks, chunks and what a cut costs, embeddings and vector indexes (HNSW, IVF, pgvector), RAG pipelines you can run twice, retrieval scores and release gates, model APIs and their retries, agent loops with LangGraph, the Model Context Protocol, a guard for text-to-SQL, approvals, traces, prompt injection, releases and data for fine-tuning. Fifteen missions with a boss round. The parsers, indexes, SDK retries, agent graphs and guards were run for real. No language model was used, and the screens say what is a stand-in.</p>
+        <div class="paths"><span>Junior path about 8.5 hours</span><span>Senior path about 11.5 hours</span></div>
+        <span class="go">Open the tutorial &rarr;</span>
+      </a>
+    </div>
+    <h3 class="cat" id="languages">Languages</h3>
+    <div class="grid">
       <a class="card ready" href="python/index.html">
         <span class="chip ready">Ready</span>
         <h3>Python for data engineers</h3>
@@ -115,20 +153,23 @@
         <div class="paths"><span>Junior path about 7.5 hours</span><span>Senior path about 14 hours</span></div>
         <span class="go">Open the tutorial &rarr;</span>
       </a>
-      <a class="card ready" href="airflow/index.html">
+      <a class="card ready" href="scala/index.html">
         <span class="chip ready">Ready</span>
-        <h3>Apache Airflow for data engineers</h3>
-        <p>What Airflow is and is not for, DAGs and tasks, schedules, logical dates and data intervals, idempotent and incremental loads, XCom, mapping and assets, retries and trigger rules, sensors and the triggerer, pools and executors, connections and secrets, tests and CI, operating Airflow and upgrading to 3, deploying, and patterns. Fourteen missions with a boss round. The output was recorded from Apache Airflow 3.4.0 running on one machine with the scheduler, DAG processor, API server, triggerer, LocalExecutor and SQLite. Other executors, managed services and production databases are from documentation, and every screen says which.</p>
-        <div class="paths"><span>Junior path about 4.5 hours</span><span>Senior path about 8 hours</span></div>
+        <h3>Scala for data engineers</h3>
+        <p>How a .scala file becomes a running job, the Scala version that breaks a library at run time while the compiler stays quiet, case classes and the match that the compiler checks, collections that are strict or lazy and the traps that corrupt a total, errors as values so that a job collects every bad row, and typed Spark with a closure that cannot be sent to the executors, recorded on the real Scala 2.13 compiler, the JDK and a local Spark 4.0.1. Scala 3, sbt and a cluster did not run, and the screens say so.</p>
+        <div class="paths"><span>Junior path about 2 hours</span><span>Senior path about 3 hours</span></div>
         <span class="go">Open the tutorial &rarr;</span>
       </a>
-      <a class="card ready" href="bi/index.html">
+      <a class="card ready" href="java/index.html">
         <span class="chip ready">Ready</span>
-        <h3>BI dashboards for data engineers: Power BI, Tableau and Looker</h3>
-        <p>The part of business intelligence that lands on a data engineer. What a click on a dashboard asks of your tables, the model and its grain, joins that double a total without an error, import, live query and extract, measures and the semantic layer, refresh and incremental refresh, aggregate tables, row-level security, and the model as files with review and deployment. Nine missions with a boss round and six labs. One short course covers the three tools, and chart design is left to analyst courses. The queries ran on DuckDB, the extracts on the Tableau Hyper engine and the LookML files in a parser. Power BI, Tableau and Looker themselves did not run, and each screen says what is recorded and what is from documentation.</p>
-        <div class="paths"><span>Junior path about 2.5 hours</span><span>Senior path about 3.5 hours</span></div>
+        <h3>Java for data engineers</h3>
+        <p>How a .java file becomes a running job, Maven and the version conflict that breaks a jar on a server, records and lazy streams, money in cents and time across a clock change, an OutOfMemoryError and a file bigger than the heap, JDBC with batches, a transaction and a value that is never glued into SQL, a race on a shared counter, virtual threads and what cannot be serialized, recorded on the real JDK 21 and Maven 3.9 with an in-memory H2 database. Spark, Kafka and a database server did not run, and the screens say so.</p>
+        <div class="paths"><span>Junior path about 3 hours</span><span>Senior path about 4 hours</span></div>
         <span class="go">Open the tutorial &rarr;</span>
       </a>
+    </div>
+    <h3 class="cat" id="infrastructure">Infrastructure</h3>
+    <div class="grid">
       <a class="card ready" href="docker/index.html">
         <span class="chip ready">Ready</span>
         <h3>Docker for data engineers</h3>
@@ -150,32 +191,14 @@
         <div class="paths"><span>Junior path about 3 hours</span><span>Senior path about 4.5 hours</span></div>
         <span class="go">Open the tutorial &rarr;</span>
       </a>
+    </div>
+    <h3 class="cat" id="databases">Databases</h3>
+    <div class="grid">
       <a class="card ready" href="postgresql/index.html">
         <span class="chip ready">Ready</span>
         <h3>PostgreSQL for data engineers</h3>
         <p>How a server keeps your data and how you keep the server healthy: row versions, vacuum and bloat, the write-ahead log and crash recovery, loading with COPY and upserts, indexes, statistics and plans on a table of a million rows, monthly partitions and retention, replication and change data capture, backups and point-in-time recovery, and roles, settings and a pooler. Ten missions with a boss round and six labs. Every output was recorded from a real PostgreSQL 16.15 server on made-up Brewline data. Managed services, PgBouncer and PostgreSQL 17 features did not run, and every screen says what is recorded and what is from documentation.</p>
         <div class="paths"><span>Junior path about 4 hours</span><span>Senior path about 7 hours</span></div>
-        <span class="go">Open the tutorial &rarr;</span>
-      </a>
-      <a class="card ready" href="fabric/index.html">
-        <span class="chip ready">Ready</span>
-        <h3>Microsoft Fabric for data engineers</h3>
-        <p>How a capacity, a workspace and OneLake fit together, why a lakehouse table is a folder of Parquet files with a log, a notebook that lands a daily file and merges it so that a rerun changes nothing, schema rules, constraints, OPTIMIZE and VACUUM, partitions, the SQL analytics endpoint and the Warehouse, pipelines and retries, Direct Lake, capacity throttling, and Git and deployment. Ten missions with a boss round and six labs. The table behavior was recorded on real Apache Spark 4.0 and Delta Lake 4.0. Fabric itself did not run, and every screen says what is recorded and what is from documentation.</p>
-        <div class="paths"><span>Junior path about 3.5 hours</span><span>Senior path about 5 hours</span></div>
-        <span class="go">Open the tutorial &rarr;</span>
-      </a>
-      <a class="card ready" href="java/index.html">
-        <span class="chip ready">Ready</span>
-        <h3>Java for data engineers</h3>
-        <p>How a .java file becomes a running job, Maven and the version conflict that breaks a jar on a server, records and lazy streams, money in cents and time across a clock change, an OutOfMemoryError and a file bigger than the heap, JDBC with batches, a transaction and a value that is never glued into SQL, a race on a shared counter, virtual threads and what cannot be serialized, recorded on the real JDK 21 and Maven 3.9 with an in-memory H2 database. Spark, Kafka and a database server did not run, and the screens say so.</p>
-        <div class="paths"><span>Junior path about 3 hours</span><span>Senior path about 4 hours</span></div>
-        <span class="go">Open the tutorial &rarr;</span>
-      </a>
-      <a class="card ready" href="scala/index.html">
-        <span class="chip ready">Ready</span>
-        <h3>Scala for data engineers</h3>
-        <p>How a .scala file becomes a running job, the Scala version that breaks a library at run time while the compiler stays quiet, case classes and the match that the compiler checks, collections that are strict or lazy and the traps that corrupt a total, errors as values so that a job collects every bad row, and typed Spark with a closure that cannot be sent to the executors, recorded on the real Scala 2.13 compiler, the JDK and a local Spark 4.0.1. Scala 3, sbt and a cluster did not run, and the screens say so.</p>
-        <div class="paths"><span>Junior path about 2 hours</span><span>Senior path about 3 hours</span></div>
         <span class="go">Open the tutorial &rarr;</span>
       </a>
       <a class="card ready" href="mongodb/index.html">
@@ -185,16 +208,19 @@
         <div class="paths"><span>Junior path about 2 hours</span><span>Senior path about 2.5 hours</span></div>
         <span class="go">Open the tutorial &rarr;</span>
       </a>
-      <a class="card ready" href="ingestion/index.html">
+    </div>
+    <h3 class="cat" id="bi">Business intelligence</h3>
+    <div class="grid">
+      <a class="card ready" href="bi/index.html">
         <span class="chip ready">Ready</span>
-        <h3>Data ingestion for data engineers</h3>
-        <p>What a connector does and leaves behind, append, replace and merge, an incremental load with a cursor and the delete and the silent update that it cannot see, schema drift and contracts, the protocol of an Airbyte connector and its sync modes, what Fivetran adds to your tables and how a usage-based bill is counted, and how to run it for real, recorded on dlt and the Airbyte Faker connector. Fivetran, the Airbyte platform and log-based capture did not run, and the screens say so.</p>
-        <div class="paths"><span>Junior path about 2 hours</span><span>Senior path about 3 hours</span></div>
+        <h3>BI dashboards for data engineers: Power BI, Tableau and Looker</h3>
+        <p>The part of business intelligence that lands on a data engineer. What a click on a dashboard asks of your tables, the model and its grain, joins that double a total without an error, import, live query and extract, measures and the semantic layer, refresh and incremental refresh, aggregate tables, row-level security, and the model as files with review and deployment. Nine missions with a boss round and six labs. One short course covers the three tools, and chart design is left to analyst courses. The queries ran on DuckDB, the extracts on the Tableau Hyper engine and the LookML files in a parser. Power BI, Tableau and Looker themselves did not run, and each screen says what is recorded and what is from documentation.</p>
+        <div class="paths"><span>Junior path about 2.5 hours</span><span>Senior path about 3.5 hours</span></div>
         <span class="go">Open the tutorial &rarr;</span>
       </a>
     </div>
 
-    <h2>Projects</h2>
+    <h2 id="projects">Projects</h2>
     <p class="note">A project is a whole pipeline, small enough to read in an afternoon and honest enough to defend in a review. Each one is a real repository in the <code>projects</code> folder, with a walkthrough that shows every file and every run, a drill for every way that it broke, and the interview talk track. They combine the tools that senior postings name most often.</p>
     <div class="grid">
       <a class="card ready" href="project-elt/index.html">
@@ -211,9 +237,16 @@
         <div class="paths"><span>Walkthrough about 70 minutes</span><span>Senior path about 100 minutes</span></div>
         <span class="go">Open the project &rarr;</span>
       </a>
+      <a class="card ready" href="project-cdc/index.html">
+        <span class="chip ready">Ready</span>
+        <h3>Project: the Brewline CDC pipeline</h3>
+        <p>Change data capture from PostgreSQL to Delta Lake: Debezium reads the log into Kafka, a Spark stream keeps every message and merges it into a table by log position, a delete is a mark that an old message cannot undo, and a gate compares every row with the database. Real services on one machine, with a batch that ran twice and a connector that was stopped. A cluster, a schema registry and a CI run did not run, and the screens say so.</p>
+        <div class="paths"><span>Walkthrough about 75 minutes</span><span>Senior path about 105 minutes</span></div>
+        <span class="go">Open the project &rarr;</span>
+      </a>
     </div>
 
-    <h2>The plan, one tool at a time</h2>
+    <h2 id="plan">The plan, one tool at a time</h2>
     <div class="plan">
       <div><h3>Cloud</h3><ul><li class="ready">AWS</li><li class="ready">Azure</li><li class="ready">GCP</li></ul></div>
       <div><h3>Lakehouse and warehouse</h3><ul><li class="ready">Databricks</li><li class="ready">Snowflake</li><li class="ready">Microsoft Fabric</li></ul></div>

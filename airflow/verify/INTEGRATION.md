@@ -27,7 +27,7 @@ The plan chips near the bottom of the hub list Airflow under Pipelines. Mark it 
 ## (b) Root README table row
 
 ```markdown
-| **Apache Airflow for data engineers**: from a first DAG to a pipeline you can operate | Ready. 14 missions, 3 paths, runs, states, schedules, logs and test results recorded from Apache Airflow 3.4.0 on one machine | [`airflow/`](airflow/README.md) |
+| **Apache Airflow for data engineers**: from a first DAG to a pipeline you can operate | Ready. 14 missions, 3 paths, runs, states, schedules, logs and test results recorded from Apache Airflow 3.4.0 on one machine | [`airflow/`](../README.md) |
 ```
 
 In the "Planned, one tutorial each" row, remove `Airflow, ` from the list.

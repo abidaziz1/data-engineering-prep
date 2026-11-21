@@ -19,7 +19,7 @@ Paste after the card of the last ready tutorial, inside `<div class="cards">`. T
 ## (b) Root README table row
 
 ```markdown
-| **SQL for data engineers**: from SELECT to a plan you can read | Ready. 14 missions, 3 paths, 41 coding rounds, query results, plans and two-session transcripts recorded on DuckDB, PostgreSQL 16 and SQLite. Seven other dialects are translated, not run, and the screens say so | [`sql/`](sql/README.md) |
+| **SQL for data engineers**: from SELECT to a plan you can read | Ready. 14 missions, 3 paths, 41 coding rounds, query results, plans and two-session transcripts recorded on DuckDB, PostgreSQL 16 and SQLite. Seven other dialects are translated, not run, and the screens say so | [`sql/`](../README.md) |
 ```
 
 ## (c) Root README layout block

@@ -73,6 +73,19 @@ mark{background:#FDE047;color:var(--ink);padding:0 .2em;border-radius:4px}
 .bubble code{font-size:.85em}
 .hintbox{font-size:.88rem;font-weight:700;color:var(--ink2);background:#FEF3C7;border:2.5px dashed var(--amber);border-radius:12px;padding:.5rem .8rem}
 .hintbox::before{content:"Do this: ";font-weight:800;color:var(--amber)}
+/* a short window: the coach is smaller, so that more of the speech is in view without scrolling */
+@media (min-width:981px) and (max-height:860px){.coach-photo{width:6.5rem;height:6.5rem}.coach-name small{display:none}.coachcol{gap:.6rem}}
+/* a long speech scrolls inside its column: a fade at the bottom says that there is more, and goes away at the end (browsers without scroll timelines show no fade) */
+@media (min-width:981px){
+  .coachcol::after{content:"";position:sticky;bottom:0;flex:none;height:2.6rem;margin-top:-2.6rem;background:linear-gradient(rgba(234,240,248,0),var(--bg) 85%);pointer-events:none;opacity:0}
+}
+@supports (animation-timeline:scroll()){
+  @media (min-width:981px){
+    .coachcol{scroll-timeline:--coachcol block}
+    .coachcol::after{animation:coachfade linear both;animation-timeline:--coachcol}
+    @keyframes coachfade{0%,92%{opacity:1}100%{opacity:0}}
+  }
+}
 
 .stage-head{display:flex;align-items:center;gap:.8rem;margin-bottom:.9rem;flex-wrap:wrap}
 .stage-head h1{font-size:1.75rem;line-height:1.15}
