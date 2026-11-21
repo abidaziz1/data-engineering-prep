@@ -1,0 +1,17 @@
+# What the CDC project walkthrough needs on the machine to record and to verify. A cluster, a schema registry, cloud storage, a Docker build and a CI run are not needed and were not run.
+# The checks (bug hunts, tests, lab data, lint) need only one Python environment and a Java:
+#   CDC_PY   Python 3.9 or later with pyspark, delta-spark and pytest. The recording used pyspark 4.0.1 and delta-spark 4.0.1 on Python 3.13, with Java 21 (Java 17 or later is needed).
+#       python3 -m venv spark-env && spark-env/bin/pip install "pyspark==4.0.1" "delta-spark==4.0.1" pytest
+#   The Delta Lake jar is fetched once from Maven Central the first time that a Spark session starts, and so are the Kafka and PostgreSQL packages of Spark in a recording.
+# The recording (capture_cdc.py, and verify_cdc.py --recapture) also needs the real services, on one machine, without containers:
+#   PG_BIN            the folder of the PostgreSQL 16 server programs (default /usr/lib/postgresql/16/bin). The recording used 16.15. Run as root, the programs are started as the user postgres.
+#   KAFKA_HOME        an unpacked Apache Kafka binary distribution: kafka_2.13-4.4.0.tgz from downloads.apache.org/kafka/. The recording used 4.4.0.
+#   DEBEZIUM_PLUGINS  the folder that holds debezium-connector-postgres/: debezium-connector-postgres-3.7.1.Final-plugin.tar.gz from Maven Central, unpacked.
+#   Set all four before a recording:
+#       export CDC_PY=$PWD/spark-env/bin/python KAFKA_HOME=$PWD/kafka_2.13-4.4.0 DEBEZIUM_PLUGINS=$PWD/plugins
+#   Node 20 or later, and about 1 GB of free disk. The recording takes about 10 minutes: pytest and five stages of the pipeline on one machine.
+pyspark==4.0.1
+delta-spark==4.0.1
+pytest
+# For the lab test (--browser) and dev/smoke.js: Playwright with Chromium (npm install playwright).
+# Nothing here needs an account. The network is used to fetch packages and the two downloads above.

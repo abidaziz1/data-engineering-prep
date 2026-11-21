@@ -1,0 +1,14 @@
+# NOT RUN in the walkthrough that describes this project: it is a sketch of the checks that a pull request would run.
+name: ci
+on: [pull_request]
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '21' }
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: pip install -r requirements.txt
+      - run: python -m pytest -q tests

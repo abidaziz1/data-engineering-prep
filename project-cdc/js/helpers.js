@@ -1,0 +1,85 @@
+/* Look-ups into js/real.js, the file that project-cdc/verify/capture_cdc.py writes: what the real CDC project printed and did when it ran.
+   Each look-up throws when a key is missing, so a typo in a lesson fails the lint instead of showing "undefined".
+   A cluster, cloud storage, a schema registry and a Docker build did not run. */
+(function () {
+  var LAB = (window.LAB = window.LAB || {});
+  var R = LAB.real;
+  if (!R) throw new Error('js/real.js is missing. Run: python3 project-cdc/verify/capture_cdc.py');
+
+  function need(bag, key, what) {
+    var v = bag && bag[key];
+    if (v === undefined || v === null) throw new Error('real.js has no ' + what + ' "' + key + '". Re-run capture_cdc.py or fix the key.');
+    return v;
+  }
+
+  var G = (LAB.get = {
+    meta: function (k) { return need(R.meta, k, 'meta value'); },
+    /* a file of the course project that was built, run or shown */
+    file: function (k) { return need(R.files, k, 'file').replace(/\n+$/, ''); },
+    /* recorded text: tool output, an error message, a log */
+    text: function (k) { return need(R.text, k, 'text'); },
+    /* a recorded result table: {cols, rows} */
+    table: function (k) { return need(R.tables, k, 'table'); },
+    /* some columns of a table */
+    cols: function (k, names) {
+      var t = G.table(k), ix = names.map(function (n) { var i = t.cols.indexOf(n); if (i < 0) throw new Error('table "' + k + '" has no column ' + n); return i; });
+      return { cols: names, rows: t.rows.map(function (r) { return ix.map(function (i) { return r[i]; }); }) };
+    },
+    /* the rows of a table where a column has one of the values */
+    where: function (k, col, vals) {
+      var t = G.table(k), i = t.cols.indexOf(col);
+      if (i < 0) throw new Error('table "' + k + '" has no column ' + col);
+      return { cols: t.cols, rows: t.rows.filter(function (r) { return vals.indexOf(r[i]) >= 0; }) };
+    },
+    /* a recorded set of numbers, lists and small facts */
+    counts: function (k) { return need(R.counts, k, 'counts'); },
+    /* a number with thousands separators; money keeps two decimals when it has cents */
+    n: function (x) { var v = Number(x); return v.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 }); },
+    /* one row of a table as an object, picked by the value in its first column */
+    row: function (k, first) {
+      var t = G.table(k), r = t.rows.filter(function (x) { return String(x[0]) === String(first); })[0], o = {};
+      if (!r) throw new Error('table "' + k + '" has no row that starts with ' + first);
+      t.cols.forEach(function (c, i) { o[c] = r[i]; });
+      return o;
+    },
+    /* the 1-based number of the first line that matches a pattern, so lessons never count lines by hand */
+    at: function (code, re) {
+      var l = code.split('\n');
+      for (var i = 0; i < l.length; i++) if (re.test(l[i])) return i + 1;
+      throw new Error('no line matches ' + re + ' in ' + code.slice(0, 60));
+    },
+    /* [first, last] line numbers: from the first line that matches `a` to the first line at or after it that matches `b` */
+    span: function (code, a, b) {
+      var s = G.at(code, a);
+      if (!b) return [s, s];
+      var l = code.split('\n');
+      for (var i = s - 1; i < l.length; i++) if (b.test(l[i])) return [s, i + 1];
+      throw new Error('no line matches ' + b + ' after line ' + s);
+    },
+    lines: function (text, a, b) { return text.split('\n').slice(a - 1, b).join('\n'); },
+    grep: function (text, re) { return text.split('\n').filter(function (l) { return re.test(l); }).join('\n'); },
+    /* a lesson relies on a fact in the recording: fail the lint when a new recording says otherwise */
+    expect: function (cond, msg) { if (!cond) throw new Error('lesson no longer matches the recording: ' + msg); return true; },
+    /* terminal lines from pairs of [command, output]. A line that looks like an error is shown in red. */
+    term: function (pairs, d) {
+      var out = [];
+      pairs.forEach(function (p) {
+        out.push({ c: 'cmd', t: '$ ' + p[0], d: 350 });
+        if (p[1]) p[1].split('\n').forEach(function (ln) { out.push({ c: /rror|denied|refused|cannot|failed|No such|not allowed|Permission|Read-only|not a TTY|did not|unknown/.test(ln) ? 'err' : 'out', t: ln, d: d || 40 }); });
+      });
+      return out;
+    },
+    /* terminal lines from recorded plain text. o.cmd is printed first. */
+    plain: function (text, o) {
+      o = o || {};
+      var out = [];
+      if (o.cmd) out.push({ c: 'cmd', t: '$ ' + o.cmd, d: 350 });
+      text.split('\n').forEach(function (ln) {
+        if (/^(python|pytest)( |$)/.test(ln)) { out.push({ c: 'cmd', t: '$ ' + ln, d: 350 }); return; }      /* a recorded text holds the command that ran, then what it printed */
+        var c = /passed|PASS|^PASSED|SUCCESS|success/.test(ln) ? 'ok' : /FAILED|Error|failed|^E |Traceback|ERROR/.test(ln) ? 'err' : 'out';
+        out.push({ c: c, t: ln, d: o.d || 40 });
+      });
+      return out;
+    }
+  });
+})();
