@@ -1,0 +1,15 @@
+# What the ingestion course needs on the machine to record and to verify. Fivetran, the Airbyte platform, Meltano and Debezium are not needed and were not run.
+# Two Python environments, because dlt and PyAirbyte do not install together on one interpreter:
+#   DLT_PY: Python 3.9 or later with dlt and DuckDB. The recording used dlt 1.32.0 and DuckDB 1.5.6 on Python 3.13.
+#       python3 -m venv ing-env && ing-env/bin/pip install "dlt[duckdb]"
+#       ing-env/bin/python ingestion/verify/verify_ingestion.py
+#   AIRBYTE_PY: Python 3.11 or 3.12 with PyAirbyte (pip install airbyte). The recording used airbyte 0.71.3 on Python 3.11. PyAirbyte did not install on Python 3.13 here (pyarrow had to be built).
+#       python3.11 -m venv airbyte-env && airbyte-env/bin/pip install airbyte
+#       PyAirbyte installs the connector airbyte-source-faker from PyPI into a .venv-source-faker folder of the working directory. The recorder and the verifier use a temporary folder for it.
+#       The connector registry of Airbyte (connectors.airbyte.com) was not reachable from the sandbox that made the recording. AIRBYTE_OFFLINE_MODE=1 and an explicit pip_url do not need it.
+#   Set both before the checks:   export DLT_PY=$PWD/ing-env/bin/python AIRBYTE_PY=$PWD/airbyte-env/bin/python
+#   Node 20 or later, and about 1 GB of free disk. The recording takes about 2 minutes.
+dlt[duckdb]
+airbyte
+# For the lab tests (--browser) and dev/smoke.js: Playwright with Chromium (npm install playwright).
+# Nothing here needs an account, a server or a database server. The network is used only to install packages from PyPI.
