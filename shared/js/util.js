@@ -73,6 +73,7 @@
   var BASH_KW = 'if|then|else|fi|for|do|done|while|case|esac|export|cd|echo|set';
   var DOCKER_KW = 'FROM|RUN|CMD|COPY|ADD|ENTRYPOINT|WORKDIR|ENV|ARG|EXPOSE|USER|VOLUME|LABEL|HEALTHCHECK';
   var JAVA_KW = 'abstract|assert|boolean|break|byte|case|catch|char|class|continue|default|do|double|else|enum|extends|final|finally|float|for|if|implements|import|instanceof|int|interface|long|native|new|package|private|protected|public|record|return|short|static|super|switch|synchronized|this|throw|throws|transient|try|var|void|volatile|while|yield|true|false|null';
+  var SCALA_KW = 'abstract|case|catch|class|def|do|else|enum|extends|false|final|finally|for|forSome|given|if|implicit|import|lazy|match|new|null|object|override|package|private|protected|return|sealed|super|then|this|throw|trait|true|try|type|using|val|var|while|with|yield';
   var GROOVY_KW = 'pipeline|agent|any|stages|stage|steps|sh|environment|post|always|failure|success|when|branch|script|def|withCredentials|credentials|options|timeout|retry|parallel|node|echo|input|usernamePassword|string';
 
   function R(cls, src) { return [cls, src]; }
@@ -169,6 +170,14 @@
       R('nu', '\\b\\d[\\d_]*(?:\\.\\d+)?[LlDdFf]?\\b'),
       R('kw', '\\b(?:' + JAVA_KW + ')\\b'),
       R('fn', '[A-Za-z_][A-Za-z0-9_]*(?=\\s*\\()')
+    ],
+    scala: [
+      R('cm', '//[^\\n]*|/\\*[\\s\\S]*?\\*/'),
+      R('st', '\"\"\"[\\s\\S]*?\"\"\"|[sf]?\"(?:[^\"\\\\\\n]|\\\\.)*\"|\'(?:[^\'\\\\\\n]|\\\\.)\''),
+      R('dc', '@[A-Za-z_][A-Za-z0-9_.]*'),
+      R('nu', '\\b\\d[\\d_]*(?:\\.\\d+)?[LlDdFf]?\\b'),
+      R('kw', '\\b(?:' + SCALA_KW + ')\\b'),
+      R('fn', '[A-Za-z_][A-Za-z0-9_]*(?=\\s*[(\\[])')
     ],
     xml: [
       R('cm', '<!--[\\s\\S]*?-->'),

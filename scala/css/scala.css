@@ -1,0 +1,77 @@
+/* Scala course: styles for the lab widgets. The engine styles are in shared/css/app.css. */
+:root{--blue:#B91C1C;--blue-bg:#FEE2E2}
+a.logo{background:#B91C1C}
+a.logo:hover{background:#7F1D1D}
+
+.lab{display:flex;flex-direction:column;gap:.7rem}
+.lab-row{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem .9rem}
+.lab-l{font-weight:800;min-width:8rem}
+.lab-note{font-size:.9rem;font-weight:600;color:var(--ink2);margin:.1rem 0 0}
+.lab button:disabled{opacity:.45}
+.lab-out{display:flex;flex-wrap:wrap;gap:.6rem}
+.lab-out .big{flex:1 1 9rem;background:#fff;border:3px solid var(--ink);border-radius:12px;padding:.4rem .8rem;box-shadow:0 3px 0 var(--ink)}
+.lab-out .big b{display:block;font:800 1.5rem Manrope,sans-serif}
+.lab-out .big.long b{font-size:1.05rem;overflow-wrap:anywhere}
+.lab-out .big span{font-size:.9rem;font-weight:700;color:var(--ink2)}
+.lab-out .big.warn{background:#FEF3C7}
+.lab-out .big.bad{background:#FEE2E2}
+.lab-out .big.good{background:#DCFCE7}
+.lab-h{font:800 1.05rem Manrope,sans-serif;margin:.3rem 0 .1rem}
+.tbl td code{font-size:.96em}
+.tbl td.wbad{background:#FEE2E2;font-weight:800}
+.tbl td.wgood{background:#DCFCE7;font-weight:800}
+.tbl tr.dup td{background:#FEE2E2}
+.tbl tr.old td{color:#64748B;text-decoration:line-through}
+.tbl tr.new td{background:#DCFCE7}
+
+/* two panels side by side */
+.pair{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:.8rem}
+.pair .code{margin:0}
+@media (max-width:900px){.pair{grid-template-columns:minmax(0,1fr)}}
+.pair h4{font:800 1rem Manrope,sans-serif;margin:0 0 .3rem}
+
+/* selector chips */
+.sel-chips{display:flex;flex-wrap:wrap;gap:.45rem}
+.sel-chip{background:#fff;border:3px solid var(--ink);border-radius:12px;padding:.35rem .7rem;font:600 .9rem 'IBM Plex Mono',monospace;cursor:pointer;text-align:left}
+.sel-chip:hover{background:var(--blue-bg)}
+.sel-chip.on{background:#FEE2E2;box-shadow:0 3px 0 var(--ink)}
+/* long identifiers and long paths must wrap on a phone */
+.qtext,.alertbox,.alertbox *,.prompt,.opt .ot,.callout,.clues li,.triage li,.lab-out .big b,.lab-out .big span{overflow-wrap:anywhere}
+
+/* a bar for a number: label, track, value */
+.lane{display:flex;align-items:center;gap:.6rem}
+.lane-n{flex:none;width:16rem;font-weight:800;font-size:.95rem}
+.lane-track{position:relative;flex:1;height:2rem;background:#E2E8F0;border:3px solid var(--ink);border-radius:8px;overflow:hidden}
+.lane-track i{position:absolute;left:0;top:0;bottom:0;background:#A78BFA}
+.lane-track i.bad{background:#F87171}
+.lane-track i.good{background:#34D399}
+.lane-v{min-width:7.5rem;text-align:right;font:700 .95rem 'IBM Plex Mono',monospace}
+
+/* a strip of partitions: one cell for each month */
+.parts{display:flex;flex-wrap:wrap;gap:.3rem}
+.part{flex:0 0 auto;min-width:4.6rem;border:3px solid var(--ink);border-radius:8px;background:#fff;padding:.2rem .35rem;font:700 .82rem 'IBM Plex Mono',monospace;text-align:center}
+.part small{display:block;font:700 .78rem 'DM Sans',sans-serif;color:var(--ink2)}
+.part.drop{background:#E2E8F0;color:#64748B;border-style:dashed}
+.part.refresh{background:#DDD6FE}
+.part.stale{background:#FEE2E2}
+.part.fixed{background:#DCFCE7}
+
+/* who sees what */
+.userbox{display:grid;grid-template-columns:repeat(auto-fit,minmax(9.5rem,1fr));gap:.5rem}
+.sel-chip small{display:block;font:600 .78rem 'DM Sans',sans-serif}
+.tbl td.rnum,.tbl th.rnum{text-align:right;font-family:'IBM Plex Mono',monospace}
+.callout code,.lab-note code{overflow-wrap:anywhere}
+.pill{display:inline-block;border:2px solid var(--ink);border-radius:999px;padding:0 .5rem;font:800 .78rem Manrope,sans-serif;letter-spacing:.04em;text-transform:uppercase;background:#fff;margin-right:.3rem}
+.pill.real{background:#DBEAFE}
+@media (max-width:700px){
+  .lane{flex-wrap:wrap}
+  .lane-n{width:auto;flex:1 1 auto}
+  .lane-v{min-width:0}
+  .lane-track{order:3;flex:1 0 100%}
+}
+
+/* a block of terminal text inside a lab */
+.lab-pre{margin:0;background:#0F172A;color:#E2E8F0;border:3px solid var(--ink);border-radius:10px;padding:.6rem .8rem;font:600 .95rem/1.5 'IBM Plex Mono',monospace;white-space:pre-wrap;overflow-wrap:anywhere}
+.lab-pre.cmd{color:#FDE68A}
+/* long commands, paths and JSON in table cells and layer names must wrap on a phone */
+.tbl td,.tbl th,.lname,.layer-h,.note,.notes li,.callout,.lab-note{overflow-wrap:anywhere}

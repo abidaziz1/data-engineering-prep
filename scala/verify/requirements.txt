@@ -1,0 +1,10 @@
+# What the Scala course needs on the machine to record and to verify. sbt, Scala 3, a cluster and Spark Structured Streaming are not needed and were not run.
+#   JDK 21 or later (java, jar). The recording used OpenJDK 21.0.12.1.
+#   Python 3.9 or later, in its own environment, with pyspark 4.0.1. It ships the Scala 2.13.16 compiler and library and the Spark jars, and Spark 4.0.1 is built with Scala 2.13.16:
+#       python3 -m venv scala-env && scala-env/bin/pip install pyspark==4.0.1
+#       scala-env/bin/python scala/verify/verify_scala.py
+#   Maven 3.9 and the network once (Maven Central), for --recapture only: the recorder downloads the Scala 2.12.20 compiler jars for the binary-version experiment.
+#   Node 20 or later, and about 1 GB of free disk. The recording takes about 45 seconds.
+pyspark==4.0.1
+# For the lab tests (--browser) and dev/smoke.js: Playwright with Chromium (npm install playwright).
+# Nothing here needs an account, a cluster or a database server. Spark runs in local mode with two threads.
