@@ -1,0 +1,11 @@
+# What the MongoDB course needs on the machine to record and to verify. A sharded cluster, Atlas, Atlas Search, mongosh and the Kafka connector are not needed and were not run.
+#   Docker with the image mongo:8.0 (docker pull mongo:8.0). The recording used mongod 8.0.38. The recorder starts one container on the host network, as a replica set of one member
+#   (change streams and transactions need a replica set), and removes it. Everything it starts carries the label mg-course and a name that starts with mgc-.
+#   MONGO_URI can point the recorder and the verifier at a server that is already running (MONGO_IMAGE and MONGO_PORT change the container).
+#   Python 3.9 or later, in its own environment, with pymongo (the recording used pymongo 4.20.1):
+#       python3 -m venv mongo-env && mongo-env/bin/pip install pymongo
+#       mongo-env/bin/python mongodb/verify/verify_mongodb.py
+#   Node 20 or later, and about 1 GB of free disk. The recording takes about 10 seconds against a running server.
+pymongo
+# For the lab tests (--browser) and dev/smoke.js: Playwright with Chromium (npm install playwright).
+# Nothing here needs an account, the network (after the image is pulled) or a cluster.
