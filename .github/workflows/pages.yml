@@ -1,11 +1,13 @@
 name: Deploy to GitHub Pages
 
-# Publishes the library on every push to the published branch.
-# In the repository, open Settings, Pages, and set Source to "GitHub Actions".
-# For branch-based publishing, select the default branch and / (root).
+# Publishes the library when it is started by hand: open the Actions tab, choose this workflow, and press "Run workflow".
+# It is the way to publish when Settings, Pages, Source is "GitHub Actions".
+# When the Source is "Deploy from a branch", GitHub publishes every push by itself (the workflow "pages build and deployment"),
+# and running this workflow on every push as well made one of the two fail now and then, with "No artifacts named github-pages were found".
+# To publish on every push with the Actions source, add this under "on:":
+#   push:
+#     branches: [claude/snowflake-tutorial, main]
 on:
-  push:
-    branches: [claude/snowflake-tutorial, main]
   workflow_dispatch:
 
 permissions:

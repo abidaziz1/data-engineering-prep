@@ -76,7 +76,7 @@ It works from `file://` and from any web server, because every path is relative 
 
 1. Merge updates into `claude/snowflake-tutorial`, this repository's default branch.
 2. Open **Settings, Pages**. Under **Build and deployment**, choose one of:
-   - **Source: GitHub Actions.** The included `.github/workflows/pages.yml` publishes the site when the default branch changes. You can also run it from the **Actions** tab.
+   - **Source: GitHub Actions.** The included `.github/workflows/pages.yml` publishes the site when you run it from the **Actions** tab. It does not run on a push, because with the branch source GitHub publishes every push by itself, and both together made one of them fail now and then. To publish on every push with this source, add the `push` trigger that the comment of the file shows.
    - **Source: Deploy from a branch**, select `claude/snowflake-tutorial` and `/ (root)`. The `.nojekyll` file allows direct static publishing.
 3. Open the [tutorial library](https://abidaziz1.github.io/data-engineering-prep/) to reach every course.
 
