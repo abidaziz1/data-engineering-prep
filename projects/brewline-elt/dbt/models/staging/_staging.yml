@@ -1,0 +1,28 @@
+version: 2
+models:
+  - name: stg_orders
+    columns:
+      - name: order_id
+        tests: [unique, not_null]
+      - name: status
+        tests:
+          - accepted_values:
+              values: ['PLACED', 'SHIPPED', 'REFUNDED']
+      - name: store_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_stores')
+              field: store_id
+  - name: stg_order_lines
+    columns:
+      - name: sku
+        tests:
+          - not_null
+          - relationships:
+              to: ref('product_prices')
+              field: sku
+  - name: stg_stores
+    columns:
+      - name: store_id
+        tests: [unique, not_null]

@@ -1,0 +1,16 @@
+# NOT RUN in the course that describes this project: it is a sketch of the checks that a pull request would run.
+name: ci
+on: [pull_request]
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: pip install -r requirements/dbt.txt -r requirements/ingest.txt
+      - run: python -m pytest -q tests
+      - name: Build the models of day 1 and run their tests
+        run: |
+          python ingestion/load_orders.py --day 1 --warehouse warehouse/brewline.duckdb
+          cd dbt && BREWLINE_WAREHOUSE=$PWD/../warehouse/brewline.duckdb dbt build --profiles-dir .

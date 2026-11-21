@@ -1,0 +1,7 @@
+brewline:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: "{{ env_var('BREWLINE_WAREHOUSE', '../warehouse/brewline.duckdb') }}"
+      threads: 4

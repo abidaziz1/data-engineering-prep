@@ -1,0 +1,12 @@
+version: 2
+models:
+  - name: fct_orders
+    columns:
+      - name: order_id
+        tests: [unique, not_null]
+      - name: total_cents
+        tests: [not_null]
+  - name: orders_daily
+    columns:
+      - name: orders
+        tests: [not_null]

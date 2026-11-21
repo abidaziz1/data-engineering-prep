@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0B1220">
-  <meta name="description" content="Guided tutorials for data engineers covering Snowflake, dbt, Databricks, AWS, Azure, Google Cloud, Apache Spark, Apache Kafka, Apache Flink, Apache Airflow, Python, SQL, Docker, Kubernetes, Git, PostgreSQL, Microsoft Fabric, Java, Scala, MongoDB, data ingestion, Power BI, Tableau, Looker, and AI data engineering.">
+  <meta name="description" content="Guided tutorials for data engineers covering Snowflake, dbt, Databricks, AWS, Azure, Google Cloud, Apache Spark, Apache Kafka, Apache Flink, Apache Airflow, Python, SQL, Docker, Kubernetes, Git, PostgreSQL, Microsoft Fabric, Java, Scala, MongoDB, data ingestion, full projects, Power BI, Tableau, Looker, and AI data engineering.">
   <title>Data Engineering Prep</title>
   <link rel="icon" type="image/svg+xml" href="shared/assets/favicon.svg">
   <link rel="stylesheet" href="shared/css/hub.css">
@@ -191,6 +191,18 @@
         <p>What a connector does and leaves behind, append, replace and merge, an incremental load with a cursor and the delete and the silent update that it cannot see, schema drift and contracts, the protocol of an Airbyte connector and its sync modes, what Fivetran adds to your tables and how a usage-based bill is counted, and how to run it for real, recorded on dlt and the Airbyte Faker connector. Fivetran, the Airbyte platform and log-based capture did not run, and the screens say so.</p>
         <div class="paths"><span>Junior path about 2 hours</span><span>Senior path about 3 hours</span></div>
         <span class="go">Open the tutorial &rarr;</span>
+      </a>
+    </div>
+
+    <h2>Projects</h2>
+    <p class="note">A project is a whole pipeline, small enough to read in an afternoon and honest enough to defend in a review. Each one is a real repository in the <code>projects</code> folder, with a walkthrough that shows every file and every run, a drill for every way that it broke, and the interview talk track. They combine the tools that senior postings name most often.</p>
+    <div class="grid">
+      <a class="card ready" href="project-elt/index.html">
+        <span class="chip ready">Ready</span>
+        <h3>Project: the Brewline orders platform</h3>
+        <p>One complete ELT pipeline with dlt, DuckDB, dbt and Airflow: an incremental and repeatable load, 14 tests, a quality gate against the source, a DAG that fails closed, a failed day and its fix, a backfill, and the questions of a review. Every step ran for real, through Airflow 3.4. A cloud warehouse, a deployed Airflow and a CI run did not run, and the screens say so.</p>
+        <div class="paths"><span>Walkthrough about 70 minutes</span><span>Senior path about 100 minutes</span></div>
+        <span class="go">Open the project &rarr;</span>
       </a>
     </div>
 

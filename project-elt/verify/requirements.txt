@@ -1,0 +1,17 @@
+# What the ELT project walkthrough needs on the machine to record and to verify. A cloud warehouse, a deployed Airflow, an alert channel and a CI run are not needed and were not run.
+# Three Python environments, because dlt, dbt and Airflow pin versions that do not agree on one interpreter (the project uses the same split):
+#   ELT_INGEST_PY  Python 3.9 or later with dlt and DuckDB. The recording used dlt 1.32.0 and DuckDB 1.5.6 on Python 3.13.
+#       python3 -m venv ing-env && ing-env/bin/pip install "dlt[duckdb]"
+#   ELT_DBT        the dbt program, and ELT_TEST_PY a Python with pytest (the dbt environment will do). The recording used dbt-core 1.12.7 and dbt-duckdb 1.11.1 on Python 3.12.
+#       python3 -m venv dbt-env && dbt-env/bin/pip install dbt-duckdb pytest
+#   ELT_AIRFLOW    the airflow program. The recording used apache-airflow 3.4.0 on Python 3.12. `airflow db migrate` runs once in a temporary AIRFLOW_HOME, with SQLite.
+#       python3 -m venv af-env && af-env/bin/pip install "apache-airflow==3.4.0"
+#   Set all four before the checks:
+#       export ELT_INGEST_PY=$PWD/ing-env/bin/python ELT_DBT=$PWD/dbt-env/bin/dbt ELT_AIRFLOW=$PWD/af-env/bin/airflow ELT_TEST_PY=$PWD/dbt-env/bin/python
+#   Node 20 or later, and about 1 GB of free disk. The recording takes about 90 seconds.
+dlt[duckdb]
+dbt-duckdb
+pytest
+apache-airflow==3.4.0
+# For the lab test (--browser) and dev/smoke.js: Playwright with Chromium (npm install playwright).
+# Nothing here needs an account, a server or a database server. The network is used only to install packages from PyPI.
