@@ -3,7 +3,7 @@
   "private": true,
   "description": "Interactive data engineering tutorials. The site itself needs no build step. These scripts only check it.",
   "scripts": {
-    "lint": "node dev/lint-content.js snowflake && node dev/lint-content.js dbt && node dev/lint-content.js snowflake-dbt && node dev/lint-content.js databricks && node dev/lint-content.js aws && node dev/lint-content.js azure && node dev/lint-content.js ai && node dev/lint-content.js gcp && node dev/lint-content.js spark && node dev/lint-content.js python && node dev/lint-content.js sql && node dev/lint-content.js airflow && node dev/lint-content.js kafka && node dev/lint-content.js flink && node dev/lint-content.js bi && node dev/lint-content.js docker && node dev/lint-content.js kubernetes && node dev/lint-content.js git && node dev/lint-content.js postgresql && node dev/lint-content.js fabric && node dev/lint-content.js java && node dev/lint-content.js scala && node dev/lint-content.js mongodb && node dev/lint-content.js ingestion && node dev/lint-content.js project-elt",
+    "lint": "node dev/lint-content.js snowflake && node dev/lint-content.js dbt && node dev/lint-content.js snowflake-dbt && node dev/lint-content.js databricks && node dev/lint-content.js aws && node dev/lint-content.js azure && node dev/lint-content.js ai && node dev/lint-content.js gcp && node dev/lint-content.js spark && node dev/lint-content.js python && node dev/lint-content.js sql && node dev/lint-content.js airflow && node dev/lint-content.js kafka && node dev/lint-content.js flink && node dev/lint-content.js bi && node dev/lint-content.js docker && node dev/lint-content.js kubernetes && node dev/lint-content.js git && node dev/lint-content.js postgresql && node dev/lint-content.js fabric && node dev/lint-content.js java && node dev/lint-content.js scala && node dev/lint-content.js mongodb && node dev/lint-content.js ingestion && node dev/lint-content.js project-elt && node dev/lint-content.js project-lakehouse",
     "lint:snowflake": "node dev/lint-content.js snowflake",
     "lint:dbt": "node dev/lint-content.js dbt",
     "smoke": "node dev/smoke.js snowflake --path all",
@@ -128,6 +128,11 @@
     "e2e:project-elt": "node dev/e2e.js project-elt && node project-elt/verify/e2e_labs.js",
     "stats:project-elt": "node dev/stats.js project-elt",
     "verify:project-elt": "python3 project-elt/verify/verify_elt.py",
+    "lint:project-lakehouse": "node dev/lint-content.js project-lakehouse",
+    "smoke:project-lakehouse": "node dev/smoke.js project-lakehouse --path all",
+    "e2e:project-lakehouse": "node dev/e2e.js project-lakehouse && node project-lakehouse/verify/e2e_labs.js",
+    "stats:project-lakehouse": "node dev/stats.js project-lakehouse",
+    "verify:project-lakehouse": "python3 project-lakehouse/verify/verify_lakehouse.py",
     "test:analytics": "node dev/analytics-test.js"
   },
   "devDependencies": {

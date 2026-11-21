@@ -1,0 +1,13 @@
+# What the lakehouse project walkthrough needs on the machine to record and to verify. Cloud storage, a cluster, streaming, table maintenance, a Docker build and a CI run are not needed and were not run.
+# One Python environment, and a Java:
+#   LAKE_PY   Python 3.9 or later with pyspark, delta-spark and pytest. The recording used pyspark 4.0.1 and delta-spark 4.0.1 on Python 3.13, with Java 21 (Java 17 or later is needed).
+#       python3 -m venv spark-env && spark-env/bin/pip install "pyspark==4.0.1" "delta-spark==4.0.1" pytest
+#   Set it before the checks:
+#       export LAKE_PY=$PWD/spark-env/bin/python
+#   The Delta Lake jar is fetched once from Maven Central the first time that a Spark session starts, so the network is needed for that first run.
+#   Node 20 or later, and about 1 GB of free disk. The recording takes about 8 minutes: pytest and three days of the pipeline on one machine.
+pyspark==4.0.1
+delta-spark==4.0.1
+pytest
+# For the lab test (--browser) and dev/smoke.js: Playwright with Chromium (npm install playwright).
+# Nothing here needs an account, a server or a database server.
