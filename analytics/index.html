@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Analytics owner guide, event definitions and a campaign-link builder for Data Engineering Prep.">
+  <title>Analytics owner guide | Data Engineering Prep</title>
+  <link rel="icon" href="../shared/assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../shared/css/hub.css">
+  <style>main{max-width:1050px}section{margin:2rem 0}p,li{line-height:1.7}h2{margin:1.5rem 0 .7rem}a{color:#1d4ed8}.panel{background:#fff;border:3px solid #0b1220;border-radius:14px;padding:1.2rem;margin:1rem 0}label{display:block;font-weight:700;margin:.8rem 0 .3rem}input,select{width:100%;box-sizing:border-box;padding:.65rem;border:2px solid #0b1220;border-radius:8px;background:#fff;color:#0b1220;font:inherit;font-size:1rem}button{margin-top:.8rem;padding:.65rem 1rem;border:2px solid #0b1220;border-radius:9px;background:#dbeafe;color:#0b1220;font:inherit;font-weight:700;cursor:pointer}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #2563eb;outline-offset:3px}.table-wrap{overflow-x:auto}table{width:100%;min-width:650px;border-collapse:collapse}th,td{padding:.65rem;border:1px solid #94a3b8;text-align:left;vertical-align:top}code{overflow-wrap:anywhere}#campaign-url{font-size:.9rem}#builder-status{min-height:1.5em}nav{display:flex;gap:1rem;flex-wrap:wrap}select{appearance:none;padding-right:2rem;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='10'%3E%3Cpath d='M1 1l6 6 6-6' fill='none' stroke='%230b1220' stroke-width='2'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right .75rem center}</style>
+</head>
+<body>
+  <header class="top"><span class="logo">DE</span><b>Data Engineering Prep</b></header>
+  <main>
+    <nav aria-label="Analytics resources"><a href="../index.html">All tutorials</a><a href="../shared/analytics.html">Analytics and privacy</a><a href="https://abidaziz.goatcounter.com/" rel="noopener" target="_blank">Open private dashboard</a></nav>
+    <h1>Understand your traffic and course engagement</h1>
+    <p>Your existing GoatCounter account receives the site's measurements. This page explains the reports and creates tagged links. It does not expose private traffic, require an API key or load a tracking script.</p>
+    <section class="panel">
+      <h2>One owner step</h2>
+      <p><a href="https://abidaziz.goatcounter.com/" target="_blank" rel="noopener">Sign in to the private GoatCounter dashboard</a>. The site code is already installed. No new analytics account or tracking ID is needed.</p>
+      <p>Review the dashboard's pages, referrers, campaigns, locations, browsers, systems, languages and screen-width reports. Collection settings control which breakdowns are available. For personal browsing, open <a href="../index.html?notrack=1">the library with your browser opted out</a>.</p>
+      <p>Keep the dashboard private. An API token is a secret and must never be pasted into the repository, this page or a public script.</p>
+    </section>
+    <section>
+      <h2>A useful weekly review</h2>
+      <ol>
+        <li>Compare the past seven days with the previous seven. Check page visits separately from custom events: adding events changes a combined total.</li>
+        <li>Review referring domains and campaigns to see which posts bring traffic. Countries, browsers, operating systems and screen widths help you choose where to test the site.</li>
+        <li>Filter events by a course prefix such as <code>azure/</code>. Compare course opens, numbered-mission reach, active-time thresholds and feature use.</li>
+        <li>Use <code>azure/track-junior/</code>, <code>track-senior/</code> or the configured course path to compare navigation within one path. Paths differ in length.</li>
+        <li>Look for a repeated drop in mission reach, then inspect that mission. The counts are aggregate signals, not a joined visitor-level funnel or proof of a teaching problem.</li>
+      </ol>
+    </section>
+    <section>
+      <h2>Event reference</h2>
+      <div class="table-wrap" role="region" aria-label="Event reference; scroll horizontally on small screens" tabindex="0"><table>
+        <thead><tr><th>Example event</th><th>What it means</th></tr></thead>
+        <tbody>
+          <tr><td><code>hub/open-azure</code></td><td>A library card for Azure was clicked. Browser opening behavior and request loss can affect the count.</td></tr>
+          <tr><td><code>azure/course-opened</code></td><td>The course document opened in this tab session. A page-view hit also records each document load.</td></tr>
+          <tr><td><code>azure/course-started</code></td><td>A numbered mission was reached. A map jump or resumed visit can cause this.</td></tr>
+          <tr><td><code>azure/path-junior</code></td><td>A chosen or restored path was observed.</td></tr>
+          <tr><td><code>azure/mission-03</code></td><td>Mission 3 was reached. It does not mean missions 1 and 2 were read.</td></tr>
+          <tr><td><code>azure/progress-50</code></td><td>The course navigation position reached or passed 50%. This measures position, not the proportion read.</td></tr>
+          <tr><td><code>azure/mission-03/progress-75</code></td><td>The navigation position in mission 3 reached or passed 75%.</td></tr>
+          <tr><td><code>azure/mission-end-03</code></td><td>Next was pressed past the final frame of mission 3. It is not verified learning completion.</td></tr>
+          <tr><td><code>azure/active-300s</code></td><td>At least five estimated minutes accumulated while the course was visible, focused and recently active in this tab session.</td></tr>
+          <tr><td><code>azure/interaction-lab</code></td><td>A lab control was used. Other categories include quiz, bug, order, decision, challenge hints/solution, interview timer/answer/follow-up/review, code-copy and example SQL run. Results are not collected.</td></tr>
+          <tr><td><code>azure/finish-clicked</code></td><td>The final Finish button was clicked, potentially after a map jump. The old <code>azure/finished</code> event is retained with the same explicit limitation.</td></tr>
+          <tr><td><code>hub/scroll-50</code></td><td>The library's scroll position reached or passed 50%.</td></tr>
+        </tbody>
+      </table></div>
+      <p>Path-specific mission, progress and interaction events also appear under <code>azure/track-junior/…</code> and other configured path IDs. Active time is course-wide. Events are locally deduplicated in a tab until 30 minutes of inactivity; GoatCounter applies its own visit/session rules too. These counts are not identified people or exact session totals.</p>
+    </section>
+    <section class="panel" aria-labelledby="builder-title">
+      <h2 id="builder-title">Build a campaign link</h2>
+      <p>Use a tagged link when you share a post. GoatCounter reports the campaign and source for hits carrying those parameters. To attribute a course landing, link directly to that course. Tags are not automatically carried into later untagged URLs, and this does not reconstruct a source-to-completion journey.</p>
+      <form id="campaign-form">
+        <label for="destination">Landing page</label>
+        <select id="destination" name="destination"><option value="">Tutorial library</option></select>
+        <label for="source">Source</label>
+        <input id="source" name="source" value="linkedin" maxlength="64" pattern="[A-Za-z0-9][A-Za-z0-9._-]{0,63}" required aria-describedby="tag-help">
+        <label for="campaign">Campaign</label>
+        <input id="campaign" name="campaign" value="azure-learning" maxlength="64" pattern="[A-Za-z0-9][A-Za-z0-9._-]{0,63}" required aria-describedby="tag-help">
+        <p id="tag-help">Use short public labels with letters, numbers, dots, underscores or hyphens. Do not use personal information. Each label is limited to 64 characters.</p>
+        <button type="submit">Build link</button>
+      </form>
+      <label for="campaign-url">Link to share</label>
+      <input id="campaign-url" readonly value="">
+      <button type="button" id="copy-link">Copy link</button>
+      <p id="builder-status" aria-live="polite"></p>
+    </section>
+    <section>
+      <h2>Verification and limits</h2>
+      <p>The tracker respects Do Not Track, Global Privacy Control and the saved opt-out. It avoids local test traffic, strips unapproved query values and referrer details, and keeps lessons usable if the provider is blocked or fails. Tests use intercepted traffic so they do not create fake visits in your account.</p>
+      <p>Only the account owner can confirm actual incoming traffic and enabled account settings. New event history starts with this deployment; past detailed behavior cannot be reconstructed. Aggregate reports do not establish exact time on site, per-person retention, ordered funnels or learning mastery.</p>
+      <p><a href="https://github.com/abidaziz1/data-engineering-prep/blob/claude/snowflake-tutorial/docs/ANALYTICS.md">Full setup, test commands and metric definitions</a> · <a href="https://www.goatcounter.com/help/campaigns">Campaign documentation</a> · <a href="https://www.goatcounter.com/help/privacy">Provider privacy</a></p>
+    </section>
+  </main>
+  <footer>Data Engineering Prep analytics owner guide. This page does not load an analytics script.</footer>
+  <script>
+  (function () {
+    var courses = 'ai airflow aws azure bi databricks dbt docker fabric flink gcp git ingestion java kafka kubernetes mongodb postgresql project-cdc project-elt project-lakehouse python scala snowflake snowflake-dbt spark sql'.split(' ');
+    var destination = document.getElementById('destination'), output = document.getElementById('campaign-url'), status = document.getElementById('builder-status');
+    courses.forEach(function (course) { var o = document.createElement('option'); o.value = course; o.textContent = course; destination.appendChild(o); });
+    destination.value = 'azure';
+    function build(e) {
+      if (e) e.preventDefault();
+      var source = document.getElementById('source').value, campaign = document.getElementById('campaign').value;
+      if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(source) || !/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(campaign)) { output.value = ''; status.textContent = 'Use a valid public code for both labels.'; return; }
+      var course = courses.indexOf(destination.value) >= 0 ? destination.value + '/' : '';
+      var url = new URL('https://abidaziz1.github.io/data-engineering-prep/' + course);
+      url.searchParams.set('utm_source', source); url.searchParams.set('utm_campaign', campaign); output.value = url.href;
+      status.textContent = 'Link ready. Visits appear only after real people use it; this builder sends no analytics.';
+    }
+    document.getElementById('campaign-form').onsubmit = build;
+    function invalidate() { output.value = ''; status.textContent = 'Build a new link after changing its destination or labels.'; }
+    document.getElementById('campaign-form').addEventListener('input', invalidate);
+    document.getElementById('campaign-form').addEventListener('change', invalidate);
+    document.getElementById('copy-link').onclick = function () {
+      if (!output.value) { status.textContent = 'Build a valid link first.'; return; }
+      if (!navigator.clipboard) { output.focus(); output.select(); status.textContent = 'Select and copy the link.'; return; }
+      navigator.clipboard.writeText(output.value).then(function () { status.textContent = 'Link copied.'; }, function () { output.focus(); output.select(); status.textContent = 'Select and copy the link.'; });
+    };
+    build();
+  })();
+  </script>
+</body>
+</html>

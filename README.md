@@ -328,17 +328,27 @@ The Flink check needs an unpacked Apache Flink 2.2.1 binary distribution, the do
 
 `node dev/smoke.js snowflake --path all --width 390 --height 844` repeats the walk at phone width. `node dev/shot.js snowflake m2-lab:0 out.png --click "..."` saves a screenshot of one frame.
 
-## Visit statistics (optional)
+## Website analytics
 
-GitHub Pages shows no visitor numbers, and GitHub's repository traffic page counts only visits to the repository itself, for 14 days. This repository includes `shared/js/analytics.js`, which counts visits with [GoatCounter](https://www.goatcounter.com). It is off until you set a site code.
+The live site uses the existing private [GoatCounter dashboard](https://abidaziz.goatcounter.com/). The configured site code is `abidaziz`; no new account or tracking ID is required. Sign in as the account owner to see actual statistics and enabled collection settings.
 
-1. Create a free site at goatcounter.com. Choose a site code, for example `dep-prep`. Your dashboard is then `https://dep-prep.goatcounter.com`.
-2. Open `shared/js/analytics.js`, set `var CODE = 'dep-prep';`, commit and publish. No other file changes.
-3. Open the live site yourself once with `?notrack=1` added to the address on each of your own devices, so your visits are not counted. `?notrack=0` turns counting back on.
+Traffic reports cover pages, referring domains, campaigns and the provider-supported location, browser, operating-system, language and screen-width summaries. The shared teaching engine adds course opens, chosen paths, mission reach, navigation depth, coarse active-time thresholds and broad interaction categories across all 27 courses/projects.
 
-What it sends: a page view for the front page and for each tutorial, and three named events with no personal data: `<tutorial>/path-<id>` (the path a visitor chose), `<tutorial>/mission-<nn>` (the first time a visitor reaches a mission in a visit) and `<tutorial>/finished`. In the dashboard, the event list shows how many visits reached each mission, which is your drop-off curve. It never sends answers, scores, text or browser storage. It stays off on localhost and `file://` pages and when the browser sends Do Not Track. The front page tells visitors that visits are counted, and how to opt out.
+Start with the [owner guide and campaign-link builder](analytics/index.html). Read [docs/ANALYTICS.md](docs/ANALYTICS.md) for event definitions, a weekly review workflow, privacy boundaries and verification. The visitor-facing [analytics and privacy page](shared/analytics.html) lets a visitor save or remove an opt-out; it is linked from the hub and every course map.
 
-`node dev/analytics-test.js` checks all of this against a stub of the GoatCounter script, so nothing leaves your machine. The test does not prove that GoatCounter accepts the hits. Open your dashboard after the first real visit to confirm.
+Events are aggregate signals. A map jump can reach a late mission or Finish without reading the preceding content. Navigation position is not a proportion learned, and GoatCounter's aggregate counts do not reconstruct individual funnels, exact session duration or returning-person retention. New detailed events cannot recover past activity.
+
+The tracker excludes local test browsing and respects Do Not Track, Global Privacy Control and `?notrack=1`. Query values are reduced to short campaign codes and referrers to their origin before the provider serializes them. No answers, selected options, grades, question IDs, code, form text or saved learning-state objects are transmitted. No new cookies, client-generated user identifiers or replay recordings are added.
+
+```bash
+node dev/analytics-test.js          # integration across all 27 courses, vendor stubbed
+node dev/analytics-detail-test.js   # session, privacy, engagement and failure edge cases
+# A locally installed Chromium can be selected with PLAYWRIGHT_EXECUTABLE_PATH.
+# Optional current-vendor transport check, with an official downloaded count.js:
+GOATCOUNTER_SCRIPT_PATH=/path/to/count.js node dev/analytics-detail-test.js
+```
+
+Tests intercept analytics requests and send no fabricated traffic to the account. They verify instrumentation and outgoing payloads, not dashboard ingestion. Only an authenticated owner can confirm that real incoming visits appear in the private reports. Never put a GoatCounter API token in browser code or the repository.
 
 ## Add a tutorial
 

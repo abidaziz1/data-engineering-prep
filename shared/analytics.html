@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="How Data Engineering Prep measures aggregate visits and learning activity, and how to opt out.">
+  <title>Analytics and privacy | Data Engineering Prep</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/hub.css">
+  <style>main{max-width:950px}section{margin:2rem 0}p,li{line-height:1.7}h2{margin:1.5rem 0 .7rem}.prefs{padding:1.2rem;border:3px solid #0b1220;border-radius:14px;background:#fff}.prefs button{padding:.6rem .9rem;margin:.3rem .5rem .3rem 0;font:inherit;font-weight:700;font-size:1rem;border:2px solid #0b1220;border-radius:9px;background:#dbeafe;cursor:pointer}.prefs button:focus-visible{outline:3px solid #2563eb;outline-offset:3px}#preference{font-weight:700}a{color:#1d4ed8}</style>
+</head>
+<body>
+  <header class="top"><span class="logo">DE</span><b>Data Engineering Prep</b></header>
+  <main>
+    <p><a href="../index.html">All tutorials</a></p>
+    <h1>Analytics and privacy</h1>
+    <p>We use <a href="https://www.goatcounter.com/">GoatCounter</a> to understand which tutorials people visit, how they find the site, and which parts of the learning experience they use. These are aggregate measurements. We do not create a learning profile for you.</p>
+    <section>
+      <h2>What is measured</h2>
+      <ul>
+        <li>Page visits, referring domains, safe campaign labels, and the browser, operating system, language, screen-width and location summaries supported by GoatCounter and its account settings.</li>
+        <li>The course and path opened, missions and navigation milestones reached, and use of broad features such as a lab, quiz, code-copy button, solution reveal or interview timer.</li>
+        <li>Coarse active-time thresholds: 15 seconds, 1 minute, 5 minutes, 15 minutes and 30 minutes in a course. Time counts only while the page is visible and focused and there has been recent activity. These are estimates, not an exact reading-time record.</li>
+      </ul>
+      <p>GoatCounter receives the network metadata needed to process a request. Its <a href="https://www.goatcounter.com/help/privacy">privacy documentation</a> explains how it handles that information and estimates visits. Visitor counts are not a count of identified people.</p>
+    </section>
+    <section>
+      <h2>What the site does not send</h2>
+      <p>We do not send your answers, selected options, grades, interview checklists, question IDs, code, saved learning progress, email addresses or other form text. We do not add an advertising identifier, session replay, heatmap recorder or tracking cookie.</p>
+      <p>Before a count is sent, the integration removes URL fragments, non-campaign query values and referrer paths and queries. Campaign labels are limited to short codes using letters, numbers, dots, underscores and hyphens. A tag is a public label; it should never contain personal information.</p>
+      <p>Your course progress stays in local storage in your browser. Separately, tab session storage remembers fixed event flags and coarse active-time totals to avoid repeatedly counting the same milestone. Those measurement flags reset after 30 minutes of inactivity. No randomly generated visitor ID is used by this site's code.</p>
+    </section>
+    <section class="prefs" aria-labelledby="preferences-title">
+      <h2 id="preferences-title">Your choice in this browser</h2>
+      <p>Do Not Track and Global Privacy Control disable the site's measurement. You can also save an opt-out below, or add <code>?notrack=1</code> to a tutorial address. <code>?notrack=0</code> removes that saved opt-out. Browser privacy signals continue to take precedence.</p>
+      <p id="preference" aria-live="polite">Checking this browser's preference.</p>
+      <button type="button" id="disable">Do not count my visits</button>
+      <button type="button" id="enable">Remove my saved opt-out</button>
+      <p>The preference applies to this browser on this site. Open course tabs stop measurement when they receive the saved opt-out change. Reload them after removing an opt-out. Your lessons and saved progress work either way.</p>
+      <noscript><p>No measurement runs on this page. In a browser with JavaScript disabled, the tutorials' analytics also do not run.</p></noscript>
+    </section>
+    <section>
+      <h2>How to interpret the numbers</h2>
+      <p>Opening the map can jump straight to a later mission. Reaching a navigation milestone or clicking Finish therefore does not prove that every frame was read, an exercise was solved or a skill was learned. Aggregate milestones do not reconstruct an individual's journey or establish returning-person retention.</p>
+      <p>The dashboard is private. New detailed events start after this update; older detailed activity cannot be recovered. Blockers, opt-outs and failed requests can reduce observed traffic.</p>
+      <p><a href="../analytics/index.html">Analytics owner guide and campaign links</a> · <a href="https://www.goatcounter.com/help/privacy">GoatCounter privacy details</a></p>
+    </section>
+  </main>
+  <footer>Independent study material. This information page does not load an analytics script.</footer>
+  <script>
+  (function () {
+    var status = document.getElementById('preference');
+    function show() {
+      var signal = navigator.doNotTrack === '1' || window.doNotTrack === '1' || navigator.globalPrivacyControl === true;
+      try { status.textContent = signal ? 'Measurement is disabled by your browser privacy signal.' : localStorage.getItem('dep.notrack') === '1' ? 'Your saved opt-out is active. Visits are not counted.' : 'No saved opt-out. Eligible tutorial visits can be counted.'; }
+      catch (e) { status.textContent = 'Browser storage is unavailable. Use ?notrack=1 on a tutorial URL, or your browser privacy signal.'; }
+    }
+    document.getElementById('disable').onclick = function () { try { localStorage.setItem('dep.notrack', '1'); show(); } catch (e) { status.textContent = 'Could not save this preference. Use ?notrack=1 on the tutorial URL.'; } };
+    document.getElementById('enable').onclick = function () { try { localStorage.removeItem('dep.notrack'); show(); } catch (e) { show(); } };
+    window.addEventListener('storage', show); show();
+  })();
+  </script>
+</body>
+</html>

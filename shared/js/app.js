@@ -3,6 +3,13 @@
   var LAB = (window.LAB = window.LAB || {});
   var R = LAB.R, esc = LAB.esc, md = LAB.md, $ = LAB.$;
   var CFG = LAB.config || {};
+  /* Measurement is optional: a blocked provider or an analytics error must never stop a lesson. */
+  function measure(method) {
+    try {
+      var a = LAB.analytics;
+      if (a && typeof a[method] === 'function') a[method].apply(a, Array.prototype.slice.call(arguments, 1));
+    } catch (e) { /* the learning experience does not depend on measurement */ }
+  }
   var KEY = CFG.storageKey || 'lab.v1';
   var TRACKS = (CFG.tracks && CFG.tracks.length) ? CFG.tracks : [
     { id: 'fast', level: 1, name: 'Fast track', text: 'The key ideas and the main exercises.' },
@@ -78,7 +85,7 @@
     setTrack: function (t) {
       var key = frames[idx] ? frames[idx].key : null;
       state.track = t; state.chosen = true; A.save();
-      if (LAB.analytics) LAB.analytics.path(t);
+      measure('path', t);
       buildFrames();
       var j = key ? findKey(key) : 0;
       idx = j >= 0 ? j : nearestAfter(key);
@@ -238,6 +245,8 @@
     /* header of the stage */
     var segKey = sc.type === 'intro' ? 'meta' : (r.seg || 'see');
     var ch = LAB.chapters[f.ch];
+    var inCh = frames.filter(function (x) { return x.ch === f.ch; });
+    var posIn = inCh.indexOf(f) + 1;
     var chip = $('#seg-chip');
     chip.className = 'seg-chip s-' + segKey;
     chip.textContent = SEG[segKey][0];
@@ -271,7 +280,7 @@
       if (!state.seen[f.key]) { state.seen[f.key] = 1; A.award('seen:' + f.key, 1); }
       A.save();
       lastScene = sc.id;
-      if (LAB.analytics) LAB.analytics.frame(ch, sc);
+      measure('frame', ch, sc, { index: idx + 1, total: frames.length, missionIndex: posIn, missionTotal: inCh.length });
       try { history.replaceState(null, '', '#' + f.key); } catch (e) { /* file:// in some browsers */ }
       window.scrollTo(0, 0);
     }
@@ -281,8 +290,6 @@
     var nl = r.nextLabel ? r.nextLabel(sc, f.i) : null;
     $('#next-label').textContent = last ? 'Finish' : (nl || 'Next');
     $('#back').disabled = idx === 0;
-    var inCh = frames.filter(function (x) { return x.ch === f.ch; });
-    var posIn = inCh.indexOf(f) + 1;
     $('#pos').textContent = 'Step ' + posIn + ' of ' + inCh.length;
     updateStats();
     drawSegments();
@@ -295,8 +302,11 @@
     renderFrame(false);
   }
   function next() {
+    var f = frames[idx];
+    if (f && (f.sc.type === 'qa' || f.sc.type === 'mock') && f.i === 0) measure('interaction', 'interview-answer');
+    if (f && (idx === frames.length - 1 || frames[idx + 1].ch !== f.ch)) measure('missionComplete', LAB.chapters[f.ch]);
     if (idx < frames.length - 1) go(idx + 1);
-    else { if (LAB.analytics) LAB.analytics.finished(); A.celebrate(); openMenu(); }
+    else { measure('finished'); A.celebrate(); openMenu(); }
   }
   function back() { if (idx > 0) go(idx - 1); }
 
@@ -330,7 +340,7 @@
       var pct = Math.round(c.seen / c.n * 100);
       h += '<button type="button" class="mrow' + (frames[idx] && frames[idx].ch === ch.index ? ' cur' : '') + '" data-first="' + c.first + '"><span class="mn">' + (ch.n || 'Go') + '</span><span class="mt"><b>' + esc(ch.title) + '</b><small>' + esc(ch.blurb || '') + '</small></span><span class="mmin">' + A.missionMinutes(ch.index) + ' min</span><span class="mp"><i style="width:' + pct + '%"></i></span><span class="mpc">' + pct + '%</span></button>';
     });
-    h += '</div><div class="menu-foot"><button type="button" class="btn-sm" data-m="reset">Reset all progress</button></div></div>';
+    h += '</div><div class="menu-foot"><button type="button" class="btn-sm" data-m="reset">Reset all progress</button><a class="btn-sm" href="../shared/analytics.html" target="_blank" rel="noopener">Analytics and privacy</a></div></div>';
     var o = $('#overlay');
     o.innerHTML = h;
     o.classList.add('open');
@@ -356,6 +366,34 @@
   }
 
   /* ---------- global events ---------- */
+  /* Only a fixed activity category leaves the page; never answers, grades, question IDs or code. */
+  document.addEventListener('click', function (e) {
+    var el = e.target && e.target.closest ? e.target : null;
+    if (!el || !el.closest('#stage-body')) return;
+    var f = frames[idx];
+    if (!f) return;
+    var type = f.sc.type, kind = null;
+    if (el.closest('[data-act="copy"]')) kind = 'code-copy';
+    else if (el.closest('[data-act="run"]')) kind = 'sql-run';
+    else if (el.closest('[data-q="timer"]')) kind = 'interview-timer';
+    else if (el.closest('.fu > summary')) {
+      var detail = el.closest('details');
+      if (!detail || !detail.open) kind = 'interview-followup';
+    }
+    else if (el.closest('[data-go]')) kind = 'interview-review';
+    else if (type === 'challenge' && el.closest('[data-c="hint"]')) kind = 'challenge-hint';
+    else if (type === 'challenge' && el.closest('[data-c="sol"]')) kind = 'challenge-solution';
+    else if (type === 'quiz' && el.closest('.opt[data-k]')) kind = 'quiz';
+    else if (type === 'bug' && el.closest('.ln.clk[data-n]')) kind = 'bug';
+    else if (type === 'order' && el.closest('.chip-btn[data-o]')) kind = 'order';
+    else if ((type === 'decide' && el.closest('.dopt[data-k]')) || (type === 'incident' && el.closest('.opt[data-k]'))) kind = 'decision';
+    else if (type === 'widget' && el.closest('button,select,input')) kind = 'lab';
+    if (kind) measure('interaction', kind);
+  }, true);
+  document.addEventListener('change', function (e) {
+    var f = frames[idx];
+    if (f && f.sc.type === 'widget' && e.target && e.target.closest && e.target.closest('#stage-body')) measure('interaction', 'lab');
+  }, true);
   document.addEventListener('click', function (e) {
     var t = e.target.closest ? e.target.closest('[data-act]') : null;
     if (!t) return;
